@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs><linearGradient id="ocean" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#124f67"/><stop offset="1" stop-color="#061421"/></linearGradient><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe07b"/><stop offset="1" stop-color="#e89235"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="url(#ocean)"/>
+  <circle cx="256" cy="238" r="142" fill="#0b2938" stroke="#49d8d0" stroke-width="12"/>
+  <path d="M125 369c52-26 87-31 131-2 47-33 85-23 132 1-36 42-80 65-132 65-53 0-97-23-131-64Z" fill="#2dc7c1" opacity=".7"/>
+  <path d="M169 277h178l-29 68H199l-30-68Z" fill="#70442d" stroke="#e1b46c" stroke-width="8"/>
+  <path d="M254 113v169M255 128l92 107h-92M248 148l-79 93h79" fill="#e8ddbf" stroke="#4a3327" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M258 104l73 25-73 28Z" fill="url(#gold)"/>
+  <circle cx="256" cy="227" r="38" fill="#101b21"/><path d="M239 221a17 17 0 1 0 34 0 17 17 0 0 0-34 0Zm3 33 14-11 14 11m-36 12 44-24m-44 0 44 24" fill="none" stroke="#f7bd4a" stroke-width="9" stroke-linecap="round"/>
+</svg>

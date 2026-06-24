@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#071b2d">
+  <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <title>Pirates of the Abyss</title>
+</head>
+<body>
+  <div class="app-shell" id="app">
+    <header class="topbar">
+      <button class="brand" data-screen-target="home" aria-label="Ir para o combate">
+        <span class="brand-mark" aria-hidden="true">☠</span>
+        <span><strong>Pirates</strong><small>of the Abyss</small></span>
+      </button>
+      <div class="top-resources" aria-label="Recursos principais">
+        <div title="Ouro"><span class="resource-symbol gold">●</span><span id="top-gold">0</span></div>
+        <div title="Madeira"><span class="resource-symbol wood">▰</span><span id="top-wood">0</span></div>
+        <div title="Ferro"><span class="resource-symbol iron">◆</span><span id="top-iron">0</span></div>
+        <div title="Tecido"><span class="resource-symbol cloth">◒</span><span id="top-cloth">0</span></div>
+      </div>
+      <div class="pirate-level" title="Nível do pirata">
+        <span>NÍVEL</span><strong id="top-level">1</strong>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <section class="screen active" id="screen-home" aria-labelledby="home-title">
+        <h1 class="sr-only" id="home-title">Combate naval</h1>
+        <div class="battle-stage" id="battle-stage">
+          <canvas id="sea-canvas" aria-label="Duelo naval automático em alto-mar"></canvas>
+          <div class="scene-vignette"></div>
+
+          <div class="region-badge">
+            <span class="eyebrow">REGIÃO ATUAL</span>
+            <strong id="scene-region">Costa dos Náufragos</strong>
+            <span id="scene-weather">Brisa costeira</span>
+          </div>
+
+          <div class="enemy-panel battle-hud">
+            <div class="hud-line"><span id="enemy-kind">PIRATA</span><strong id="enemy-level">NV. 1</strong></div>
+            <h2 id="enemy-name">Saqueador da Costa</h2>
+            <div class="health-bar enemy-health"><i id="enemy-health-fill"></i></div>
+            <div class="health-numbers" id="enemy-health-text">80 / 80</div>
+          </div>
+
+          <div class="player-panel battle-hud">
+            <div class="hud-line"><span>SEU NAVIO</span><strong id="ship-level-badge">NV. 1</strong></div>
+            <h2 id="ship-name">Bote Armado</h2>
+            <div class="health-bar player-health"><i id="player-health-fill"></i></div>
+            <div class="health-numbers" id="player-health-text">140 / 140</div>
+          </div>
+
+          <div class="combat-state" id="combat-state">
+            <span class="state-dot"></span><strong>PRONTO PARA NAVEGAR</strong>
+          </div>
+
+          <div class="skill-dock" id="skill-dock" aria-label="Skills automáticas"></div>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="card progression-card">
+            <div class="card-heading">
+              <div><span class="eyebrow">CAÇADA REGIONAL</span><h2 id="progress-title">O boss aguarda</h2></div>
+              <strong class="progress-count" id="kill-progress-text">0 / 100</strong>
+            </div>
+            <div class="boss-progress"><i id="boss-progress-fill"></i></div>
+            <div class="boss-row">
+              <div class="boss-portrait" id="boss-portrait">☠</div>
+              <div><span class="eyebrow">BOSS DA REGIÃO</span><strong id="boss-name">Capitão Barba de Ferro</strong><small id="boss-status">Derrote 100 inimigos para desafiar</small></div>
+              <button class="button boss-button" id="boss-button" disabled>Desafiar boss</button>
+            </div>
+          </article>
+
+          <article class="card controls-card">
+            <div class="metric-grid">
+              <div><span>DANO</span><strong id="metric-damage">0</strong></div>
+              <div><span>DPS</span><strong id="metric-dps">0</strong></div>
+              <div><span>VELOCIDADE</span><strong id="metric-speed">0</strong></div>
+              <div><span>VIDA MÁX.</span><strong id="metric-hp">0</strong></div>
+            </div>
+            <div class="control-row">
+              <button class="button primary" id="start-button">▶ Iniciar</button>
+              <button class="button" id="pause-button" disabled>Ⅱ Pausar</button>
+              <button class="button subtle" id="reset-button">↻ Resetar navio</button>
+            </div>
+          </article>
+
+          <article class="card captain-card">
+            <div class="captain-avatar" aria-hidden="true"><span>☠</span></div>
+            <div class="captain-info">
+              <span class="eyebrow">CAPITÃO DA FROTA</span>
+              <h2>Capitão Abissal</h2>
+              <div class="xp-line"><span id="xp-text">0 / 100 XP</span><strong id="pirate-level-text">Nível 1</strong></div>
+              <div class="xp-bar"><i id="xp-fill"></i></div>
+            </div>
+          </article>
+
+          <article class="card log-card">
+            <div class="card-heading compact"><div><span class="eyebrow">DIÁRIO DE BORDO</span><h2>Últimos eventos</h2></div><span class="live-pill">AO VIVO</span></div>
+            <ol id="battle-log" class="battle-log" aria-live="polite"></ol>
+          </article>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-upgrades" aria-labelledby="upgrades-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">ESTALEIRO DO ABISMO</span><h1 id="upgrades-title">Navios e Upgrades</h1><p>Evolua sua embarcação, equipe artefatos e domine águas mais perigosas.</p></div>
+          <div class="power-seal"><span>PODER NAVAL</span><strong id="naval-power">0</strong></div>
+        </div>
+        <div class="section-tabs" role="tablist" aria-label="Seções do estaleiro">
+          <button class="active" data-upgrade-tab="improvements">Melhorias</button>
+          <button data-upgrade-tab="fleet">Frota</button>
+          <button data-upgrade-tab="equipment">Equipamentos</button>
+          <button data-upgrade-tab="skills">Skills</button>
+        </div>
+        <div class="upgrade-section active" id="upgrade-improvements">
+          <div class="current-ship-banner">
+            <div class="mini-ship" aria-hidden="true"><span>⛵</span></div>
+            <div><span class="eyebrow">NAVIO ATUAL</span><h2 id="yard-ship-name">Bote Armado</h2><p id="yard-ship-tier">Tier 1 • Embarcação pirata</p></div>
+            <div class="ship-stat-row" id="yard-ship-stats"></div>
+          </div>
+          <div class="upgrade-grid" id="upgrade-grid"></div>
+        </div>
+        <div class="upgrade-section" id="upgrade-fleet"><div class="fleet-grid" id="fleet-grid"></div></div>
+        <div class="upgrade-section" id="upgrade-equipment"><div class="equipment-grid" id="equipment-grid"></div></div>
+        <div class="upgrade-section" id="upgrade-skills"><div class="skills-grid" id="skills-grid"></div></div>
+      </section>
+
+      <section class="screen" id="screen-maps" aria-labelledby="maps-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">CARTA NÁUTICA</span><h1 id="maps-title">Mapas</h1><p>Retorne a regiões antigas para buscar os materiais certos.</p></div>
+          <div class="map-counter"><strong id="maps-unlocked">1</strong><span>de 10 regiões</span></div>
+        </div>
+        <div class="maps-grid" id="maps-grid"></div>
+      </section>
+
+      <section class="screen" id="screen-resources" aria-labelledby="resources-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">PORÃO DO NAVIO</span><h1 id="resources-title">Recursos</h1><p>Cada material tem uma função real na evolução da sua frota.</p></div>
+          <div class="cargo-total"><span>CARGA TOTAL</span><strong id="cargo-total">0</strong></div>
+        </div>
+        <div class="rarity-legend"><span class="common">Comum</span><span class="uncommon">Incomum</span><span class="rare">Raro</span><span class="epic">Épico</span><span class="legendary">Lendário</span></div>
+        <div class="resources-grid" id="resources-grid"></div>
+      </section>
+
+      <section class="screen" id="screen-stats" aria-labelledby="stats-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">LIVRO DO CAPITÃO</span><h1 id="stats-title">Estatísticas</h1><p>O retrato completo da sua jornada pelos mares.</p></div>
+          <div class="rank-medallion"><span>POSTO</span><strong id="captain-rank">Marujo</strong></div>
+        </div>
+        <div class="stats-layout">
+          <article class="card stats-card"><span class="eyebrow">COMBATE</span><div class="stats-list" id="combat-stats"></div></article>
+          <article class="card stats-card"><span class="eyebrow">PROGRESSÃO</span><div class="stats-list" id="progression-stats"></div></article>
+          <article class="card stats-card wide"><span class="eyebrow">CARREIRA</span><div class="career-grid" id="career-stats"></div></article>
+        </div>
+        <div class="danger-zone">
+          <div><strong>Novo começo</strong><span>Apaga todo o progresso salvo neste dispositivo.</span></div>
+          <button class="button danger" id="wipe-button">Apagar progresso</button>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navegação principal">
+      <button class="active" data-screen-target="home"><span>⚔</span><strong>Combate</strong></button>
+      <button data-screen-target="upgrades"><span>⚒</span><strong>Navio</strong></button>
+      <button data-screen-target="maps"><span>⌖</span><strong>Mapas</strong></button>
+      <button data-screen-target="resources"><span>◆</span><strong>Recursos</strong></button>
+      <button data-screen-target="stats"><span>▥</span><strong>Estatísticas</strong></button>
+    </nav>
+  </div>
+
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+
+  <div class="modal-backdrop hidden" id="offline-modal" role="dialog" aria-modal="true" aria-labelledby="offline-title">
+    <div class="modal treasure-modal">
+      <div class="modal-icon">☾</div>
+      <span class="eyebrow">PROGRESSO IDLE</span>
+      <h2 id="offline-title">A frota trabalhou por você</h2>
+      <p id="offline-time">Enquanto esteve fora...</p>
+      <div class="offline-rewards" id="offline-rewards"></div>
+      <button class="button primary" id="offline-close">Recolher recompensas</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal">
+      <span class="eyebrow">CONFIRMAÇÃO</span><h2 id="confirm-title">Apagar todo o progresso?</h2>
+      <p>Essa ação remove navios, recursos, mapas e upgrades salvos neste dispositivo.</p>
+      <div class="modal-actions"><button class="button" id="confirm-cancel">Cancelar</button><button class="button danger" id="confirm-wipe">Apagar tudo</button></div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
