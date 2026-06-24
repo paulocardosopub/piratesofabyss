@@ -85,6 +85,20 @@
     amulet: { name: "Amuleto do Abismo", icon: "☠", effect: "+25% DPS e +20% contra bosses", costs: { ambar: 20, perola: 10, fragmentos: 5, ouro: 50000 } }
   };
 
+  const TRADE_PRICES = {
+    madeira: { buy: 25, sell: 10 },
+    ferro: { buy: 35, sell: 15 },
+    tecido: { buy: 30, sell: 12 },
+    polvora: { buy: 75, sell: 30 },
+    comida: { buy: 20, sell: 8 },
+    pedra: { buy: 90, sell: 35 },
+    cristal: { buy: 300, sell: 120 },
+    gema: { buy: 1000, sell: 400 },
+    perola: { buy: 450, sell: 180 },
+    ambar: { buy: 1200, sell: 500 },
+    fragmentos: { buy: 10000, sell: 3500 }
+  };
+
   function createDefaultState() {
     return {
       version: 1,
@@ -142,6 +156,8 @@
   let lastUiRefresh = 0;
   let lastSave = performance.now();
   let hiddenAt = 0;
+  const tradeQuantities = Object.fromEntries(Object.keys(TRADE_PRICES).map(key => [key, 1]));
+  let pendingTrade = null;
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   function formatNumber(value) {
@@ -271,6 +287,8 @@
       this.projectiles = [];
       this.bursts = [];
       this.floaters = [];
+      this.environmentEvents = [];
+      this.environmentTimers = { bird: 2.5, fish: 3.5, shark: 19, kraken: 72 };
       this.resize = this.resize.bind(this);
       new ResizeObserver(this.resize).observe(canvas);
       this.resize();
@@ -305,9 +323,45 @@
       this.projectiles.forEach(item => item.age += dt);
       this.bursts.forEach(item => item.age += dt);
       this.floaters.forEach(item => item.age += dt);
+      this.environmentEvents.forEach(item => item.age += dt);
       this.projectiles = this.projectiles.filter(item => item.age < item.duration);
       this.bursts = this.bursts.filter(item => item.age < .75);
       this.floaters = this.floaters.filter(item => item.age < 1.05);
+      this.environmentEvents = this.environmentEvents.filter(item => item.age < item.duration);
+      Object.keys(this.environmentTimers).forEach(kind => {
+        this.environmentTimers[kind] -= dt;
+        if (this.environmentTimers[kind] <= 0) {
+          this.spawnEnvironmentEvent(kind);
+          this.environmentTimers[kind] = kind === "bird" ? randomBetween(7, 13) : kind === "fish" ? randomBetween(5, 10) : kind === "shark" ? randomBetween(28, 52) : randomBetween(90, 160);
+        }
+      });
+    }
+
+    spawnEnvironmentEvent(kind) {
+      const direction = Math.random() < .5 ? 1 : -1;
+      const durations = { bird: randomBetween(8, 13), fish: randomBetween(4, 7), shark: randomBetween(7, 10), kraken: randomBetween(6, 9) };
+      this.environmentEvents.push({
+        kind, direction, age: 0, duration: durations[kind],
+        depth: kind === "bird" ? randomBetween(.18, .72) : kind === "kraken" ? randomBetween(.06, .14) : kind === "shark" ? randomBetween(.78, .9) : randomBetween(.52, .88),
+        offset: Math.random(), scale: randomBetween(.75, 1.25), side: Math.random() < .5 ? .1 : .9
+      });
+    }
+
+    getDayState() {
+      const cycle = ((Date.now() / 1000) % 480) / 480;
+      const phases = [
+        { t: 0, label: "Manhã", sky: "#9ac9df", water: "#3b8ca4", darkness: 0 },
+        { t: .18, label: "Meio-dia", sky: "#4daee2", water: "#267f9b", darkness: 0 },
+        { t: .38, label: "Pôr do sol", sky: "#da796d", water: "#665c70", darkness: .12 },
+        { t: .55, label: "Noite", sky: "#172b4c", water: "#112f49", darkness: .62 },
+        { t: .72, label: "Madrugada", sky: "#101c39", water: "#0b2940", darkness: .7 },
+        { t: .87, label: "Amanhecer", sky: "#bd8c9b", water: "#526e87", darkness: .25 },
+        { t: 1, label: "Manhã", sky: "#9ac9df", water: "#3b8ca4", darkness: 0 }
+      ];
+      let start = phases[0], end = phases[1];
+      for (let i = 0; i < phases.length - 1; i++) if (cycle >= phases[i].t && cycle <= phases[i + 1].t) { start = phases[i]; end = phases[i + 1]; break; }
+      const progress = (cycle - start.t) / Math.max(.001, end.t - start.t);
+      return { cycle, label: start.label, sky: this.mix(start.sky, end.sky, progress), water: this.mix(start.water, end.water, progress), darkness: start.darkness + (end.darkness - start.darkness) * progress };
     }
 
     draw() {
@@ -316,46 +370,51 @@
       const h = this.height;
       const region = REGIONS[state.regionIndex];
       const horizon = h * .42;
+      const day = this.getDayState();
       ctx.clearRect(0, 0, w, h);
 
       const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-      sky.addColorStop(0, this.mix(region.sky, "#183249", .28));
-      sky.addColorStop(.58, region.sky);
-      sky.addColorStop(1, this.mix(region.sky, "#f5d9ad", .34));
+      sky.addColorStop(0, this.mix(region.sky, day.darkness > .4 ? "#08162d" : "#d9ecf1", .28 + day.darkness * .35));
+      sky.addColorStop(.58, day.sky);
+      sky.addColorStop(1, this.mix(region.sky, day.darkness > .4 ? "#263352" : "#f5d9ad", .38));
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, w, horizon + 2);
 
-      const sunX = state.regionIndex > 4 ? w * .18 : w * .76;
-      const sunRadius = Math.min(w, h) * .075;
-      const sunGlow = ctx.createRadialGradient(sunX, h * .15, 2, sunX, h * .15, sunRadius * 2.4);
-      sunGlow.addColorStop(0, state.regionIndex > 4 ? "rgba(224,243,245,.8)" : "rgba(255,245,190,.92)");
-      sunGlow.addColorStop(.28, state.regionIndex > 4 ? "rgba(205,232,236,.2)" : "rgba(255,211,114,.24)");
+      if (day.darkness > .3) this.drawStars(ctx, w, horizon, day.darkness);
+      const celestialNight = day.cycle >= .5 && day.cycle < .92;
+      const celestialProgress = celestialNight ? (day.cycle - .5) / .42 : day.cycle < .5 ? day.cycle / .5 : (day.cycle - .92) / .08;
+      const sunX = w * (.08 + clamp(celestialProgress, 0, 1) * .84);
+      const celestialY = horizon * (.7 - Math.sin(clamp(celestialProgress, 0, 1) * Math.PI) * .5);
+      const sunRadius = Math.min(w, h) * (celestialNight ? .035 : .055);
+      const sunGlow = ctx.createRadialGradient(sunX, celestialY, 2, sunX, celestialY, sunRadius * 2.4);
+      sunGlow.addColorStop(0, celestialNight ? "rgba(225,240,244,.88)" : "rgba(255,245,190,.9)");
+      sunGlow.addColorStop(.28, celestialNight ? "rgba(192,218,230,.15)" : "rgba(255,211,114,.18)");
       sunGlow.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = sunGlow; ctx.fillRect(sunX - sunRadius * 2.5, h * .15 - sunRadius * 2.5, sunRadius * 5, sunRadius * 5);
+      ctx.fillStyle = sunGlow; ctx.fillRect(sunX - sunRadius * 2.5, celestialY - sunRadius * 2.5, sunRadius * 5, sunRadius * 5);
+      if (celestialNight) { ctx.fillStyle = "rgba(230,242,242,.8)"; ctx.beginPath(); ctx.arc(sunX, celestialY, sunRadius * .55, 0, Math.PI * 2); ctx.fill(); }
 
-      this.drawCloud(ctx, w * .06, h * .16, 1.18);
-      this.drawCloud(ctx, w * .51, h * .095, .78);
-      this.drawCloud(ctx, w * .82, h * .22, .56);
+      this.drawCloud(ctx, ((w * .06 + this.time * 2.4) % (w + 180)) - 90, h * .16, 1.18, day.darkness);
+      this.drawCloud(ctx, ((w * .51 + this.time * 1.5) % (w + 160)) - 80, h * .095, .78, day.darkness);
+      this.drawCloud(ctx, ((w * .82 + this.time * 1.1) % (w + 140)) - 70, h * .22, .56, day.darkness);
 
       const sea = ctx.createLinearGradient(0, horizon, 0, h);
-      sea.addColorStop(0, this.mix(region.sea, "#c4eeea", .3));
-      sea.addColorStop(.3, region.sea);
-      sea.addColorStop(1, this.mix(region.sea, "#02101c", .52));
+      sea.addColorStop(0, day.water);
+      sea.addColorStop(.3, this.mix(region.sea, day.darkness > .4 ? "#102c46" : "#6fbac1", .22));
+      sea.addColorStop(1, this.mix(region.sea, "#02101c", .52 + day.darkness * .18));
       ctx.fillStyle = sea;
       ctx.fillRect(0, horizon, w, h - horizon);
-      this.drawSunPath(ctx, sunX, horizon, h);
+      if (!celestialNight && day.cycle < .58) this.drawSunPath(ctx, sunX, horizon, h);
       this.drawWaves(ctx, horizon, w, h);
+      this.drawEnvironmentEvents(ctx, horizon, w, h);
 
       this.drawIsland(ctx, -w * .035, horizon + 8, w * .31, region.land, 1.18, 0);
       this.drawIsland(ctx, w * .73, horizon + 3, w * .29, region.land, .94, 1);
       this.drawIsland(ctx, w * .43, horizon - 3, w * .11, region.land, .48, 2);
       if (state.regionIndex === 6) this.drawFort(ctx, w * .82, horizon - 22);
-      this.drawBirds(ctx, w, h);
 
       if (state.regionIndex === 2) this.drawRain(ctx, w, h);
       if (state.regionIndex === 8) this.drawSnow(ctx, w, h);
       if (state.regionIndex === 5) this.drawFog(ctx, w, h);
-      if (state.regionIndex === 9) this.drawTentacles(ctx, w, h);
 
       const bobPlayer = Math.sin(this.time * 1.55) * 3;
       const bobEnemy = Math.sin(this.time * 1.35 + 1.4) * 3;
@@ -406,11 +465,12 @@
       return `rgb(${ca.map((v, i) => Math.round(v + (cb[i] - v) * amount)).join(",")})`;
     }
 
-    drawCloud(ctx, x, y, scale) {
+    drawCloud(ctx, x, y, scale, darkness = 0) {
       ctx.save();
-      ctx.globalAlpha = .24;
+      ctx.globalAlpha = .22 + darkness * .08;
       const cloud = ctx.createLinearGradient(0, y - 35 * scale, 0, y + 24 * scale);
-      cloud.addColorStop(0, "rgba(255,255,255,.95)"); cloud.addColorStop(1, "rgba(188,211,215,.42)");
+      cloud.addColorStop(0, darkness > .4 ? "rgba(115,134,157,.62)" : "rgba(255,255,255,.95)");
+      cloud.addColorStop(1, darkness > .4 ? "rgba(36,53,78,.45)" : "rgba(188,211,215,.42)");
       ctx.fillStyle = cloud;
       ctx.shadowColor = "rgba(255,255,255,.16)"; ctx.shadowBlur = 18 * scale;
       [[0, 8, 25], [24, -1, 31], [52, 5, 27], [76, 12, 18]].forEach(([dx, dy, r]) => { ctx.beginPath(); ctx.ellipse(x + dx * scale, y + dy * scale, r * 1.24 * scale, r * .72 * scale, 0, 0, Math.PI * 2); ctx.fill(); });
@@ -418,30 +478,64 @@
     }
 
     drawSunPath(ctx, sunX, horizon, h) {
-      const reflection = ctx.createLinearGradient(0, horizon, 0, h);
-      reflection.addColorStop(0, "rgba(255,236,178,.32)");
-      reflection.addColorStop(1, "rgba(255,236,178,0)");
-      ctx.fillStyle = reflection;
-      ctx.beginPath();
-      ctx.moveTo(sunX - 8, horizon); ctx.lineTo(sunX + 8, horizon); ctx.lineTo(sunX + 72, h); ctx.lineTo(sunX - 68, h); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "rgba(255,245,208,.3)"; ctx.lineWidth = 1;
-      for (let i = 0; i < 11; i++) {
-        const depth = i / 10;
-        const y = horizon + Math.pow(depth, 1.35) * (h - horizon);
-        const half = 5 + depth * 48;
-        ctx.beginPath(); ctx.moveTo(sunX - half + Math.sin(i + this.time) * 8, y); ctx.lineTo(sunX + half, y); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,245,208,.12)"; ctx.lineWidth = 1;
+      for (let i = 0; i < 7; i++) {
+        const depth = i / 6;
+        const y = horizon + Math.pow(depth, 1.45) * (h - horizon) * .68;
+        const half = 3 + depth * 23;
+        ctx.beginPath(); ctx.moveTo(sunX - half + Math.sin(i + this.time) * 4, y); ctx.lineTo(sunX + half, y); ctx.stroke();
       }
     }
 
-    drawBirds(ctx, w, h) {
-      ctx.strokeStyle = "rgba(25,51,62,.48)"; ctx.lineWidth = 1.2;
-      for (let i = 0; i < 7; i++) {
-        const x = w * (.36 + i * .055) + Math.sin(this.time * .18 + i) * 8;
-        const y = h * (.18 + (i % 3) * .025);
-        const size = 3 + (i % 2) * 2;
-        ctx.beginPath(); ctx.quadraticCurveTo(x, y - size, x + size, y); ctx.quadraticCurveTo(x + size * 2, y - size, x + size * 3, y); ctx.stroke();
+    drawStars(ctx, w, horizon, darkness) {
+      ctx.save(); ctx.globalAlpha = clamp((darkness - .25) * 1.55, 0, .72);
+      for (let i = 0; i < 52; i++) {
+        const x = (i * 137.7) % w;
+        const y = 8 + (i * 67.3) % Math.max(20, horizon * .74);
+        const glow = .45 + Math.sin(this.time * .65 + i) * .25;
+        ctx.fillStyle = `rgba(232,245,249,${glow})`;
+        ctx.beginPath(); ctx.arc(x, y, .5 + (i % 4 === 0 ? .9 : .2), 0, Math.PI * 2); ctx.fill();
       }
-      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    drawEnvironmentEvents(ctx, horizon, w, h) {
+      const waterHeight = h - horizon;
+      this.environmentEvents.forEach(event => {
+        const progress = clamp(event.age / event.duration, 0, 1);
+        const fade = Math.min(1, event.age * 1.5, (event.duration - event.age) * 1.5);
+        const travel = event.direction > 0 ? progress : 1 - progress;
+        if (event.kind === "bird") {
+          const x = -w * .08 + travel * w * 1.16;
+          const y = horizon * event.depth + Math.sin(event.age * 2.1 + event.offset * 5) * 6;
+          ctx.save(); ctx.globalAlpha = fade * .62; ctx.strokeStyle = "#203b48"; ctx.lineWidth = 1.25 * event.scale;
+          for (let i = 0; i < 4; i++) { const bx = x - i * event.direction * 14; const by = y + (i % 2) * 6; const size = (4 - i * .35) * event.scale; const flap = Math.sin(event.age * 6 + i) * 2; ctx.beginPath(); ctx.moveTo(bx - size, by); ctx.quadraticCurveTo(bx, by - size - flap, bx + size, by); ctx.quadraticCurveTo(bx + size * 1.7, by - size + flap, bx + size * 2.5, by); ctx.stroke(); }
+          ctx.restore();
+          return;
+        }
+        if (event.kind === "kraken") {
+          const x = w * event.side;
+          const baseY = horizon + waterHeight * event.depth;
+          const rise = Math.sin(progress * Math.PI) * 38 * event.scale;
+          ctx.save(); ctx.globalAlpha = fade * .34; ctx.strokeStyle = "#25213e"; ctx.lineCap = "round";
+          for (let i = 0; i < 4; i++) { ctx.lineWidth = (7 + i * 1.4) * event.scale; const tx = x + (i - 1.5) * 18; ctx.beginPath(); ctx.moveTo(tx, baseY + 18); ctx.bezierCurveTo(tx - 9, baseY - rise * .35, tx + Math.sin(event.age * 1.8 + i) * 17, baseY - rise * .72, tx + (i - 1.5) * 4, baseY - rise); ctx.stroke(); }
+          ctx.lineCap = "butt"; ctx.restore();
+          return;
+        }
+
+        let x = -w * .1 + travel * w * 1.2;
+        let y = horizon + waterHeight * event.depth + Math.sin(event.age * 2.4 + event.offset * 6) * 5;
+        const normalizedX = x / w;
+        if ((normalizedX > .17 && normalizedX < .41) || (normalizedX > .61 && normalizedX < .82)) y += 24;
+        ctx.save(); ctx.globalAlpha = fade * (event.kind === "shark" ? .32 : .22); ctx.fillStyle = event.kind === "shark" ? "#092b3d" : "#0c4860";
+        ctx.translate(x, y); ctx.scale(event.direction * event.scale, event.scale);
+        if (event.kind === "fish") {
+          for (let i = 0; i < 4; i++) { const fx = -i * 19; const fy = (i % 2) * 10; ctx.beginPath(); ctx.ellipse(fx, fy, 9, 3.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.moveTo(fx - 8, fy); ctx.lineTo(fx - 14, fy - 5); ctx.lineTo(fx - 14, fy + 5); ctx.closePath(); ctx.fill(); }
+        } else {
+          ctx.beginPath(); ctx.moveTo(-28, 3); ctx.quadraticCurveTo(0, -8, 28, 2); ctx.quadraticCurveTo(0, 11, -28, 3); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(8, -20); ctx.lineTo(15, -2); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(-27, 3); ctx.lineTo(-38, -7); ctx.lineTo(-36, 12); ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+      });
     }
 
     drawIsland(ctx, x, y, width, color, heightScale, seed = 0) {
@@ -570,6 +664,12 @@
 
       if (spectral) { ctx.shadowColor = "#43e1d4"; ctx.shadowBlur = 14; ctx.strokeStyle = "rgba(83,236,221,.65)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.shadowBlur = 0; }
       if (boss) { ctx.strokeStyle = trim; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(length * .45, -8); ctx.quadraticCurveTo(length * .82, -43, length * 1.04, -24); ctx.stroke(); }
+      const sceneDarkness = this.getDayState().darkness;
+      if (sceneDarkness > .28 && !spectral) {
+        ctx.shadowColor = "#ffc75b"; ctx.shadowBlur = 10; ctx.fillStyle = `rgba(255,199,91,${Math.min(.9, sceneDarkness + .2)})`;
+        [-length * .48, length * .54].forEach(lx => { ctx.beginPath(); ctx.arc(lx, -2, 2.2, 0, Math.PI * 2); ctx.fill(); });
+        ctx.shadowBlur = 0;
+      }
       ctx.restore();
     }
 
@@ -836,6 +936,7 @@
     const ship = SHIPS[state.shipId];
     const enemy = state.combat.enemy;
     const maxHp = stats.maxHp;
+    $("#scene-weather").textContent = `${REGIONS[state.regionIndex].weather} • ${scene.getDayState().label}`;
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
     $("#player-health-fill").style.width = `${state.combat.playerHp / maxHp * 100}%`;
     $("#player-health-text").textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(maxHp)}`;
@@ -1011,6 +1112,70 @@
     $("#resources-grid").innerHTML = Object.entries(RESOURCE_META).map(([key, meta]) => `<article class="resource-card" style="--rarity-color:${RARITY_COLORS[meta.rarityKey]}"><div class="resource-header"><div class="resource-big-icon">${meta.icon}</div><div><h3>${meta.name}</h3><strong class="resource-amount">${formatNumber(state.resources[key])}</strong></div></div><span class="resource-rarity">${meta.rarity}</span><p class="resource-detail"><strong>Onde:</strong> ${meta.regions}</p><p class="resource-detail"><strong>Chance:</strong> ${meta.chance}</p><p class="resource-detail"><strong>Uso:</strong> ${meta.uses}</p></article>`).join("");
   }
 
+  function renderTrade() {
+    $("#trade-gold").textContent = `${formatNumber(state.resources.ouro)} Ouro`;
+    $("#trade-grid").innerHTML = Object.entries(TRADE_PRICES).map(([key, price]) => {
+      const meta = RESOURCE_META[key];
+      const selected = tradeQuantities[key];
+      const quantities = [1, 10, 50, 100, "max"];
+      return `<article class="trade-card" style="--trade-color:${RARITY_COLORS[meta.rarityKey]}"><div class="trade-card-header"><div class="trade-icon">${meta.icon}</div><div><h3>${meta.name}</h3><span class="trade-stock">No porão: <strong>${formatNumber(state.resources[key])}</strong></span></div><span class="trade-rarity">${meta.rarity}</span></div><div class="trade-prices"><div class="trade-price"><span>COMPRAR / UN.</span><strong>${formatNumber(price.buy)} Ouro</strong></div><div class="trade-price sell"><span>VENDER / UN.</span><strong>${formatNumber(price.sell)} Ouro</strong></div></div><span class="quantity-label">QUANTIDADE</span><div class="quantity-selector">${quantities.map(quantity => `<button class="${selected === quantity ? "active" : ""}" data-trade-qty="${quantity}" data-trade-resource="${key}">${quantity === "max" ? "MÁX." : quantity}</button>`).join("")}</div><div class="trade-actions"><button class="button primary" data-trade-action="buy" data-trade-resource="${key}">Comprar</button><button class="button sell-button" data-trade-action="sell" data-trade-resource="${key}">Vender</button></div></article>`;
+    }).join("");
+  }
+
+  function openTradeConfirmation(key, action) {
+    const price = TRADE_PRICES[key];
+    const meta = RESOURCE_META[key];
+    if (!price || !meta || !["buy", "sell"].includes(action)) return toast("Quantidade inválida.", "danger-toast");
+    const selected = tradeQuantities[key];
+    let quantity = selected === "max" ? (action === "buy" ? Math.floor(state.resources.ouro / price.buy) : Math.floor(state.resources[key])) : Number(selected);
+    quantity = Math.floor(quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      const message = action === "buy" ? "Ouro insuficiente." : "Recurso insuficiente.";
+      toast(message, "danger-toast");
+      return;
+    }
+    const unitPrice = action === "buy" ? price.buy : price.sell;
+    const total = quantity * unitPrice;
+    if (action === "buy" && state.resources.ouro < total) return toast("Ouro insuficiente.", "danger-toast");
+    if (action === "sell" && state.resources[key] < quantity) return toast("Recurso insuficiente.", "danger-toast");
+    pendingTrade = { key, action, quantity, unitPrice, total };
+    $("#trade-modal-icon").textContent = meta.icon;
+    $("#trade-modal-title").textContent = action === "buy" ? `Comprar ${meta.name}?` : `Vender ${meta.name}?`;
+    $("#trade-summary").innerHTML = `<span>Operação</span><strong>${action === "buy" ? "Compra" : "Venda"}</strong><span>Quantidade</span><strong>${formatNumber(quantity)} unidades</strong><span>Preço por unidade</span><strong>${formatNumber(unitPrice)} Ouro</strong><span>Valor total</span><strong>${formatNumber(total)} Ouro</strong>`;
+    $("#trade-modal-message").textContent = action === "buy" ? "O Ouro será descontado imediatamente." : "Os recursos serão removidos do porão imediatamente.";
+    $("#trade-confirm").textContent = action === "buy" ? "Confirmar compra" : "Confirmar venda";
+    $("#trade-modal").classList.remove("hidden");
+  }
+
+  function executeTrade() {
+    if (!pendingTrade) return;
+    const { key, action, quantity, unitPrice } = pendingTrade;
+    const total = quantity * unitPrice;
+    if (!Number.isInteger(quantity) || quantity <= 0) { toast("Quantidade inválida.", "danger-toast"); closeTradeModal(); return; }
+    if (action === "buy") {
+      if (state.resources.ouro < total) { toast("Ouro insuficiente.", "danger-toast"); closeTradeModal(); return; }
+      state.resources.ouro -= total;
+      state.resources[key] += quantity;
+      toast("Compra realizada com sucesso.", "gold-toast");
+      addLog(`Mercado: ${quantity} ${RESOURCE_META[key].name} comprados por ${formatNumber(total)} Ouro.`, "loot");
+    } else {
+      if (state.resources[key] < quantity) { toast("Recurso insuficiente.", "danger-toast"); closeTradeModal(); return; }
+      state.resources[key] -= quantity;
+      state.resources.ouro += total;
+      state.lifetime.gold += total;
+      toast("Venda realizada com sucesso.", "gold-toast");
+      addLog(`Mercado: ${quantity} ${RESOURCE_META[key].name} vendidos por ${formatNumber(total)} Ouro.`, "loot");
+    }
+    closeTradeModal();
+    renderAll(true);
+    saveGame();
+  }
+
+  function closeTradeModal() {
+    pendingTrade = null;
+    $("#trade-modal").classList.add("hidden");
+  }
+
   function renderStats() {
     const stats = getStats();
     const skillLevels = Object.values(state.skills).reduce((sum, item) => sum + item.level, 0);
@@ -1031,6 +1196,7 @@
     if (expensive || currentScreen === "upgrades") renderUpgrades();
     if (expensive || currentScreen === "maps") renderMaps();
     if (expensive || currentScreen === "resources") renderResources();
+    if (expensive || currentScreen === "trade") renderTrade();
     if (expensive || currentScreen === "stats") renderStats();
   }
 
@@ -1087,6 +1253,7 @@
     if (screen === "upgrades") renderUpgrades();
     if (screen === "maps") renderMaps();
     if (screen === "resources") renderResources();
+    if (screen === "trade") renderTrade();
     if (screen === "stats") renderStats();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -1107,6 +1274,11 @@
     if (target.dataset.upgradeSkill) upgradeSkill(target.dataset.upgradeSkill);
     if (target.dataset.toggleSkill) toggleSkill(target.dataset.toggleSkill);
     if (target.dataset.skillDock) toggleSkill(target.dataset.skillDock);
+    if (target.dataset.tradeQty && target.dataset.tradeResource) {
+      tradeQuantities[target.dataset.tradeResource] = target.dataset.tradeQty === "max" ? "max" : Number(target.dataset.tradeQty);
+      renderTrade();
+    }
+    if (target.dataset.tradeAction && target.dataset.tradeResource) openTradeConfirmation(target.dataset.tradeResource, target.dataset.tradeAction);
     if (target.dataset.selectMap) {
       const index = Number(target.dataset.selectMap);
       if (index < state.unlockedRegions) { state.regionIndex = index; state.combat.enemy = null; state.combat.spawnTimer = 0; toast(`Rota definida: ${REGIONS[index].name}.`); renderAll(true); saveGame(); navigate("home"); }
@@ -1121,6 +1293,8 @@
   $("#wipe-button").addEventListener("click", () => $("#confirm-modal").classList.remove("hidden"));
   $("#confirm-cancel").addEventListener("click", () => $("#confirm-modal").classList.add("hidden"));
   $("#confirm-wipe").addEventListener("click", () => { localStorage.removeItem(SAVE_KEY); state = createDefaultState(); $("#confirm-modal").classList.add("hidden"); toast("Progresso apagado. Uma nova jornada começou."); renderAll(true); saveGame(); });
+  $("#trade-cancel").addEventListener("click", closeTradeModal);
+  $("#trade-confirm").addEventListener("click", executeTrade);
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { hiddenAt = Date.now(); saveGame(); }

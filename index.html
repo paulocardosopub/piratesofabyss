@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=4">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -143,6 +143,15 @@
         <div class="resources-grid" id="resources-grid"></div>
       </section>
 
+      <section class="screen" id="screen-trade" aria-labelledby="trade-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">MERCADO DO PORTO</span><h1 id="trade-title">Comércio</h1><p>Compre o material que falta ou venda excedentes — o mar ainda oferece os melhores preços.</p></div>
+          <div class="trade-wallet"><span>SALDO DISPONÍVEL</span><strong id="trade-gold">0 Ouro</strong></div>
+        </div>
+        <div class="trade-notice"><span>⚖</span><p><strong>Mercado equilibrado</strong> • O preço de venda é sempre menor que o de compra. Use o comércio para emergências e continue explorando mapas para obter o melhor rendimento.</p></div>
+        <div class="trade-grid" id="trade-grid"></div>
+      </section>
+
       <section class="screen" id="screen-stats" aria-labelledby="stats-title">
         <div class="page-heading">
           <div><span class="eyebrow">LIVRO DO CAPITÃO</span><h1 id="stats-title">Estatísticas</h1><p>O retrato completo da sua jornada pelos mares.</p></div>
@@ -165,6 +174,7 @@
       <button data-screen-target="upgrades"><span>⚒</span><strong>Navio</strong></button>
       <button data-screen-target="maps"><span>⌖</span><strong>Mapas</strong></button>
       <button data-screen-target="resources"><span>◆</span><strong>Recursos</strong></button>
+      <button data-screen-target="trade"><span>⚖</span><strong>Comércio</strong></button>
       <button data-screen-target="stats"><span>▥</span><strong>Estatísticas</strong></button>
     </nav>
   </div>
@@ -190,6 +200,17 @@
     </div>
   </div>
 
-  <script src="game.js"></script>
+  <div class="modal-backdrop hidden" id="trade-modal" role="dialog" aria-modal="true" aria-labelledby="trade-modal-title">
+    <div class="modal trade-confirm-modal">
+      <div class="modal-icon" id="trade-modal-icon">⚖</div>
+      <span class="eyebrow">CONFIRMAR TRANSAÇÃO</span>
+      <h2 id="trade-modal-title">Confirmar comércio?</h2>
+      <div class="trade-summary" id="trade-summary"></div>
+      <p id="trade-modal-message">Confira os valores antes de concluir.</p>
+      <div class="modal-actions"><button class="button" id="trade-cancel">Cancelar</button><button class="button primary" id="trade-confirm">Confirmar</button></div>
+    </div>
+  </div>
+
+  <script src="game.js?v=4"></script>
 </body>
 </html>

@@ -226,10 +226,10 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   z-index: 40;
   left: 50%;
   bottom: 16px;
-  width: min(640px, calc(100% - 26px));
+  width: min(760px, calc(100% - 26px));
   height: 64px;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   padding: 6px;
   transform: translateX(-50%);
   border: 1px solid rgba(159, 205, 203, .2);
@@ -246,8 +246,8 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .page-heading { display: flex; align-items: center; justify-content: space-between; min-height: 120px; gap: 24px; }
 .page-heading h1 { margin: 4px 0 5px; font: 700 clamp(28px, 4vw, 42px) Georgia, serif; }
 .page-heading p { margin: 0; color: var(--muted); }
-.power-seal, .map-counter, .cargo-total, .rank-medallion { min-width: 140px; padding: 13px 18px; text-align: center; border: 1px solid rgba(110,239,226,.22); border-radius: 14px; background: rgba(53,212,207,.06); }
-.power-seal span, .cargo-total span, .rank-medallion span { display: block; color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.power-seal, .map-counter, .cargo-total, .rank-medallion, .trade-wallet { min-width: 140px; padding: 13px 18px; text-align: center; border: 1px solid rgba(110,239,226,.22); border-radius: 14px; background: rgba(53,212,207,.06); }
+.power-seal span, .cargo-total span, .rank-medallion span, .trade-wallet span { display: block; color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .12em; }
 .power-seal strong, .cargo-total strong { display: block; margin-top: 3px; color: var(--cyan-2); font-size: 25px; }
 .map-counter strong { margin-right: 6px; color: var(--gold); font-size: 28px; }
 .map-counter span { color: var(--muted); font-size: 11px; }
@@ -339,6 +339,38 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .resource-detail { margin: 5px 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .resource-detail strong { color: #d5e1df; }
 
+.trade-wallet { border-color: rgba(247,189,74,.3); background: rgba(247,189,74,.07); }
+.trade-wallet strong { display: block; margin-top: 4px; color: var(--gold); font-size: 21px; }
+.trade-notice { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; padding: 12px 15px; border: 1px solid rgba(247,189,74,.17); border-radius: 12px; background: rgba(247,189,74,.05); }
+.trade-notice > span { color: var(--gold); font-size: 22px; }
+.trade-notice p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.trade-notice strong { color: #e8d6ad; }
+.trade-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.trade-card { position: relative; padding: 17px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(13,42,59,.94), rgba(7,27,40,.98)); }
+.trade-card::after { content: ""; position: absolute; inset: auto 0 0; height: 3px; background: var(--trade-color); }
+.trade-card-header { display: flex; align-items: center; gap: 11px; }
+.trade-icon { width: 47px; height: 47px; display: grid; place-items: center; flex: 0 0 auto; color: var(--trade-color); border: 1px solid color-mix(in srgb, var(--trade-color) 30%, transparent); border-radius: 13px; background: color-mix(in srgb, var(--trade-color) 9%, transparent); font-size: 24px; }
+.trade-card-header h3 { margin: 0; font: 700 18px Georgia, serif; }
+.trade-stock { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+.trade-stock strong { color: var(--ink); font-size: 13px; }
+.trade-rarity { margin-left: auto; align-self: flex-start; color: var(--trade-color); font-size: 8px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.trade-prices { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 14px 0; }
+.trade-price { padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: rgba(0,0,0,.13); }
+.trade-price span, .trade-price strong { display: block; }
+.trade-price span { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .07em; }
+.trade-price strong { margin-top: 3px; color: var(--gold); font-size: 13px; }
+.trade-price.sell strong { color: var(--green); }
+.quantity-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .08em; }
+.quantity-selector { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.quantity-selector button { min-height: 31px; padding: 4px 2px; border: 1px solid var(--line); border-radius: 7px; color: #b7cbca; background: rgba(255,255,255,.035); font-size: 9px; font-weight: 850; cursor: pointer; }
+.quantity-selector button.active { color: #06212b; border-color: var(--cyan-2); background: var(--cyan-2); }
+.trade-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
+.trade-actions .button { padding-inline: 8px; }
+.trade-actions .sell-button { color: #bdf3d8; border-color: rgba(89,211,157,.3); background: rgba(89,211,157,.08); }
+.trade-summary { display: grid; grid-template-columns: 1fr auto; gap: 9px 18px; margin: 17px 0; padding: 14px; text-align: left; border: 1px solid var(--line); border-radius: 11px; background: rgba(0,0,0,.15); }
+.trade-summary span { color: var(--muted); font-size: 11px; }
+.trade-summary strong { color: var(--gold); font-size: 12px; text-align: right; }
+
 .stats-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .stats-card { padding: 21px; }
 .stats-card.wide { grid-column: 1 / -1; }
@@ -420,12 +452,12 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .bottom-nav button strong { font-size: 9px; }
   .page-heading { min-height: 106px; }
   .page-heading p { font-size: 12px; }
-  .power-seal, .map-counter, .cargo-total, .rank-medallion { min-width: 94px; padding: 10px; }
+  .power-seal, .map-counter, .cargo-total, .rank-medallion, .trade-wallet { min-width: 94px; padding: 10px; }
   .current-ship-banner { grid-template-columns: auto 1fr; padding: 14px; }
   .mini-ship { width: 55px; height: 55px; }
   .ship-stat-row { grid-column: 1 / -1; justify-content: space-between; }
   .ship-stat-row div { text-align: center; }
-  .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
+  .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid, .trade-grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
   .upgrade-card, .equipment-card, .skill-card, .ship-card, .resource-card { padding: 14px; }
   .ship-visual { margin: -14px -14px 11px; }
   .map-card { min-height: 240px; }
@@ -441,8 +473,9 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .page-heading { align-items: flex-start; }
   .page-heading h1 { font-size: 29px; }
   .page-heading p { max-width: 220px; }
-  .power-seal, .map-counter, .cargo-total, .rank-medallion { min-width: 82px; }
-  .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid { grid-template-columns: 1fr; }
+  .power-seal, .map-counter, .cargo-total, .rank-medallion, .trade-wallet { min-width: 82px; }
+  .trade-wallet strong { font-size: 16px; }
+  .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid, .trade-grid { grid-template-columns: 1fr; }
   .upgrade-card p, .equipment-card p, .skill-card p { min-height: auto; }
   .ship-card { min-height: 230px; }
   .resource-card { min-height: 170px; }
