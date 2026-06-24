@@ -2,7 +2,7 @@
   "use strict";
 
   const SAVE_KEY = "pirates-of-the-abyss-save-v1";
-  const OFFLINE_REWARD_RATE = .1;
+  const OFFLINE_REWARD_RATE = .3;
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -27,16 +27,16 @@
   const RARITY_COLORS = { common: "#b5c5c4", uncommon: "#67d997", rare: "#64aef4", epic: "#c38af1", legendary: "#ffb349" };
 
   const REGIONS = [
-    { name: "Costa dos Náufragos", weather: "Brisa costeira", description: "Mar calmo, naufrágios e saqueadores inexperientes.", boss: "Capitão Barba de Ferro", enemies: ["Saqueador da Costa", "Bote Renegado", "Pescador Hostil", "Corsário Perdido"], drops: { madeira: .28, ferro: .16, tecido: .22 }, baseHp: 86.4, baseDamage: 8.4, gold: 18, xp: 14, sky: "#78b9c1", sea: "#167087", land: "#5d8b58", kind: "PIRATA" },
-    { name: "Ilhas Comerciais", weather: "Céu aberto", description: "Portos ricos, mercantes e contrabandistas discretos.", boss: "Rainha Corsária Scarlet", enemies: ["Mercante Armado", "Contrabandista Veloz", "Guarda do Porto", "Corveta Mercante"], drops: { comida: .25, tecido: .24, madeira: .18 }, baseHp: 160, baseDamage: 15, gold: 42, xp: 31, sky: "#78b6d4", sea: "#17627e", land: "#659a61", kind: "MERCANTE" },
-    { name: "Mar das Tempestades", weather: "Temporal elétrico", description: "Chuva, raios e embarcações endurecidas pelo caos.", boss: "Tempestade Viva", enemies: ["Brigue Trovejante", "Caçador da Tormenta", "Nau do Relâmpago", "Corsário das Nuvens"], drops: { polvora: .16, cristal: .065 }, baseHp: 350, baseDamage: 31, gold: 91, xp: 66, sky: "#394d61", sea: "#153d54", land: "#465a55", kind: "TEMPESTADE" },
-    { name: "Baía dos Corsários", weather: "Fumaça de canhões", description: "Esconderijos rochosos e a elite dos contrabandistas.", boss: "Almirante Negro", enemies: ["Corveta Corsária", "Brigantina Negra", "Contrabandista de Armas", "Carrasco da Baía"], drops: { ferro: .20, polvora: .15 }, baseHp: 740, baseDamage: 61, gold: 190, xp: 135, sky: "#bd7964", sea: "#294b5d", land: "#4a4540", kind: "CORSÁRIO" },
-    { name: "Oceano Profundo", weather: "Correntes abissais", description: "Águas escuras habitadas por feras e caçadores.", boss: "Megalodon Ancestral", enemies: ["Baleeiro Sombrio", "Caçador Abissal", "Serpente Marinha", "Nau do Recife"], drops: { perola: .075, cristal: .08 }, baseHp: 1550, baseDamage: 125, gold: 390, xp: 278, sky: "#2f6680", sea: "#092f48", land: "#364f52", kind: "CRIATURA" },
-    { name: "Triângulo Maldito", weather: "Névoa espectral", description: "Navios fantasmas surgem e somem dentro da névoa.", boss: "Holandês Voador", enemies: ["Escuna Fantasma", "Tripulação Perdida", "Nau Espectral", "Vulto do Triângulo"], drops: { ambar: .045, cristal: .095 }, baseHp: 3250, baseDamage: 254, gold: 800, xp: 568, sky: "#536b6e", sea: "#173f4b", land: "#455653", kind: "FANTASMA" },
-    { name: "Mar Imperial", weather: "Ventos de guerra", description: "Fortificações e frotas militares dominam o horizonte.", boss: "Grande Armada Imperial", enemies: ["Fragata Real", "Corveta Imperial", "Navio de Suprimentos", "Patrulha da Coroa"], drops: { ferro: .24, cristal: .085 }, baseHp: 6800, baseDamage: 520, gold: 1650, xp: 1170, sky: "#8ca7bb", sea: "#2b5c78", land: "#6c7568", kind: "MARINHA" },
-    { name: "Arquipélago Vulcânico", weather: "Cinzas no ar", description: "Rochas negras, lava e criaturas cobertas de magma.", boss: "Dragão Marinho Vulcânico", enemies: ["Nau de Obsidiana", "Saqueador de Cinzas", "Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .18, ferro: .21, cristal: .09 }, baseHp: 14200, baseDamage: 1070, gold: 3400, xp: 2400, sky: "#8c4d3e", sea: "#373743", land: "#342e2b", kind: "VULCÂNICO" },
-    { name: "Reino Congelado", weather: "Nevasca cortante", description: "Icebergs, monstros gelados e navios presos no gelo.", boss: "Jormungandr de Gelo", enemies: ["Quebra-Gelo Hostil", "Corsário Boreal", "Serpente de Gelo", "Fragata Congelada"], drops: { cristal: .11, gema: .04 }, baseHp: 29800, baseDamage: 2200, gold: 7000, xp: 4950, sky: "#b4d4df", sea: "#447b91", land: "#d2e2e1", kind: "GLACIAL" },
-    { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Cultista do Kraken", "Dreadnought Afundado", "Tentáculo Abissal", "Leviatã Menor"], drops: { fragmentos: .008, gema: .045, cristal: .12 }, baseHp: 62500, baseDamage: 4500, gold: 14500, xp: 10200, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
+    { name: "Costa dos Náufragos", weather: "Brisa costeira", description: "Mar calmo, naufrágios e saqueadores inexperientes.", boss: "Capitão Barba de Ferro", enemies: ["Saqueador da Costa", "Bote Renegado", "Pescador Hostil", "Corsário Perdido"], drops: { madeira: .28, ferro: .16, tecido: .22 }, baseHp: 86.4, baseDamage: 8.4, gold: 18, goldRange: [10, 25], bossGold: [500, 1000], xp: 14, sky: "#78b9c1", sea: "#167087", land: "#5d8b58", kind: "PIRATA" },
+    { name: "Ilhas Comerciais", weather: "Céu aberto", description: "Portos ricos, mercantes e contrabandistas discretos.", boss: "Rainha Corsária Scarlet", enemies: ["Mercante Armado", "Contrabandista Veloz", "Guarda do Porto", "Corveta Mercante"], drops: { comida: .25, tecido: .24, madeira: .18 }, baseHp: 160, baseDamage: 15, gold: 32, goldRange: [20, 45], bossGold: [1000, 2000], xp: 31, sky: "#78b6d4", sea: "#17627e", land: "#659a61", kind: "MERCANTE" },
+    { name: "Mar das Tempestades", weather: "Temporal elétrico", description: "Chuva, raios e embarcações endurecidas pelo caos.", boss: "Tempestade Viva", enemies: ["Brigue Trovejante", "Caçador da Tormenta", "Nau do Relâmpago", "Corsário das Nuvens"], drops: { polvora: .16, cristal: .065 }, baseHp: 350, baseDamage: 31, gold: 52, goldRange: [35, 70], bossGold: [2000, 4000], xp: 66, sky: "#394d61", sea: "#153d54", land: "#465a55", kind: "TEMPESTADE" },
+    { name: "Baía dos Corsários", weather: "Fumaça de canhões", description: "Esconderijos rochosos e a elite dos contrabandistas.", boss: "Almirante Negro", enemies: ["Corveta Corsária", "Brigantina Negra", "Contrabandista de Armas", "Carrasco da Baía"], drops: { ferro: .20, polvora: .15 }, baseHp: 740, baseDamage: 61, gold: 72, goldRange: [50, 95], bossGold: [4000, 7500], xp: 135, sky: "#bd7964", sea: "#294b5d", land: "#4a4540", kind: "CORSÁRIO" },
+    { name: "Oceano Profundo", weather: "Correntes abissais", description: "Águas escuras habitadas por feras e caçadores.", boss: "Megalodon Ancestral", enemies: ["Baleeiro Sombrio", "Caçador Abissal", "Serpente Marinha", "Nau do Recife"], drops: { perola: .075, cristal: .08 }, baseHp: 1550, baseDamage: 125, gold: 108, goldRange: [75, 140], bossGold: [7500, 12000], xp: 278, sky: "#2f6680", sea: "#092f48", land: "#364f52", kind: "CRIATURA" },
+    { name: "Triângulo Maldito", weather: "Névoa espectral", description: "Navios fantasmas surgem e somem dentro da névoa.", boss: "Holandês Voador", enemies: ["Escuna Fantasma", "Tripulação Perdida", "Nau Espectral", "Vulto do Triângulo"], drops: { ambar: .045, cristal: .095 }, baseHp: 3250, baseDamage: 254, gold: 145, goldRange: [100, 190], bossGold: [12000, 20000], xp: 568, sky: "#536b6e", sea: "#173f4b", land: "#455653", kind: "FANTASMA" },
+    { name: "Mar Imperial", weather: "Ventos de guerra", description: "Fortificações e frotas militares dominam o horizonte.", boss: "Grande Armada Imperial", enemies: ["Fragata Real", "Corveta Imperial", "Navio de Suprimentos", "Patrulha da Coroa"], drops: { ferro: .24, cristal: .085 }, baseHp: 6800, baseDamage: 520, gold: 190, goldRange: [130, 250], bossGold: [20000, 35000], xp: 1170, sky: "#8ca7bb", sea: "#2b5c78", land: "#6c7568", kind: "MARINHA" },
+    { name: "Arquipélago Vulcânico", weather: "Cinzas no ar", description: "Rochas negras, lava e criaturas cobertas de magma.", boss: "Dragão Marinho Vulcânico", enemies: ["Nau de Obsidiana", "Saqueador de Cinzas", "Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .18, ferro: .21, cristal: .09 }, baseHp: 14200, baseDamage: 1070, gold: 240, goldRange: [160, 320], bossGold: [35000, 60000], xp: 2400, sky: "#8c4d3e", sea: "#373743", land: "#342e2b", kind: "VULCÂNICO" },
+    { name: "Reino Congelado", weather: "Nevasca cortante", description: "Icebergs, monstros gelados e navios presos no gelo.", boss: "Jormungandr de Gelo", enemies: ["Quebra-Gelo Hostil", "Corsário Boreal", "Serpente de Gelo", "Fragata Congelada"], drops: { cristal: .11, gema: .04 }, baseHp: 29800, baseDamage: 2200, gold: 335, goldRange: [220, 450], bossGold: [60000, 100000], xp: 4950, sky: "#b4d4df", sea: "#447b91", land: "#d2e2e1", kind: "GLACIAL" },
+    { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Cultista do Kraken", "Dreadnought Afundado", "Tentáculo Abissal", "Leviatã Menor"], drops: { fragmentos: .008, gema: .045, cristal: .12 }, baseHp: 62500, baseDamage: 4500, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 10200, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
   ];
 
   const SHIPS = [
@@ -203,6 +203,8 @@
   let hiddenAt = 0;
   const tradeQuantities = Object.fromEntries(Object.keys(TRADE_PRICES).map(key => [key, 1]));
   let pendingTrade = null;
+  let tradeHoldTimeout = 0;
+  let tradeHoldInterval = 0;
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   function formatNumber(value) {
@@ -222,8 +224,23 @@
     return state.pirateLevel >= pet.levelReq && (!pet.regionReq || state.unlockedRegions >= pet.regionReq) && (pet.bossReq === undefined || state.bossesDefeated[pet.bossReq]);
   }
 
-  function getStats() {
-    const ship = SHIPS[state.shipId];
+  function getSkillCooldown(key, level = state.skills[key].level, speed = getStats().speed) {
+    const meta = SKILL_META[key];
+    const levelReduction = Math.max(.75, 1 - (level - 1) * .015);
+    return meta.cooldown * levelReduction / Math.min(1.8, Math.sqrt(speed / 100));
+  }
+
+  function getSkillValues(key, level = state.skills[key].level, stats = getStats()) {
+    const meta = SKILL_META[key];
+    const damage = stats.damage * (meta.factor + (level - 1) * .24);
+    const duration = key === "fire" ? meta.burnDuration + (level - 1) * .25 : key === "ice" ? meta.slowDuration + (level - 1) * .2 : 0;
+    const extraDps = key === "fire" ? stats.damage * (meta.burnFactor + (level - 1) * .04) : 0;
+    const cooldown = getSkillCooldown(key, level, stats.speed);
+    return { damage: Math.round(damage), duration, extraDps: Math.round(extraDps), cooldown, dps: Math.round((damage + extraDps * duration) / cooldown) };
+  }
+
+  function getStats(shipId = state.shipId) {
+    const ship = SHIPS[shipId];
     const overall = 1 + (state.levels.ship - 1) * .06;
     const damageBonus = 1 + (state.levels.cannons - 1) * .13;
     const speedBonus = 1 + (state.levels.sails - 1) * .075;
@@ -248,7 +265,7 @@
     Object.entries(SKILL_META).forEach(([key, meta]) => {
       if (!isSkillUnlocked(key) || !state.skills[key].auto) return;
       const level = state.skills[key].level;
-      const effectiveCooldown = meta.cooldown / Math.min(1.8, Math.sqrt(speed / 100));
+      const effectiveCooldown = getSkillCooldown(key, level, speed);
       skillDps += damage * (meta.factor + (level - 1) * .24) / effectiveCooldown;
       if (key === "fire") skillDps += damage * (meta.burnFactor + (level - 1) * .04) * meta.burnDuration / effectiveCooldown;
     });
@@ -256,11 +273,14 @@
     const boostedSkillDps = skillDps;
     const petDps = pet?.dps || 0;
     const navalDps = (shipDps + boostedSkillDps) * (1 + (pet?.dpsBonus || 0));
+    const totalDps = Math.round(navalDps + petDps);
+    const unlockedSkillLevels = Object.entries(state.skills).reduce((sum, [key, skill]) => sum + (isSkillUnlocked(key) ? skill.level : 0), 0);
+    const power = Math.round(maxHp * .2 + damage * 2 + totalDps * 3 + speed * 1.5 + armor * 4 + crit * 1000 + precision * 500 + Math.min(.3, .03 + speed / 5000) * 500 + ship.tier * 150 + state.levels.ship * 35 + state.levels.cannons * 40 + state.levels.sails * 30 + state.levels.hull * 35 + unlockedSkillLevels * 55 + state.pirateLevel * 12 + (pet?.power || 0));
     return {
       damage: Math.round(damage), speed: Math.round(speed), maxHp: Math.round(maxHp), armor: Math.round(armor),
       precision, crit, evasion: Math.min(.3, .03 + speed / 5000), attackInterval,
       shipDps: Math.round(shipDps), skillDps: Math.round(boostedSkillDps), petDps: Math.round(petDps),
-      dps: Math.round(navalDps + petDps), power: Math.round(navalDps * 4 + maxHp * .35 + armor * 8 + (pet?.power || 0))
+      dps: totalDps, power
     };
   }
 
@@ -950,7 +970,7 @@
     const meta = SKILL_META[key];
     const level = state.skills[key].level;
     const base = getStats().damage * (meta.factor + (level - 1) * .24) * (1 + (getEquippedPet()?.dpsBonus || 0));
-    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a" }); enemy.burnTime = meta.burnDuration; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04); }
+    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a" }); enemy.burnTime = meta.burnDuration + (level - 1) * .25; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04); }
     if (key === "ice") { dealToEnemy(base, { color: "#81e8ff" }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
     if (key === "ghost") dealToEnemy(base, { color: "#c58cff", ignoreArmor: true });
     if (key === "chain") { dealToEnemy(base, { color: "#d9e4df" }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
@@ -979,7 +999,31 @@
     state.combat.playerHp = Math.max(0, state.combat.playerHp - damage);
     scene.fire(false, "#ff8c68");
     setTimeout(() => { scene.burst(false, "#ff7657"); scene.floatDamage(damage, false, "#ffb09b"); }, 340);
-    if (state.combat.playerHp <= 0) beginRepair();
+    if (state.combat.playerHp <= 0) {
+      if (enemy.isBoss) cancelBossBattle();
+      else beginRepair();
+    }
+  }
+
+  function clearCombatTimers() {
+    state.combat.attackTimer = 0;
+    state.combat.petAttackTimer = 0;
+    state.combat.enemyAttackTimer = 0;
+    Object.entries(SKILL_META).forEach(([key, meta]) => { state.skills[key].remaining = getSkillCooldown(key, state.skills[key].level); });
+  }
+
+  function cancelBossBattle() {
+    const bossName = state.combat.enemy?.name || "Boss";
+    state.combat.enemy = null;
+    state.combat.repairing = false;
+    state.combat.repairStarted = 0;
+    state.combat.playerHp = getStats().maxHp;
+    state.combat.spawnTimer = 0;
+    state.combat.running = true;
+    clearCombatTimers();
+    addLog(`${bossName} venceu o duelo. Batalha cancelada e navio restaurado; o boss continua disponível.`, "danger-text");
+    toast("Derrota para o boss — navio restaurado para uma nova tentativa.", "danger-toast");
+    saveGame();
   }
 
   function beginRepair() {
@@ -1020,7 +1064,7 @@
     const region = REGIONS[state.regionIndex];
     if (getEquippedPet()) state.lifetime.petKills += 1;
     if (enemy.isBoss) {
-      const reward = Math.round(region.gold * 45);
+      const reward = integerBetween(region.bossGold[0], region.bossGold[1]);
       state.resources.ouro += reward;
       state.lifetime.gold += reward;
       state.lifetime.bosses += 1;
@@ -1042,7 +1086,8 @@
       }
       if (materials.length) addLog(`Tesouro do boss: ${materials.join(", ")}.`, "loot");
     } else {
-      const gold = Math.round(region.gold * (enemy.goldMultiplier || 1) * randomBetween(.88, 1.15));
+      const weightedGold = region.gold * (enemy.goldMultiplier || 1) * randomBetween(.88, 1.15);
+      const gold = Math.round(clamp(weightedGold, region.goldRange[0], region.goldRange[1]));
       state.resources.ouro += gold;
       state.lifetime.gold += gold;
       state.lifetime.enemies += 1;
@@ -1062,9 +1107,7 @@
     state.combat.repairStarted = 0;
     state.combat.playerHp = getStats().maxHp;
     state.combat.enemy = null;
-    state.combat.attackTimer = 0;
-    state.combat.petAttackTimer = 0;
-    state.combat.enemyAttackTimer = 0;
+    clearCombatTimers();
     state.combat.spawnTimer = getSpawnDelay();
     state.combat.running = true;
     state.hasStarted = true;
@@ -1113,7 +1156,7 @@
       state.skills[key].remaining -= dt;
       if (state.skills[key].remaining <= 0) {
         castSkill(key);
-        state.skills[key].remaining = meta.cooldown / Math.min(1.8, Math.sqrt(stats.speed / 100));
+        state.skills[key].remaining = getSkillCooldown(key, state.skills[key].level, stats.speed);
       }
     });
   }
@@ -1154,11 +1197,11 @@
       }
     });
     if (showModal) {
-      $("#offline-time").textContent = `Sua frota navegou por ${formatDuration(capped)} (limite de 24 horas). Eficiência offline: 10% do combate ativo.`;
+      $("#offline-time").textContent = `Sua frota navegou por ${formatDuration(capped)} (limite de 24 horas). Eficiência offline: 30% do combate ativo.`;
       $("#offline-rewards").innerHTML = rewards.map(item => `<div><span>${item.name}</span><strong>+${formatNumber(item.amount)}</strong></div>`).join("");
       $("#offline-modal").classList.remove("hidden");
     }
-    addLog(`Progresso idle recolhido após ${formatDuration(capped)} com 10% de eficiência.`, "loot");
+    addLog(`Progresso idle recolhido após ${formatDuration(capped)} com 30% de eficiência.`, "loot");
   }
 
   function formatDuration(seconds) {
@@ -1171,6 +1214,11 @@
   // Renderização da interface
   function resourceCostHtml(cost) {
     return Object.entries(cost).map(([key, amount]) => `<span class="cost-chip ${(state.resources[key] || 0) < amount ? "missing" : ""}">${RESOURCE_META[key].icon} ${formatNumber(amount)} ${RESOURCE_META[key].name}</span>`).join("");
+  }
+
+  function missingResourcesText(cost) {
+    const missing = Object.entries(cost).filter(([key, amount]) => (state.resources[key] || 0) < amount).map(([key, amount]) => `${formatNumber(amount - (state.resources[key] || 0))} ${RESOURCE_META[key].name}`);
+    return missing.length ? `Faltam: ${missing.join(" • ")}` : "Recursos suficientes para melhorar";
   }
 
   function renderCombatHud() {
@@ -1247,6 +1295,7 @@
     $("#metric-dps").textContent = formatNumber(stats.dps);
     $("#metric-speed").textContent = formatNumber(stats.speed);
     $("#metric-hp").textContent = formatNumber(stats.maxHp);
+    $("#metric-power").textContent = formatNumber(stats.power);
     $("#kill-progress-text").textContent = `${Math.min(100, kills)} / 100`;
     $("#boss-progress-fill").style.width = `${Math.min(100, kills)}%`;
     $("#boss-name").textContent = region.boss;
@@ -1318,7 +1367,7 @@
     Object.entries(SKILL_META).forEach(([key, meta]) => {
       const node = $(`[data-skill-dock="${key}"]`);
       if (!node) return;
-      const cooldown = meta.cooldown / Math.min(1.8, Math.sqrt(getStats().speed / 100));
+      const cooldown = getSkillCooldown(key);
       const ratio = isSkillUnlocked(key) && state.skills[key].auto ? clamp(state.skills[key].remaining / cooldown, 0, 1) : 1;
       node.querySelector(".cooldown").style.transform = `scaleY(${ratio})`;
     });
@@ -1370,7 +1419,9 @@
       const statusKey = current ? "equipped" : owned ? "purchased" : levelMet && affordable ? "available" : "blocked";
       const button = current ? `<button class="button" disabled>Equipado</button>` : owned ? `<button class="button primary" data-equip-ship="${ship.id}">Equipar navio</button>` : `<button class="button ${levelMet && affordable ? "primary" : ""}" data-buy-ship="${ship.id}" ${levelMet && affordable ? "" : "disabled"}>${levelMet && affordable ? "Comprar e equipar" : levelMet ? "Recursos insuficientes" : `Requer nível ${ship.levelReq}`}</button>`;
       const issueHtml = issues.length ? `<ul class="ship-issues">${issues.slice(0, 4).map(issue => `<li>${issue}</li>`).join("")}${issues.length > 4 ? `<li>+${issues.length - 4} requisitos</li>` : ""}</ul>` : `<p class="ship-ready">${owned ? "Disponível permanentemente na sua frota." : "Todos os requisitos foram atendidos."}</p>`;
-      return `<article class="ship-card ${owned ? "owned" : statusKey === "blocked" ? "locked" : ""} ${current ? "current" : ""} ${statusKey}"><div class="ship-tier">TIER ${ship.tier}</div><div class="ship-status ${statusKey}">${status}</div><div class="ship-visual"><canvas data-ship-preview="${ship.id}" aria-label="Miniatura de ${ship.name}"></canvas></div><div class="ship-title-row"><div><h3>${ship.name}</h3><span>${ship.type}</span></div><span class="ship-level-req">NÍVEL ${ship.levelReq}</span></div><div class="ship-mini-stats"><span><small>VIDA</small>❤ ${formatNumber(ship.hp)}</span><span><small>DANO</small>☄ ${formatNumber(ship.damage)}</span><span><small>VELOC.</small>» ${formatNumber(ship.speed)}</span><span><small>DEFESA</small>⬡ ${formatNumber(ship.armor)}</span></div><div class="ship-costs"><span class="ship-section-label">CUSTO DE CONSTRUÇÃO</span><div class="cost-list">${resourceCostHtml(ship.costs)}</div></div>${issueHtml}${button}</article>`;
+      const candidatePower = getStats(ship.id).power;
+      const powerDelta = candidatePower - getStats().power;
+      return `<article class="ship-card ${owned ? "owned" : statusKey === "blocked" ? "locked" : ""} ${current ? "current" : ""} ${statusKey}"><div class="ship-tier">TIER ${ship.tier}</div><div class="ship-status ${statusKey}">${status}</div><div class="ship-visual"><canvas data-ship-preview="${ship.id}" aria-label="Miniatura de ${ship.name}"></canvas></div><div class="ship-title-row"><div><h3>${ship.name}</h3><span>${ship.type}</span></div><span class="ship-level-req">NÍVEL ${ship.levelReq}</span></div><div class="ship-mini-stats"><span><small>VIDA</small>❤ ${formatNumber(ship.hp)}</span><span><small>DANO</small>☄ ${formatNumber(ship.damage)}</span><span><small>VELOC.</small>» ${formatNumber(ship.speed)}</span><span><small>DEFESA</small>⬡ ${formatNumber(ship.armor)}</span></div><div class="ship-power-comparison"><span>PODER NAVAL</span><strong>${formatNumber(candidatePower)}</strong><small class="${powerDelta >= 0 ? "positive" : "negative"}">${current ? "Navio atual" : `${powerDelta >= 0 ? "+" : "−"}${formatNumber(Math.abs(powerDelta))} vs. atual`}</small></div><div class="ship-costs"><span class="ship-section-label">CUSTO DE CONSTRUÇÃO</span><div class="cost-list">${resourceCostHtml(ship.costs)}</div></div>${issueHtml}${button}</article>`;
     }).join("");
     $$('[data-ship-preview]', $("#fleet-grid")).forEach(canvas => renderShipPreview(canvas, SHIPS[Number(canvas.dataset.shipPreview)]));
   }
@@ -1387,7 +1438,10 @@
       const unlocked = isSkillUnlocked(key);
       const skill = state.skills[key];
       const cost = getSkillCost(key);
-      return `<article class="skill-card ${unlocked ? "" : "locked"}"><div class="skill-card-icon">${meta.icon}</div><div><span class="level-label">${unlocked ? `NÍVEL ${skill.level}` : `LIBERA NO NÍVEL ${meta.unlock}`}</span><h3>${meta.name}</h3><p>${meta.effect}</p></div><div class="skill-controls">${unlocked ? `<div class="auto-switch"><span>Lançamento automático</span><button class="toggle ${skill.auto ? "on" : ""}" data-toggle-skill="${key}" aria-label="Alternar lançamento automático"></button></div><div class="cost-list">${resourceCostHtml(cost)}</div><button class="button" data-upgrade-skill="${key}" ${canAfford(cost) ? "" : "disabled"}>Melhorar skill</button>` : `<div class="auto-switch"><span>Continue derrotando inimigos para desbloquear.</span></div>`}</div></article>`;
+      const current = getSkillValues(key, skill.level);
+      const next = getSkillValues(key, skill.level + 1);
+      const effectLine = key === "fire" ? `Queimadura: ${formatNumber(current.extraDps)} → ${formatNumber(next.extraDps)} DPS • ${current.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s → ${next.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s` : key === "ice" ? `Lentidão: ${current.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s → ${next.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s` : meta.effect;
+      return `<article class="skill-card ${unlocked ? "" : "locked"}"><div class="skill-card-icon">${meta.icon}</div><div><span class="level-label">${unlocked ? `NÍVEL ${skill.level}` : `LIBERA NO NÍVEL ${meta.unlock}`}</span><h3>${meta.name}</h3><p>${meta.effect}</p></div><div class="skill-controls">${unlocked ? `<div class="skill-progression"><div><span>DANO</span><strong>${formatNumber(current.damage)} → ${formatNumber(next.damage)}</strong><small>+${formatNumber(next.damage - current.damage)}</small></div><div><span>COOLDOWN</span><strong>${current.cooldown.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s → ${next.cooldown.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s</strong><small>−${(current.cooldown - next.cooldown).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s</small></div><div><span>DPS DA SKILL</span><strong>${formatNumber(current.dps)} → ${formatNumber(next.dps)}</strong><small>+${formatNumber(next.dps - current.dps)} DPS total</small></div></div><div class="skill-effect-line">${effectLine}</div><div class="auto-switch"><span>Lançamento automático</span><button class="toggle ${skill.auto ? "on" : ""}" data-toggle-skill="${key}" aria-label="Alternar lançamento automático"></button></div><div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${canAfford(cost) ? "ready" : "missing"}">${missingResourcesText(cost)}</div><button class="button" data-upgrade-skill="${key}" ${canAfford(cost) ? "" : "disabled"}>Melhorar para nível ${skill.level + 1}</button>` : `<div class="auto-switch"><span>Continue derrotando inimigos para desbloquear.</span></div>`}</div></article>`;
     }).join("");
   }
 
@@ -1411,10 +1465,48 @@
     $("#trade-gold").textContent = `${formatNumber(state.resources.ouro)} Ouro`;
     $("#trade-grid").innerHTML = Object.entries(TRADE_PRICES).map(([key, price]) => {
       const meta = RESOURCE_META[key];
-      const selected = tradeQuantities[key];
-      const quantities = [1, 10, 50, 100, "max"];
-      return `<article class="trade-card" style="--trade-color:${RARITY_COLORS[meta.rarityKey]}"><div class="trade-card-header"><div class="trade-icon">${meta.icon}</div><div><h3>${meta.name}</h3><span class="trade-stock">No porão: <strong>${formatNumber(state.resources[key])}</strong></span></div><span class="trade-rarity">${meta.rarity}</span></div><div class="trade-prices"><div class="trade-price"><span>COMPRAR / UN.</span><strong>${formatNumber(price.buy)} Ouro</strong></div><div class="trade-price sell"><span>VENDER / UN.</span><strong>${formatNumber(price.sell)} Ouro</strong></div></div><span class="quantity-label">QUANTIDADE</span><div class="quantity-selector">${quantities.map(quantity => `<button class="${selected === quantity ? "active" : ""}" data-trade-qty="${quantity}" data-trade-resource="${key}">${quantity === "max" ? "MÁX." : quantity}</button>`).join("")}</div><div class="trade-actions"><button class="button primary" data-trade-action="buy" data-trade-resource="${key}">Comprar</button><button class="button sell-button" data-trade-action="sell" data-trade-resource="${key}">Vender</button></div></article>`;
+      const selected = Math.max(1, Math.floor(Number(tradeQuantities[key]) || 1));
+      const buyTotal = selected * price.buy;
+      const sellTotal = selected * price.sell;
+      const canBuy = state.resources.ouro >= buyTotal;
+      const canSell = state.resources[key] >= selected;
+      return `<article class="trade-card" data-trade-card="${key}" style="--trade-color:${RARITY_COLORS[meta.rarityKey]}"><div class="trade-card-header"><div class="trade-icon">${meta.icon}</div><div><h3>${meta.name}</h3><span class="trade-stock">No porão: <strong>${formatNumber(state.resources[key])}</strong></span></div><span class="trade-rarity">${meta.rarity}</span></div><div class="trade-prices"><div class="trade-price"><span>COMPRAR / UN.</span><strong>${formatNumber(price.buy)} Ouro</strong></div><div class="trade-price sell"><span>VENDER / UN.</span><strong>${formatNumber(price.sell)} Ouro</strong></div></div><label class="quantity-label" for="trade-qty-${key}">QUANTIDADE</label><div class="trade-quantity-control"><button type="button" data-trade-step="-1" data-trade-resource="${key}" aria-label="Diminuir quantidade">−</button><input class="trade-quantity-input" id="trade-qty-${key}" data-trade-input="${key}" type="number" inputmode="numeric" pattern="[0-9]*" min="1" step="1" value="${selected}" aria-label="Quantidade de ${meta.name}"><button type="button" data-trade-step="1" data-trade-resource="${key}" aria-label="Aumentar quantidade">+</button></div><div class="trade-live-totals"><div><span>Custo da compra</span><strong data-buy-total>${formatNumber(buyTotal)} Ouro</strong><small data-buy-balance>Saldo: ${formatNumber(state.resources.ouro)} → ${formatNumber(Math.max(0, state.resources.ouro - buyTotal))}</small></div><div><span>Receita da venda</span><strong data-sell-total>${formatNumber(sellTotal)} Ouro</strong><small data-sell-balance>Estoque: ${formatNumber(state.resources[key])} → ${formatNumber(Math.max(0, state.resources[key] - selected))}</small></div></div><div class="trade-error" data-trade-error>${!canBuy ? "Ouro insuficiente para comprar esta quantidade." : !canSell ? "Recurso insuficiente para vender esta quantidade." : "Quantidade válida para compra e venda."}</div><div class="trade-actions"><button class="button primary" data-trade-action="buy" data-trade-resource="${key}" ${canBuy ? "" : "disabled"}>Comprar</button><button class="button sell-button" data-trade-action="sell" data-trade-resource="${key}" ${canSell ? "" : "disabled"}>Vender</button></div></article>`;
     }).join("");
+  }
+
+  function updateTradeCard(key) {
+    const card = $(`[data-trade-card="${key}"]`);
+    const price = TRADE_PRICES[key];
+    if (!card || !price) return;
+    const quantity = Math.max(1, Math.floor(Number(tradeQuantities[key]) || 1));
+    tradeQuantities[key] = quantity;
+    const buyTotal = quantity * price.buy;
+    const sellTotal = quantity * price.sell;
+    const canBuy = state.resources.ouro >= buyTotal;
+    const canSell = state.resources[key] >= quantity;
+    $("[data-buy-total]", card).textContent = `${formatNumber(buyTotal)} Ouro`;
+    $("[data-buy-balance]", card).textContent = `Saldo: ${formatNumber(state.resources.ouro)} → ${formatNumber(Math.max(0, state.resources.ouro - buyTotal))}`;
+    $("[data-sell-total]", card).textContent = `${formatNumber(sellTotal)} Ouro`;
+    $("[data-sell-balance]", card).textContent = `Estoque: ${formatNumber(state.resources[key])} → ${formatNumber(Math.max(0, state.resources[key] - quantity))}`;
+    $("[data-trade-error]", card).textContent = !canBuy ? "Ouro insuficiente para comprar esta quantidade." : !canSell ? "Recurso insuficiente para vender esta quantidade." : "Quantidade válida para compra e venda.";
+    $(`[data-trade-action="buy"]`, card).disabled = !canBuy;
+    $(`[data-trade-action="sell"]`, card).disabled = !canSell;
+  }
+
+  function stepTradeQuantity(key, delta) {
+    const input = $(`[data-trade-input="${key}"]`);
+    if (!input) return;
+    const next = Math.max(1, Math.floor((Number(tradeQuantities[key]) || 1) + delta));
+    tradeQuantities[key] = next;
+    input.value = String(next);
+    updateTradeCard(key);
+  }
+
+  function stopTradeHold() {
+    clearTimeout(tradeHoldTimeout);
+    clearInterval(tradeHoldInterval);
+    tradeHoldTimeout = 0;
+    tradeHoldInterval = 0;
   }
 
   function openTradeConfirmation(key, action) {
@@ -1422,7 +1514,7 @@
     const meta = RESOURCE_META[key];
     if (!price || !meta || !["buy", "sell"].includes(action)) return toast("Quantidade inválida.", "danger-toast");
     const selected = tradeQuantities[key];
-    let quantity = selected === "max" ? (action === "buy" ? Math.floor(state.resources.ouro / price.buy) : Math.floor(state.resources[key])) : Number(selected);
+    let quantity = Number(selected);
     quantity = Math.floor(quantity);
     if (!Number.isFinite(quantity) || quantity <= 0) {
       const message = action === "buy" ? "Ouro insuficiente." : "Recurso insuficiente.";
@@ -1436,7 +1528,9 @@
     pendingTrade = { key, action, quantity, unitPrice, total };
     $("#trade-modal-icon").textContent = meta.icon;
     $("#trade-modal-title").textContent = action === "buy" ? `Comprar ${meta.name}?` : `Vender ${meta.name}?`;
-    $("#trade-summary").innerHTML = `<span>Operação</span><strong>${action === "buy" ? "Compra" : "Venda"}</strong><span>Quantidade</span><strong>${formatNumber(quantity)} unidades</strong><span>Preço por unidade</span><strong>${formatNumber(unitPrice)} Ouro</strong><span>Valor total</span><strong>${formatNumber(total)} Ouro</strong>`;
+    const currentAmount = action === "buy" ? state.resources.ouro : state.resources[key];
+    const remaining = action === "buy" ? currentAmount - total : currentAmount - quantity;
+    $("#trade-summary").innerHTML = `<span>Operação</span><strong>${action === "buy" ? "Compra" : "Venda"}</strong><span>Recurso</span><strong>${meta.name}</strong><span>Quantidade</span><strong>${formatNumber(quantity)} unidades</strong><span>Preço por unidade</span><strong>${formatNumber(unitPrice)} Ouro</strong><span>Valor total</span><strong>${formatNumber(total)} Ouro</strong><span>${action === "buy" ? "Ouro atual" : "Estoque atual"}</span><strong>${formatNumber(currentAmount)}</strong><span>${action === "buy" ? "Ouro restante" : "Estoque restante"}</span><strong>${formatNumber(remaining)}</strong>`;
     $("#trade-modal-message").textContent = action === "buy" ? "O Ouro será descontado imediatamente." : "Os recursos serão removidos do porão imediatamente.";
     $("#trade-confirm").textContent = action === "buy" ? "Confirmar compra" : "Confirmar venda";
     $("#trade-modal").classList.remove("hidden");
@@ -1505,7 +1599,8 @@
     const newStats = getStats();
     if (type === "hull" || type === "ship") state.combat.playerHp = Math.max(state.combat.playerHp, Math.round(newStats.maxHp * oldRatio));
     addLog(`${type === "ship" ? "Navio" : type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} melhorado para o nível ${state.levels[type]}.`, "loot");
-    toast("Melhoria concluída no estaleiro.");
+    const powerGain = Math.max(0, newStats.power - oldStats.power);
+    toast(`Melhoria concluída! Poder Naval: ${formatNumber(oldStats.power)} → ${formatNumber(newStats.power)} (+${formatNumber(powerGain)}).`);
     renderAll(true); saveGame();
   }
 
@@ -1550,7 +1645,10 @@
   function upgradeSkill(key) {
     if (!isSkillUnlocked(key)) return;
     const cost = getSkillCost(key); if (!canAfford(cost)) return;
-    spend(cost); state.skills[key].level += 1; toast(`${SKILL_META[key].name} alcançou o nível ${state.skills[key].level}.`); renderAll(true); saveGame();
+    const oldPower = getStats().power;
+    spend(cost); state.skills[key].level += 1;
+    const newPower = getStats().power;
+    toast(`${SKILL_META[key].name} nível ${state.skills[key].level}. Poder Naval +${formatNumber(newPower - oldPower)}.`); renderAll(true); saveGame();
   }
 
   function toggleSkill(key) {
@@ -1596,11 +1694,36 @@
       renderTrade();
     }
     if (target.dataset.tradeAction && target.dataset.tradeResource) openTradeConfirmation(target.dataset.tradeResource, target.dataset.tradeAction);
+    if (target.dataset.tradeStep && target.dataset.tradeResource) stepTradeQuantity(target.dataset.tradeResource, Number(target.dataset.tradeStep));
     if (target.dataset.selectMap) {
       const index = Number(target.dataset.selectMap);
       if (index < state.unlockedRegions) { state.regionIndex = index; state.combat.enemy = null; state.combat.spawnTimer = 0; toast(`Rota definida: ${REGIONS[index].name}.`); renderAll(true); saveGame(); navigate("home"); }
     }
   });
+
+  document.addEventListener("keydown", event => {
+    if (event.target.matches("[data-trade-input]") && ["e", "E", "+", "-", ".", ","].includes(event.key)) event.preventDefault();
+  });
+
+  document.addEventListener("input", event => {
+    const input = event.target.closest("[data-trade-input]");
+    if (!input) return;
+    const key = input.dataset.tradeInput;
+    const value = Math.max(1, Math.floor(Number(input.value) || 1));
+    input.value = String(value);
+    tradeQuantities[key] = value;
+    updateTradeCard(key);
+  });
+
+  document.addEventListener("pointerdown", event => {
+    const button = event.target.closest("[data-trade-step]");
+    if (!button) return;
+    stopTradeHold();
+    const key = button.dataset.tradeResource;
+    const delta = Number(button.dataset.tradeStep);
+    tradeHoldTimeout = setTimeout(() => { tradeHoldInterval = setInterval(() => stepTradeQuantity(key, delta), 85); }, 350);
+  });
+  ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
 
   $("#start-button").addEventListener("click", () => { state.combat.running = true; state.hasStarted = true; if (state.combat.playerHp <= 0) finishRepair(true); if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay(); addLog("A frota iniciou a patrulha automática."); renderAll(false); });
   $("#pause-button").addEventListener("click", () => { state.combat.running = false; addLog("Combate pausado pelo capitão."); renderAll(false); saveGame(); });

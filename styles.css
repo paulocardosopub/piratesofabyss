@@ -212,7 +212,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .button.danger { color: #ffd7d0; border-color: rgba(224,82,82,.45); background: rgba(224,82,82,.12); }
 .boss-button:not(:disabled) { color: #2c1707; border-color: #ffcb61; background: linear-gradient(135deg, #ffd56f, #e89a37); box-shadow: 0 0 22px rgba(247,189,74,.18); }
 
-.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.metric-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .metric-grid > div { padding: 10px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: rgba(0,0,0,.12); }
 .metric-grid span { display: block; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
 .metric-grid strong { display: block; margin-top: 3px; color: var(--cyan-2); font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -328,6 +328,10 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .ship-issues { min-height: 44px; margin: 0 0 10px; padding: 7px 9px 7px 24px; border-radius: 7px; color: #ffae9d; background: rgba(224,82,82,.075); font-size: 9px; line-height: 1.45; }
 .ship-ready { min-height: 44px; height: auto !important; margin: 0 0 10px !important; padding: 8px 9px; border-radius: 7px; color: var(--green) !important; background: rgba(103,217,151,.07); font-size: 9px !important; }
 .ship-card .button { width: 100%; min-height: 36px; margin-top: auto; padding: 6px; }
+.ship-power-comparison { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3px 8px; margin: 0 0 9px; padding: 8px 9px; border-radius: 8px; background: rgba(247,189,74,.07); }
+.ship-power-comparison span { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .07em; }
+.ship-power-comparison strong { color: var(--gold); font-size: 14px; }
+.ship-power-comparison small { grid-column: 1 / -1; font-size: 9px; }
 
 .equipment-grid { grid-template-columns: repeat(4, 1fr); }
 .equipment-card.equipped { border-color: rgba(247,189,74,.38); }
@@ -335,6 +339,16 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .skill-card { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; }
 .skill-card h3 { margin-top: 2px; }
 .skill-card .skill-controls { grid-column: 1 / -1; }
+.skill-progression { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-top: 10px; }
+.skill-progression > div { padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.14); }
+.skill-progression span, .skill-progression strong, .skill-progression small { display: block; }
+.skill-progression span { color: var(--muted); font-size: 7px; font-weight: 900; letter-spacing: .07em; }
+.skill-progression strong { margin-top: 4px; color: #e1ecea; font-size: 11px; }
+.skill-progression small { margin-top: 3px; color: var(--green); font-size: 9px; }
+.skill-effect-line { padding: 7px 9px; color: #b9d8d5; border-radius: 7px; background: rgba(53,212,207,.06); font-size: 9px; line-height: 1.4; }
+.resource-readiness { margin: -5px 0 9px; font-size: 9px; }
+.resource-readiness.ready { color: var(--green); }
+.resource-readiness.missing { color: #ff9c89; }
 .auto-switch { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,.15); font-size: 11px; }
 .toggle { position: relative; width: 38px; height: 21px; padding: 0; border: 0; border-radius: 99px; background: #36505a; cursor: pointer; }
 .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 15px; height: 15px; border-radius: 50%; background: #dce7e5; transition: .18s; }
@@ -395,9 +409,19 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .trade-price strong { margin-top: 3px; color: var(--gold); font-size: 13px; }
 .trade-price.sell strong { color: var(--green); }
 .quantity-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .08em; }
-.quantity-selector { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-.quantity-selector button { min-height: 31px; padding: 4px 2px; border: 1px solid var(--line); border-radius: 7px; color: #b7cbca; background: rgba(255,255,255,.035); font-size: 9px; font-weight: 850; cursor: pointer; }
-.quantity-selector button.active { color: #06212b; border-color: var(--cyan-2); background: var(--cyan-2); }
+.trade-quantity-control { display: grid; grid-template-columns: 42px 1fr 42px; gap: 6px; }
+.trade-quantity-control button, .trade-quantity-input { min-height: 42px; border: 1px solid var(--line); border-radius: 9px; color: #e2ecea; background: rgba(0,0,0,.2); }
+.trade-quantity-control button { color: var(--cyan-2); font-size: 20px; font-weight: 900; cursor: pointer; touch-action: none; user-select: none; }
+.trade-quantity-control button:active { color: #06212b; border-color: var(--cyan-2); background: var(--cyan-2); }
+.trade-quantity-input { width: 100%; padding: 6px 10px; text-align: center; font-size: 17px; font-weight: 850; font-variant-numeric: tabular-nums; }
+.trade-live-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 9px; }
+.trade-live-totals > div { padding: 8px; border-radius: 8px; background: rgba(0,0,0,.13); }
+.trade-live-totals span, .trade-live-totals strong, .trade-live-totals small { display: block; }
+.trade-live-totals span { color: var(--muted); font-size: 8px; }
+.trade-live-totals strong { margin-top: 3px; color: var(--gold); font-size: 11px; }
+.trade-live-totals small { margin-top: 3px; color: #a9bfbd; font-size: 8px; line-height: 1.35; }
+.trade-live-totals > div:last-child strong { color: var(--green); }
+.trade-error { min-height: 26px; margin-top: 7px; color: #ffab99; font-size: 9px; line-height: 1.35; }
 .trade-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
 .trade-actions .button { padding-inline: 8px; }
 .trade-actions .sell-button { color: #bdf3d8; border-color: rgba(89,211,157,.3); background: rgba(89,211,157,.08); }
