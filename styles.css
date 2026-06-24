@@ -216,9 +216,12 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .xp-bar { height: 6px; margin-top: 6px; border-radius: 99px; background: rgba(0,0,0,.3); }
 .xp-bar i { width: 0; background: var(--cyan); }
 .live-pill { color: var(--green); font-size: 9px; font-weight: 900; letter-spacing: .1em; }
-.battle-log { height: 64px; margin: 9px 0 0; padding: 0; overflow: hidden; list-style: none; counter-reset: none; }
+.battle-log { height: 112px; margin: 9px 0 0; padding: 0 8px 0 0; overflow-x: hidden; overflow-y: auto; list-style: none; counter-reset: none; scrollbar-color: rgba(110,239,226,.35) rgba(0,0,0,.14); scrollbar-width: thin; scrollbar-gutter: stable; }
 .battle-log li { padding: 4px 0; overflow: hidden; color: #b7cbca; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
 .battle-log time { margin-right: 7px; color: #60858a; font-variant-numeric: tabular-nums; }
+.battle-log::-webkit-scrollbar { width: 6px; }
+.battle-log::-webkit-scrollbar-track { border-radius: 99px; background: rgba(0,0,0,.14); }
+.battle-log::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(110,239,226,.35); }
 .battle-log .loot { color: var(--gold); }
 .battle-log .danger-text { color: #ff997b; }
 

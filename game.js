@@ -27,7 +27,7 @@
   const RARITY_COLORS = { common: "#b5c5c4", uncommon: "#67d997", rare: "#64aef4", epic: "#c38af1", legendary: "#ffb349" };
 
   const REGIONS = [
-    { name: "Costa dos Náufragos", weather: "Brisa costeira", description: "Mar calmo, naufrágios e saqueadores inexperientes.", boss: "Capitão Barba de Ferro", enemies: ["Saqueador da Costa", "Bote Renegado", "Pescador Hostil", "Corsário Perdido"], drops: { madeira: .28, ferro: .16, tecido: .22 }, baseHp: 72, baseDamage: 7, gold: 18, xp: 14, sky: "#78b9c1", sea: "#167087", land: "#5d8b58", kind: "PIRATA" },
+    { name: "Costa dos Náufragos", weather: "Brisa costeira", description: "Mar calmo, naufrágios e saqueadores inexperientes.", boss: "Capitão Barba de Ferro", enemies: ["Saqueador da Costa", "Bote Renegado", "Pescador Hostil", "Corsário Perdido"], drops: { madeira: .28, ferro: .16, tecido: .22 }, baseHp: 86.4, baseDamage: 8.4, gold: 18, xp: 14, sky: "#78b9c1", sea: "#167087", land: "#5d8b58", kind: "PIRATA" },
     { name: "Ilhas Comerciais", weather: "Céu aberto", description: "Portos ricos, mercantes e contrabandistas discretos.", boss: "Rainha Corsária Scarlet", enemies: ["Mercante Armado", "Contrabandista Veloz", "Guarda do Porto", "Corveta Mercante"], drops: { comida: .25, tecido: .24, madeira: .18 }, baseHp: 160, baseDamage: 15, gold: 42, xp: 31, sky: "#78b6d4", sea: "#17627e", land: "#659a61", kind: "MERCANTE" },
     { name: "Mar das Tempestades", weather: "Temporal elétrico", description: "Chuva, raios e embarcações endurecidas pelo caos.", boss: "Tempestade Viva", enemies: ["Brigue Trovejante", "Caçador da Tormenta", "Nau do Relâmpago", "Corsário das Nuvens"], drops: { polvora: .16, cristal: .065 }, baseHp: 350, baseDamage: 31, gold: 91, xp: 66, sky: "#394d61", sea: "#153d54", land: "#465a55", kind: "TEMPESTADE" },
     { name: "Baía dos Corsários", weather: "Fumaça de canhões", description: "Esconderijos rochosos e a elite dos contrabandistas.", boss: "Almirante Negro", enemies: ["Corveta Corsária", "Brigantina Negra", "Contrabandista de Armas", "Carrasco da Baía"], drops: { ferro: .20, polvora: .15 }, baseHp: 740, baseDamage: 61, gold: 190, xp: 135, sky: "#bd7964", sea: "#294b5d", land: "#4a4540", kind: "CORSÁRIO" },
@@ -74,8 +74,8 @@
   };
 
   const REGION_ENCOUNTERS = [
-    [{ name: "Jangada de Pescador", category: "PESCADOR", tier: 1 }, { name: "Barco Costeiro", category: "PESCADOR", tier: 1 }, { name: "Bote Pirata", category: "PIRATA", tier: 1 }, { name: "Pequeno Contrabandista", category: "CONTRABANDISTA", tier: 1 }, { name: "Escuna Pirata", category: "PIRATA", tier: 1 }],
-    [{ name: "Barco Mercante Pequeno", category: "MERCANTE", tier: 1 }, { name: "Navio de Carga", category: "MERCANTE", tier: 2 }, { name: "Escuna Rápida", category: "CONTRABANDISTA", tier: 2 }, { name: "Patrulha Naval", category: "MARINHA", tier: 2 }, { name: "Transporte de Ouro", category: "MERCANTE", tier: 2 }],
+    [{ name: "Jangada de Pescador", category: "PESCADOR", tier: 1, weight: 3 }, { name: "Barco Costeiro", category: "PESCADOR", tier: 1, weight: 3 }, { name: "Bote Pirata", category: "PIRATA", tier: 1 }, { name: "Pequeno Contrabandista", category: "CONTRABANDISTA", tier: 1 }, { name: "Escuna Pirata", category: "PIRATA", tier: 1 }],
+    [{ name: "Bote de Pesca Hostil", category: "PESCADOR", tier: 1, weight: 2 }, { name: "Traineira Saqueadora", category: "PESCADOR", tier: 2, weight: 2 }, { name: "Barco Mercante Pequeno", category: "MERCANTE", tier: 1 }, { name: "Navio de Carga", category: "MERCANTE", tier: 2 }, { name: "Escuna Rápida", category: "CONTRABANDISTA", tier: 2 }, { name: "Patrulha Naval", category: "MARINHA", tier: 2 }, { name: "Transporte de Ouro", category: "MERCANTE", tier: 2 }],
     [{ name: "Brigantina Pirata", category: "PIRATA", tier: 3 }, { name: "Corveta da Marinha", category: "MARINHA", tier: 3 }, { name: "Navio Quebra-Bloqueio", category: "CONTRABANDISTA", tier: 3 }, { name: "Navio Danificado", category: "PIRATA", tier: 2 }, { name: "Caçador da Tormenta", category: "PIRATA", tier: 3 }],
     [{ name: "Escuna Pirata", category: "PIRATA", tier: 2 }, { name: "Corsário Disfarçado", category: "CONTRABANDISTA", tier: 3 }, { name: "Brigantina Pirata", category: "PIRATA", tier: 3 }, { name: "Transporte Ilegal", category: "CONTRABANDISTA", tier: 2 }, { name: "Fragata Pirata", category: "PIRATA", tier: 4 }],
     [{ name: "Baleeiro Sombrio", category: "PIRATA", tier: 3 }, { name: "Navio de Suprimentos", category: "MERCANTE", tier: 3 }, { name: "Contrabandista Abissal", category: "CONTRABANDISTA", tier: 3 }, { name: "Serpente Marinha", category: "CRIATURA", tier: 4 }, { name: "Galeão Pirata", category: "PIRATA", tier: 4 }],
@@ -87,10 +87,10 @@
   ];
 
   const SKILL_META = {
-    fire: { name: "Canhão de Fogo", icon: "🔥", unlock: 1, cooldown: 8, factor: 1.8, effect: "Causa dano direto e incendeia o alvo por 4s.", materials: ["polvora", "ferro"] },
-    ice: { name: "Canhão de Gelo", icon: "❄", unlock: 3, cooldown: 11, factor: 1.5, effect: "Causa dano e reduz o ritmo de ataque inimigo.", materials: ["cristal", "tecido"] },
-    ghost: { name: "Canhão Fantasma", icon: "👻", unlock: 7, cooldown: 14, factor: 2.6, effect: "Um disparo espectral que ignora toda a armadura.", materials: ["ambar", "cristal"] },
-    chain: { name: "Bolas de Corrente", icon: "⛓", unlock: 12, cooldown: 10, factor: 2.0, effect: "Dano pesado que atrasa o próximo ataque inimigo.", materials: ["ferro", "perola"] }
+    fire: { name: "Canhão de Fogo", icon: "🔥", unlock: 5, cooldown: 8, factor: 1.8, burnDuration: 4, burnFactor: .22, effect: "1,8× de dano e incêndio por 4s.", materials: ["polvora", "ferro"] },
+    ice: { name: "Canhão de Gelo", icon: "❄", unlock: 10, cooldown: 11, factor: 2.4, slowDuration: 5, effect: "2,4× de dano e ataque inimigo mais lento por 5s.", materials: ["cristal", "tecido"] },
+    ghost: { name: "Canhão Fantasma", icon: "👻", unlock: 20, cooldown: 14, factor: 3.4, effect: "3,4× de dano espectral que ignora toda a armadura.", materials: ["ambar", "cristal"] },
+    chain: { name: "Bolas de Corrente", icon: "⛓", unlock: 30, cooldown: 10, factor: 4.4, attackDelay: 2500, effect: "4,4× de dano e atrasa o próximo ataque em 2,5s.", materials: ["ferro", "perola"] }
   };
 
   const EQUIPMENT_META = {
@@ -222,8 +222,9 @@
     Object.entries(SKILL_META).forEach(([key, meta]) => {
       if (!isSkillUnlocked(key) || !state.skills[key].auto) return;
       const level = state.skills[key].level;
-      skillDps += damage * (meta.factor + (level - 1) * .24) / (meta.cooldown / Math.min(1.8, Math.sqrt(speed / 100)));
-      if (key === "fire") skillDps += damage * (.18 + level * .04);
+      const effectiveCooldown = meta.cooldown / Math.min(1.8, Math.sqrt(speed / 100));
+      skillDps += damage * (meta.factor + (level - 1) * .24) / effectiveCooldown;
+      if (key === "fire") skillDps += damage * (meta.burnFactor + (level - 1) * .04) * meta.burnDuration / effectiveCooldown;
     });
     return {
       damage: Math.round(damage), speed: Math.round(speed), maxHp: Math.round(maxHp), armor: Math.round(armor),
@@ -274,9 +275,9 @@
   function spend(cost) { Object.entries(cost).forEach(([key, amount]) => { state.resources[key] -= amount; }); }
 
   function addLog(message, type = "") {
-    const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     state.logs.unshift({ message, type, time });
-    state.logs = state.logs.slice(0, 8);
+    state.logs = state.logs.slice(0, 100);
   }
 
   function toast(message, type = "") {
@@ -781,11 +782,21 @@
 
   const scene = new SeaScene($("#sea-canvas"));
 
+  function pickEncounter(roster) {
+    const totalWeight = roster.reduce((sum, encounter) => sum + (encounter.weight || 1), 0);
+    let roll = Math.random() * totalWeight;
+    for (const encounter of roster) {
+      roll -= encounter.weight || 1;
+      if (roll < 0) return encounter;
+    }
+    return roster[roster.length - 1];
+  }
+
   function spawnEnemy(isBoss = false) {
     const region = REGIONS[state.regionIndex];
     const variation = randomBetween(.9, 1.14);
     const roster = REGION_ENCOUNTERS[state.regionIndex] || [];
-    const encounter = isBoss ? null : roster[integerBetween(0, roster.length - 1)];
+    const encounter = isBoss ? null : pickEncounter(roster);
     const profile = isBoss ? null : ENEMY_CATEGORIES[encounter.category];
     const hp = Math.round(region.baseHp * variation * (isBoss ? 34 : profile.hp));
     state.combat.enemy = {
@@ -844,10 +855,10 @@
     const meta = SKILL_META[key];
     const level = state.skills[key].level;
     const base = getStats().damage * (meta.factor + (level - 1) * .24);
-    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a" }); enemy.burnTime = 4; enemy.burnDps = getStats().damage * (.18 + level * .04); }
-    if (key === "ice") { dealToEnemy(base, { color: "#81e8ff" }); enemy.slowed = 4 + level * .2; }
+    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a" }); enemy.burnTime = meta.burnDuration; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04); }
+    if (key === "ice") { dealToEnemy(base, { color: "#81e8ff" }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
     if (key === "ghost") dealToEnemy(base, { color: "#c58cff", ignoreArmor: true });
-    if (key === "chain") { dealToEnemy(base, { color: "#d9e4df" }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - 1200); }
+    if (key === "chain") { dealToEnemy(base, { color: "#d9e4df" }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
     addLog(`${meta.name} disparado automaticamente.`, "loot");
   }
 
@@ -1133,7 +1144,7 @@
     $("#xp-text").textContent = `${formatNumber(state.xp)} / ${formatNumber(needed)} XP`;
     $("#pirate-level-text").textContent = `Nível ${state.pirateLevel}`;
     $("#xp-fill").style.width = `${state.xp / needed * 100}%`;
-    $("#battle-log").innerHTML = state.logs.length ? state.logs.slice(0, 4).map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>O mar está calmo. Inicie a jornada quando estiver pronto.</li>";
+    $("#battle-log").innerHTML = state.logs.length ? state.logs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>O mar está calmo. Inicie a jornada quando estiver pronto.</li>";
     renderSkillDock();
   }
 
