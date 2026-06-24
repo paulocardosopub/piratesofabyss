@@ -17,12 +17,7 @@
         <span class="brand-mark" aria-hidden="true">☠</span>
         <span><strong>Pirates</strong><small>of the Abyss</small></span>
       </button>
-      <div class="top-resources" aria-label="Recursos principais">
-        <div title="Ouro"><span class="resource-symbol gold">●</span><span id="top-gold">0</span></div>
-        <div title="Madeira"><span class="resource-symbol wood">▰</span><span id="top-wood">0</span></div>
-        <div title="Ferro"><span class="resource-symbol iron">◆</span><span id="top-iron">0</span></div>
-        <div title="Tecido"><span class="resource-symbol cloth">◒</span><span id="top-cloth">0</span></div>
-      </div>
+      <div class="top-resources" id="top-resources" aria-label="Todos os recursos disponíveis"></div>
       <div class="pirate-level" title="Nível do pirata">
         <span>NÍVEL</span><strong id="top-level">1</strong>
       </div>
@@ -120,7 +115,7 @@
         </div>
         <div class="upgrade-section active" id="upgrade-improvements">
           <div class="current-ship-banner">
-            <div class="mini-ship" aria-hidden="true"><span>⛵</span></div>
+            <div class="mini-ship" aria-hidden="true"><canvas id="yard-ship-canvas" class="mini-ship-canvas"></canvas></div>
             <div><span class="eyebrow">NAVIO ATUAL</span><h2 id="yard-ship-name">Bote Armado</h2><p id="yard-ship-tier">Tier 1 • Embarcação pirata</p></div>
             <div class="ship-stat-row" id="yard-ship-stats"></div>
           </div>

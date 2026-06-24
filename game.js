@@ -315,33 +315,42 @@
       const w = this.width;
       const h = this.height;
       const region = REGIONS[state.regionIndex];
-      const horizon = h * .43;
+      const horizon = h * .42;
       ctx.clearRect(0, 0, w, h);
 
       const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-      sky.addColorStop(0, region.sky);
-      sky.addColorStop(1, this.mix(region.sky, "#e7d6b3", .26));
+      sky.addColorStop(0, this.mix(region.sky, "#183249", .28));
+      sky.addColorStop(.58, region.sky);
+      sky.addColorStop(1, this.mix(region.sky, "#f5d9ad", .34));
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, w, horizon + 2);
 
       const sunX = state.regionIndex > 4 ? w * .18 : w * .76;
-      ctx.globalAlpha = .22;
-      ctx.fillStyle = state.regionIndex > 4 ? "#cbe2e3" : "#fff2b0";
-      ctx.beginPath(); ctx.arc(sunX, h * .16, Math.min(w, h) * .055, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
+      const sunRadius = Math.min(w, h) * .075;
+      const sunGlow = ctx.createRadialGradient(sunX, h * .15, 2, sunX, h * .15, sunRadius * 2.4);
+      sunGlow.addColorStop(0, state.regionIndex > 4 ? "rgba(224,243,245,.8)" : "rgba(255,245,190,.92)");
+      sunGlow.addColorStop(.28, state.regionIndex > 4 ? "rgba(205,232,236,.2)" : "rgba(255,211,114,.24)");
+      sunGlow.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = sunGlow; ctx.fillRect(sunX - sunRadius * 2.5, h * .15 - sunRadius * 2.5, sunRadius * 5, sunRadius * 5);
 
-      this.drawCloud(ctx, w * .12, h * .17, 1.1);
-      this.drawCloud(ctx, w * .58, h * .10, .75);
-      this.drawIsland(ctx, w * .06, horizon, w * .27, region.land, 1.1);
-      this.drawIsland(ctx, w * .70, horizon + 4, w * .24, region.land, .82);
-      if (state.regionIndex === 6) this.drawFort(ctx, w * .79, horizon - 17);
+      this.drawCloud(ctx, w * .06, h * .16, 1.18);
+      this.drawCloud(ctx, w * .51, h * .095, .78);
+      this.drawCloud(ctx, w * .82, h * .22, .56);
 
       const sea = ctx.createLinearGradient(0, horizon, 0, h);
-      sea.addColorStop(0, this.mix(region.sea, "#9ad7d5", .23));
-      sea.addColorStop(1, this.mix(region.sea, "#020e18", .42));
+      sea.addColorStop(0, this.mix(region.sea, "#c4eeea", .3));
+      sea.addColorStop(.3, region.sea);
+      sea.addColorStop(1, this.mix(region.sea, "#02101c", .52));
       ctx.fillStyle = sea;
       ctx.fillRect(0, horizon, w, h - horizon);
+      this.drawSunPath(ctx, sunX, horizon, h);
       this.drawWaves(ctx, horizon, w, h);
+
+      this.drawIsland(ctx, -w * .035, horizon + 8, w * .31, region.land, 1.18, 0);
+      this.drawIsland(ctx, w * .73, horizon + 3, w * .29, region.land, .94, 1);
+      this.drawIsland(ctx, w * .43, horizon - 3, w * .11, region.land, .48, 2);
+      if (state.regionIndex === 6) this.drawFort(ctx, w * .82, horizon - 22);
+      this.drawBirds(ctx, w, h);
 
       if (state.regionIndex === 2) this.drawRain(ctx, w, h);
       if (state.regionIndex === 8) this.drawSnow(ctx, w, h);
@@ -350,9 +359,9 @@
 
       const bobPlayer = Math.sin(this.time * 1.55) * 3;
       const bobEnemy = Math.sin(this.time * 1.35 + 1.4) * 3;
-      this.drawShip(ctx, w * .29, h * .66 + bobPlayer, Math.min(1.15, w / 950), false, SHIPS[state.shipId].tier, false);
+      this.drawShip(ctx, w * .29, h * .66 + bobPlayer, Math.min(1.15, w / 950), false, SHIPS[state.shipId].tier, false, state.shipId, SHIPS[state.shipId].type);
       const enemy = state.combat.enemy;
-      if (enemy) this.drawShip(ctx, w * .71, h * .52 + bobEnemy, Math.min(1.02, w / 1050), true, enemy.isBoss ? 5 : Math.min(5, state.regionIndex / 2 + 1), enemy.isBoss);
+      if (enemy) this.drawShip(ctx, w * .71, h * .52 + bobEnemy, Math.min(1.02, w / 1050), true, enemy.isBoss ? 5 : Math.min(5, state.regionIndex / 2 + 1), enemy.isBoss, state.regionIndex + 20, enemy.kind);
 
       this.projectiles.forEach(item => {
         const t = item.age / item.duration;
@@ -398,55 +407,169 @@
     }
 
     drawCloud(ctx, x, y, scale) {
-      ctx.globalAlpha = .16;
-      ctx.fillStyle = "#edf5f2";
-      [[0, 8, 28], [28, 0, 34], [62, 10, 25]].forEach(([dx, dy, r]) => { ctx.beginPath(); ctx.arc(x + dx * scale, y + dy * scale, r * scale, 0, Math.PI * 2); ctx.fill(); });
-      ctx.globalAlpha = 1;
+      ctx.save();
+      ctx.globalAlpha = .24;
+      const cloud = ctx.createLinearGradient(0, y - 35 * scale, 0, y + 24 * scale);
+      cloud.addColorStop(0, "rgba(255,255,255,.95)"); cloud.addColorStop(1, "rgba(188,211,215,.42)");
+      ctx.fillStyle = cloud;
+      ctx.shadowColor = "rgba(255,255,255,.16)"; ctx.shadowBlur = 18 * scale;
+      [[0, 8, 25], [24, -1, 31], [52, 5, 27], [76, 12, 18]].forEach(([dx, dy, r]) => { ctx.beginPath(); ctx.ellipse(x + dx * scale, y + dy * scale, r * 1.24 * scale, r * .72 * scale, 0, 0, Math.PI * 2); ctx.fill(); });
+      ctx.restore();
     }
 
-    drawIsland(ctx, x, y, width, color, heightScale) {
-      ctx.fillStyle = this.mix(color, "#14282b", .28);
-      ctx.beginPath(); ctx.moveTo(x, y + 7); ctx.quadraticCurveTo(x + width * .24, y - 32 * heightScale, x + width * .48, y - 11 * heightScale); ctx.quadraticCurveTo(x + width * .72, y - 52 * heightScale, x + width, y + 8); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x + width * .48, y + 6, width * .58, 10, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "rgba(19,45,37,.7)"; ctx.lineWidth = 2;
-      for (let i = 0; i < 4; i++) { const px = x + width * (.22 + i * .15); ctx.beginPath(); ctx.moveTo(px, y - 7); ctx.lineTo(px + 4, y - 26 - (i % 2) * 8); ctx.stroke(); ctx.fillStyle = "rgba(36,78,48,.85)"; ctx.beginPath(); ctx.arc(px + 5, y - 29 - (i % 2) * 8, 8, 0, Math.PI * 2); ctx.fill(); }
-    }
-
-    drawWaves(ctx, horizon, w, h) {
-      ctx.lineWidth = 1;
-      for (let row = 0; row < 12; row++) {
-        const depth = row / 11;
-        const y = horizon + Math.pow(depth, 1.5) * (h - horizon);
-        const gap = 24 + depth * 78;
-        ctx.strokeStyle = `rgba(190,239,231,${.12 + depth * .07})`;
-        for (let x = -gap; x < w + gap; x += gap) {
-          const move = (this.time * (8 + depth * 12)) % gap;
-          ctx.beginPath(); ctx.moveTo(x + move, y + Math.sin(x * .02 + this.time) * 2); ctx.quadraticCurveTo(x + move + gap * .22, y - 3 - depth * 4, x + move + gap * .5, y); ctx.stroke();
-        }
+    drawSunPath(ctx, sunX, horizon, h) {
+      const reflection = ctx.createLinearGradient(0, horizon, 0, h);
+      reflection.addColorStop(0, "rgba(255,236,178,.32)");
+      reflection.addColorStop(1, "rgba(255,236,178,0)");
+      ctx.fillStyle = reflection;
+      ctx.beginPath();
+      ctx.moveTo(sunX - 8, horizon); ctx.lineTo(sunX + 8, horizon); ctx.lineTo(sunX + 72, h); ctx.lineTo(sunX - 68, h); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(255,245,208,.3)"; ctx.lineWidth = 1;
+      for (let i = 0; i < 11; i++) {
+        const depth = i / 10;
+        const y = horizon + Math.pow(depth, 1.35) * (h - horizon);
+        const half = 5 + depth * 48;
+        ctx.beginPath(); ctx.moveTo(sunX - half + Math.sin(i + this.time) * 8, y); ctx.lineTo(sunX + half, y); ctx.stroke();
       }
     }
 
-    drawShip(ctx, x, y, scale, flipped, tier, boss) {
+    drawBirds(ctx, w, h) {
+      ctx.strokeStyle = "rgba(25,51,62,.48)"; ctx.lineWidth = 1.2;
+      for (let i = 0; i < 7; i++) {
+        const x = w * (.36 + i * .055) + Math.sin(this.time * .18 + i) * 8;
+        const y = h * (.18 + (i % 3) * .025);
+        const size = 3 + (i % 2) * 2;
+        ctx.beginPath(); ctx.quadraticCurveTo(x, y - size, x + size, y); ctx.quadraticCurveTo(x + size * 2, y - size, x + size * 3, y); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    drawIsland(ctx, x, y, width, color, heightScale, seed = 0) {
+      ctx.save();
+      const baseY = y + 4;
+      ctx.fillStyle = "rgba(231,231,195,.62)";
+      ctx.beginPath(); ctx.ellipse(x + width * .5, baseY + 6, width * .53, 10 * heightScale, 0, 0, Math.PI * 2); ctx.fill();
+      const rock = ctx.createLinearGradient(0, y - 68 * heightScale, 0, y + 12);
+      rock.addColorStop(0, this.mix(color, "#d2d5bd", .22));
+      rock.addColorStop(.48, this.mix(color, "#52605b", .48));
+      rock.addColorStop(1, "#253b3d");
+      ctx.fillStyle = rock;
+      ctx.beginPath();
+      ctx.moveTo(x + width * .04, baseY);
+      ctx.lineTo(x + width * .15, y - 19 * heightScale);
+      ctx.lineTo(x + width * .29, y - (38 + seed * 4) * heightScale);
+      ctx.lineTo(x + width * .42, y - 27 * heightScale);
+      ctx.lineTo(x + width * .58, y - (61 - seed * 6) * heightScale);
+      ctx.lineTo(x + width * .72, y - 34 * heightScale);
+      ctx.lineTo(x + width * .88, y - 14 * heightScale);
+      ctx.lineTo(x + width * .98, baseY); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(230,237,218,.16)"; ctx.lineWidth = 1;
+      for (let i = 1; i < 6; i++) { const rx = x + width * (i * .16); ctx.beginPath(); ctx.moveTo(rx, baseY - 3); ctx.lineTo(rx + width * .04, y - (14 + (i % 3) * 12) * heightScale); ctx.stroke(); }
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.ellipse(x + width * .49, y - 18 * heightScale, width * .32, 13 * heightScale, -.05, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = this.mix(color, "#b6d866", .24);
+      ctx.beginPath(); ctx.ellipse(x + width * .47, y - 25 * heightScale, width * .23, 8 * heightScale, -.08, 0, Math.PI * 2); ctx.fill();
+      for (let i = 0; i < Math.max(2, Math.round(width / 70)); i++) {
+        const px = x + width * (.27 + i * .16);
+        const py = y - (25 + (i % 2) * 8) * heightScale;
+        this.drawPalm(ctx, px, py, (.55 + heightScale * .24) * (seed === 2 ? .65 : 1));
+      }
+      ctx.strokeStyle = "rgba(235,249,240,.68)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(x + width * .5, baseY + 8, width * .52, 8, 0, 0, Math.PI); ctx.stroke();
+      ctx.restore();
+    }
+
+    drawPalm(ctx, x, y, scale) {
+      ctx.strokeStyle = "#4b3426"; ctx.lineWidth = 3 * scale; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(x, y + 8 * scale); ctx.quadraticCurveTo(x - 2 * scale, y - 10 * scale, x + 3 * scale, y - 25 * scale); ctx.stroke();
+      ctx.strokeStyle = "#2f703d"; ctx.lineWidth = 3.2 * scale;
+      for (let i = 0; i < 6; i++) { const angle = -Math.PI + i * Math.PI / 5; ctx.beginPath(); ctx.moveTo(x + 3 * scale, y - 25 * scale); ctx.quadraticCurveTo(x + Math.cos(angle) * 11 * scale, y - 30 * scale + Math.sin(angle) * 4, x + Math.cos(angle) * 20 * scale, y - 22 * scale + Math.sin(angle) * 8); ctx.stroke(); }
+      ctx.lineCap = "butt";
+    }
+
+    drawWaves(ctx, horizon, w, h) {
+      for (let row = 0; row < 18; row++) {
+        const depth = row / 17;
+        const y = horizon + Math.pow(depth, 1.5) * (h - horizon);
+        const gap = 20 + depth * 92;
+        ctx.lineWidth = .7 + depth * 1.25;
+        ctx.strokeStyle = `rgba(211,248,242,${.1 + depth * .14})`;
+        for (let x = -gap; x < w + gap; x += gap) {
+          const move = (this.time * (7 + depth * 17) + row * 13) % gap;
+          const wobble = Math.sin(x * .017 + this.time * (1 + depth)) * (1.2 + depth * 2.8);
+          ctx.beginPath(); ctx.moveTo(x + move, y + wobble); ctx.bezierCurveTo(x + move + gap * .14, y - 2 - depth * 5, x + move + gap * .31, y - 2 - depth * 4, x + move + gap * .52, y + wobble); ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = .12;
+      for (let i = 0; i < 34; i++) { const x = (i * 137 + this.time * 15) % w; const y = horizon + ((i * 83) % Math.max(1, h - horizon)); const r = 2 + (y - horizon) / Math.max(1, h - horizon) * 9; ctx.fillStyle = "#d8fff7"; ctx.beginPath(); ctx.ellipse(x, y, r * 2.4, r * .25, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+
+    drawShip(ctx, x, y, scale, flipped, tier, boss, variant = 0, faction = "Pirata") {
       const direction = flipped ? -1 : 1;
       ctx.save(); ctx.translate(x, y); ctx.scale(direction * scale, scale);
-      ctx.globalAlpha = .2; ctx.fillStyle = "#d6f5ed"; ctx.beginPath(); ctx.ellipse(0, 24, 94, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
-      const length = 82 + tier * 5 + (boss ? 22 : 0);
-      const hull = boss ? "#2a1824" : flipped ? "#3e2b24" : "#71462d";
-      ctx.fillStyle = this.mix(hull, "#080e13", .3); ctx.beginPath(); ctx.moveTo(-length, -2); ctx.lineTo(length, -7); ctx.lineTo(length * .69, 22); ctx.quadraticCurveTo(0, 36, -length * .72, 20); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = hull; ctx.beginPath(); ctx.moveTo(-length * .9, -4); ctx.lineTo(length * .88, -8); ctx.lineTo(length * .7, 7); ctx.lineTo(-length * .82, 12); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "rgba(235,197,125,.35)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-length * .75, 3); ctx.lineTo(length * .72, -2); ctx.stroke();
-      const masts = tier >= 4 ? [-28, 30] : tier >= 2 ? [-17, 30] : [12];
+      const spectral = /Espectral|FANTASMA|ABISSAL/.test(faction) || variant === 19;
+      const imperial = /Marinha|MARINHA/.test(faction);
+      const civil = /Civil|MERCANTE/.test(faction);
+      const fiery = /VULCÂNICO/.test(faction);
+      const length = 76 + tier * 8 + (boss ? 19 : 0);
+      const hull = spectral ? "#173f43" : imperial ? "#173d68" : civil ? "#416047" : fiery ? "#672d25" : boss ? "#281a25" : ["#70452d", "#5b3728", "#6e3c2b", "#47352c"][variant % 4];
+      const trim = spectral ? "#52e5da" : imperial ? "#d3a73f" : civil ? "#d2b16a" : fiery ? "#e46b36" : boss ? "#bf4655" : "#c08a45";
+      const sail = spectral ? "#95d8ce" : imperial ? "#eee8d6" : civil ? "#ddd4b9" : fiery ? "#4a2925" : boss ? "#28232e" : "#d6c9aa";
+
+      ctx.globalAlpha = .18; ctx.fillStyle = "#04141d"; ctx.beginPath(); ctx.ellipse(0, 27, length * .95, 12, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = .72; ctx.strokeStyle = "#e6fff8"; ctx.lineWidth = 2.3;
+      ctx.beginPath(); ctx.moveTo(-length * .93, 22); ctx.quadraticCurveTo(-length * .55, 30, -length * .12, 25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(length * .4, 24); ctx.quadraticCurveTo(length * .75, 31, length * 1.02, 19); ctx.stroke(); ctx.globalAlpha = 1;
+
+      const hullGradient = ctx.createLinearGradient(0, -10, 0, 35);
+      hullGradient.addColorStop(0, this.mix(hull, "#f0c178", .2)); hullGradient.addColorStop(.45, hull); hullGradient.addColorStop(1, this.mix(hull, "#080d12", .58));
+      ctx.fillStyle = hullGradient;
+      ctx.beginPath(); ctx.moveTo(-length, -4); ctx.quadraticCurveTo(-length * .72, -10, -length * .46, -8); ctx.lineTo(length * .87, -12); ctx.lineTo(length, -5); ctx.lineTo(length * .7, 22); ctx.quadraticCurveTo(0, 37, -length * .72, 24); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = this.mix(hull, "#05090d", .62); ctx.lineWidth = 3; ctx.stroke();
+
+      ctx.fillStyle = this.mix(hull, "#f2c26a", .15); ctx.beginPath(); ctx.moveTo(-length * .84, -7); ctx.lineTo(length * .86, -13); ctx.lineTo(length * .72, -3); ctx.lineTo(-length * .79, 3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = trim; ctx.lineWidth = 2.1; ctx.beginPath(); ctx.moveTo(-length * .82, 3); ctx.quadraticCurveTo(0, 10, length * .73, -2); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,234,190,.2)"; ctx.lineWidth = 1;
+      for (let p = 0; p < 3; p++) { ctx.beginPath(); ctx.moveTo(-length * .7, 9 + p * 5); ctx.quadraticCurveTo(0, 18 + p * 4, length * (.62 - p * .03), 5 + p * 4); ctx.stroke(); }
+
+      const portCount = Math.min(9, tier + 3 + (boss ? 2 : 0));
+      ctx.fillStyle = "#081015";
+      for (let i = 0; i < portCount; i++) { const px = -length * .57 + i * (length * 1.08 / Math.max(1, portCount - 1)); ctx.fillRect(px - 3.2, 6, 6.4, 5.2); ctx.fillStyle = trim; ctx.fillRect(px - 3.2, 5.2, 6.4, 1); ctx.fillStyle = "#081015"; }
+
+      const sternX = -length * .63;
+      if (tier >= 2 || boss) {
+        ctx.fillStyle = hull; ctx.fillRect(sternX, -22 - tier * 2, length * .29, 18 + tier * 2);
+        ctx.strokeStyle = trim; ctx.lineWidth = 2; ctx.strokeRect(sternX, -22 - tier * 2, length * .29, 18 + tier * 2);
+        ctx.fillStyle = "#ffd77b"; for (let i = 0; i < 2; i++) ctx.fillRect(sternX + 7 + i * 13, -16 - tier, 6, 6);
+      }
+
+      const mastCount = tier >= 4 ? 3 : tier >= 2 ? 2 : 1;
+      const masts = mastCount === 3 ? [-38, 7, 46] : mastCount === 2 ? [-23, 35] : [12];
+      ctx.strokeStyle = "#352319"; ctx.lineCap = "round";
       masts.forEach((mx, index) => {
-        const mastH = 77 + tier * 5 - index * 8;
-        ctx.strokeStyle = "#38251d"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(mx, 1); ctx.lineTo(mx, -mastH); ctx.stroke();
-        const sailColor = boss ? "#392e3d" : flipped ? "#d8d2bc" : "#dfd5b7";
-        ctx.fillStyle = sailColor; ctx.beginPath(); ctx.moveTo(mx + 3, -mastH + 9); ctx.quadraticCurveTo(mx + 47, -mastH + 30, mx + 8, -20); ctx.lineTo(mx + 4, -22); ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = "rgba(70,50,35,.35)"; ctx.lineWidth = 1; ctx.stroke();
+        const mastH = 72 + tier * 7 - Math.abs(index - (masts.length - 1) / 2) * 9;
+        ctx.lineWidth = 4.2; ctx.beginPath(); ctx.moveTo(mx, 1); ctx.lineTo(mx, -mastH); ctx.stroke();
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mx - 30, -mastH * .69); ctx.lineTo(mx + 34, -mastH * .69); ctx.stroke();
+        const sailGradient = ctx.createLinearGradient(mx, -mastH + 8, mx + 38, -17);
+        sailGradient.addColorStop(0, this.mix(sail, "#ffffff", .26)); sailGradient.addColorStop(.55, sail); sailGradient.addColorStop(1, this.mix(sail, "#67523b", .22));
+        ctx.fillStyle = sailGradient;
+        ctx.beginPath(); ctx.moveTo(mx + 3, -mastH + 8); ctx.quadraticCurveTo(mx + 47, -mastH * .68, mx + 9, -mastH * .35); ctx.lineTo(mx + 4, -mastH * .36); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "rgba(54,40,31,.56)"; ctx.lineWidth = 1; ctx.stroke();
+        if (tier >= 3) { ctx.fillStyle = spectral ? "rgba(10,43,46,.45)" : imperial ? "rgba(26,59,107,.13)" : "rgba(61,35,28,.13)"; ctx.beginPath(); ctx.ellipse(mx + 19, -mastH * .61, 9, 14, -.2, 0, Math.PI * 2); ctx.fill(); }
       });
-      ctx.fillStyle = boss ? "#d74f47" : flipped ? "#243c65" : "#1a1b1d"; ctx.beginPath(); ctx.moveTo(masts[0], -83 - tier * 4); ctx.lineTo(masts[0] + 27, -74 - tier * 4); ctx.lineTo(masts[0], -66 - tier * 4); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = "#11191d";
-      for (let i = 0; i < Math.min(6, tier + 2); i++) { ctx.beginPath(); ctx.arc(-40 + i * 18, 4, 3, 0, Math.PI * 2); ctx.fill(); }
-      if (boss) { ctx.strokeStyle = "#8b3550"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(length * .4, -5); ctx.quadraticCurveTo(length * .8, -40, length * 1.05, -25); ctx.stroke(); }
+
+      ctx.strokeStyle = spectral ? "rgba(111,232,218,.55)" : "rgba(73,52,37,.72)"; ctx.lineWidth = 1;
+      masts.forEach((mx, i) => { const mastH = 72 + tier * 7 - Math.abs(i - (masts.length - 1) / 2) * 9; ctx.beginPath(); ctx.moveTo(-length * .87, -4); ctx.lineTo(mx, -mastH + 2); ctx.lineTo(length * .92, -8); ctx.stroke(); if (i < masts.length - 1) { ctx.beginPath(); ctx.moveTo(mx, -mastH * .72); ctx.lineTo(masts[i + 1], -(72 + tier * 7) * .72); ctx.stroke(); } });
+      ctx.lineCap = "butt";
+
+      const firstMastH = 72 + tier * 7;
+      ctx.fillStyle = spectral ? "#3ae2d5" : imperial ? "#255ea3" : fiery ? "#e25331" : "#17191b";
+      ctx.beginPath(); ctx.moveTo(masts[0], -firstMastH); ctx.lineTo(masts[0] + 27, -firstMastH + 8); ctx.lineTo(masts[0], -firstMastH + 17); ctx.closePath(); ctx.fill();
+      if (!imperial && !civil && tier >= 2) { ctx.fillStyle = "rgba(245,242,214,.82)"; ctx.font = "12px Georgia"; ctx.textAlign = "center"; ctx.fillText("☠", masts[Math.floor(masts.length / 2)] + 20, -(70 + tier * 6) * .57); }
+
+      if (spectral) { ctx.shadowColor = "#43e1d4"; ctx.shadowBlur = 14; ctx.strokeStyle = "rgba(83,236,221,.65)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.shadowBlur = 0; }
+      if (boss) { ctx.strokeStyle = trim; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(length * .45, -8); ctx.quadraticCurveTo(length * .82, -43, length * 1.04, -24); ctx.stroke(); }
       ctx.restore();
     }
 
@@ -739,11 +862,35 @@
   }
 
   function renderTopbar() {
-    $("#top-gold").textContent = formatNumber(state.resources.ouro);
-    $("#top-wood").textContent = formatNumber(state.resources.madeira);
-    $("#top-iron").textContent = formatNumber(state.resources.ferro);
-    $("#top-cloth").textContent = formatNumber(state.resources.tecido);
+    const bar = $("#top-resources");
+    const entries = Object.entries(RESOURCE_META);
+    if (bar.childElementCount !== entries.length) {
+      bar.innerHTML = entries.map(([key, meta]) => `<div class="top-resource-chip" data-top-resource="${key}" title="${meta.name}: ${meta.uses}" style="--resource-color:${RARITY_COLORS[meta.rarityKey]}"><span class="resource-symbol">${meta.icon}</span><span class="top-resource-copy"><span class="top-resource-name">${meta.name}</span><strong class="top-resource-amount">${formatNumber(state.resources[key])}</strong></span></div>`).join("");
+    } else {
+      entries.forEach(([key]) => { const amount = $(`[data-top-resource="${key}"] .top-resource-amount`, bar); if (amount) amount.textContent = formatNumber(state.resources[key]); });
+    }
     $("#top-level").textContent = state.pirateLevel;
+  }
+
+  function renderShipPreview(canvas, ship, compact = false) {
+    if (!canvas) return;
+    const width = compact ? 150 : 260;
+    const height = compact ? 96 : 118;
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    const sky = ctx.createLinearGradient(0, 0, 0, height * .56);
+    sky.addColorStop(0, ship.type === "Espectral" ? "#254958" : "#659baa");
+    sky.addColorStop(1, ship.type === "Espectral" ? "#5d7479" : "#c8d8cb");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, width, height * .57);
+    const sea = ctx.createLinearGradient(0, height * .55, 0, height);
+    sea.addColorStop(0, ship.type === "Espectral" ? "#174858" : "#2f7e91");
+    sea.addColorStop(1, "#0b3449");
+    ctx.fillStyle = sea; ctx.fillRect(0, height * .55, width, height * .45);
+    ctx.strokeStyle = "rgba(225,251,246,.28)"; ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) { const y = height * (.62 + i * .09); ctx.beginPath(); ctx.moveTo(i * 17, y); ctx.quadraticCurveTo(width * .32, y - 3, width * .62, y); ctx.lineTo(width, y - 2); ctx.stroke(); }
+    const scale = compact ? .45 : .58;
+    scene.drawShip(ctx, width * .5, height * .71, scale, false, ship.tier, false, ship.id, ship.type);
   }
 
   function renderHome() {
@@ -808,6 +955,7 @@
     $("#yard-ship-name").textContent = ship.name;
     $("#yard-ship-tier").textContent = `Tier ${ship.tier} • Embarcação ${ship.type.toLowerCase()}`;
     $("#yard-ship-stats").innerHTML = `<div><span>VIDA</span><strong>${formatNumber(stats.maxHp)}</strong></div><div><span>DANO</span><strong>${formatNumber(stats.damage)}</strong></div><div><span>VELOCIDADE</span><strong>${formatNumber(stats.speed)}</strong></div>`;
+    renderShipPreview($("#yard-ship-canvas"), ship, true);
     const cards = [
       { key: "ship", name: "Convés e Estrutura", icon: "⛵", desc: "Eleva o nível geral do navio e melhora todos os atributos.", bonus: "+6% atributos" },
       { key: "cannons", name: "Canhões", icon: "☄", desc: "Mais dano, precisão e chance de acerto crítico.", bonus: "+13% dano" },
@@ -827,8 +975,9 @@
       const current = state.shipId === ship.id;
       const requirementsMet = state.pirateLevel >= ship.levelReq && bossesCount() >= ship.bossReq;
       const button = current ? `<button class="button" disabled>Navio atual</button>` : owned ? `<button class="button primary" data-equip-ship="${ship.id}">Usar navio</button>` : requirementsMet ? `<button class="button" data-buy-ship="${ship.id}" ${canAfford(ship.costs) ? "" : "disabled"}>Construir</button>` : `<button class="button" disabled>Nível ${ship.levelReq} • ${ship.bossReq} bosses</button>`;
-      return `<article class="ship-card ${owned ? "owned" : "locked"} ${current ? "current" : ""}"><div class="ship-tier">TIER ${ship.tier}</div><div class="ship-visual">${ship.type === "Espectral" ? "⚓" : "⛵"}</div><h3>${ship.name}</h3><p>${owned ? "Embarcação construída e pronta para navegar." : requirementsMet ? resourceCostHtml(ship.costs) : `Requer nível ${ship.levelReq} e ${ship.bossReq} bosses derrotados.`}</p><div class="ship-mini-stats"><span>❤ ${formatNumber(ship.hp)}</span><span>☄ ${formatNumber(ship.damage)}</span><span>» ${formatNumber(ship.speed)}</span></div>${button}</article>`;
+      return `<article class="ship-card ${owned ? "owned" : "locked"} ${current ? "current" : ""}"><div class="ship-tier">TIER ${ship.tier}</div><div class="ship-visual"><canvas data-ship-preview="${ship.id}" aria-label="Miniatura realista de ${ship.name}"></canvas></div><h3>${ship.name}</h3><p>${owned ? "Embarcação construída e pronta para navegar." : requirementsMet ? resourceCostHtml(ship.costs) : `Requer nível ${ship.levelReq} e ${ship.bossReq} bosses derrotados.`}</p><div class="ship-mini-stats"><span>❤ ${formatNumber(ship.hp)}</span><span>☄ ${formatNumber(ship.damage)}</span><span>» ${formatNumber(ship.speed)}</span></div>${button}</article>`;
     }).join("");
+    $$('[data-ship-preview]', $("#fleet-grid")).forEach(canvas => renderShipPreview(canvas, SHIPS[Number(canvas.dataset.shipPreview)]));
   }
 
   function renderEquipment() {

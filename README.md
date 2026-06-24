@@ -2,6 +2,8 @@
 
 Idle RPG naval em português, criado para navegador e celular. O jogo salva automaticamente no próprio dispositivo e pode ser instalado como aplicativo quando aberto por um servidor web.
 
+**[Jogar agora no navegador](https://paulocardosopub.github.io/piratesofabyss/)**
+
 ## Como abrir
 
 Você pode abrir `index.html` diretamente ou iniciar um servidor local nesta pasta:

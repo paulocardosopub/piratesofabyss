@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v2";
+const CACHE = "pirates-abyss-v3-realistic-visuals";
 const ASSETS = ["./", "index.html", "styles.css", "game.js", "icon.svg", "manifest.webmanifest"];
 
 self.addEventListener("install", event => {
