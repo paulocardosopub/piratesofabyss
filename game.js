@@ -2,6 +2,7 @@
   "use strict";
 
   const SAVE_KEY = "pirates-of-the-abyss-save-v1";
+  const OFFLINE_REWARD_RATE = .1;
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -1006,7 +1007,7 @@
     const stats = getStats();
     const efficiency = .55 + Math.min(.25, (state.resources.comida || 0) / 5000);
     const cycle = region.baseHp / Math.max(1, stats.dps) + getSpawnDelay() / 1000;
-    const kills = Math.max(1, Math.floor(capped / cycle * efficiency));
+    const kills = Math.max(1, Math.floor(capped / cycle * efficiency * OFFLINE_REWARD_RATE));
     const gold = Math.round(kills * region.gold * .94);
     const xp = Math.round(kills * region.xp * .94);
     state.resources.ouro += gold;
@@ -1024,11 +1025,11 @@
       }
     });
     if (showModal) {
-      $("#offline-time").textContent = `Sua frota navegou por ${formatDuration(capped)} (limite de 24 horas).`;
+      $("#offline-time").textContent = `Sua frota navegou por ${formatDuration(capped)} (limite de 24 horas). Eficiência offline: 10% do combate ativo.`;
       $("#offline-rewards").innerHTML = rewards.map(item => `<div><span>${item.name}</span><strong>+${formatNumber(item.amount)}</strong></div>`).join("");
       $("#offline-modal").classList.remove("hidden");
     }
-    addLog(`Progresso idle recolhido após ${formatDuration(capped)}.`, "loot");
+    addLog(`Progresso idle recolhido após ${formatDuration(capped)} com 10% de eficiência.`, "loot");
   }
 
   function formatDuration(seconds) {
