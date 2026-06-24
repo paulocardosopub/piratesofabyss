@@ -346,6 +346,7 @@
       this.projectiles = [];
       this.bursts = [];
       this.aquaticBursts = [];
+      this.petLunge = 0;
       this.floaters = [];
       this.lootFloaters = [];
       this.environmentEvents = [];
@@ -378,6 +379,7 @@
     }
 
     petStrike(pet) {
+      this.petLunge = 1;
       this.aquaticBursts.push({ x: this.width * .69, y: this.height * .54, age: 0, color: pet.color, kind: pet.visual });
     }
 
@@ -414,6 +416,7 @@
 
     update(dt) {
       this.time += dt;
+      this.petLunge = Math.max(0, this.petLunge - dt * 1.8);
       this.projectiles.forEach(item => item.age += dt);
       this.bursts.forEach(item => item.age += dt);
       this.aquaticBursts.forEach(item => item.age += dt);
@@ -518,7 +521,10 @@
       const bobEnemy = Math.sin(this.time * 1.35 + 1.4) * 3;
       this.drawShip(ctx, w * .29, h * .66 + bobPlayer, Math.min(1.15, w / 950), false, SHIPS[state.shipId].tier, false, state.shipId, SHIPS[state.shipId].type);
       const pet = getEquippedPet();
-      if (pet) this.drawPet(ctx, w * .18, h * .76 + Math.sin(this.time * 2 + pet.id) * 4, pet, Math.min(1.1, w / 850));
+      if (pet) {
+        const attackAdvance = Math.sin(this.petLunge * Math.PI) * w * .12;
+        this.drawPet(ctx, w * .43 + attackAdvance, h * .72 + Math.sin(this.time * 2 + pet.id) * 4, pet, Math.min(1.1, w / 850));
+      }
       const enemy = state.combat.enemy;
       if (enemy) this.drawShip(ctx, w * .71, h * .52 + bobEnemy, Math.min(1.02, w / 1050), true, enemy.isBoss ? 5 : enemy.visualTier, enemy.isBoss, state.regionIndex + 20, enemy.visualKind || enemy.kind);
 
