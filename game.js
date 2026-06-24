@@ -113,6 +113,13 @@
     fragmentos: { buy: 10000, sell: 3500 }
   };
 
+  const ENVIRONMENT_LOOT = {
+    bird: { name: "Pássaro", food: 10, color: "#ffd86f" },
+    fish: { name: "Cardume de peixes", food: 20, color: "#65dff1" },
+    shark: { name: "Tubarão", food: 30, color: "#91b9ca" },
+    kraken: { name: "Kraken", food: 100, color: "#c485ff" }
+  };
+
   function createDefaultState() {
     return {
       version: 2,
@@ -306,10 +313,13 @@
       this.projectiles = [];
       this.bursts = [];
       this.floaters = [];
+      this.lootFloaters = [];
       this.environmentEvents = [];
       this.environmentTimers = { bird: 2.5, fish: 3.5, shark: 19, kraken: 72 };
       this.resize = this.resize.bind(this);
+      this.handleEnvironmentPointer = this.handleEnvironmentPointer.bind(this);
       new ResizeObserver(this.resize).observe(canvas);
+      canvas.addEventListener("pointerdown", this.handleEnvironmentPointer);
       this.resize();
     }
 
@@ -337,15 +347,44 @@
       this.floaters.push({ text: amount, x: this.width * (atEnemy ? .70 : .30) + randomBetween(-25, 25), y: this.height * (atEnemy ? .47 : .60), age: 0, color });
     }
 
+    handleEnvironmentPointer(pointer) {
+      const rect = this.canvas.getBoundingClientRect();
+      const x = (pointer.clientX - rect.left) * (this.width / Math.max(1, rect.width));
+      const y = (pointer.clientY - rect.top) * (this.height / Math.max(1, rect.height));
+      const event = [...this.environmentEvents].reverse().find(item => {
+        if (item.collected || !item.hitbox) return false;
+        const box = item.hitbox;
+        const margin = pointer.pointerType === "touch" ? 14 : 7;
+        return x >= box.x - margin && x <= box.x + box.width + margin && y >= box.y - margin && y <= box.y + box.height + margin;
+      });
+      if (!event) return;
+      if (pointer.cancelable) pointer.preventDefault();
+      const reward = ENVIRONMENT_LOOT[event.kind];
+      event.collected = true;
+      event.age = event.duration;
+      const burstX = event.screenX ?? x;
+      const burstY = event.screenY ?? y;
+      this.bursts.push({ x: burstX, y: burstY, age: 0, color: reward.color });
+      this.lootFloaters.push({ text: `+${reward.food} Comida`, x: burstX, y: burstY, age: 0, color: reward.color });
+      state.resources.comida += reward.food;
+      state.lifetime.resources += reward.food;
+      addLog(`${reward.name} capturado: +${reward.food} Comida.`, "loot");
+      toast(`+${reward.food} Comida • ${reward.name}`, "gold-toast");
+      renderAll(false);
+      saveGame();
+    }
+
     update(dt) {
       this.time += dt;
       this.projectiles.forEach(item => item.age += dt);
       this.bursts.forEach(item => item.age += dt);
       this.floaters.forEach(item => item.age += dt);
+      this.lootFloaters.forEach(item => item.age += dt);
       this.environmentEvents.forEach(item => item.age += dt);
       this.projectiles = this.projectiles.filter(item => item.age < item.duration);
       this.bursts = this.bursts.filter(item => item.age < .75);
       this.floaters = this.floaters.filter(item => item.age < 1.05);
+      this.lootFloaters = this.lootFloaters.filter(item => item.age < 1.35);
       this.environmentEvents = this.environmentEvents.filter(item => item.age < item.duration);
       Object.keys(this.environmentTimers).forEach(kind => {
         this.environmentTimers[kind] -= dt;
@@ -476,6 +515,16 @@
         ctx.fillText(`-${formatNumber(item.text)}`, item.x, item.y - item.age * 32);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       });
+
+      this.lootFloaters.forEach(item => {
+        ctx.globalAlpha = 1 - item.age / 1.35;
+        ctx.fillStyle = item.color;
+        ctx.font = `900 ${15 + item.age * 3}px ui-sans-serif`;
+        ctx.textAlign = "center";
+        ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 7;
+        ctx.fillText(item.text, item.x, item.y - 18 - item.age * 34);
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      });
     }
 
     mix(a, b, amount) {
@@ -527,6 +576,9 @@
         if (event.kind === "bird") {
           const x = -w * .08 + travel * w * 1.16;
           const y = horizon * event.depth + Math.sin(event.age * 2.1 + event.offset * 5) * 6;
+          event.screenX = x - event.direction * 18;
+          event.screenY = y + 3;
+          event.hitbox = { x: event.screenX - 43 * event.scale, y: event.screenY - 18 * event.scale, width: 86 * event.scale, height: 36 * event.scale };
           ctx.save(); ctx.globalAlpha = fade * .62; ctx.strokeStyle = "#203b48"; ctx.lineWidth = 1.25 * event.scale;
           for (let i = 0; i < 4; i++) { const bx = x - i * event.direction * 14; const by = y + (i % 2) * 6; const size = (4 - i * .35) * event.scale; const flap = Math.sin(event.age * 6 + i) * 2; ctx.beginPath(); ctx.moveTo(bx - size, by); ctx.quadraticCurveTo(bx, by - size - flap, bx + size, by); ctx.quadraticCurveTo(bx + size * 1.7, by - size + flap, bx + size * 2.5, by); ctx.stroke(); }
           ctx.restore();
@@ -536,6 +588,9 @@
           const x = w * event.side;
           const baseY = horizon + waterHeight * event.depth;
           const rise = Math.sin(progress * Math.PI) * 38 * event.scale;
+          event.screenX = x;
+          event.screenY = baseY - rise * .48;
+          event.hitbox = { x: x - 58 * event.scale, y: baseY - Math.max(46 * event.scale, rise + 18 * event.scale), width: 116 * event.scale, height: Math.max(62 * event.scale, rise + 38 * event.scale) };
           ctx.save(); ctx.globalAlpha = fade * .34; ctx.strokeStyle = "#25213e"; ctx.lineCap = "round";
           for (let i = 0; i < 4; i++) { ctx.lineWidth = (7 + i * 1.4) * event.scale; const tx = x + (i - 1.5) * 18; ctx.beginPath(); ctx.moveTo(tx, baseY + 18); ctx.bezierCurveTo(tx - 9, baseY - rise * .35, tx + Math.sin(event.age * 1.8 + i) * 17, baseY - rise * .72, tx + (i - 1.5) * 4, baseY - rise); ctx.stroke(); }
           ctx.lineCap = "butt"; ctx.restore();
@@ -546,6 +601,11 @@
         let y = horizon + waterHeight * event.depth + Math.sin(event.age * 2.4 + event.offset * 6) * 5;
         const normalizedX = x / w;
         if ((normalizedX > .17 && normalizedX < .41) || (normalizedX > .61 && normalizedX < .82)) y += 24;
+        event.screenX = x - event.direction * (event.kind === "fish" ? 24 : 0);
+        event.screenY = y;
+        event.hitbox = event.kind === "fish"
+          ? { x: event.screenX - 58 * event.scale, y: y - 22 * event.scale, width: 116 * event.scale, height: 44 * event.scale }
+          : { x: x - 48 * event.scale, y: y - 29 * event.scale, width: 96 * event.scale, height: 58 * event.scale };
         ctx.save(); ctx.globalAlpha = fade * (event.kind === "shark" ? .32 : .22); ctx.fillStyle = event.kind === "shark" ? "#092b3d" : "#0c4860";
         ctx.translate(x, y); ctx.scale(event.direction * event.scale, event.scale);
         if (event.kind === "fish") {

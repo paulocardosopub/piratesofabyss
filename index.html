@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -27,7 +27,8 @@
       <section class="screen active" id="screen-home" aria-labelledby="home-title">
         <h1 class="sr-only" id="home-title">Combate naval</h1>
         <div class="battle-stage" id="battle-stage">
-          <canvas id="sea-canvas" aria-label="Duelo naval automático em alto-mar"></canvas>
+          <canvas id="sea-canvas" aria-label="Duelo naval automático. Toque nos animais para obter Comida."></canvas>
+          <div class="wildlife-hint" aria-hidden="true">⌖ TOQUE NOS ANIMAIS • COMIDA BÔNUS</div>
           <div class="scene-vignette"></div>
 
           <div class="region-badge">
@@ -218,6 +219,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=5"></script>
+  <script src="game.js?v=6"></script>
 </body>
 </html>
