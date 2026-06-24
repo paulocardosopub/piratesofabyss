@@ -1,5 +1,5 @@
-const CACHE = "pirates-abyss-v9-pets";
-const ASSETS = ["./", "index.html", "styles.css?v=9", "game.js?v=9", "icon.svg", "manifest.webmanifest"];
+const CACHE = "pirates-abyss-v10-pets";
+const ASSETS = ["./", "index.html", "styles.css?v=10", "game.js?v=10", "icon.svg", "manifest.webmanifest"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
