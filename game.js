@@ -121,9 +121,22 @@
     kraken: { name: "Kraken", food: 100, color: "#c485ff" }
   };
 
+  const PETS = [
+    { name: "Peixe-palhaço", icon: "🐠", type: "Pet inicial", rarity: "Comum", rarityKey: "common", damage: 5, interval: 2, power: 30, levelReq: 1, costs: { ouro: 500, comida: 20 }, description: "Pequeno, ligeiro e sempre perto do casco.", color: "#ff9c45", visual: "fish" },
+    { name: "Água-viva", icon: "🪼", type: "Aquático mágico", rarity: "Incomum", rarityKey: "uncommon", damage: 8, interval: 2.2, power: 48, levelReq: 3, costs: { ouro: 1200, comida: 40 }, description: "Flutua com um brilho azul e lança bolhas elétricas.", color: "#75dcff", visual: "jelly" },
+    { name: "Tartaruga Marinha", icon: "🐢", type: "Defensivo", rarity: "Incomum", rarityKey: "uncommon", damage: 12, interval: 2.5, power: 72, levelReq: 5, costs: { ouro: 2500, comida: 75, madeira: 25 }, description: "Casco resistente que concede +3% de defesa.", bonus: "+3% defesa do navio", defenseBonus: .03, color: "#67d997", visual: "turtle" },
+    { name: "Foca", icon: "🦭", type: "Ágil", rarity: "Incomum", rarityKey: "uncommon", damage: 18, interval: 2, power: 105, levelReq: 8, costs: { ouro: 5000, comida: 120 }, description: "Emerge em saltos rápidos para atingir o alvo.", color: "#b9d5dc", visual: "seal" },
+    { name: "Golfinho", icon: "🐬", type: "Veloz", rarity: "Raro", rarityKey: "rare", damage: 30, interval: 1.7, power: 170, levelReq: 12, costs: { ouro: 12000, comida: 250, perola: 5 }, description: "Nado elegante que concede +3% de velocidade.", bonus: "+3% velocidade do navio", speedBonus: .03, color: "#5ab9ed", visual: "dolphin" },
+    { name: "Arraia Elétrica", icon: "⚡", type: "Controle", rarity: "Raro", rarityKey: "rare", damage: 42, interval: 2.3, power: 230, levelReq: 16, costs: { ouro: 20000, comida: 350, cristal: 10 }, description: "Descargas aquáticas podem desacelerar o inimigo.", bonus: "15% de chance de lentidão", slowChance: .15, color: "#57ddff", visual: "ray" },
+    { name: "Tubarão", icon: "🦈", type: "Ofensivo", rarity: "Épico", rarityKey: "epic", damage: 75, interval: 2, power: 350, levelReq: 25, costs: { ouro: 50000, comida: 700, gema: 10 }, description: "Uma mordida brutal acompanhada por forte splash.", color: "#92aebb", visual: "shark" },
+    { name: "Baleia Assassina", icon: "🐋", type: "Pesado", rarity: "Épico", rarityKey: "epic", damage: 120, interval: 2.7, power: 520, levelReq: 35, costs: { ouro: 100000, comida: 1200, gema: 15, perola: 10 }, description: "Orca imponente que concede +4% de vida máxima.", bonus: "+4% vida máxima", hpBonus: .04, color: "#e4f1f0", visual: "orca" },
+    { name: "Megalodon", icon: "🦈", type: "Lendário ofensivo", rarity: "Lendário", rarityKey: "legendary", damage: 250, interval: 2.5, power: 1100, levelReq: 55, regionReq: 5, costs: { ouro: 500000, comida: 2500, gema: 50, perola: 25, fragmentos: 10 }, description: "Predador pré-histórico do Oceano Profundo.", bonus: "+3% DPS do navio", dpsBonus: .03, color: "#ffb349", visual: "megalodon" },
+    { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 500, interval: 3, power: 3500, levelReq: 75, regionReq: 10, bossReq: 9, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários com +15% de dano contra bosses.", bonus: "+15% contra bosses", bossBonus: .15, color: "#c485ff", visual: "kraken" }
+  ].map((pet, id) => ({ id, dps: pet.damage / pet.interval, ...pet }));
+
   function createDefaultState() {
     return {
-      version: 2,
+      version: 3,
       resources: { ouro: 1200, madeira: 90, ferro: 55, tecido: 45, comida: 22, polvora: 28, pedra: 0, cristal: 0, perola: 0, gema: 0, ambar: 0, fragmentos: 0 },
       pirateLevel: 1,
       xp: 0,
@@ -133,6 +146,8 @@
       bossesDefeated: Array(10).fill(false),
       shipId: 0,
       ownedShips: [0],
+      ownedPets: [],
+      equippedPetId: null,
       levels: { ship: 1, cannons: 1, sails: 1, hull: 1 },
       equipment: { compass: false, spyglass: false, anchor: false, amulet: false },
       skills: {
@@ -141,8 +156,8 @@
         ghost: { level: 1, auto: true, remaining: 6 },
         chain: { level: 1, auto: true, remaining: 8 }
       },
-      lifetime: { enemies: 0, bosses: 0, resources: 0, gold: 0, highestDamage: 0, playSeconds: 0 },
-      combat: { running: false, repairing: false, repairStarted: 0, playerHp: 140, enemy: null, attackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
+      lifetime: { enemies: 0, bosses: 0, resources: 0, gold: 0, highestDamage: 0, playSeconds: 0, petsBought: 0, petAttacks: 0, petKills: 0, bossesWithPet: 0 },
+      combat: { running: false, repairing: false, repairStarted: 0, playerHp: 140, enemy: null, attackTimer: 0, petAttackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
       logs: [],
       hasStarted: false,
       lastSeen: Date.now()
@@ -168,7 +183,10 @@
       merged.ownedShips = [...new Set([0, ...migratedOwned])].filter(id => Number.isInteger(id) && id >= 0 && id < SHIPS.length);
       merged.shipId = previousVersion < 2 && Number(saved.shipId) === 19 ? 20 : Number(saved.shipId || 0);
       if (!merged.ownedShips.includes(merged.shipId) || !SHIPS[merged.shipId]) merged.shipId = 0;
-      merged.version = 2;
+      merged.ownedPets = [...new Set((saved.ownedPets || []).map(Number))].filter(id => Number.isInteger(id) && PETS[id]);
+      merged.equippedPetId = saved.equippedPetId === null || saved.equippedPetId === undefined ? null : Number(saved.equippedPetId);
+      if (!merged.ownedPets.includes(merged.equippedPetId) || !PETS[merged.equippedPetId]) merged.equippedPetId = null;
+      merged.version = 3;
       return merged;
     } catch (error) {
       console.warn("Não foi possível carregar o save.", error);
@@ -199,6 +217,10 @@
   function xpNeeded(level = state.pirateLevel) { return Math.round(100 * Math.pow(level, 1.42)); }
   function bossesCount() { return state.bossesDefeated.filter(Boolean).length; }
   function isSkillUnlocked(key) { return state.pirateLevel >= SKILL_META[key].unlock; }
+  function getEquippedPet() { return state.equippedPetId === null ? null : PETS[state.equippedPetId] || null; }
+  function isPetUnlocked(pet) {
+    return state.pirateLevel >= pet.levelReq && (!pet.regionReq || state.unlockedRegions >= pet.regionReq) && (pet.bossReq === undefined || state.bossesDefeated[pet.bossReq]);
+  }
 
   function getStats() {
     const ship = SHIPS[state.shipId];
@@ -216,6 +238,10 @@
     if (state.equipment.spyglass) { precision = Math.min(1, precision + .08); crit = Math.min(.7, crit + .07); }
     if (state.equipment.anchor) { armor += 20; maxHp *= 1.1; }
     if (state.equipment.amulet) damage *= 1.25;
+    const pet = getEquippedPet();
+    if (pet?.speedBonus) speed *= 1 + pet.speedBonus;
+    if (pet?.hpBonus) maxHp *= 1 + pet.hpBonus;
+    if (pet?.defenseBonus) armor *= 1 + pet.defenseBonus;
     const attackInterval = Math.max(190, 100000 / speed);
     const basicDps = damage / (attackInterval / 1000) * precision * (1 + crit);
     let skillDps = 0;
@@ -226,10 +252,15 @@
       skillDps += damage * (meta.factor + (level - 1) * .24) / effectiveCooldown;
       if (key === "fire") skillDps += damage * (meta.burnFactor + (level - 1) * .04) * meta.burnDuration / effectiveCooldown;
     });
+    const shipDps = basicDps;
+    const boostedSkillDps = skillDps;
+    const petDps = pet?.dps || 0;
+    const navalDps = (shipDps + boostedSkillDps) * (1 + (pet?.dpsBonus || 0));
     return {
       damage: Math.round(damage), speed: Math.round(speed), maxHp: Math.round(maxHp), armor: Math.round(armor),
       precision, crit, evasion: Math.min(.3, .03 + speed / 5000), attackInterval,
-      dps: Math.round(basicDps + skillDps), power: Math.round((basicDps + skillDps) * 4 + maxHp * .35 + armor * 8)
+      shipDps: Math.round(shipDps), skillDps: Math.round(boostedSkillDps), petDps: Math.round(petDps),
+      dps: Math.round(navalDps + petDps), power: Math.round(navalDps * 4 + maxHp * .35 + armor * 8 + (pet?.power || 0))
     };
   }
 
@@ -314,6 +345,7 @@
       this.time = 0;
       this.projectiles = [];
       this.bursts = [];
+      this.aquaticBursts = [];
       this.floaters = [];
       this.lootFloaters = [];
       this.environmentEvents = [];
@@ -343,6 +375,10 @@
 
     burst(atEnemy = true, color = "#f4a34c") {
       this.bursts.push({ x: this.width * (atEnemy ? .70 : .30), y: this.height * (atEnemy ? .52 : .65), age: 0, color });
+    }
+
+    petStrike(pet) {
+      this.aquaticBursts.push({ x: this.width * .69, y: this.height * .54, age: 0, color: pet.color, kind: pet.visual });
     }
 
     floatDamage(amount, atEnemy = true, color = "#fff0bc") {
@@ -380,11 +416,13 @@
       this.time += dt;
       this.projectiles.forEach(item => item.age += dt);
       this.bursts.forEach(item => item.age += dt);
+      this.aquaticBursts.forEach(item => item.age += dt);
       this.floaters.forEach(item => item.age += dt);
       this.lootFloaters.forEach(item => item.age += dt);
       this.environmentEvents.forEach(item => item.age += dt);
       this.projectiles = this.projectiles.filter(item => item.age < item.duration);
       this.bursts = this.bursts.filter(item => item.age < .75);
+      this.aquaticBursts = this.aquaticBursts.filter(item => item.age < .9);
       this.floaters = this.floaters.filter(item => item.age < 1.05);
       this.lootFloaters = this.lootFloaters.filter(item => item.age < 1.35);
       this.environmentEvents = this.environmentEvents.filter(item => item.age < item.duration);
@@ -479,6 +517,8 @@
       const bobPlayer = Math.sin(this.time * 1.55) * 3;
       const bobEnemy = Math.sin(this.time * 1.35 + 1.4) * 3;
       this.drawShip(ctx, w * .29, h * .66 + bobPlayer, Math.min(1.15, w / 950), false, SHIPS[state.shipId].tier, false, state.shipId, SHIPS[state.shipId].type);
+      const pet = getEquippedPet();
+      if (pet) this.drawPet(ctx, w * .18, h * .76 + Math.sin(this.time * 2 + pet.id) * 4, pet, Math.min(1.1, w / 850));
       const enemy = state.combat.enemy;
       if (enemy) this.drawShip(ctx, w * .71, h * .52 + bobEnemy, Math.min(1.02, w / 1050), true, enemy.isBoss ? 5 : enemy.visualTier, enemy.isBoss, state.regionIndex + 20, enemy.visualKind || enemy.kind);
 
@@ -506,6 +546,19 @@
           ctx.beginPath(); ctx.arc(item.x + Math.cos(angle) * radius, item.y + Math.sin(angle) * radius, (1 - t) * 7 + 1, 0, Math.PI * 2); ctx.fill();
         }
         ctx.globalAlpha = 1;
+      });
+
+      this.aquaticBursts.forEach(item => {
+        const t = item.age / .9;
+        ctx.save(); ctx.globalAlpha = 1 - t; ctx.strokeStyle = item.color; ctx.fillStyle = "rgba(216,252,255,.76)"; ctx.lineWidth = 2.5;
+        for (let i = 0; i < (item.kind === "kraken" ? 14 : 8); i++) {
+          const angle = -Math.PI + i / 7 * Math.PI;
+          const distance = 10 + t * (item.kind === "kraken" ? 72 : 44);
+          ctx.beginPath(); ctx.arc(item.x + Math.cos(angle) * distance, item.y - Math.abs(Math.sin(angle)) * distance * .7 + t * 13, Math.max(1, (1 - t) * (i % 3 + 3)), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.beginPath(); ctx.ellipse(item.x, item.y + 7, 16 + t * 58, 5 + t * 12, 0, Math.PI, Math.PI * 2); ctx.stroke();
+        if (item.kind === "kraken") { ctx.lineWidth = 8 * (1 - t) + 2; ctx.beginPath(); ctx.moveTo(item.x - 35, item.y + 30); ctx.quadraticCurveTo(item.x - 10, item.y - 90 * Math.sin(t * Math.PI), item.x + 22, item.y - 8); ctx.stroke(); }
+        ctx.restore();
       });
 
       this.floaters.forEach(item => {
@@ -680,6 +733,36 @@
       ctx.globalAlpha = 1;
     }
 
+    drawPet(ctx, x, y, pet, baseScale = 1) {
+      const size = [0.48, 0.55, 0.68, 0.7, 0.82, 0.9, 1, 1.18, 1.38, 1.55][pet.id] * baseScale;
+      const jump = pet.visual === "dolphin" || pet.visual === "seal" ? Math.max(0, Math.sin(this.time * 1.25 + pet.id)) * 15 : 0;
+      ctx.save(); ctx.translate(x, y - jump); ctx.scale(size, size);
+      ctx.globalAlpha = .18; ctx.fillStyle = "#dffcff"; ctx.beginPath(); ctx.ellipse(0, 17 + jump, 44, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      if (pet.visual === "kraken") {
+        ctx.strokeStyle = "#713b91"; ctx.lineCap = "round";
+        for (let i = 0; i < 5; i++) { ctx.lineWidth = 8 - i * .45; ctx.beginPath(); ctx.moveTo(-28 + i * 14, 18); ctx.bezierCurveTo(-42 + i * 18, -3, -25 + i * 13 + Math.sin(this.time * 1.4 + i) * 8, -35 - i * 3, -12 + i * 8, -48); ctx.stroke(); }
+        ctx.fillStyle = "#432653"; ctx.beginPath(); ctx.ellipse(0, 4, 27, 20, 0, Math.PI, Math.PI * 2); ctx.fill();
+      } else if (pet.visual === "jelly") {
+        ctx.fillStyle = "rgba(124,220,255,.72)"; ctx.beginPath(); ctx.arc(0, -5, 22, Math.PI, 0); ctx.quadraticCurveTo(17, 15, 0, 12); ctx.quadraticCurveTo(-17, 15, -22, -5); ctx.fill();
+        ctx.strokeStyle = "#7ce8ff"; ctx.lineWidth = 2; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * 7, 9); ctx.quadraticCurveTo(i * 9 + Math.sin(this.time * 2 + i) * 4, 24, i * 6, 34); ctx.stroke(); }
+      } else if (pet.visual === "turtle") {
+        ctx.fillStyle = "#4e8e5e"; ctx.beginPath(); ctx.ellipse(0, 0, 27, 17, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#a5d278"; ctx.lineWidth = 3; ctx.stroke();
+        ctx.fillStyle = "#78b779"; ctx.beginPath(); ctx.arc(29, 0, 9, 0, Math.PI * 2); ctx.fill(); for (const [lx,ly] of [[-15,-14],[-15,14],[14,-14],[14,14]]) { ctx.beginPath(); ctx.ellipse(lx,ly,11,5,ly > 0 ? .45 : -.45,0,Math.PI*2); ctx.fill(); }
+      } else if (pet.visual === "ray") {
+        ctx.fillStyle = "#287fa2"; ctx.beginPath(); ctx.moveTo(-38, 0); ctx.quadraticCurveTo(0, -27, 38, 0); ctx.quadraticCurveTo(0, 25, -38, 0); ctx.fill(); ctx.strokeStyle="#64eaff"; ctx.beginPath(); ctx.moveTo(34,1); ctx.quadraticCurveTo(55,7,64,18); ctx.stroke();
+      } else {
+        const blackWhite = pet.visual === "orca";
+        ctx.fillStyle = blackWhite ? "#15232c" : pet.visual === "fish" ? "#f37c31" : pet.visual === "seal" ? "#9db7bd" : pet.visual === "dolphin" ? "#3989ae" : pet.visual === "megalodon" ? "#354f5b" : "#536f7a";
+        ctx.beginPath(); ctx.moveTo(-35, 1); ctx.quadraticCurveTo(-5, -20, 34, -4); ctx.quadraticCurveTo(12, 18, -34, 10); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-32, 5); ctx.lineTo(-52, -10); ctx.lineTo(-49, 18); ctx.closePath(); ctx.fill();
+        if (["shark","megalodon","orca","dolphin"].includes(pet.visual)) { ctx.beginPath(); ctx.moveTo(-2,-13); ctx.lineTo(11,-35); ctx.lineTo(18,-10); ctx.fill(); }
+        if (blackWhite) { ctx.fillStyle="#eef5f2"; ctx.beginPath(); ctx.ellipse(9,5,17,7,-.2,0,Math.PI*2); ctx.fill(); }
+        if (pet.visual === "fish") { ctx.fillStyle="#fff1cf"; ctx.fillRect(-8,-13,7,27); ctx.fillRect(9,-10,6,21); }
+        ctx.fillStyle="#07131a"; ctx.beginPath(); ctx.arc(24,-5,2.3,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
     drawShip(ctx, x, y, scale, flipped, tier, boss, variant = 0, faction = "Pirata") {
       const direction = flipped ? -1 : 1;
       ctx.save(); ctx.translate(x, y); ctx.scale(direction * scale, scale);
@@ -821,6 +904,7 @@
       defeated: false
     };
     state.combat.attackTimer = 0;
+    state.combat.petAttackTimer = 0;
     state.combat.enemyAttackTimer = 0;
     addLog(isBoss ? `${region.boss} emergiu para o duelo!` : `${state.combat.enemy.name} avistado a estibordo.`, isBoss ? "danger-text" : "");
   }
@@ -832,8 +916,13 @@
     const damage = Math.max(1, Math.round(rawDamage * mitigation));
     enemy.hp = Math.max(0, enemy.hp - damage);
     state.lifetime.highestDamage = Math.max(state.lifetime.highestDamage, damage);
-    scene.fire(true, options.color || "#ffd37a");
-    setTimeout(() => { scene.burst(true, options.color || "#f4a34c"); scene.floatDamage(damage, true, options.color || "#fff0bc"); }, 340);
+    if (options.pet) {
+      scene.petStrike(options.pet);
+      setTimeout(() => scene.floatDamage(damage, true, options.color || "#bff7ff"), 180);
+    } else {
+      scene.fire(true, options.color || "#ffd37a");
+      setTimeout(() => { scene.burst(true, options.color || "#f4a34c"); scene.floatDamage(damage, true, options.color || "#fff0bc"); }, 340);
+    }
     if (enemy.hp <= 0) defeatEnemy();
   }
 
@@ -844,7 +933,7 @@
     const hitChance = stats.precision * (1 - (enemy.evasion || 0));
     if (Math.random() > hitChance) { scene.fire(true, "#cbd6d0"); addLog(enemy.evasion > .08 ? `${enemy.name} escapou com uma manobra veloz.` : "O disparo passou longe do alvo."); return; }
     const critical = Math.random() < stats.crit;
-    const raw = stats.damage * randomBetween(.91, 1.09) * (critical ? 2 : 1);
+    const raw = stats.damage * randomBetween(.91, 1.09) * (critical ? 2 : 1) * (1 + (getEquippedPet()?.dpsBonus || 0));
     dealToEnemy(raw, { color: critical ? "#ffe268" : "#ffd37a" });
     if (critical) addLog(`Acerto crítico de ${formatNumber(raw)}!`, "loot");
   }
@@ -854,12 +943,25 @@
     if (!enemy || enemy.defeated) return;
     const meta = SKILL_META[key];
     const level = state.skills[key].level;
-    const base = getStats().damage * (meta.factor + (level - 1) * .24);
+    const base = getStats().damage * (meta.factor + (level - 1) * .24) * (1 + (getEquippedPet()?.dpsBonus || 0));
     if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a" }); enemy.burnTime = meta.burnDuration; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04); }
     if (key === "ice") { dealToEnemy(base, { color: "#81e8ff" }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
     if (key === "ghost") dealToEnemy(base, { color: "#c58cff", ignoreArmor: true });
     if (key === "chain") { dealToEnemy(base, { color: "#d9e4df" }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
     addLog(`${meta.name} disparado automaticamente.`, "loot");
+  }
+
+  function petAttack() {
+    const enemy = state.combat.enemy;
+    const pet = getEquippedPet();
+    if (!enemy || enemy.defeated || !pet) return;
+    const bossMultiplier = enemy.isBoss ? 1 + (pet.bossBonus || 0) : 1;
+    dealToEnemy(pet.damage * randomBetween(.94, 1.06) * bossMultiplier, { pet, color: pet.color });
+    state.lifetime.petAttacks += 1;
+    if (pet.slowChance && Math.random() < pet.slowChance && state.combat.enemy) {
+      state.combat.enemy.slowed = Math.max(state.combat.enemy.slowed, 2.5);
+      addLog(`${pet.name} eletrizou a água e desacelerou o inimigo.`, "loot");
+    }
   }
 
   function enemyAttack() {
@@ -910,11 +1012,13 @@
     if (!enemy || enemy.defeated) return;
     enemy.defeated = true;
     const region = REGIONS[state.regionIndex];
+    if (getEquippedPet()) state.lifetime.petKills += 1;
     if (enemy.isBoss) {
       const reward = Math.round(region.gold * 45);
       state.resources.ouro += reward;
       state.lifetime.gold += reward;
       state.lifetime.bosses += 1;
+      if (getEquippedPet()) state.lifetime.bossesWithPet += 1;
       state.bossesDefeated[state.regionIndex] = true;
       gainXp(region.xp * 35);
       const materials = rewardMaterials(8, enemy);
@@ -953,6 +1057,7 @@
     state.combat.playerHp = getStats().maxHp;
     state.combat.enemy = null;
     state.combat.attackTimer = 0;
+    state.combat.petAttackTimer = 0;
     state.combat.enemyAttackTimer = 0;
     state.combat.spawnTimer = getSpawnDelay();
     state.combat.running = true;
@@ -986,6 +1091,13 @@
     state.combat.attackTimer += dt * 1000;
     let shots = 0;
     while (state.combat.attackTimer >= stats.attackInterval && shots < 4 && state.combat.enemy) { state.combat.attackTimer -= stats.attackInterval; basicAttack(); shots++; }
+    if (!state.combat.enemy) return;
+    const pet = getEquippedPet();
+    if (pet) {
+      state.combat.petAttackTimer += dt * 1000;
+      let petStrikes = 0;
+      while (state.combat.petAttackTimer >= pet.interval * 1000 && petStrikes < 3 && state.combat.enemy) { state.combat.petAttackTimer -= pet.interval * 1000; petAttack(); petStrikes++; }
+    }
     if (!state.combat.enemy) return;
     const enemyInterval = (state.combat.enemy.isBoss ? 1450 : 1900) * (enemy.attackSpeed || 1) * (enemy.slowed > 0 ? 1.65 : 1);
     state.combat.enemyAttackTimer += dt * 1000;
@@ -1094,6 +1206,7 @@
     } else {
       entries.forEach(([key]) => { const amount = $(`[data-top-resource="${key}"] .top-resource-amount`, bar); if (amount) amount.textContent = formatNumber(state.resources[key]); });
     }
+    $("#top-naval-power").textContent = formatNumber(getStats().power);
     $("#top-level").textContent = state.pirateLevel;
   }
 
@@ -1145,7 +1258,39 @@
     $("#pirate-level-text").textContent = `Nível ${state.pirateLevel}`;
     $("#xp-fill").style.width = `${state.xp / needed * 100}%`;
     $("#battle-log").innerHTML = state.logs.length ? state.logs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>O mar está calmo. Inicie a jornada quando estiver pronto.</li>";
+    const pet = getEquippedPet();
+    $("#home-pet-icon").textContent = pet?.icon || "🐾";
+    $("#home-pet-name").textContent = pet?.name || "Nenhum pet equipado";
+    $("#home-pet-card").classList.toggle("equipped", Boolean(pet));
+    $("#home-pet-stats").innerHTML = pet ? `<span>DANO <strong>${formatNumber(pet.damage)}</strong></span><span>DPS <strong>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>ATAQUE <strong>${pet.interval.toLocaleString("pt-BR")}s</strong></span>` : "Escolha um companheiro para ajudar no combate.";
     renderSkillDock();
+  }
+
+  function getPetIssues(pet) {
+    const issues = [];
+    if (state.pirateLevel < pet.levelReq) issues.push(`Nível ${pet.levelReq} do pirata`);
+    if (pet.regionReq && state.unlockedRegions < pet.regionReq) issues.push(pet.id === 8 ? "Oceano Profundo desbloqueado" : "Abismo do Kraken desbloqueado");
+    if (pet.bossReq !== undefined && !state.bossesDefeated[pet.bossReq]) issues.push("Kraken Primordial derrotado");
+    return issues;
+  }
+
+  function renderPets() {
+    const current = getEquippedPet();
+    $("#pets-owned-count").textContent = `${state.ownedPets.length} / ${PETS.length}`;
+    $("#pet-current-banner").innerHTML = current ? `<div class="pet-current-icon">${current.icon}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
+    $("#pets-grid").innerHTML = PETS.map(pet => {
+      const owned = state.ownedPets.includes(pet.id);
+      const equipped = state.equippedPetId === pet.id;
+      const issues = getPetIssues(pet);
+      const unlocked = isPetUnlocked(pet);
+      const affordable = canAfford(pet.costs);
+      const status = equipped ? "EQUIPADO" : owned ? "COMPRADO" : unlocked ? "DISPONÍVEL" : "BLOQUEADO";
+      const deltaDamage = current ? pet.damage - current.damage : pet.damage;
+      const deltaDps = current ? pet.dps - current.dps : pet.dps;
+      const comparison = equipped ? "Este é seu companheiro atual." : `<span class="${deltaDamage >= 0 ? "positive" : "negative"}">Dano ${deltaDamage >= 0 ? "+" : "-"}${formatNumber(Math.abs(deltaDamage))}</span><span class="${deltaDps >= 0 ? "positive" : "negative"}">DPS ${deltaDps >= 0 ? "+" : "-"}${Math.abs(deltaDps).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span>Ataque ${current && pet.interval > current.interval ? "mais lento" : current && pet.interval < current.interval ? "mais rápido" : "equivalente"}</span>`;
+      const button = owned ? `<button class="button ${equipped ? "" : "primary"}" data-equip-pet="${pet.id}" ${equipped ? "disabled" : ""}>${equipped ? "Equipado" : "Equipar"}</button>` : `<button class="button primary" data-buy-pet="${pet.id}" ${!unlocked || !affordable ? "disabled" : ""}>Comprar</button>`;
+      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="--pet-color:${pet.color}"><div class="pet-visual"><span>${pet.icon}</span><i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? "<span class=\"cost-chip\">Adoção permanente</span>" : resourceCostHtml(pet.costs)}</div>${issues.length ? `<div class="pet-requirements">Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready">Nível ${pet.levelReq} • pronto para navegar</div>`}${button}</article>`;
+    }).join("");
   }
 
   function renderSkillDock() {
@@ -1327,12 +1472,12 @@
     $("#captain-rank").textContent = rank;
     const list = items => items.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
     $("#combat-stats").innerHTML = list([
-      ["Vida atual / máxima", `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`], ["Dano", formatNumber(stats.damage)], ["DPS estimado", formatNumber(stats.dps)], ["Velocidade", formatNumber(stats.speed)], ["Armadura", formatNumber(stats.armor)], ["Precisão", `${Math.round(stats.precision * 100)}%`], ["Crítico", `${Math.round(stats.crit * 100)}%`], ["Evasão", `${Math.round(stats.evasion * 100)}%`]
+      ["Vida atual / máxima", `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`], ["Dano do navio", formatNumber(stats.damage)], ["DPS do navio", formatNumber(stats.shipDps)], ["DPS das skills", formatNumber(stats.skillDps)], ["DPS do pet", formatNumber(stats.petDps)], ["DPS total", formatNumber(stats.dps)], ["Poder Naval", formatNumber(stats.power)], ["Velocidade", formatNumber(stats.speed)], ["Armadura", formatNumber(stats.armor)], ["Precisão", `${Math.round(stats.precision * 100)}%`], ["Crítico", `${Math.round(stats.crit * 100)}%`], ["Evasão", `${Math.round(stats.evasion * 100)}%`]
     ]);
     $("#progression-stats").innerHTML = list([
       ["Navio atual", SHIPS[state.shipId].name], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
-    $("#career-stats").innerHTML = [["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
+    $("#career-stats").innerHTML = [["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
   }
 
   function renderAll(expensive = true) {
@@ -1341,6 +1486,7 @@
     if (expensive || currentScreen === "maps") renderMaps();
     if (expensive || currentScreen === "resources") renderResources();
     if (expensive || currentScreen === "trade") renderTrade();
+    if (expensive || currentScreen === "pets") renderPets();
     if (expensive || currentScreen === "stats") renderStats();
   }
 
@@ -1372,6 +1518,22 @@
     toast(`${SHIPS[id].name} selecionado.`); renderAll(true); saveGame();
   }
 
+  function buyPet(id) {
+    const pet = PETS[id];
+    if (!pet || state.ownedPets.includes(id)) return;
+    const issues = getPetIssues(pet);
+    if (issues.length) return toast(`Pet bloqueado: ${issues.join(" • ")}.`, "danger-toast");
+    if (!canAfford(pet.costs)) return toast("Ainda faltam recursos para adotar este pet.", "danger-toast");
+    spend(pet.costs); state.ownedPets.push(id); state.equippedPetId = id; state.combat.petAttackTimer = 0; state.lifetime.petsBought += 1;
+    toast(`${pet.name} foi comprado e equipado!`, "gold-toast"); addLog(`${pet.name} agora acompanha seu navio.`, "loot"); renderAll(true); saveGame();
+  }
+
+  function equipPet(id) {
+    if (!state.ownedPets.includes(id) || !PETS[id]) return;
+    state.equippedPetId = id; state.combat.petAttackTimer = 0; state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
+    toast(`${PETS[id].name} equipado como companheiro.`); renderAll(true); saveGame();
+  }
+
   function craftEquipment(key) {
     const item = EQUIPMENT_META[key];
     if (!item || state.equipment[key] || !canAfford(item.costs)) return;
@@ -1400,6 +1562,7 @@
     if (screen === "maps") renderMaps();
     if (screen === "resources") renderResources();
     if (screen === "trade") renderTrade();
+    if (screen === "pets") renderPets();
     if (screen === "stats") renderStats();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -1416,6 +1579,8 @@
     if (target.dataset.upgrade) upgrade(target.dataset.upgrade);
     if (target.dataset.buyShip) buyShip(Number(target.dataset.buyShip));
     if (target.dataset.equipShip) equipShip(Number(target.dataset.equipShip));
+    if (target.dataset.buyPet) buyPet(Number(target.dataset.buyPet));
+    if (target.dataset.equipPet) equipPet(Number(target.dataset.equipPet));
     if (target.dataset.craftEquipment) craftEquipment(target.dataset.craftEquipment);
     if (target.dataset.upgradeSkill) upgradeSkill(target.dataset.upgradeSkill);
     if (target.dataset.toggleSkill) toggleSkill(target.dataset.toggleSkill);

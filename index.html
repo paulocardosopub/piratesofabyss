@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -17,6 +17,7 @@
         <span class="brand-mark" aria-hidden="true">☠</span>
         <span><strong>Pirates</strong><small>of the Abyss</small></span>
       </button>
+      <div class="top-power" title="Poder Naval total"><span>PODER NAVAL</span><strong id="top-naval-power">0</strong></div>
       <div class="top-resources" id="top-resources" aria-label="Todos os recursos disponíveis"></div>
       <div class="pirate-level" title="Nível do pirata">
         <span>NÍVEL</span><strong id="top-level">1</strong>
@@ -86,6 +87,12 @@
             </div>
           </article>
 
+          <article class="card home-pet-card" id="home-pet-card">
+            <div class="home-pet-visual" id="home-pet-icon" aria-hidden="true">🐠</div>
+            <div class="home-pet-info"><span class="eyebrow">COMPANHEIRO MARÍTIMO</span><h2 id="home-pet-name">Nenhum pet equipado</h2><div id="home-pet-stats">Escolha um companheiro para ajudar no combate.</div></div>
+            <button class="button" data-screen-target="pets">Ver Pets</button>
+          </article>
+
           <article class="card captain-card">
             <div class="captain-avatar" aria-hidden="true"><span>☠</span></div>
             <div class="captain-info">
@@ -132,6 +139,15 @@
         </div>
         <div class="upgrade-section" id="upgrade-equipment"><div class="equipment-grid" id="equipment-grid"></div></div>
         <div class="upgrade-section" id="upgrade-skills"><div class="skills-grid" id="skills-grid"></div></div>
+      </section>
+
+      <section class="screen" id="screen-pets" aria-labelledby="pets-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">COMPANHEIROS MARÍTIMOS</span><h1 id="pets-title">Pets</h1><p>Adote uma criatura, equipe um companheiro e aumente seu poder nos mares.</p></div>
+          <div class="power-seal"><span>PETS COMPRADOS</span><strong id="pets-owned-count">0 / 10</strong></div>
+        </div>
+        <div class="pet-current-banner" id="pet-current-banner"></div>
+        <div class="pets-grid" id="pets-grid"></div>
       </section>
 
       <section class="screen" id="screen-maps" aria-labelledby="maps-title">
@@ -183,6 +199,7 @@
       <button data-screen-target="maps"><span>⌖</span><strong>Mapas</strong></button>
       <button data-screen-target="resources"><span>◆</span><strong>Recursos</strong></button>
       <button data-screen-target="trade"><span>⚖</span><strong>Comércio</strong></button>
+      <button data-screen-target="pets"><span>🐾</span><strong>Pets</strong></button>
       <button data-screen-target="stats"><span>▥</span><strong>Estatísticas</strong></button>
     </nav>
   </div>
@@ -219,6 +236,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=8"></script>
+  <script src="game.js?v=9"></script>
 </body>
 </html>
