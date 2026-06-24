@@ -38,38 +38,52 @@
     { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Cultista do Kraken", "Dreadnought Afundado", "Tentáculo Abissal", "Leviatã Menor"], drops: { fragmentos: .008, gema: .045, cristal: .12 }, baseHp: 62500, baseDamage: 4500, gold: 14500, xp: 10200, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
   ];
 
-  const SHIP_NAMES = [
-    "Bote Armado", "Escuna Leve", "Escuna Mercante", "Cutter Real",
-    "Brigantina", "Brigantina Militar", "Corveta Azul", "Corveta Negra",
-    "Galeota", "Galeão Mercante", "Galeão de Guerra", "Fragata Imperial",
-    "Fragata Fantasma", "Navio Dragão", "Cruzador Tempestade", "Encouraçado Imperial",
-    "Leviathan", "Kraken Hunter", "Dreadnought dos Mares", "Black Abyss"
-  ];
+  const SHIPS = [
+    { name: "Bote Armado", type: "Pirata", tier: 1, levelReq: 1, hp: 140, damage: 18, speed: 103, armor: 2, costs: { ouro: 0, madeira: 0 } },
+    { name: "Jangada Reforçada", type: "Civil", tier: 1, levelReq: 2, hp: 175, damage: 21, speed: 108, armor: 3, costs: { ouro: 150, madeira: 25 } },
+    { name: "Barco de Pesca Adaptado", type: "Pescador", tier: 1, levelReq: 3, hp: 215, damage: 24, speed: 116, armor: 4, costs: { ouro: 300, madeira: 40, tecido: 15 } },
+    { name: "Escuna Leve", type: "Pirata", tier: 1, levelReq: 3, hp: 270, damage: 31, speed: 132, armor: 5, costs: { ouro: 500, madeira: 50 } },
+    { name: "Escuna Mercante", type: "Mercante", tier: 2, levelReq: 5, hp: 390, damage: 43, speed: 140, armor: 8, costs: { ouro: 1200, madeira: 120, tecido: 30 } },
+    { name: "Cutter Real", type: "Marinha", tier: 2, levelReq: 7, hp: 530, damage: 59, speed: 158, armor: 12, costs: { ouro: 2400, madeira: 190, ferro: 55, tecido: 45 } },
+    { name: "Brigantina Pequena", type: "Pirata", tier: 2, levelReq: 9, hp: 720, damage: 80, speed: 150, armor: 15, costs: { ouro: 3800, madeira: 300, ferro: 90, polvora: 35 } },
+    { name: "Corveta Simples", type: "Marinha", tier: 2, levelReq: 12, hp: 990, damage: 105, speed: 162, armor: 19, costs: { ouro: 6500, madeira: 520, ferro: 160, tecido: 80 } },
+    { name: "Brigantina Pirata", type: "Pirata", tier: 3, levelReq: 15, hp: 1500, damage: 160, speed: 172, armor: 24, costs: { ouro: 12000, madeira: 750, ferro: 260, polvora: 100 } },
+    { name: "Corveta Armada", type: "Marinha", tier: 3, levelReq: 18, hp: 2250, damage: 230, speed: 178, armor: 31, costs: { ouro: 22000, madeira: 1100, ferro: 500, polvora: 180 } },
+    { name: "Galeota", type: "Corsário", tier: 3, levelReq: 20, hp: 3100, damage: 310, speed: 185, armor: 38, costs: { ouro: 32000, madeira: 1500, ferro: 650, tecido: 240, pedra: 90 } },
+    { name: "Navio Mercante Armado", type: "Mercante", tier: 3, levelReq: 22, hp: 4300, damage: 390, speed: 176, armor: 46, costs: { ouro: 40000, madeira: 1800, ferro: 750, tecido: 350, comida: 250 } },
+    { name: "Galeão Mercante", type: "Mercante", tier: 4, levelReq: 23, hp: 6100, damage: 520, speed: 180, armor: 57, costs: { ouro: 45000, madeira: 1900, ferro: 850, tecido: 450, perola: 25 } },
+    { name: "Galeão Pirata", type: "Pirata", tier: 4, levelReq: 24, hp: 7800, damage: 680, speed: 187, armor: 64, costs: { ouro: 48000, madeira: 1950, ferro: 950, polvora: 280 } },
+    { name: "Fragata Real", type: "Marinha", tier: 4, levelReq: 25, hp: 10500, damage: 890, speed: 202, armor: 78, costs: { ouro: 85000, madeira: 2600, ferro: 1400, polvora: 450, cristal: 40 } },
+    { name: "Fragata Corsária", type: "Corsário", tier: 4, levelReq: 30, hp: 13900, damage: 1190, speed: 214, armor: 88, costs: { ouro: 140000, madeira: 3200, ferro: 1800, polvora: 650, cristal: 65, perola: 40 } },
+    { name: "Galeão de Guerra", type: "Pirata", tier: 5, levelReq: 25, hp: 18500, damage: 1580, speed: 205, armor: 105, costs: { ouro: 50000, madeira: 2000, ferro: 1000, polvora: 300 } },
+    { name: "Encouraçado Imperial", type: "Marinha", tier: 5, levelReq: 50, hp: 29500, damage: 2400, speed: 218, armor: 145, costs: { ouro: 300000, madeira: 4000, ferro: 2500, polvora: 1200, pedra: 400, cristal: 100 } },
+    { name: "Fragata Fantasma", type: "Espectral", tier: 5, levelReq: 65, hp: 44000, damage: 3600, speed: 245, armor: 170, costs: { ouro: 600000, madeira: 4500, ferro: 2500, ambar: 150, perola: 150, gema: 50 } },
+    { name: "Kraken Hunter", type: "Caçador", tier: 5, levelReq: 72, hp: 57000, damage: 4700, speed: 238, armor: 205, costs: { ouro: 800000, madeira: 4800, ferro: 2800, polvora: 1600, cristal: 180, gema: 75, fragmentos: 15 } },
+    { name: "Black Abyss", type: "Espectral", tier: 5, levelReq: 80, hp: 78000, damage: 6500, speed: 260, armor: 250, costs: { ouro: 1000000, madeira: 5000, ferro: 3000, polvora: 2000, cristal: 250, gema: 100, fragmentos: 25 } }
+  ].map((ship, id) => ({ id, bossReq: 0, ...ship }));
 
-  const SHIPS = SHIP_NAMES.map((name, index) => {
-    const tier = Math.floor(index / 4) + 1;
-    const scale = Math.pow(1.72, index);
-    const costs = index === 0 ? {} : {
-      ouro: Math.round(450 * Math.pow(1.8, index - 1)),
-      madeira: Math.round(50 * Math.pow(1.55, index - 1)),
-      ferro: Math.round(20 * Math.pow(1.54, index - 1))
-    };
-    if (tier >= 2) costs.tecido = Math.round(35 * Math.pow(1.43, index - 4));
-    if (tier >= 3) costs.cristal = Math.round(5 * Math.pow(1.38, index - 8));
-    if (tier >= 4) costs.gema = Math.round(3 * Math.pow(1.3, index - 12));
-    if (tier === 5) costs.fragmentos = 2 + (index - 16) * 3;
-    return {
-      id: index, name, tier,
-      hp: Math.round(140 * scale),
-      damage: Math.round(18 * scale),
-      speed: Math.round(100 + index * 13 + tier * 3),
-      armor: 2 + index * 2,
-      levelReq: index === 0 ? 1 : 2 + index * 3,
-      bossReq: Math.max(0, Math.ceil(index / 2) - 1),
-      costs,
-      type: name.includes("Imperial") || name.includes("Real") || name.includes("Militar") ? "Marinha" : name.includes("Mercante") ? "Civil" : name.includes("Fantasma") || name.includes("Abyss") ? "Espectral" : "Pirata"
-    };
-  });
+  const ENEMY_CATEGORIES = {
+    PESCADOR: { label: "PESCADOR", visual: "PESCADOR", hp: .66, damage: .48, armor: .45, gold: .72, xp: .78, attackSpeed: 1.12, evasion: .01, drops: { comida: .34, tecido: .18, madeira: .22 } },
+    MERCANTE: { label: "COMERCIANTE", visual: "MERCANTE", hp: 1.08, damage: .62, armor: .9, gold: 1.65, xp: .95, attackSpeed: 1.08, evasion: .02, drops: { comida: .22, tecido: .2, madeira: .18 } },
+    CONTRABANDISTA: { label: "CONTRABANDISTA", visual: "CONTRABANDISTA", hp: .9, damage: 1.05, armor: .75, gold: 1.2, xp: 1.12, attackSpeed: .76, evasion: .12, drops: { polvora: .22, ferro: .18, cristal: .025 } },
+    PIRATA: { label: "PIRATA", visual: "PIRATA", hp: .94, damage: 1.22, armor: .72, gold: 1.05, xp: 1.08, attackSpeed: .9, evasion: .055, drops: {} },
+    MARINHA: { label: "MARINHA", visual: "MARINHA", hp: 1.42, damage: 1.02, armor: 1.65, gold: 1.35, xp: 1.28, attackSpeed: 1.08, evasion: .025, drops: { ferro: .24 } },
+    FANTASMA: { label: "NAVIO FANTASMA", visual: "FANTASMA", hp: 1.18, damage: 1.28, armor: 1.1, gold: 1.45, xp: 1.42, attackSpeed: .88, evasion: .1, drops: { ambar: .08, cristal: .08 } },
+    CRIATURA: { label: "CRIATURA MARÍTIMA", visual: "ABISSAL", hp: 1.3, damage: 1.36, armor: 1.2, gold: 1.25, xp: 1.5, attackSpeed: .92, evasion: .06, drops: { perola: .1, cristal: .05 } }
+  };
+
+  const REGION_ENCOUNTERS = [
+    [{ name: "Jangada de Pescador", category: "PESCADOR", tier: 1 }, { name: "Barco Costeiro", category: "PESCADOR", tier: 1 }, { name: "Bote Pirata", category: "PIRATA", tier: 1 }, { name: "Pequeno Contrabandista", category: "CONTRABANDISTA", tier: 1 }, { name: "Escuna Pirata", category: "PIRATA", tier: 1 }],
+    [{ name: "Barco Mercante Pequeno", category: "MERCANTE", tier: 1 }, { name: "Navio de Carga", category: "MERCANTE", tier: 2 }, { name: "Escuna Rápida", category: "CONTRABANDISTA", tier: 2 }, { name: "Patrulha Naval", category: "MARINHA", tier: 2 }, { name: "Transporte de Ouro", category: "MERCANTE", tier: 2 }],
+    [{ name: "Brigantina Pirata", category: "PIRATA", tier: 3 }, { name: "Corveta da Marinha", category: "MARINHA", tier: 3 }, { name: "Navio Quebra-Bloqueio", category: "CONTRABANDISTA", tier: 3 }, { name: "Navio Danificado", category: "PIRATA", tier: 2 }, { name: "Caçador da Tormenta", category: "PIRATA", tier: 3 }],
+    [{ name: "Escuna Pirata", category: "PIRATA", tier: 2 }, { name: "Corsário Disfarçado", category: "CONTRABANDISTA", tier: 3 }, { name: "Brigantina Pirata", category: "PIRATA", tier: 3 }, { name: "Transporte Ilegal", category: "CONTRABANDISTA", tier: 2 }, { name: "Fragata Pirata", category: "PIRATA", tier: 4 }],
+    [{ name: "Baleeiro Sombrio", category: "PIRATA", tier: 3 }, { name: "Navio de Suprimentos", category: "MERCANTE", tier: 3 }, { name: "Contrabandista Abissal", category: "CONTRABANDISTA", tier: 3 }, { name: "Serpente Marinha", category: "CRIATURA", tier: 4 }, { name: "Galeão Pirata", category: "PIRATA", tier: 4 }],
+    [{ name: "Escuna Fantasma", category: "FANTASMA", tier: 3 }, { name: "Nau Espectral", category: "FANTASMA", tier: 4 }, { name: "Navio Amaldiçoado", category: "FANTASMA", tier: 4 }, { name: "Corsário Perdido", category: "PIRATA", tier: 3 }, { name: "Vulto do Triângulo", category: "FANTASMA", tier: 5 }],
+    [{ name: "Bote da Marinha", category: "MARINHA", tier: 2 }, { name: "Cutter Real", category: "MARINHA", tier: 2 }, { name: "Fragata Imperial", category: "MARINHA", tier: 4 }, { name: "Galeão Real", category: "MARINHA", tier: 4 }, { name: "Navio de Linha", category: "MARINHA", tier: 5 }, { name: "Navio Almirante", category: "MARINHA", tier: 5 }],
+    [{ name: "Saqueador de Cinzas", category: "PIRATA", tier: 4 }, { name: "Transporte de Obsidiana", category: "MERCANTE", tier: 4 }, { name: "Corveta Vulcânica", category: "MARINHA", tier: 4 }, { name: "Carapaça Vulcânica", category: "CRIATURA", tier: 5 }, { name: "Dragão Marinho Jovem", category: "CRIATURA", tier: 5 }],
+    [{ name: "Barco Costeiro Congelado", category: "PESCADOR", tier: 3 }, { name: "Corsário Boreal", category: "PIRATA", tier: 4 }, { name: "Fragata Congelada", category: "MARINHA", tier: 5 }, { name: "Navio Fantasma do Gelo", category: "FANTASMA", tier: 5 }, { name: "Serpente de Gelo", category: "CRIATURA", tier: 5 }],
+    [{ name: "Cultista do Kraken", category: "PIRATA", tier: 5 }, { name: "Dreadnought Afundado", category: "FANTASMA", tier: 5 }, { name: "Frota Imperial Perdida", category: "MARINHA", tier: 5 }, { name: "Leviatã Menor", category: "CRIATURA", tier: 5 }, { name: "Navio Fantasma Lendário", category: "FANTASMA", tier: 5 }]
+  ];
 
   const SKILL_META = {
     fire: { name: "Canhão de Fogo", icon: "🔥", unlock: 1, cooldown: 8, factor: 1.8, effect: "Causa dano direto e incendeia o alvo por 4s.", materials: ["polvora", "ferro"] },
@@ -101,7 +115,7 @@
 
   function createDefaultState() {
     return {
-      version: 1,
+      version: 2,
       resources: { ouro: 1200, madeira: 90, ferro: 55, tecido: 45, comida: 22, polvora: 28, pedra: 0, cristal: 0, perola: 0, gema: 0, ambar: 0, fragmentos: 0 },
       pirateLevel: 1,
       xp: 0,
@@ -141,7 +155,12 @@
       merged.combat = { ...defaults.combat, ...(saved.combat || {}), enemy: null, repairing: false, spawnTimer: 0 };
       merged.regionKills = defaults.regionKills.map((_, i) => Number(saved.regionKills?.[i] || 0));
       merged.bossesDefeated = defaults.bossesDefeated.map((_, i) => Boolean(saved.bossesDefeated?.[i]));
-      merged.ownedShips = Array.isArray(saved.ownedShips) ? saved.ownedShips : [0];
+      const previousVersion = Number(saved.version || 1);
+      const migratedOwned = Array.isArray(saved.ownedShips) ? saved.ownedShips.map(id => previousVersion < 2 && Number(id) === 19 ? 20 : Number(id)) : [0];
+      merged.ownedShips = [...new Set([0, ...migratedOwned])].filter(id => Number.isInteger(id) && id >= 0 && id < SHIPS.length);
+      merged.shipId = previousVersion < 2 && Number(saved.shipId) === 19 ? 20 : Number(saved.shipId || 0);
+      if (!merged.ownedShips.includes(merged.shipId) || !SHIPS[merged.shipId]) merged.shipId = 0;
+      merged.version = 2;
       return merged;
     } catch (error) {
       console.warn("Não foi possível carregar o save.", error);
@@ -420,7 +439,7 @@
       const bobEnemy = Math.sin(this.time * 1.35 + 1.4) * 3;
       this.drawShip(ctx, w * .29, h * .66 + bobPlayer, Math.min(1.15, w / 950), false, SHIPS[state.shipId].tier, false, state.shipId, SHIPS[state.shipId].type);
       const enemy = state.combat.enemy;
-      if (enemy) this.drawShip(ctx, w * .71, h * .52 + bobEnemy, Math.min(1.02, w / 1050), true, enemy.isBoss ? 5 : Math.min(5, state.regionIndex / 2 + 1), enemy.isBoss, state.regionIndex + 20, enemy.kind);
+      if (enemy) this.drawShip(ctx, w * .71, h * .52 + bobEnemy, Math.min(1.02, w / 1050), true, enemy.isBoss ? 5 : enemy.visualTier, enemy.isBoss, state.regionIndex + 20, enemy.visualKind || enemy.kind);
 
       this.projectiles.forEach(item => {
         const t = item.age / item.duration;
@@ -602,14 +621,17 @@
     drawShip(ctx, x, y, scale, flipped, tier, boss, variant = 0, faction = "Pirata") {
       const direction = flipped ? -1 : 1;
       ctx.save(); ctx.translate(x, y); ctx.scale(direction * scale, scale);
-      const spectral = /Espectral|FANTASMA|ABISSAL/.test(faction) || variant === 19;
+      const spectral = /Espectral|FANTASMA|ABISSAL/.test(faction) || variant === 20;
       const imperial = /Marinha|MARINHA/.test(faction);
-      const civil = /Civil|MERCANTE/.test(faction);
+      const fisher = /Pescador|PESCADOR/.test(faction);
+      const civil = /Civil|Mercante|MERCANTE/.test(faction) || fisher;
+      const smuggler = /CONTRABANDISTA/.test(faction);
+      const hunter = /Caçador|CAÇADOR/.test(faction);
       const fiery = /VULCÂNICO/.test(faction);
-      const length = 76 + tier * 8 + (boss ? 19 : 0);
-      const hull = spectral ? "#173f43" : imperial ? "#173d68" : civil ? "#416047" : fiery ? "#672d25" : boss ? "#281a25" : ["#70452d", "#5b3728", "#6e3c2b", "#47352c"][variant % 4];
-      const trim = spectral ? "#52e5da" : imperial ? "#d3a73f" : civil ? "#d2b16a" : fiery ? "#e46b36" : boss ? "#bf4655" : "#c08a45";
-      const sail = spectral ? "#95d8ce" : imperial ? "#eee8d6" : civil ? "#ddd4b9" : fiery ? "#4a2925" : boss ? "#28232e" : "#d6c9aa";
+      const length = (76 + tier * 8 + (boss ? 19 : 0)) * (fisher ? .78 : smuggler ? .9 : hunter ? 1.08 : 1);
+      const hull = spectral ? "#173f43" : imperial ? "#173d68" : fisher ? "#426c78" : civil ? "#416047" : smuggler ? "#2b3234" : hunter ? "#3e3030" : fiery ? "#672d25" : boss ? "#281a25" : ["#70452d", "#5b3728", "#6e3c2b", "#47352c"][variant % 4];
+      const trim = spectral ? "#52e5da" : imperial ? "#d3a73f" : fisher ? "#d9e4df" : civil ? "#d2b16a" : smuggler ? "#9b7453" : hunter ? "#e29b4c" : fiery ? "#e46b36" : boss ? "#bf4655" : "#c08a45";
+      const sail = spectral ? "#95d8ce" : imperial ? "#eee8d6" : fisher ? "#dce4df" : civil ? "#ddd4b9" : smuggler ? "#343337" : hunter ? "#cbb28d" : fiery ? "#4a2925" : boss ? "#28232e" : "#d6c9aa";
 
       ctx.globalAlpha = .18; ctx.fillStyle = "#04141d"; ctx.beginPath(); ctx.ellipse(0, 27, length * .95, 12, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = .72; ctx.strokeStyle = "#e6fff8"; ctx.lineWidth = 2.3;
@@ -627,7 +649,7 @@
       ctx.strokeStyle = "rgba(255,234,190,.2)"; ctx.lineWidth = 1;
       for (let p = 0; p < 3; p++) { ctx.beginPath(); ctx.moveTo(-length * .7, 9 + p * 5); ctx.quadraticCurveTo(0, 18 + p * 4, length * (.62 - p * .03), 5 + p * 4); ctx.stroke(); }
 
-      const portCount = Math.min(9, tier + 3 + (boss ? 2 : 0));
+      const portCount = Math.min(9, Math.max(1, tier + 3 + (boss ? 2 : 0) - (civil ? 2 : 0) - (fisher ? 2 : 0)));
       ctx.fillStyle = "#081015";
       for (let i = 0; i < portCount; i++) { const px = -length * .57 + i * (length * 1.08 / Math.max(1, portCount - 1)); ctx.fillRect(px - 3.2, 6, 6.4, 5.2); ctx.fillStyle = trim; ctx.fillRect(px - 3.2, 5.2, 6.4, 1); ctx.fillStyle = "#081015"; }
 
@@ -636,6 +658,21 @@
         ctx.fillStyle = hull; ctx.fillRect(sternX, -22 - tier * 2, length * .29, 18 + tier * 2);
         ctx.strokeStyle = trim; ctx.lineWidth = 2; ctx.strokeRect(sternX, -22 - tier * 2, length * .29, 18 + tier * 2);
         ctx.fillStyle = "#ffd77b"; for (let i = 0; i < 2; i++) ctx.fillRect(sternX + 7 + i * 13, -16 - tier, 6, 6);
+      }
+
+      if (civil || fisher) {
+        const cargoCount = fisher ? 2 : Math.min(5, 2 + tier);
+        for (let i = 0; i < cargoCount; i++) {
+          const cx = -length * .2 + i * 13;
+          ctx.fillStyle = i % 2 ? "#8b5d36" : "#a17643";
+          ctx.fillRect(cx, -17 - (i % 2) * 5, 11, 10);
+          ctx.strokeStyle = "rgba(43,29,20,.65)"; ctx.lineWidth = 1; ctx.strokeRect(cx, -17 - (i % 2) * 5, 11, 10);
+        }
+      }
+      if (fisher) {
+        ctx.strokeStyle = "rgba(220,232,225,.7)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(-length * .54, -2); ctx.quadraticCurveTo(-length * .72, 15, -length * .48, 23); ctx.stroke();
+        for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(-length * (.68 - i * .05), 10 + i * 2); ctx.lineTo(-length * (.55 - i * .04), 20); ctx.stroke(); }
       }
 
       const mastCount = tier >= 4 ? 3 : tier >= 2 ? 2 : 1;
@@ -660,7 +697,8 @@
       const firstMastH = 72 + tier * 7;
       ctx.fillStyle = spectral ? "#3ae2d5" : imperial ? "#255ea3" : fiery ? "#e25331" : "#17191b";
       ctx.beginPath(); ctx.moveTo(masts[0], -firstMastH); ctx.lineTo(masts[0] + 27, -firstMastH + 8); ctx.lineTo(masts[0], -firstMastH + 17); ctx.closePath(); ctx.fill();
-      if (!imperial && !civil && tier >= 2) { ctx.fillStyle = "rgba(245,242,214,.82)"; ctx.font = "12px Georgia"; ctx.textAlign = "center"; ctx.fillText("☠", masts[Math.floor(masts.length / 2)] + 20, -(70 + tier * 6) * .57); }
+      if (!imperial && !civil && !hunter && tier >= 2) { ctx.fillStyle = "rgba(245,242,214,.82)"; ctx.font = "12px Georgia"; ctx.textAlign = "center"; ctx.fillText("☠", masts[Math.floor(masts.length / 2)] + 20, -(70 + tier * 6) * .57); }
+      if (hunter) { ctx.fillStyle = "#e6b04f"; ctx.font = "12px Georgia"; ctx.textAlign = "center"; ctx.fillText("⚔", masts[Math.floor(masts.length / 2)] + 20, -(70 + tier * 6) * .57); }
 
       if (spectral) { ctx.shadowColor = "#43e1d4"; ctx.shadowBlur = 14; ctx.strokeStyle = "rgba(83,236,221,.65)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.shadowBlur = 0; }
       if (boss) { ctx.strokeStyle = trim; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(length * .45, -8); ctx.quadraticCurveTo(length * .82, -43, length * 1.04, -24); ctx.stroke(); }
@@ -685,15 +723,26 @@
   function spawnEnemy(isBoss = false) {
     const region = REGIONS[state.regionIndex];
     const variation = randomBetween(.9, 1.14);
-    const hp = Math.round(region.baseHp * variation * (isBoss ? 34 : 1));
+    const roster = REGION_ENCOUNTERS[state.regionIndex] || [];
+    const encounter = isBoss ? null : roster[integerBetween(0, roster.length - 1)];
+    const profile = isBoss ? null : ENEMY_CATEGORIES[encounter.category];
+    const hp = Math.round(region.baseHp * variation * (isBoss ? 34 : profile.hp));
     state.combat.enemy = {
-      name: isBoss ? region.boss : region.enemies[integerBetween(0, region.enemies.length - 1)],
-      kind: isBoss ? "BOSS" : region.kind,
+      name: isBoss ? region.boss : encounter.name,
+      kind: isBoss ? "BOSS" : profile.label,
+      category: isBoss ? "BOSS" : encounter.category,
+      visualKind: isBoss ? region.kind : profile.visual,
+      visualTier: isBoss ? 5 : encounter.tier,
       isBoss,
       maxHp: hp,
       hp,
-      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 : 1)),
-      armor: state.regionIndex * 5 + (isBoss ? 22 + state.regionIndex * 4 : 0),
+      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 : profile.damage)),
+      armor: isBoss ? 22 + state.regionIndex * 9 : Math.round((2 + state.regionIndex * 5) * profile.armor),
+      evasion: isBoss ? .035 : profile.evasion,
+      attackSpeed: isBoss ? .82 : profile.attackSpeed,
+      goldMultiplier: isBoss ? 1 : profile.gold,
+      xpMultiplier: isBoss ? 1 : profile.xp,
+      bonusDrops: isBoss ? {} : profile.drops,
       burnTime: 0,
       burnDps: 0,
       slowed: 0,
@@ -720,7 +769,8 @@
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
     const stats = getStats();
-    if (Math.random() > stats.precision) { scene.fire(true, "#cbd6d0"); addLog("O disparo passou longe do alvo."); return; }
+    const hitChance = stats.precision * (1 - (enemy.evasion || 0));
+    if (Math.random() > hitChance) { scene.fire(true, "#cbd6d0"); addLog(enemy.evasion > .08 ? `${enemy.name} escapou com uma manobra veloz.` : "O disparo passou longe do alvo."); return; }
     const critical = Math.random() < stats.crit;
     const raw = stats.damage * randomBetween(.91, 1.09) * (critical ? 2 : 1);
     dealToEnemy(raw, { color: critical ? "#ffe268" : "#ffd37a" });
@@ -766,11 +816,13 @@
     addLog(forced ? "Protocolo de segurança concluiu o reparo." : "Reparo concluído. Retomando o combate.", "loot");
   }
 
-  function rewardMaterials(multiplier = 1) {
+  function rewardMaterials(multiplier = 1, enemy = state.combat.enemy) {
     const region = REGIONS[state.regionIndex];
     const lootBonus = state.equipment.compass ? 1.08 : 1;
     const found = [];
-    Object.entries(region.drops).forEach(([key, chance]) => {
+    const dropKeys = new Set([...Object.keys(region.drops), ...Object.keys(enemy?.bonusDrops || {})]);
+    dropKeys.forEach(key => {
+      const chance = Math.min(.88, (region.drops[key] || 0) + (enemy?.bonusDrops?.[key] || 0));
       if (Math.random() < chance * lootBonus * (multiplier > 1 ? 1.65 : 1)) {
         const amount = Math.max(1, Math.round(integerBetween(1, 1 + Math.floor(state.regionIndex / 2)) * multiplier));
         state.resources[key] += amount;
@@ -793,7 +845,7 @@
       state.lifetime.bosses += 1;
       state.bossesDefeated[state.regionIndex] = true;
       gainXp(region.xp * 35);
-      const materials = rewardMaterials(8);
+      const materials = rewardMaterials(8, enemy);
       addLog(`${region.boss} derrotado! Tesouro: ${formatNumber(reward)} ouro.`, "loot");
       toast(`${region.boss} foi derrotado!`, "gold-toast");
       if (state.regionIndex < REGIONS.length - 1) {
@@ -808,13 +860,13 @@
       }
       if (materials.length) addLog(`Tesouro do boss: ${materials.join(", ")}.`, "loot");
     } else {
-      const gold = Math.round(region.gold * randomBetween(.88, 1.15));
+      const gold = Math.round(region.gold * (enemy.goldMultiplier || 1) * randomBetween(.88, 1.15));
       state.resources.ouro += gold;
       state.lifetime.gold += gold;
       state.lifetime.enemies += 1;
       state.regionKills[state.regionIndex] += 1;
-      gainXp(Math.round(region.xp * randomBetween(.92, 1.08)));
-      const materials = rewardMaterials(1);
+      gainXp(Math.round(region.xp * (enemy.xpMultiplier || 1) * randomBetween(.92, 1.08)));
+      const materials = rewardMaterials(1, enemy);
       addLog(materials.length ? `Vitória: +${formatNumber(gold)} ouro, ${materials.join(", ")}.` : `Vitória: +${formatNumber(gold)} ouro. Nenhum material.`, materials.length ? "loot" : "");
       if (state.regionKills[state.regionIndex] === 100 && !state.bossesDefeated[state.regionIndex]) toast(`${region.boss} está disponível para desafio!`, "gold-toast");
       state.combat.enemy = null;
@@ -863,7 +915,7 @@
     let shots = 0;
     while (state.combat.attackTimer >= stats.attackInterval && shots < 4 && state.combat.enemy) { state.combat.attackTimer -= stats.attackInterval; basicAttack(); shots++; }
     if (!state.combat.enemy) return;
-    const enemyInterval = (state.combat.enemy.isBoss ? 1450 : 1900) * (enemy.slowed > 0 ? 1.65 : 1);
+    const enemyInterval = (state.combat.enemy.isBoss ? 1450 : 1900) * (enemy.attackSpeed || 1) * (enemy.slowed > 0 ? 1.65 : 1);
     state.combat.enemyAttackTimer += dt * 1000;
     if (state.combat.enemyAttackTimer >= enemyInterval) { state.combat.enemyAttackTimer -= enemyInterval; enemyAttack(); }
     Object.entries(SKILL_META).forEach(([key, meta]) => {
@@ -1055,7 +1107,7 @@
     $("#naval-power").textContent = formatNumber(stats.power);
     $("#yard-ship-name").textContent = ship.name;
     $("#yard-ship-tier").textContent = `Tier ${ship.tier} • Embarcação ${ship.type.toLowerCase()}`;
-    $("#yard-ship-stats").innerHTML = `<div><span>VIDA</span><strong>${formatNumber(stats.maxHp)}</strong></div><div><span>DANO</span><strong>${formatNumber(stats.damage)}</strong></div><div><span>VELOCIDADE</span><strong>${formatNumber(stats.speed)}</strong></div>`;
+    $("#yard-ship-stats").innerHTML = `<div><span>VIDA</span><strong>${formatNumber(stats.maxHp)}</strong></div><div><span>DANO</span><strong>${formatNumber(stats.damage)}</strong></div><div><span>VELOCIDADE</span><strong>${formatNumber(stats.speed)}</strong></div><div><span>DEFESA</span><strong>${formatNumber(stats.armor)}</strong></div>`;
     renderShipPreview($("#yard-ship-canvas"), ship, true);
     const cards = [
       { key: "ship", name: "Convés e Estrutura", icon: "⛵", desc: "Eleva o nível geral do navio e melhora todos os atributos.", bonus: "+6% atributos" },
@@ -1070,13 +1122,32 @@
     renderFleet(); renderEquipment(); renderSkills();
   }
 
+  function getShipRequirements(ship) {
+    const issues = [];
+    if (state.pirateLevel < ship.levelReq) issues.push(`Requer nível ${ship.levelReq}`);
+    Object.entries(ship.costs).forEach(([key, amount]) => {
+      const missing = Math.max(0, amount - (state.resources[key] || 0));
+      if (missing > 0) issues.push(`Faltam ${formatNumber(missing)} ${RESOURCE_META[key].name}`);
+    });
+    return issues;
+  }
+
   function renderFleet() {
+    $("#fleet-owned-count").textContent = state.ownedShips.length;
+    $("#fleet-total-count").textContent = SHIPS.length;
+    const nextTarget = SHIPS.find(ship => !state.ownedShips.includes(ship.id));
+    $("#fleet-next-goal").textContent = nextTarget ? `Próxima conquista: ${nextTarget.name} • nível ${nextTarget.levelReq}` : "Toda a frota foi conquistada. O Abismo reconhece seu almirante.";
     $("#fleet-grid").innerHTML = SHIPS.map(ship => {
       const owned = state.ownedShips.includes(ship.id);
       const current = state.shipId === ship.id;
-      const requirementsMet = state.pirateLevel >= ship.levelReq && bossesCount() >= ship.bossReq;
-      const button = current ? `<button class="button" disabled>Navio atual</button>` : owned ? `<button class="button primary" data-equip-ship="${ship.id}">Usar navio</button>` : requirementsMet ? `<button class="button" data-buy-ship="${ship.id}" ${canAfford(ship.costs) ? "" : "disabled"}>Construir</button>` : `<button class="button" disabled>Nível ${ship.levelReq} • ${ship.bossReq} bosses</button>`;
-      return `<article class="ship-card ${owned ? "owned" : "locked"} ${current ? "current" : ""}"><div class="ship-tier">TIER ${ship.tier}</div><div class="ship-visual"><canvas data-ship-preview="${ship.id}" aria-label="Miniatura realista de ${ship.name}"></canvas></div><h3>${ship.name}</h3><p>${owned ? "Embarcação construída e pronta para navegar." : requirementsMet ? resourceCostHtml(ship.costs) : `Requer nível ${ship.levelReq} e ${ship.bossReq} bosses derrotados.`}</p><div class="ship-mini-stats"><span>❤ ${formatNumber(ship.hp)}</span><span>☄ ${formatNumber(ship.damage)}</span><span>» ${formatNumber(ship.speed)}</span></div>${button}</article>`;
+      const issues = owned ? [] : getShipRequirements(ship);
+      const levelMet = state.pirateLevel >= ship.levelReq;
+      const affordable = canAfford(ship.costs);
+      const status = current ? "EQUIPADO" : owned ? "COMPRADO" : levelMet && affordable ? "DISPONÍVEL" : "BLOQUEADO";
+      const statusKey = current ? "equipped" : owned ? "purchased" : levelMet && affordable ? "available" : "blocked";
+      const button = current ? `<button class="button" disabled>Equipado</button>` : owned ? `<button class="button primary" data-equip-ship="${ship.id}">Equipar navio</button>` : `<button class="button ${levelMet && affordable ? "primary" : ""}" data-buy-ship="${ship.id}" ${levelMet && affordable ? "" : "disabled"}>${levelMet && affordable ? "Comprar e equipar" : levelMet ? "Recursos insuficientes" : `Requer nível ${ship.levelReq}`}</button>`;
+      const issueHtml = issues.length ? `<ul class="ship-issues">${issues.slice(0, 4).map(issue => `<li>${issue}</li>`).join("")}${issues.length > 4 ? `<li>+${issues.length - 4} requisitos</li>` : ""}</ul>` : `<p class="ship-ready">${owned ? "Disponível permanentemente na sua frota." : "Todos os requisitos foram atendidos."}</p>`;
+      return `<article class="ship-card ${owned ? "owned" : statusKey === "blocked" ? "locked" : ""} ${current ? "current" : ""} ${statusKey}"><div class="ship-tier">TIER ${ship.tier}</div><div class="ship-status ${statusKey}">${status}</div><div class="ship-visual"><canvas data-ship-preview="${ship.id}" aria-label="Miniatura de ${ship.name}"></canvas></div><div class="ship-title-row"><div><h3>${ship.name}</h3><span>${ship.type}</span></div><span class="ship-level-req">NÍVEL ${ship.levelReq}</span></div><div class="ship-mini-stats"><span><small>VIDA</small>❤ ${formatNumber(ship.hp)}</span><span><small>DANO</small>☄ ${formatNumber(ship.damage)}</span><span><small>VELOC.</small>» ${formatNumber(ship.speed)}</span><span><small>DEFESA</small>⬡ ${formatNumber(ship.armor)}</span></div><div class="ship-costs"><span class="ship-section-label">CUSTO DE CONSTRUÇÃO</span><div class="cost-list">${resourceCostHtml(ship.costs)}</div></div>${issueHtml}${button}</article>`;
     }).join("");
     $$('[data-ship-preview]', $("#fleet-grid")).forEach(canvas => renderShipPreview(canvas, SHIPS[Number(canvas.dataset.shipPreview)]));
   }
@@ -1103,7 +1174,8 @@
       const unlocked = index < state.unlockedRegions;
       const current = state.regionIndex === index;
       const tags = Object.keys(region.drops).map(key => `<span>${RESOURCE_META[key].name} • ${Math.round(region.drops[key] * 100)}%</span>`).join("");
-      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land}"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${tags}</div><div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
+      const enemyTags = [...new Set(REGION_ENCOUNTERS[index].map(enemy => ENEMY_CATEGORIES[enemy.category].label))].map(label => `<span class="enemy-tag">⚔ ${label}</span>`).join("");
+      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land}"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div><div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
     }).join("");
   }
 
@@ -1215,8 +1287,10 @@
 
   function buyShip(id) {
     const ship = SHIPS[id];
-    if (state.ownedShips.includes(id) || !canAfford(ship.costs) || state.pirateLevel < ship.levelReq || bossesCount() < ship.bossReq) return;
-    spend(ship.costs); state.ownedShips.push(id); state.shipId = id; state.levels = { ship: 1, cannons: 1, sails: 1, hull: 1 }; state.combat.playerHp = getStats().maxHp;
+    if (!ship || state.ownedShips.includes(id)) return;
+    if (state.pirateLevel < ship.levelReq) return toast(`Requer nível ${ship.levelReq} para comprar ${ship.name}.`, "danger-toast");
+    if (!canAfford(ship.costs)) return toast("Ainda faltam recursos para construir este navio.", "danger-toast");
+    spend(ship.costs); state.ownedShips.push(id); state.shipId = id; state.combat.playerHp = getStats().maxHp; state.combat.enemy = null; state.combat.spawnTimer = 0;
     toast(`${ship.name} foi construído e equipado!`, "gold-toast"); addLog(`${ship.name} agora lidera sua frota.`, "loot"); renderAll(true); saveGame();
   }
 

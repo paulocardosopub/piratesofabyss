@@ -21,4 +21,6 @@ Depois, acesse `http://localhost:4173`.
 - **Resetar navio:** restaura a vida e reinicia o combate sem apagar progresso.
 - **Ícones de skill:** toque para ligar ou desligar o lançamento automático.
 - **Comércio:** compre ou venda materiais usando Ouro, com confirmação de cada transação.
+- **Frota:** compre 21 navios em cinco tiers usando nível, Ouro, Madeira e materiais especiais; navios comprados ficam disponíveis permanentemente.
+- **Encontros:** enfrente pescadores, comerciantes, contrabandistas, piratas, marinha, fantasmas e criaturas com atributos e recompensas diferentes.
 - **Menu inferior:** acesse estaleiro, mapas, recursos e estatísticas sem interromper o combate.

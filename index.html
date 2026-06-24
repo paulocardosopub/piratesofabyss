@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -121,7 +121,14 @@
           </div>
           <div class="upgrade-grid" id="upgrade-grid"></div>
         </div>
-        <div class="upgrade-section" id="upgrade-fleet"><div class="fleet-grid" id="fleet-grid"></div></div>
+        <div class="upgrade-section" id="upgrade-fleet">
+          <div class="fleet-overview">
+            <div><span>NAVIOS COMPRADOS</span><strong><b id="fleet-owned-count">1</b> / <b id="fleet-total-count">21</b></strong></div>
+            <p id="fleet-next-goal">Suba de nível, acumule Ouro e Madeira e expanda sua frota.</p>
+            <span class="fleet-rule">Upgrades, equipamentos, recursos e XP são preservados ao trocar de navio.</span>
+          </div>
+          <div class="fleet-grid" id="fleet-grid"></div>
+        </div>
         <div class="upgrade-section" id="upgrade-equipment"><div class="equipment-grid" id="equipment-grid"></div></div>
         <div class="upgrade-section" id="upgrade-skills"><div class="skills-grid" id="skills-grid"></div></div>
       </section>
@@ -211,6 +218,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=4"></script>
+  <script src="game.js?v=5"></script>
 </body>
 </html>

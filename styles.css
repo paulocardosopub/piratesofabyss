@@ -282,19 +282,37 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .cost-chip.missing { color: #ff9c89; background: rgba(224,82,82,.1); }
 .upgrade-card .button, .equipment-card .button, .skill-card .button { width: 100%; }
 
-.fleet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.ship-card { min-height: 245px; }
-.ship-card.locked { filter: saturate(.45); }
+.fleet-overview { display: grid; grid-template-columns: auto 1fr; gap: 7px 22px; align-items: center; margin-bottom: 14px; padding: 15px 18px; border: 1px solid rgba(53,212,207,.2); border-radius: var(--radius); background: linear-gradient(110deg, rgba(53,212,207,.09), rgba(7,27,40,.9)); }
+.fleet-overview div > span, .fleet-rule { color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .08em; }
+.fleet-overview div strong { display: block; margin-top: 3px; color: var(--cyan-2); font-size: 21px; }
+.fleet-overview div b { font-weight: 900; }
+.fleet-overview p { margin: 0; color: #d9e7e4; font-size: 13px; }
+.fleet-rule { grid-column: 2; color: var(--green); letter-spacing: 0; }
+.fleet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+.ship-card { min-height: 440px; display: flex; flex-direction: column; }
+.ship-card.locked { filter: saturate(.72); }
 .ship-card.owned { border-color: rgba(53,212,207,.34); }
 .ship-card.current { box-shadow: inset 0 0 0 2px var(--cyan); }
-.ship-visual { height: 90px; display: grid; place-items: center; margin: -18px -18px 12px; background: linear-gradient(180deg, rgba(36,137,154,.32), rgba(4,37,52,.15)); font-size: 44px; }
+.ship-card.available { border-color: rgba(103,217,151,.5); box-shadow: inset 0 0 24px rgba(103,217,151,.05); }
+.ship-visual { height: 118px; display: grid; place-items: center; margin: -18px -18px 12px; background: linear-gradient(180deg, rgba(50,151,171,.38), rgba(4,37,52,.15)); font-size: 44px; }
 .ship-visual canvas { width: 100%; height: 100%; display: block; }
 .ship-tier { position: absolute; top: 9px; left: 9px; padding: 4px 7px; border-radius: 6px; color: var(--gold); background: rgba(5,19,28,.7); font-size: 9px; font-weight: 900; }
-.ship-card h3 { margin-top: 4px; }
-.ship-card p { height: 30px; margin: 4px 0 10px; color: var(--muted); font-size: 10px; }
-.ship-mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 10px; }
-.ship-mini-stats span { padding: 5px 2px; text-align: center; border-radius: 5px; background: rgba(0,0,0,.15); color: #c6d8d7; font-size: 9px; }
-.ship-card .button { width: 100%; min-height: 34px; padding: 6px; }
+.ship-status { position: absolute; top: 9px; right: 9px; padding: 4px 7px; border-radius: 6px; color: #cad8d6; background: rgba(5,19,28,.78); font-size: 8px; font-weight: 900; letter-spacing: .07em; }
+.ship-status.equipped { color: #061e25; background: var(--cyan-2); }
+.ship-status.purchased { color: var(--cyan-2); }
+.ship-status.available { color: var(--green); }
+.ship-title-row { min-height: 48px; display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.ship-card h3 { margin: 2px 0 3px; }
+.ship-title-row div > span { color: var(--muted); font-size: 10px; }
+.ship-level-req { flex: 0 0 auto; padding: 4px 6px; border-radius: 6px; color: var(--gold); background: rgba(247,189,74,.08); font-size: 9px; font-weight: 850; }
+.ship-mini-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 9px 0 10px; }
+.ship-mini-stats span { padding: 6px 2px; text-align: center; border-radius: 5px; background: rgba(0,0,0,.15); color: #c6d8d7; font-size: 9px; font-weight: 750; }
+.ship-mini-stats small { display: block; margin-bottom: 2px; color: var(--muted); font-size: 7px; }
+.ship-section-label { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .08em; }
+.ship-costs .cost-list { min-height: 48px; margin: 6px 0 7px; }
+.ship-issues { min-height: 44px; margin: 0 0 10px; padding: 7px 9px 7px 24px; border-radius: 7px; color: #ffae9d; background: rgba(224,82,82,.075); font-size: 9px; line-height: 1.45; }
+.ship-ready { min-height: 44px; height: auto !important; margin: 0 0 10px !important; padding: 8px 9px; border-radius: 7px; color: var(--green) !important; background: rgba(103,217,151,.07); font-size: 9px !important; }
+.ship-card .button { width: 100%; min-height: 36px; margin-top: auto; padding: 6px; }
 
 .equipment-grid { grid-template-columns: repeat(4, 1fr); }
 .equipment-card.equipped { border-color: rgba(247,189,74,.38); }
@@ -322,6 +340,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .map-body > p { margin: 4px 0 11px; color: var(--muted); font-size: 11px; }
 .map-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
 .map-tags span { padding: 4px 7px; border-radius: 6px; background: rgba(255,255,255,.055); color: #bdd0cf; font-size: 9px; }
+.map-tags .enemy-tag { color: #ffd68a; background: rgba(247,189,74,.08); }
 .map-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .map-footer small { color: var(--muted); font-size: 9px; }
 
@@ -452,6 +471,8 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .bottom-nav button strong { font-size: 9px; }
   .page-heading { min-height: 106px; }
   .page-heading p { font-size: 12px; }
+  .fleet-overview { grid-template-columns: 1fr; gap: 7px; padding: 13px; }
+  .fleet-rule { grid-column: 1; }
   .power-seal, .map-counter, .cargo-total, .rank-medallion, .trade-wallet { min-width: 94px; padding: 10px; }
   .current-ship-banner { grid-template-columns: auto 1fr; padding: 14px; }
   .mini-ship { width: 55px; height: 55px; }
@@ -477,7 +498,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .trade-wallet strong { font-size: 16px; }
   .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid, .trade-grid { grid-template-columns: 1fr; }
   .upgrade-card p, .equipment-card p, .skill-card p { min-height: auto; }
-  .ship-card { min-height: 230px; }
+  .ship-card { min-height: 420px; }
   .resource-card { min-height: 170px; }
   .danger-zone { align-items: stretch; flex-direction: column; }
   .offline-rewards { grid-template-columns: repeat(2, 1fr); }
