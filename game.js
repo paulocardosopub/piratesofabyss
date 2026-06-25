@@ -887,7 +887,7 @@
     ["Navio Danificado", "navio_danificado.png", { width: 345, anchorY: .6 }],
     ["Cacador da Tormenta", "cacador_da_tormenta.png", { width: 335, anchorY: .62 }],
     ["Tempestade Viva", "boss_tempestade_viva.png", { width: 330, anchorY: .56, offsetY: -15 }],
-    ["Corsario Disfarcado", "corsario_disfarcado.png", { width: 335, anchorY: .62 }],
+    ["Corsario Disfarcado", "corsario_disfarcado.png", { width: 235, anchorY: .62 }],
     ["Transporte Ilegal", "transporte_ilegal.png", { width: 330, anchorY: .62 }],
     ["Fragata Pirata", "fragata_pirata.png", { width: 350, anchorY: .61 }],
     ["Almirante Negro", "boss_almirante_negro.png", { width: 380, anchorY: .58 }],
