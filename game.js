@@ -797,6 +797,68 @@
     return String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
+  const ENEMY_SPRITE_PATH = "assets/enemies/";
+  const ENEMY_SPRITES = [
+    ["Remador Rival", "remador_rival.png", { width: 250, anchorY: .68 }],
+    ["Pescador Primitivo", "pescador_primitivo.png", { width: 265, anchorY: .7 }],
+    ["Jacare da Lagoa", "jacare_da_lagoa.png", { width: 270, anchorY: .58 }],
+    ["Crocomar Anciao", "boss_crocomar_anciao.png", { width: 380, anchorY: .58 }],
+    ["Canoa Tribal", "canoa_tribal.png", { width: 275, anchorY: .64 }],
+    ["Cacador do Mangue", "cacador_do_mangue.png", { width: 275, anchorY: .67 }],
+    ["Reptil das Raizes", "reptil_das_raizes.png", { width: 315, anchorY: .6 }],
+    ["Deinosuchus do Mangue", "boss_deinosuchus_do_mangue.png", { width: 390, anchorY: .59 }],
+    ["Canoa de Couro", "canoa_de_couro.png", { width: 260, anchorY: .58 }],
+    ["Pterodactilo Cacador", "pterodactilo_cacador.png", { width: 300, anchorY: .56, offsetY: -52 }],
+    ["Remador das Ilhas", "remador_das_ilhas.png", { width: 255, anchorY: .65 }],
+    ["Rei Pteranodonte", "boss_rei_pteranodonte.png", { width: 330, anchorY: .55, offsetY: -55 }],
+    ["Jangada de Caca", "jangada_de_caca.png", { width: 285, anchorY: .65 }],
+    ["Ictiossauro", "ictiossauro.png", { width: 315, anchorY: .56 }],
+    ["Saqueador da Selva", "saqueador_da_selva.png", { width: 285, anchorY: .66 }],
+    ["Mosasaurus Jovem", "boss_mosasaurus_jovem.png", { width: 380, anchorY: .56 }],
+    ["Canoa de Guerra", "canoa_de_guerra.png", { width: 290, anchorY: .61 }],
+    ["Plesiossauro", "plesiossauro.png", { width: 310, anchorY: .58 }],
+    ["Guardiao do Canal", "guardiao_do_canal.png", { width: 300, anchorY: .66 }],
+    ["Leviata Jurassico", "boss_leviata_jurassico.png", { width: 390, anchorY: .56 }],
+    ["Jangada de Pescador", "jangada_de_pescador.png", { width: 285, anchorY: .68 }],
+    ["Barco Costeiro", "barco_costeiro.png", { width: 310, anchorY: .62 }],
+    ["Bote Pirata", "bote_pirata.png", { width: 315, anchorY: .62 }],
+    ["Pequeno Contrabandista", "pequeno_contrabandista.png", { width: 270, anchorY: .62 }],
+    ["Escuna Pirata", "escuna_pirata.png", { width: 335, anchorY: .62 }],
+    ["Capitao Barba de Ferro", "boss_capitao_barba_de_ferro.png", { width: 350, anchorY: .58 }],
+    ["Bote de Pesca Hostil", "bote_de_pesca_hostil.png", { width: 310, anchorY: .64 }],
+    ["Traineira Saqueadora", "traineira_saqueadora.png", { width: 330, anchorY: .62 }],
+    ["Barco Mercante Pequeno", "barco_mercante_pequeno.png", { width: 315, anchorY: .64 }],
+    ["Navio de Carga", "navio_de_carga.png", { width: 330, anchorY: .62 }],
+    ["Escuna Rapida", "escuna_rapida.png", { width: 330, anchorY: .6 }],
+    ["Patrulha Naval", "patrulha_naval.png", { width: 330, anchorY: .6 }],
+    ["Transporte de Ouro", "transporte_de_ouro.png", { width: 335, anchorY: .6 }],
+    ["Rainha Corsaria Scarlet", "boss_rainha_corsaria_scarlet.png", { width: 360, anchorY: .58 }],
+    ["Brigantina Pirata", "brigantina_pirata.png", { width: 340, anchorY: .6 }],
+    ["Corveta da Marinha", "corveta_da_marinha.png", { width: 360, anchorY: .6 }],
+    ["Navio Quebra-Bloqueio", "navio_quebra_bloqueio.png", { width: 345, anchorY: .58 }],
+    ["Navio Danificado", "navio_danificado.png", { width: 345, anchorY: .6 }],
+    ["Cacador da Tormenta", "cacador_da_tormenta.png", { width: 335, anchorY: .62 }],
+    ["Tempestade Viva", "boss_tempestade_viva.png", { width: 330, anchorY: .56, offsetY: -15 }]
+  ].reduce((sprites, [name, file, options]) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = `${ENEMY_SPRITE_PATH}${file}`;
+    sprites[normalizeText(name)] = {
+      image,
+      file,
+      width: options.width,
+      anchorX: options.anchorX ?? .5,
+      anchorY: options.anchorY ?? .64,
+      offsetX: options.offsetX || 0,
+      offsetY: options.offsetY || 0
+    };
+    return sprites;
+  }, {});
+
+  function getEnemySprite(name) {
+    return ENEMY_SPRITES[normalizeText(name)];
+  }
+
   function inferEnemyVisual(name, region = {}, fallback = "PIRATA", tier = 1, isBoss = false) {
     const raw = `${name} ${region.name || ""} ${region.kind || ""}`;
     const text = normalizeText(raw);
@@ -1269,7 +1331,23 @@
       ctx.restore();
     }
 
+    drawEnemySprite(ctx, x, y, scale, sprite) {
+      const image = sprite.image;
+      if (!image?.complete || !image.naturalWidth) return false;
+      const targetWidth = sprite.width * scale;
+      const targetHeight = targetWidth * (image.naturalHeight / image.naturalWidth);
+      const drawX = -targetWidth * sprite.anchorX;
+      const drawY = -targetHeight * sprite.anchorY;
+      ctx.save();
+      ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
+      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      ctx.restore();
+      return true;
+    }
+
     drawEnemy(ctx, x, y, scale, enemy) {
+      const sprite = getEnemySprite(enemy.name);
+      if (sprite && this.drawEnemySprite(ctx, x, y, scale, sprite)) return;
       const visual = enemy.visual || inferEnemyVisual(enemy.name, REGIONS[state.regionIndex], enemy.category, enemy.visualTier, enemy.isBoss);
       const finalScale = scale * (visual.scale || 1);
       const type = visual.type;
