@@ -797,6 +797,54 @@
     return String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
+  const SHIP_SPRITE_PATH = "assets/ships/";
+  const SHIP_SPRITES = [
+    ["Bote de Tronco", "bote_de_tronco.png", { width: 230, anchorY: .63 }],
+    ["Jangada de Cipo", "jangada_de_cipo.png", { width: 245, anchorY: .66 }],
+    ["Canoa de Caca", "canoa_de_caca.png", { width: 240, anchorY: .58 }],
+    ["Jangada Reforcada Primitiva", "jangada_reforcada_primitiva.png", { width: 255, anchorY: .64 }],
+    ["Canoa do Tita", "canoa_do_tita.png", { width: 265, anchorY: .63 }],
+    ["Bote Armado", "bote_armado.png", { width: 260, anchorY: .66 }],
+    ["Jangada Reforcada", "jangada_reforcada.png", { width: 270, anchorY: .66 }],
+    ["Barco de Pesca Adaptado", "barco_de_pesca_adaptado.png", { width: 275, anchorY: .64 }],
+    ["Escuna Leve", "escuna_leve.png", { width: 285, anchorY: .66 }],
+    ["Escuna Mercante", "escuna_mercante.png", { width: 295, anchorY: .66 }],
+    ["Cutter Real", "cutter_real.png", { width: 300, anchorY: .64 }],
+    ["Brigantina Pequena", "brigantina_pequena.png", { width: 305, anchorY: .64 }],
+    ["Corveta Simples", "corveta_simples.png", { width: 310, anchorY: .66 }],
+    ["Brigantina Pirata", "brigantina_pirata.png", { width: 320, anchorY: .64 }],
+    ["Corveta Armada", "corveta_armada.png", { width: 320, anchorY: .64 }],
+    ["Galeota", "galeota.png", { width: 310, anchorY: .61 }],
+    ["Navio Mercante Armado", "navio_mercante_armado.png", { width: 330, anchorY: .64 }],
+    ["Galeao Mercante", "galeao_mercante.png", { width: 335, anchorY: .64 }],
+    ["Galeao Pirata", "galeao_pirata.png", { width: 335, anchorY: .63 }],
+    ["Fragata Real", "fragata_real.png", { width: 340, anchorY: .63 }],
+    ["Fragata Corsaria", "fragata_corsaria.png", { width: 345, anchorY: .66 }],
+    ["Galeao de Guerra", "galeao_de_guerra.png", { width: 350, anchorY: .66 }],
+    ["Encouracado Imperial", "encouracado_imperial.png", { width: 355, anchorY: .63 }],
+    ["Fragata Fantasma", "fragata_fantasma.png", { width: 355, anchorY: .63 }],
+    ["Kraken Hunter", "kraken_hunter.png", { width: 365, anchorY: .64 }],
+    ["Black Abyss", "black_abyss.png", { width: 370, anchorY: .64 }]
+  ].reduce((sprites, [name, file, options]) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = `${SHIP_SPRITE_PATH}${file}`;
+    sprites[normalizeText(name)] = {
+      image,
+      file,
+      width: options.width,
+      anchorX: options.anchorX ?? .5,
+      anchorY: options.anchorY ?? .64,
+      offsetX: options.offsetX || 0,
+      offsetY: options.offsetY || 0
+    };
+    return sprites;
+  }, {});
+
+  function getShipSprite(name) {
+    return SHIP_SPRITES[normalizeText(name)];
+  }
+
   const ENEMY_SPRITE_PATH = "assets/enemies/";
   const ENEMY_SPRITES = [
     ["Remador Rival", "remador_rival.png", { width: 250, anchorY: .68 }],
@@ -838,7 +886,48 @@
     ["Navio Quebra-Bloqueio", "navio_quebra_bloqueio.png", { width: 345, anchorY: .58 }],
     ["Navio Danificado", "navio_danificado.png", { width: 345, anchorY: .6 }],
     ["Cacador da Tormenta", "cacador_da_tormenta.png", { width: 335, anchorY: .62 }],
-    ["Tempestade Viva", "boss_tempestade_viva.png", { width: 330, anchorY: .56, offsetY: -15 }]
+    ["Tempestade Viva", "boss_tempestade_viva.png", { width: 330, anchorY: .56, offsetY: -15 }],
+    ["Corsario Disfarcado", "corsario_disfarcado.png", { width: 335, anchorY: .62 }],
+    ["Transporte Ilegal", "transporte_ilegal.png", { width: 330, anchorY: .62 }],
+    ["Fragata Pirata", "fragata_pirata.png", { width: 350, anchorY: .61 }],
+    ["Almirante Negro", "boss_almirante_negro.png", { width: 380, anchorY: .58 }],
+    ["Baleeiro Sombrio", "baleeiro_sombrio.png", { width: 340, anchorY: .6 }],
+    ["Navio de Suprimentos", "navio_de_suprimentos.png", { width: 345, anchorY: .62 }],
+    ["Contrabandista Abissal", "contrabandista_abissal.png", { width: 335, anchorY: .62 }],
+    ["Serpente Marinha", "serpente_marinha.png", { width: 360, anchorY: .58 }],
+    ["Galeao Pirata", "galeao_pirata.png", { width: 350, anchorY: .6 }],
+    ["Megalodon Ancestral", "boss_megalodon_ancestral.png", { width: 400, anchorY: .56 }],
+    ["Escuna Fantasma", "escuna_fantasma.png", { width: 350, anchorY: .62 }],
+    ["Nau Espectral", "nau_espectral.png", { width: 355, anchorY: .61 }],
+    ["Navio Amaldicoado", "navio_amaldicoado.png", { width: 355, anchorY: .61 }],
+    ["Corsario Perdido", "corsario_perdido.png", { width: 345, anchorY: .6 }],
+    ["Vulto do Triangulo", "vulto_do_triangulo.png", { width: 345, anchorY: .62 }],
+    ["Holandes Voador", "boss_holandes_voador.png", { width: 390, anchorY: .6 }],
+    ["Bote da Marinha", "bote_da_marinha.png", { width: 330, anchorY: .6 }],
+    ["Cutter Real", "cutter_real.png", { width: 340, anchorY: .6 }],
+    ["Fragata Imperial", "fragata_imperial.png", { width: 365, anchorY: .62 }],
+    ["Galeao Real", "galeao_real.png", { width: 365, anchorY: .62 }],
+    ["Navio de Linha", "navio_de_linha.png", { width: 365, anchorY: .62 }],
+    ["Navio Almirante", "navio_almirante.png", { width: 370, anchorY: .62 }],
+    ["Grande Armada Imperial", "boss_grande_armada_imperial.png", { width: 410, anchorY: .62 }],
+    ["Saqueador de Cinzas", "saqueador_de_cinzas.png", { width: 340, anchorY: .62 }],
+    ["Transporte de Obsidiana", "transporte_de_obsidiana.png", { width: 345, anchorY: .6 }],
+    ["Corveta Vulcanica", "corveta_vulcanica.png", { width: 350, anchorY: .62 }],
+    ["Carapaca Vulcanica", "carapaca_vulcanica.png", { width: 360, anchorY: .6 }],
+    ["Dragao Marinho Jovem", "dragao_marinho_jovem.png", { width: 360, anchorY: .62 }],
+    ["Dragao Marinho Vulcanico", "boss_dragao_marinho_vulcanico.png", { width: 405, anchorY: .58 }],
+    ["Barco Costeiro Congelado", "barco_costeiro_congelado.png", { width: 345, anchorY: .62 }],
+    ["Corsario Boreal", "corsario_boreal.png", { width: 340, anchorY: .62 }],
+    ["Fragata Congelada", "fragata_congelada.png", { width: 365, anchorY: .62 }],
+    ["Navio Fantasma do Gelo", "navio_fantasma_do_gelo.png", { width: 355, anchorY: .62 }],
+    ["Serpente de Gelo", "serpente_de_gelo.png", { width: 360, anchorY: .58 }],
+    ["Jormungandr de Gelo", "boss_jormungandr_de_gelo.png", { width: 410, anchorY: .58 }],
+    ["Cultista do Kraken", "cultista_do_kraken.png", { width: 345, anchorY: .62 }],
+    ["Dreadnought Afundado", "dreadnought_afundado.png", { width: 365, anchorY: .62 }],
+    ["Frota Imperial Perdida", "frota_imperial_perdida.png", { width: 360, anchorY: .58 }],
+    ["Leviata Menor", "leviata_menor.png", { width: 360, anchorY: .58 }],
+    ["Navio Fantasma Lendario", "navio_fantasma_lendario.png", { width: 365, anchorY: .62 }],
+    ["Kraken Primordial", "boss_kraken_primordial.png", { width: 405, anchorY: .6 }]
   ].reduce((sprites, [name, file, options]) => {
     const image = new Image();
     image.decoding = "async";
@@ -1081,7 +1170,7 @@
 
       const bobPlayer = Math.sin(this.time * 1.55) * 3;
       const bobEnemy = Math.sin(this.time * 1.35 + 1.4) * 3;
-      this.drawShip(ctx, w * .29, h * .66 + bobPlayer, Math.min(1.15, w / 950), false, SHIPS[state.shipId].tier, false, state.shipId, SHIPS[state.shipId].type);
+      this.drawPlayerShip(ctx, w * .29, h * .66 + bobPlayer, Math.min(1.15, w / 950), SHIPS[state.shipId]);
       const pet = getEquippedPet();
       if (pet) {
         const attackAdvance = Math.sin(this.petLunge * Math.PI) * w * .12;
@@ -1343,6 +1432,26 @@
       ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
       ctx.restore();
       return true;
+    }
+
+    drawShipSprite(ctx, x, y, scale, sprite) {
+      const image = sprite.image;
+      if (!image?.complete || !image.naturalWidth) return false;
+      const targetWidth = sprite.width * scale;
+      const targetHeight = targetWidth * (image.naturalHeight / image.naturalWidth);
+      const drawX = -targetWidth * sprite.anchorX;
+      const drawY = -targetHeight * sprite.anchorY;
+      ctx.save();
+      ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
+      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      ctx.restore();
+      return true;
+    }
+
+    drawPlayerShip(ctx, x, y, scale, ship) {
+      const sprite = getShipSprite(ship.name);
+      if (sprite && this.drawShipSprite(ctx, x, y, scale, sprite)) return;
+      this.drawShip(ctx, x, y, scale, false, ship.tier, false, ship.id, ship.type);
     }
 
     drawEnemy(ctx, x, y, scale, enemy) {
@@ -2161,7 +2270,7 @@
     ctx.strokeStyle = "rgba(225,251,246,.28)"; ctx.lineWidth = 1;
     for (let i = 0; i < 4; i++) { const y = height * (.62 + i * .09); ctx.beginPath(); ctx.moveTo(i * 17, y); ctx.quadraticCurveTo(width * .32, y - 3, width * .62, y); ctx.lineTo(width, y - 2); ctx.stroke(); }
     const scale = compact ? .45 : .58;
-    scene.drawShip(ctx, width * .5, height * .71, scale, false, ship.tier, false, ship.id, ship.type);
+    scene.drawPlayerShip(ctx, width * .5, height * .71, scale, ship);
   }
 
   function renderHome() {
