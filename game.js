@@ -214,6 +214,13 @@
   const missionDefinitions = (() => {
     const defs = [];
     const shortNumber = value => Number(value).toLocaleString("pt-BR");
+    const balanceReward = reward => {
+      const resources = Object.fromEntries(Object.entries(reward.resources || {}).map(([key, value]) => {
+        if (key === "ouro") return [key, Math.max(25, Math.round(value * .28))];
+        return [key, Math.max(0, Math.round(value * .75))];
+      }));
+      return { ...reward, resources, xp: reward.xp ? Math.max(5, Math.round(reward.xp * .8)) : reward.xp };
+    };
     const add = item => defs.push({ id: `m${String(defs.length + 1).padStart(3, "0")}`, icon: "✦", level: 1, category: "Principal", type: "main", reward: { resources: { ouro: 100 } }, ...item });
     [
       ["Primeiro Comando", "Inicie o jogo e equipe o primeiro navio.", { kind: "started" }, { ouro: 100, madeira: 10 }],
@@ -247,7 +254,8 @@
     [["Semana de Guerra", "Derrote 1.500 inimigos na semana.", "weeklyEnemies", 1500], ["Semana de Boss", "Derrote 5 bosses na semana.", "weeklyBosses", 5], ["Semana de Upgrades", "Faça 35 upgrades na semana.", "weeklyUpgrades", 35], ["Semana de Recursos", "Colete 5.000 recursos na semana.", "weeklyResources", 5000], ["Semana Mercante", "Realize 75 transações na semana.", "weeklyTrades", 75]].forEach(([name, description, kind, target]) => add({ name, description, category: "Semanal", type: "weekly", objective: { kind, target }, reward: { resources: { ouro: 10000, cristal: 5, perola: kind === "weeklyBosses" ? 3 : 0, gema: kind === "weeklyUpgrades" ? 3 : 0 }, xp: 250 }, recommendedLevel: 10, icon: "☽", resets: "weekly" }));
     [["Black Abyss", "Compre o navio Black Abyss.", { kind: "shipName", name: "Black Abyss" }, "Black Abyss"], ["Poder Lendário", "Equipe um navio lendário e alcance 10.000 DPS.", { kind: "legendaryPower", target: 10000 }, "Poder Lendário"], ["Rei dos Bosses", "Derrote todos os bosses regionais.", { kind: "allBosses" }, "Rei dos Bosses"], ["Mestre dos Recursos", "Colete todos os tipos de recursos pelo menos uma vez.", { kind: "allResourcesSeen" }, "Mestre dos Recursos"], ["Arsenal Final", "Desbloqueie todas as skills base.", { kind: "allSkillsUnlocked" }, "Arsenal Final"], ["Navio Perfeito", "Tenha canhões, velas e casco no nível 25.", { kind: "perfectShip", target: 25 }, "Navio Perfeito"], ["Missão Final", "Complete 99 missões.", { kind: "missionsCompleted", target: 99 }, "Lenda das Missões"]].forEach(([name, description, objective, title], i) => add({ name, description, category: "Endgame", type: "endgame", objective, reward: { resources: { ouro: 100000 * (i + 1), fragmentos: 5 + i }, title, xp: 500 }, recommendedLevel: 60, icon: "✹" }));
     [["Testemunha do Abismo", "Veja a animação rara do Kraken no cenário.", { kind: "krakenSightings", target: 1 }, "Testemunha do Abismo"], ["Sorte do Pirata", "Receba múltiplos recursos em uma única batalha.", { kind: "multiResourceDrops", target: 1 }, null], ["Sem Materiais", "Receba apenas Ouro em 100 batalhas.", { kind: "onlyGoldBattles", target: 100 }, null], ["Sobrevivente", "Vença uma batalha com menos de 5% de HP.", { kind: "survivorWins", target: 1 }, "Sobrevivente"]].forEach(([name, description, objective, title]) => add({ name, description, category: "Secretas", type: "secret", objective, reward: { resources: { ouro: 25000, cristal: 5 }, title, xp: 100 }, recommendedLevel: 20, icon: "?" }));
-    return defs.map((item, index, all) => ({ ...item, prevId: all[index - 1]?.type === item.type ? all[index - 1].id : null, nextId: all[index + 1]?.type === item.type ? all[index + 1].id : null }));
+    const selected = defs.length > 100 ? [...defs.slice(0, 89), ...defs.slice(-11)] : defs;
+    return selected.map((item, index, all) => ({ ...item, reward: balanceReward(item.reward), prevId: all[index - 1]?.type === item.type ? all[index - 1].id : null, nextId: all[index + 1]?.type === item.type ? all[index + 1].id : null }));
   })();
 
   const achievementDefinitions = (() => missionDefinitions.map((mission, index) => ({
@@ -2545,7 +2553,18 @@
       ship: SHIPS[Math.max(...state.ownedShips)].name, pet: currentPet?.name || null,
       duration: Math.max(0, Math.floor((Date.now() - state.journeyStartedAt) / 1000))
     };
-    const permanent = { prestiges: state.prestiges + 1, pirateCoins: state.pirateCoins + reward, ownedPets: [...state.ownedPets], equippedPetId: state.equippedPetId, prestigeHistory: [entry, ...state.prestigeHistory].slice(0, 20) };
+    const permanent = {
+      prestiges: state.prestiges + 1,
+      pirateCoins: state.pirateCoins + reward,
+      ownedPets: [...state.ownedPets],
+      equippedPetId: state.equippedPetId,
+      prestigeHistory: [entry, ...state.prestigeHistory].slice(0, 20),
+      achievements: {
+        completed: { ...state.achievements.completed },
+        claimed: { ...state.achievements.claimed }
+      },
+      titles: [...state.titles]
+    };
     state = createDefaultState();
     Object.assign(state, permanent);
     state.combat.playerHp = getStats().maxHp;

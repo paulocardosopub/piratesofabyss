@@ -1,5 +1,5 @@
-const CACHE = "pirates-abyss-v18-quests-endgame";
-const ASSETS = ["./", "index.html", "styles.css?v=18", "game.js?v=18", "icon.svg", "manifest.webmanifest"];
+const CACHE = "pirates-abyss-v19-quests-prestige-balance";
+const ASSETS = ["./", "index.html", "styles.css?v=19", "game.js?v=19", "icon.svg", "manifest.webmanifest"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
