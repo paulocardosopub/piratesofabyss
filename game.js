@@ -44,10 +44,10 @@
     { name: "Baía dos Corsários", weather: "Fumaça de canhões", description: "Esconderijos rochosos e a elite dos contrabandistas.", boss: "Almirante Negro", enemies: ["Corveta Corsária", "Brigantina Negra", "Contrabandista de Armas", "Carrasco da Baía"], drops: { ferro: .20, polvora: .15 }, baseHp: 740, baseDamage: 61, gold: 72, goldRange: [50, 95], bossGold: [4000, 7500], xp: 135, sky: "#bd7964", sea: "#294b5d", land: "#4a4540", kind: "CORSÁRIO" },
     { name: "Oceano Profundo", weather: "Correntes abissais", description: "Águas escuras habitadas por feras e caçadores.", boss: "Megalodon Ancestral", enemies: ["Baleeiro Sombrio", "Caçador Abissal", "Serpente Marinha", "Nau do Recife"], drops: { perola: .075, cristal: .08 }, baseHp: 1550, baseDamage: 125, gold: 108, goldRange: [75, 140], bossGold: [7500, 12000], xp: 278, sky: "#2f6680", sea: "#092f48", land: "#364f52", kind: "CRIATURA" },
     { name: "Triângulo Maldito", weather: "Névoa espectral", description: "Navios fantasmas surgem e somem dentro da névoa.", boss: "Holandês Voador", enemies: ["Escuna Fantasma", "Tripulação Perdida", "Nau Espectral", "Vulto do Triângulo"], drops: { ambar: .045, cristal: .095 }, baseHp: 3250, baseDamage: 254, gold: 145, goldRange: [100, 190], bossGold: [12000, 20000], xp: 568, sky: "#536b6e", sea: "#173f4b", land: "#455653", kind: "FANTASMA" },
-    { name: "Mar Imperial", weather: "Ventos de guerra", description: "Fortificações e frotas militares dominam o horizonte.", boss: "Grande Armada Imperial", enemies: ["Fragata Real", "Corveta Imperial", "Navio de Suprimentos", "Patrulha da Coroa"], drops: { ferro: .24, cristal: .085 }, baseHp: 6800, baseDamage: 520, gold: 190, goldRange: [130, 250], bossGold: [20000, 35000], xp: 1170, sky: "#8ca7bb", sea: "#2b5c78", land: "#6c7568", kind: "MARINHA" },
-    { name: "Arquipélago Vulcânico", weather: "Cinzas no ar", description: "Rochas negras, lava e criaturas cobertas de magma.", boss: "Dragão Marinho Vulcânico", enemies: ["Nau de Obsidiana", "Saqueador de Cinzas", "Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .18, ferro: .21, cristal: .09 }, baseHp: 14200, baseDamage: 1070, gold: 240, goldRange: [160, 320], bossGold: [35000, 60000], xp: 2400, sky: "#8c4d3e", sea: "#373743", land: "#342e2b", kind: "VULCÂNICO" },
-    { name: "Reino Congelado", weather: "Nevasca cortante", description: "Icebergs, monstros gelados e navios presos no gelo.", boss: "Jormungandr de Gelo", enemies: ["Quebra-Gelo Hostil", "Corsário Boreal", "Serpente de Gelo", "Fragata Congelada"], drops: { cristal: .11, gema: .04 }, baseHp: 29800, baseDamage: 2200, gold: 335, goldRange: [220, 450], bossGold: [60000, 100000], xp: 4950, sky: "#b4d4df", sea: "#447b91", land: "#d2e2e1", kind: "GLACIAL" },
-    { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Cultista do Kraken", "Dreadnought Afundado", "Tentáculo Abissal", "Leviatã Menor"], drops: { fragmentos: .008, gema: .045, cristal: .12 }, baseHp: 62500, baseDamage: 4500, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 10200, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
+    { name: "Mar Imperial", weather: "Ventos de guerra", description: "Fortificações e frotas militares dominam o horizonte.", boss: "Grande Armada Imperial", enemies: ["Fragata Imperial", "Galeão Real", "Navio de Linha", "Encouraçado Imperial", "Frota Imperial"], drops: { ferro: .24, cristal: .095 }, baseHp: 22000, baseDamage: 1300, gold: 190, goldRange: [130, 250], bossGold: [20000, 35000], xp: 1650, sky: "#8ca7bb", sea: "#2b5c78", land: "#6c7568", kind: "MARINHA" },
+    { name: "Arquipélago Vulcânico", weather: "Cinzas no ar", description: "Rochas negras, lava e criaturas cobertas de magma.", boss: "Dragão Marinho Vulcânico", enemies: ["Corsário Vulcânico", "Bote Flamejante", "Guardião de Lava", "Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .2, ferro: .22, cristal: .1 }, baseHp: 52000, baseDamage: 3200, gold: 240, goldRange: [160, 320], bossGold: [35000, 60000], xp: 3600, sky: "#8c4d3e", sea: "#373743", land: "#342e2b", kind: "VULCÂNICO" },
+    { name: "Reino Congelado", weather: "Nevasca cortante", description: "Icebergs, monstros gelados e navios presos no gelo.", boss: "Jormungandr de Gelo", enemies: ["Navio Congelado", "Corsário de Gelo", "Serpente Glacial", "Guardião Congelado", "Fragata Ártica"], drops: { cristal: .12, gema: .045 }, baseHp: 125000, baseDamage: 7200, gold: 335, goldRange: [220, 450], bossGold: [60000, 100000], xp: 7800, sky: "#b4d4df", sea: "#447b91", land: "#d2e2e1", kind: "GLACIAL" },
+    { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Criatura Abissal", "Navio Amaldiçoado", "Tentáculo Menor", "Leviatã Jovem", "Guardião do Abismo", "Frota Fantasma"], drops: { fragmentos: .008, gema: .05, cristal: .13 }, baseHp: 320000, baseDamage: 18000, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 18000, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
   ];
   const REGIONS = [...PRIMITIVE_REGIONS, ...MAIN_REGIONS];
 
@@ -171,10 +171,22 @@
     const day = Math.floor((now - first) / 86400000);
     return `${now.getFullYear()}-W${String(Math.ceil((day + first.getDay() + 1) / 7)).padStart(2, "0")}`;
   };
-  const MISSION_FILTERS = ["Todas", "Pronta", "Em andamento", "Bloqueada", "Principal", "Combate", "Boss", "Mapas", "Recursos", "Upgrades", "Navios", "Skills", "Comércio", "Idle", "Diária", "Semanal", "Endgame", "Secretas"];
-  const ACHIEVEMENT_FILTERS = ["Todas", "Concluídas", "Em andamento", "Bloqueadas", "Primeiros Passos", "Combate", "Bosses", "Mapas", "Recursos", "Upgrades", "Navios", "Skills", "Comércio", "Idle", "Secretas", "Endgame"];
-  let activeMissionFilter = "Todas";
-  let activeAchievementFilter = "Todas";
+  const MISSION_FILTERS = ["Próximas de concluir", "Em andamento", "Concluídas", "Diárias", "Semanais", "História / Principal", "Todas"];
+  const ACHIEVEMENT_FILTERS = ["Próximas de conquistar", "Em andamento", "Concluídas", "Secretas", "Todas"];
+  const ENDGAME_REQUIREMENTS = {
+    11: { power: 25000, dps: 8000, maxHp: 20000, upgrades: 30, tier: 3, prestiges: 2, label: "Endgame imperial" },
+    12: { power: 50000, dps: 18000, maxHp: 45000, upgrades: 50, tier: 4, prestiges: 3, label: "Endgame vulcânico" },
+    13: { power: 100000, dps: 40000, maxHp: 90000, upgrades: 80, tier: 4, prestiges: 4, label: "Endgame congelado" },
+    14: { power: 250000, dps: 100000, maxHp: 250000, upgrades: 120, tier: 5, prestiges: 5, label: "Desafio final do Kraken" }
+  };
+  const ENDGAME_ENEMY_MODS = {
+    11: { hp: 1.75, damage: 1.45, armor: 1.55, evasion: .015, attackSpeed: .9, skillResist: .12, bossHp: 1.8, bossDamage: 1.45, bossArmor: 1.45, special: "blindagem imperial" },
+    12: { hp: 2.25, damage: 2.05, armor: 1.25, evasion: .02, attackSpeed: .82, skillResist: .2, bossHp: 2.35, bossDamage: 2.1, bossArmor: 1.35, special: "chamas vulcânicas" },
+    13: { hp: 2.85, damage: 2.35, armor: 1.85, evasion: .025, attackSpeed: .78, skillResist: .28, bossHp: 3.15, bossDamage: 2.55, bossArmor: 1.85, special: "controle glacial" },
+    14: { hp: 4.2, damage: 3.7, armor: 2.45, evasion: .04, attackSpeed: .68, skillResist: .4, bossHp: 5.4, bossDamage: 4.25, bossArmor: 2.6, special: "maldição abissal" }
+  };
+  let activeMissionFilter = "Próximas de concluir";
+  let activeAchievementFilter = "Próximas de conquistar";
 
   function rewardText(reward = {}) {
     const parts = Object.entries(reward.resources || {}).filter(([, value]) => value > 0).map(([key, value]) => `${formatNumber(value)} ${RESOURCE_META[key]?.name || key}`);
@@ -206,31 +218,36 @@
     [
       ["Primeiro Comando", "Inicie o jogo e equipe o primeiro navio.", { kind: "started" }, { ouro: 100, madeira: 10 }],
       ["Primeiro Combate", "Entre em combate pela primeira vez.", { kind: "firstCombat" }, { ouro: 150 }],
-      ["Primeiro Inimigo Afundado", "Derrote 1 inimigo.", { kind: "enemies", target: 1 }, { ouro: 200, madeira: 10 }],
-      ["Primeiros Saques", "Colete 100 Ouro.", { kind: "gold", target: 100 }, { ouro: 100, ferro: 10 }],
-      ["Melhorar Canhões I", "Compre 1 upgrade de canhão.", { kind: "upgrade", type: "cannons", target: 1 }, { ouro: 300, polvora: 15 }],
-      ["Melhorar Velas I", "Compre 1 upgrade de vela.", { kind: "upgrade", type: "sails", target: 1 }, { ouro: 300, tecido: 15 }],
-      ["Melhorar Casco I", "Compre 1 upgrade de casco.", { kind: "upgrade", type: "hull", target: 1 }, { ouro: 300, madeira: 15 }],
-      ["Preparado para o Mar", "Tenha 1 upgrade em canhões, velas e casco.", { kind: "allCoreUpgrades", target: 1 }, { ouro: 750 }],
-      ["Dez Afundamentos", "Derrote 10 inimigos.", { kind: "enemies", target: 10 }, { ouro: 500, madeira: 25, ferro: 25 }],
+      ["Primeiro Inimigo Afundado", "Derrote 5 inimigos na jornada.", { kind: "enemies", target: 5 }, { ouro: 200, madeira: 10 }],
+      ["Primeiros Saques", "Colete 750 Ouro.", { kind: "gold", target: 750 }, { ouro: 100, ferro: 10 }],
+      ["Melhorar Canhões I", "Compre 5 upgrades de canhão.", { kind: "upgrade", type: "cannons", target: 5 }, { ouro: 300, polvora: 15 }],
+      ["Melhorar Velas I", "Compre 5 upgrades de vela.", { kind: "upgrade", type: "sails", target: 5 }, { ouro: 300, tecido: 15 }],
+      ["Melhorar Casco I", "Compre 5 upgrades de casco.", { kind: "upgrade", type: "hull", target: 5 }, { ouro: 300, madeira: 15 }],
+      ["Preparado para o Mar", "Tenha 5 upgrades em canhões, velas e casco.", { kind: "allCoreUpgrades", target: 5 }, { ouro: 750 }],
+      ["Caçada Regional", "Derrote 75 inimigos na jornada.", { kind: "enemies", target: 75 }, { ouro: 500, madeira: 25, ferro: 25 }],
       ["Pirata Iniciante", "Alcance nível 3 de pirata.", { kind: "pirateLevel", target: 3 }, { ouro: 1000 }]
     ].forEach(([name, description, objective, resources], index) => add({ name, description, objective, reward: { resources, xp: index < 3 ? 10 : 50 }, recommendedLevel: Math.max(1, Math.ceil((index + 1) / 2)), icon: "☠" }));
-    [25, 50, 100, 250, 500, 1000, 5000].forEach((target, i) => add({ name: `Caçador dos Mares ${roman[i]}`, description: `Derrote ${shortNumber(target)} inimigos no total.`, category: "Combate", type: "combat", objective: { kind: "enemies", target }, reward: { resources: { ouro: 750 * (i + 1), polvora: i < 3 ? 25 * (i + 1) : 0, cristal: i >= 4 ? i : 0 }, xp: 25 * (i + 1) }, recommendedLevel: 2 + i * 3, icon: "⚔" }));
+    [75, 200, 500, 1000, 2500, 5000, 10000].forEach((target, i) => add({ name: `Caçador dos Mares ${roman[i]}`, description: `Derrote ${shortNumber(target)} inimigos no total.`, category: "Combate", type: "combat", objective: { kind: "enemies", target }, reward: { resources: { ouro: 750 * (i + 1), polvora: i < 3 ? 25 * (i + 1) : 0, cristal: i >= 4 ? i : 0 }, xp: 25 * (i + 1) }, recommendedLevel: 2 + i * 4, icon: "⚔" }));
     [1, 3, 5, 10, REGIONS.length].forEach((target, i) => add({ name: `Boss Hunter ${roman[i]}`, description: i === 0 ? "Derrote o primeiro boss regional." : `Derrote ${target} bosses regionais.`, category: "Boss", type: "boss", objective: { kind: "bosses", target }, reward: { resources: { ouro: 2500 * (i + 1), cristal: i >= 1 ? 3 * i : 0, fragmentos: i >= 3 ? i : 0 }, xp: 100 * (i + 1) }, recommendedLevel: 8 + i * 8, icon: "👑" }));
     MAIN_REGIONS.slice(0, 10).forEach((region, i) => add({ name: region.name, description: `Desbloqueie ${region.name}.`, category: "Mapas", type: "map", objective: { kind: "regionUnlocked", target: PRIMITIVE_REGIONS.length + i + 1 }, reward: { resources: { ouro: 1800 * (i + 1), ...(i > 6 ? { fragmentos: 1 } : i > 3 ? { perola: 2 } : { madeira: 40 }) }, xp: 75 * (i + 1) }, recommendedLevel: 3 + i * 5, icon: "⌖" }));
-    Object.entries({ madeira: [100, 500, 1000], ferro: [100, 500], tecido: [100, 500], polvora: [250], cristal: [100], perola: [50], ambar: [50], fragmentos: [10] }).forEach(([key, targets]) => targets.forEach((target, i) => add({ name: `${RESOURCE_META[key].name} ${roman[i]}`, description: `Colete ${shortNumber(target)} ${RESOURCE_META[key].name}.`, category: "Recursos", type: "resource", objective: { kind: "resource", key, target }, reward: { resources: { ouro: target * 8, [key]: Math.max(2, Math.round(target * .1)) }, xp: Math.round(target / 4) }, recommendedLevel: key === "fragmentos" ? 70 : key === "ambar" ? 45 : key === "cristal" ? 18 : 5, icon: RESOURCE_META[key].icon })));
-    ["cannons", "sails", "hull"].forEach(type => [1, 3, 5, 10, 25].forEach((target, i) => add({ name: `${type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} ${roman[i]}`, description: `Compre ${target} upgrades de ${type === "cannons" ? "canhões" : type === "sails" ? "velas" : "casco"}.`, category: "Upgrades", type: "upgrade", objective: { kind: "upgrade", type, target }, reward: { resources: { ouro: 600 * target, [type === "cannons" ? "polvora" : type === "sails" ? "tecido" : "madeira"]: 20 * (i + 1) }, xp: 40 * (i + 1) }, recommendedLevel: 4 + i * 6, icon: type === "cannons" ? "☄" : type === "sails" ? "◒" : "⬡" })));
+    Object.entries({ madeira: [1000, 5000], ferro: [1000, 5000], tecido: [1000, 5000], polvora: [500, 1500], cristal: [500], perola: [100], ambar: [100], fragmentos: [25] }).forEach(([key, targets]) => targets.forEach((target, i) => add({ name: `${RESOURCE_META[key].name} ${roman[i]}`, description: `Colete ${shortNumber(target)} ${RESOURCE_META[key].name}.`, category: "Recursos", type: "resource", objective: { kind: "resource", key, target }, reward: { resources: { ouro: target * 8, [key]: Math.max(2, Math.round(target * .08)) }, xp: Math.round(target / 4) }, recommendedLevel: key === "fragmentos" ? 70 : key === "ambar" ? 45 : key === "cristal" ? 18 : 5, icon: RESOURCE_META[key].icon })));
+    ["cannons", "sails", "hull"].forEach(type => [5, 10, 20, 35, 50, 75, 100].forEach((target, i) => add({ name: `${type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} ${roman[i]}`, description: `Compre ${target} upgrades de ${type === "cannons" ? "canhões" : type === "sails" ? "velas" : "casco"}.`, category: "Upgrades", type: "upgrade", objective: { kind: "upgrade", type, target }, reward: { resources: { ouro: 600 * target, [type === "cannons" ? "polvora" : type === "sails" ? "tecido" : "madeira"]: 20 * (i + 1) }, xp: 40 * (i + 1) }, recommendedLevel: 4 + i * 7, icon: type === "cannons" ? "☄" : type === "sails" ? "◒" : "⬡" })));
     [2, 5, 10, 15, SHIPS.length].forEach((target, i) => add({ name: ["Novo Navio", "Pequena Frota", "Frota de Guerra", "Estaleiro Pirata", "Dono da Frota"][i], description: `Compre ${target === SHIPS.length ? "todos os navios" : `${target} navios`}.`, category: "Navios", type: "ship", objective: { kind: "shipsOwned", target }, reward: { resources: { ouro: 2000 * (i + 1) ** 2, madeira: 100 * (i + 1), fragmentos: i === 4 ? 10 : 0 }, xp: 100 * (i + 1) }, recommendedLevel: 5 + i * 15, icon: "⛵" }));
-    Object.keys(SKILL_META).forEach((key, i) => add({ name: `${SKILL_META[key].name} em Ação`, description: `Use ${SKILL_META[key].name} 25 vezes.`, category: "Skills", type: "skill", objective: { kind: "skillUse", key, target: 25 }, reward: { resources: { ouro: 2000 + i * 1000, [SKILL_META[key].materials[0]]: 25 }, xp: 75 }, recommendedLevel: SKILL_META[key].unlock, icon: SKILL_META[key].icon }));
+    Object.keys(SKILL_META).forEach((key, i) => add({ name: `${SKILL_META[key].name} em Ação`, description: `Use ${SKILL_META[key].name} ${[100, 250, 500, 1000][i]} vezes em combate.`, category: "Skills", type: "skill", objective: { kind: "skillUse", key, target: [100, 250, 500, 1000][i] }, reward: { resources: { ouro: 2000 + i * 1000, [SKILL_META[key].materials[0]]: 25 }, xp: 75 }, recommendedLevel: SKILL_META[key].unlock, icon: SKILL_META[key].icon }));
     add({ name: "Skills Automáticas", description: "Ative auto lançamento em 3 skills.", category: "Skills", type: "skill", objective: { kind: "skillAuto", target: 3 }, reward: { resources: { ouro: 5000 }, xp: 100 }, recommendedLevel: 20, icon: "⚙" });
-    [["Primeiro Negócio", "Compre recurso no Comércio pela primeira vez.", "tradeBuys", 1], ["Venda no Porto", "Venda recurso no Comércio pela primeira vez.", "tradeSells", 1], ["Mercador Iniciante", "Faça 10 transações no Comércio.", "tradeTransactions", 10], ["Mestre Mercador", "Faça 100 transações no Comércio.", "tradeTransactions", 100]].forEach(([name, description, kind, target], i) => add({ name, description, category: "Comércio", type: "trade", objective: { kind, target }, reward: { resources: { ouro: 500 * (i + 1) ** 2, comida: i > 1 ? 50 : 0 }, xp: 40 * (i + 1) }, recommendedLevel: 10 + i * 6, icon: "⚖" }));
+    [["Primeiro Negócio", "Realize 5 compras no Comércio.", "tradeBuys", 5], ["Venda no Porto", "Realize 5 vendas no Comércio.", "tradeSells", 5], ["Mercador Iniciante", "Faça 25 transações no Comércio.", "tradeTransactions", 25], ["Mestre Mercador", "Faça 150 transações no Comércio.", "tradeTransactions", 150]].forEach(([name, description, kind, target], i) => add({ name, description, category: "Comércio", type: "trade", objective: { kind, target }, reward: { resources: { ouro: 500 * (i + 1) ** 2, comida: i > 1 ? 50 : 0 }, xp: 40 * (i + 1) }, recommendedLevel: 10 + i * 6, icon: "⚖" }));
     [[1, "Recompensa Offline"], [3600, "Capitão Ausente"], [28800, "Viagem Longa"], [86400, "Maratona Idle"]].forEach(([target, name], i) => add({ name, description: i === 0 ? "Colete recompensa offline pela primeira vez." : `Acumule ${formatDuration(target)} de recompensa offline.`, category: "Idle", type: "idle", objective: { kind: i === 0 ? "offlineClaims" : "offlineSeconds", target }, reward: { resources: { ouro: 1000 * (i + 1), comida: i ? 50 * i : 0, cristal: i >= 2 ? 3 : 0, fragmentos: i === 3 ? 3 : 0 }, xp: 50 * (i + 1) }, recommendedLevel: 3 + i * 10, icon: "☾" }));
     [[100, "DPS Inicial", "dps"], [1000, "DPS Forte", "dps"], [10000, "DPS Absurdo", "dps"], [1000, "Vida Reforçada", "maxHp"], [10000, "Casco Imortal", "maxHp"]].forEach(([target, name, kind], i) => add({ name, description: `Atinja ${shortNumber(target)} ${kind === "dps" ? "DPS" : "HP máximo"}.`, category: "Endgame", type: "stats", objective: { kind, target }, reward: { resources: { ouro: 1000 * (i + 1) ** 2, cristal: i > 0 ? 5 : 0, fragmentos: i === 2 ? 5 : 0 }, xp: 80 * (i + 1) }, recommendedLevel: 8 + i * 12, icon: "◆" }));
-    [["Caçada Diária", "Derrote 50 inimigos hoje.", "dailyEnemies", 50], ["Saque Diário", "Colete 1.000 Ouro hoje.", "dailyGold", 1000], ["Upgrade Diário", "Faça 1 upgrade hoje.", "dailyUpgrades", 1], ["Skill Diária", "Use skills 10 vezes hoje.", "dailySkillUses", 10], ["Comércio Diário", "Faça 3 transações hoje.", "dailyTrades", 3]].forEach(([name, description, kind, target]) => add({ name, description, category: "Diária", type: "daily", objective: { kind, target }, reward: { resources: { ouro: 500, polvora: kind === "dailySkillUses" ? 25 : 0, comida: kind === "dailyTrades" ? 25 : 0 }, xp: 50 }, recommendedLevel: 1, icon: "☀", resets: "daily" }));
-    [["Semana de Guerra", "Derrote 500 inimigos na semana.", "weeklyEnemies", 500], ["Semana de Boss", "Derrote 3 bosses na semana.", "weeklyBosses", 3], ["Semana de Upgrades", "Faça 10 upgrades na semana.", "weeklyUpgrades", 10], ["Semana de Recursos", "Colete 1.000 recursos na semana.", "weeklyResources", 1000], ["Semana Mercante", "Realize 25 transações na semana.", "weeklyTrades", 25]].forEach(([name, description, kind, target]) => add({ name, description, category: "Semanal", type: "weekly", objective: { kind, target }, reward: { resources: { ouro: 10000, cristal: 5, perola: kind === "weeklyBosses" ? 3 : 0, gema: kind === "weeklyUpgrades" ? 3 : 0 }, xp: 250 }, recommendedLevel: 10, icon: "☽", resets: "weekly" }));
+    [
+      ["Preparado para o Boss", "Derrote, melhore canhões/casco e alcance Poder Naval mínimo.", { kind: "all", objectives: [{ kind: "enemies", target: 300 }, { kind: "upgrade", type: "cannons", target: 10 }, { kind: "upgrade", type: "hull", target: 10 }, { kind: "power", target: 5000 }] }, 18],
+      ["Domínio da Região", "Domine a fase atual antes de buscar o próximo grande salto.", { kind: "all", objectives: [{ kind: "bosses", target: 3 }, { kind: "resourceTotal", target: 1000 }, { kind: "enemies", target: 500 }, { kind: "totalUpgrades", target: 20 }] }, 25],
+      ["Navio de Guerra", "Equipe um navio forte, alcance DPS alto e derrote boss preparado.", { kind: "all", objectives: [{ kind: "shipTier", target: 4 }, { kind: "dps", target: 10000 }, { kind: "totalUpgrades", target: 25 }, { kind: "bosses", target: 5 }] }, 35]
+    ].forEach(([name, description, objective, recommendedLevel], i) => add({ name, description, category: "Principal", type: "main", objective, reward: { resources: { ouro: 20000 * (i + 1), cristal: 10 * (i + 1), fragmentos: i ? i : 0 }, xp: 250 * (i + 1) }, recommendedLevel, icon: "✦" }));
+    [["Caçada Diária", "Derrote 75 inimigos hoje.", "dailyEnemies", 75], ["Saque Diário", "Colete 3.000 Ouro hoje.", "dailyGold", 3000], ["Upgrade Diário", "Faça 3 upgrades hoje.", "dailyUpgrades", 3], ["Skill Diária", "Use skills 100 vezes hoje.", "dailySkillUses", 100], ["Comércio Diário", "Faça 10 transações hoje.", "dailyTrades", 10]].forEach(([name, description, kind, target]) => add({ name, description, category: "Diária", type: "daily", objective: { kind, target }, reward: { resources: { ouro: 500, polvora: kind === "dailySkillUses" ? 25 : 0, comida: kind === "dailyTrades" ? 25 : 0 }, xp: 50 }, recommendedLevel: 1, icon: "☀", resets: "daily" }));
+    [["Semana de Guerra", "Derrote 1.500 inimigos na semana.", "weeklyEnemies", 1500], ["Semana de Boss", "Derrote 5 bosses na semana.", "weeklyBosses", 5], ["Semana de Upgrades", "Faça 35 upgrades na semana.", "weeklyUpgrades", 35], ["Semana de Recursos", "Colete 5.000 recursos na semana.", "weeklyResources", 5000], ["Semana Mercante", "Realize 75 transações na semana.", "weeklyTrades", 75]].forEach(([name, description, kind, target]) => add({ name, description, category: "Semanal", type: "weekly", objective: { kind, target }, reward: { resources: { ouro: 10000, cristal: 5, perola: kind === "weeklyBosses" ? 3 : 0, gema: kind === "weeklyUpgrades" ? 3 : 0 }, xp: 250 }, recommendedLevel: 10, icon: "☽", resets: "weekly" }));
     [["Black Abyss", "Compre o navio Black Abyss.", { kind: "shipName", name: "Black Abyss" }, "Black Abyss"], ["Poder Lendário", "Equipe um navio lendário e alcance 10.000 DPS.", { kind: "legendaryPower", target: 10000 }, "Poder Lendário"], ["Rei dos Bosses", "Derrote todos os bosses regionais.", { kind: "allBosses" }, "Rei dos Bosses"], ["Mestre dos Recursos", "Colete todos os tipos de recursos pelo menos uma vez.", { kind: "allResourcesSeen" }, "Mestre dos Recursos"], ["Arsenal Final", "Desbloqueie todas as skills base.", { kind: "allSkillsUnlocked" }, "Arsenal Final"], ["Navio Perfeito", "Tenha canhões, velas e casco no nível 25.", { kind: "perfectShip", target: 25 }, "Navio Perfeito"], ["Missão Final", "Complete 99 missões.", { kind: "missionsCompleted", target: 99 }, "Lenda das Missões"]].forEach(([name, description, objective, title], i) => add({ name, description, category: "Endgame", type: "endgame", objective, reward: { resources: { ouro: 100000 * (i + 1), fragmentos: 5 + i }, title, xp: 500 }, recommendedLevel: 60, icon: "✹" }));
     [["Testemunha do Abismo", "Veja a animação rara do Kraken no cenário.", { kind: "krakenSightings", target: 1 }, "Testemunha do Abismo"], ["Sorte do Pirata", "Receba múltiplos recursos em uma única batalha.", { kind: "multiResourceDrops", target: 1 }, null], ["Sem Materiais", "Receba apenas Ouro em 100 batalhas.", { kind: "onlyGoldBattles", target: 100 }, null], ["Sobrevivente", "Vença uma batalha com menos de 5% de HP.", { kind: "survivorWins", target: 1 }, "Sobrevivente"]].forEach(([name, description, objective, title]) => add({ name, description, category: "Secretas", type: "secret", objective, reward: { resources: { ouro: 25000, cristal: 5 }, title, xp: 100 }, recommendedLevel: 20, icon: "?" }));
-    return defs.slice(0, 100).map((item, index, all) => ({ ...item, nextId: all[index + 1]?.type === item.type ? all[index + 1].id : null }));
+    return defs.map((item, index, all) => ({ ...item, prevId: all[index - 1]?.type === item.type ? all[index - 1].id : null, nextId: all[index + 1]?.type === item.type ? all[index + 1].id : null }));
   })();
 
   const achievementDefinitions = (() => missionDefinitions.map((mission, index) => ({
@@ -660,6 +677,7 @@
       pirateLevel: state.pirateLevel,
       regionUnlocked: state.unlockedRegions,
       shipsOwned: state.ownedShips.length,
+      shipTier: SHIPS[state.shipId].tier,
       tradeTransactions: p.trade.transactions,
       tradeBuys: p.trade.buys,
       tradeSells: p.trade.sells,
@@ -667,6 +685,10 @@
       offlineSeconds: p.offline.seconds,
       dps: stats.dps,
       maxHp: stats.maxHp,
+      power: stats.power,
+      totalUpgrades: p.totalUpgrades || Math.max(0, state.levels.ship + state.levels.cannons + state.levels.sails + state.levels.hull - 4),
+      prestiges: state.prestiges,
+      resourceTotal: Object.values(p.resourcesByKey || {}).reduce((sum, value) => sum + Number(value || 0), 0),
       dailyEnemies: p.daily.enemies,
       dailyGold: p.daily.gold,
       dailyUpgrades: p.daily.upgrades,
@@ -684,6 +706,7 @@
       missionsCompleted: completedCount(state.quests, missionDefinitions),
       achievementsCompleted: completedCount(state.achievements, achievementDefinitions)
     };
+    if (objective.kind === "all") return Math.floor(Math.min(...objective.objectives.map(entry => objectiveProgress(entry) / Math.max(1, objectiveTarget(entry)))) * 100);
     if (objective.kind === "upgrade") return p.upgradesByType[objective.type] || Math.max(0, state.levels[objective.type] - 1);
     if (objective.kind === "allCoreUpgrades") return Math.min(p.upgradesByType.cannons || 0, p.upgradesByType.sails || 0, p.upgradesByType.hull || 0);
     if (objective.kind === "resource") return p.resourcesByKey[objective.key] || 0;
@@ -699,6 +722,7 @@
   }
 
   function objectiveTarget(objective) {
+    if (objective.kind === "all") return 100;
     if (objective.kind === "started" || objective.kind === "firstCombat" || objective.kind === "shipName" || objective.kind === "legendaryPower") return objective.target || 1;
     if (objective.kind === "allBosses") return REGIONS.length;
     if (objective.kind === "allResourcesSeen") return Object.keys(RESOURCE_META).length;
@@ -709,6 +733,7 @@
   function isProgressionUnlocked(item, definitions, storeName) {
     if (item.secret && !state[storeName].completed[item.id] && objectiveProgress(item.objective) < objectiveTarget(item.objective)) return false;
     if (state.pirateLevel < (item.level || item.recommendedLevel || 1)) return false;
+    if (item.prevId && !state[storeName].claimed[item.prevId]) return false;
     if (item.objective.kind === "resource" && ["cristal", "perola", "ambar", "pedra", "fragmentos"].includes(item.objective.key)) {
       const index = REGIONS.findIndex(region => region.drops[item.objective.key]);
       if (index >= 0 && state.unlockedRegions <= index) return false;
@@ -1309,13 +1334,41 @@
     return roster[roster.length - 1];
   }
 
+  function getEndgameStageMultiplier(index) {
+    if (!ENDGAME_ENEMY_MODS[index]) return 1;
+    const kills = state.regionKills[index] || 0;
+    if (kills >= 76) return 1.55;
+    if (kills >= 51) return 1.32;
+    if (kills >= 26) return 1.16;
+    return 1;
+  }
+
+  function endgameRequirementIssues(index) {
+    const req = ENDGAME_REQUIREMENTS[index];
+    if (!req) return [];
+    const stats = getStats();
+    const upgrades = state.levels.ship + state.levels.cannons + state.levels.sails + state.levels.hull - 4;
+    const tier = SHIPS[state.shipId].tier;
+    const checks = [
+      ["Poder Naval", stats.power, req.power],
+      ["DPS", stats.dps, req.dps],
+      ["HP", stats.maxHp, req.maxHp],
+      ["Upgrades", upgrades, req.upgrades],
+      ["Tier do navio", tier, req.tier],
+      ["Prestígios", state.prestiges, req.prestiges]
+    ];
+    return checks.filter(([, owned, needed]) => owned < needed).map(([label, owned, needed]) => `${label}: ${formatNumber(owned)} / ${formatNumber(needed)}`);
+  }
+
   function spawnEnemy(isBoss = false) {
     const region = REGIONS[state.regionIndex];
     const variation = randomBetween(.9, 1.14);
     const roster = REGION_ENCOUNTERS[state.regionIndex] || [];
     const encounter = isBoss ? null : pickEncounter(roster);
     const profile = isBoss ? null : ENEMY_CATEGORIES[encounter.category];
-    const hp = Math.round(region.baseHp * variation * (isBoss ? 34 : profile.hp));
+    const mod = ENDGAME_ENEMY_MODS[state.regionIndex] || {};
+    const stage = getEndgameStageMultiplier(state.regionIndex);
+    const hp = Math.round(region.baseHp * variation * (isBoss ? 34 * (mod.bossHp || 1) : profile.hp * stage * (mod.hp || 1)));
     state.combat.enemy = {
       name: isBoss ? region.boss : encounter.name,
       kind: isBoss ? "BOSS" : profile.label,
@@ -1325,10 +1378,12 @@
       isBoss,
       maxHp: hp,
       hp,
-      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 : profile.damage)),
-      armor: isBoss ? 22 + state.regionIndex * 9 : Math.round((2 + state.regionIndex * 5) * profile.armor),
-      evasion: isBoss ? .035 : profile.evasion,
-      attackSpeed: isBoss ? .82 : profile.attackSpeed,
+      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 * (mod.bossDamage || 1) : profile.damage * stage * (mod.damage || 1))),
+      armor: Math.round((isBoss ? 22 + state.regionIndex * 9 : (2 + state.regionIndex * 5) * profile.armor) * (isBoss ? (mod.bossArmor || 1) : (mod.armor || 1))),
+      evasion: Math.min(.28, (isBoss ? .035 : profile.evasion) + (mod.evasion || 0)),
+      attackSpeed: (isBoss ? .82 : profile.attackSpeed) * (mod.attackSpeed || 1),
+      skillResist: mod.skillResist || 0,
+      special: mod.special || "",
       goldMultiplier: isBoss ? 1 : profile.gold,
       xpMultiplier: isBoss ? 1 : profile.xp,
       bonusDrops: isBoss ? {} : profile.drops,
@@ -1347,7 +1402,8 @@
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
     const mitigation = options.ignoreArmor ? 1 : 100 / (100 + enemy.armor);
-    const damage = Math.max(1, Math.round(rawDamage * mitigation));
+    const skillPenalty = options.skill ? 1 - (enemy.skillResist || 0) : 1;
+    const damage = Math.max(1, Math.round(rawDamage * mitigation * skillPenalty));
     enemy.hp = Math.max(0, enemy.hp - damage);
     state.lifetime.highestDamage = Math.max(state.lifetime.highestDamage, damage);
     if (options.pet) {
@@ -1378,10 +1434,10 @@
     const meta = SKILL_META[key];
     const level = state.skills[key].level;
     const base = getStats().damage * (meta.factor + (level - 1) * .24) * (1 + (getEquippedPet()?.dpsBonus || 0));
-    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a" }); enemy.burnTime = meta.burnDuration + (level - 1) * .25; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04); }
-    if (key === "ice") { dealToEnemy(base, { color: "#81e8ff" }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
-    if (key === "ghost") dealToEnemy(base, { color: "#c58cff", ignoreArmor: true });
-    if (key === "chain") { dealToEnemy(base, { color: "#d9e4df" }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
+    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a", skill: true }); enemy.burnTime = meta.burnDuration + (level - 1) * .25; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04) * (1 - (enemy.skillResist || 0)); }
+    if (key === "ice") { dealToEnemy(base, { color: "#81e8ff", skill: true }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
+    if (key === "ghost") dealToEnemy(base, { color: "#c58cff", ignoreArmor: true, skill: true });
+    if (key === "chain") { dealToEnemy(base, { color: "#d9e4df", skill: true }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
     trackAction("skill", { key });
     addLog(`${meta.name} disparado automaticamente.`, "loot");
   }
@@ -1406,6 +1462,13 @@
     if (Math.random() < stats.evasion) { addLog("Manobra perfeita: ataque inimigo evitado.", "loot"); return; }
     const damage = Math.max(1, Math.round(enemy.damage * randomBetween(.87, 1.12) * 100 / (100 + stats.armor * 4)));
     state.combat.playerHp = Math.max(0, state.combat.playerHp - damage);
+    if (enemy.special && state.combat.playerHp > 0 && Math.random() < (enemy.isBoss ? .36 : .18)) {
+      const extra = enemy.special.includes("chamas") ? Math.round(enemy.damage * .18) : enemy.special.includes("glacial") ? Math.round(enemy.damage * .12) : enemy.special.includes("abissal") ? Math.round(enemy.damage * .22) : Math.round(enemy.damage * .1);
+      state.combat.playerHp = Math.max(0, state.combat.playerHp - Math.max(1, Math.round(extra * 100 / (100 + stats.armor * 4))));
+      if (enemy.special.includes("glacial")) state.combat.attackTimer = Math.max(0, state.combat.attackTimer - 450);
+      if (enemy.special.includes("abissal")) state.combat.petAttackTimer = Math.max(0, state.combat.petAttackTimer - 650);
+      addLog(`${enemy.name} aplica ${enemy.special}.`, "danger-text");
+    }
     scene.fire(false, "#ff8c68");
     setTimeout(() => { scene.burst(false, "#ff7657"); scene.floatDamage(damage, false, "#ffb09b"); }, 340);
     if (state.combat.playerHp <= 0) {
@@ -1983,7 +2046,9 @@
       const eraLabel = index < PRIMITIVE_REGIONS.length ? "Prólogo Primitivo" : "Jornada Pirata";
       const tags = Object.keys(region.drops).map(key => `<span>${RESOURCE_META[key].name} • ${Math.round(region.drops[key] * 100)}%</span>`).join("");
       const enemyTags = [...new Set(REGION_ENCOUNTERS[index].map(enemy => ENEMY_CATEGORIES[enemy.category].label))].map(label => `<span class="enemy-tag">⚔ ${label}</span>`).join("");
-      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land}"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div><div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
+      const endgameIssues = endgameRequirementIssues(index);
+      const endgameNotice = ENDGAME_REQUIREMENTS[index] ? `<div class="endgame-warning ${endgameIssues.length ? "danger" : "ready"}"><strong>${ENDGAME_REQUIREMENTS[index].label}</strong><span>${endgameIssues.length ? `Recomendado antes de avançar: ${endgameIssues.slice(0, 3).join(" • ")}${endgameIssues.length > 3 ? " • ..." : ""}` : "Preparação recomendada atingida."}</span></div>` : "";
+      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land}"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
     }).join("");
   }
 
@@ -2137,12 +2202,50 @@
     $(`#${rootId}`).innerHTML = filters.map(filter => `<button class="${filter === active ? "active" : ""}" data-progression-filter="${rootId}" data-filter-value="${filter}">${filter}</button>`).join("");
   }
 
-  function shouldShowProgression(item, status, filter) {
+  function progressionRatio(item) {
+    return clamp(objectiveProgress(item.objective) / Math.max(1, objectiveTarget(item.objective)), 0, 1);
+  }
+
+  function progressionPriority(item, status, kind) {
+    const ratio = progressionRatio(item);
+    const isMain = ["Principal", "Primeiros Passos", "Mapas", "Boss", "Bosses", "Endgame"].includes(item.category);
+    const currentMapRelated = item.objective.kind === "regionUnlocked" && item.objective.target <= state.unlockedRegions + 1;
+    const nearBoss = ["bosses", "allBosses"].includes(item.objective.kind) || item.category === "Boss" || item.category === "Bosses";
+    if (status === "ready") return 1000 + ratio * 100;
+    if (status === "locked") return -1000;
+    let score = ratio * 100;
+    if (ratio >= (kind === "achievement" ? .5 : .1)) score += 60;
+    if (ratio >= .5) score += 80;
+    if (isMain) score += 55;
+    if (currentMapRelated || nearBoss) score += 35;
+    if (item.resets === "daily" || item.resets === "weekly") score += 18;
+    score -= Math.max(0, (item.recommendedLevel || item.level || 1) - state.pirateLevel) * 4;
+    return score;
+  }
+
+  function progressionList(definitions, store, storeName, kind) {
+    return definitions.map(item => [item, progressionStatus(item, store, storeName)])
+      .map(([item, status]) => ({ item, status, ratio: progressionRatio(item), score: progressionPriority(item, status, kind) }));
+  }
+
+  function shouldShowProgression(entry, filter, kind) {
+    const { item, status, ratio } = entry;
     if (filter === "Todas") return true;
-    if (["Pronta", "Concluídas"].includes(filter)) return status === "ready" || status === "claimed";
+    if (filter === "Próximas de concluir" || filter === "Próximas de conquistar") return status === "ready" || (status === "progress" && ratio >= (kind === "achievement" ? .5 : .1));
+    if (filter === "Concluídas") return status === "ready" || status === "claimed";
     if (filter === "Em andamento") return status === "progress";
-    if (filter === "Bloqueada" || filter === "Bloqueadas") return status === "locked";
+    if (filter === "Diárias") return item.resets === "daily";
+    if (filter === "Semanais") return item.resets === "weekly";
+    if (filter === "História / Principal") return item.category === "Principal" || item.type === "main" || item.category === "Mapas" || item.category === "Boss";
+    if (filter === "Secretas") return item.secret || item.category === "Secretas";
     return item.category === filter;
+  }
+
+  function progressionLimit(filter, kind) {
+    if (filter === "Concluídas" || filter === "Todas" || filter === "Secretas") return Infinity;
+    if (filter === "Diárias" || filter === "Semanais") return 3;
+    if (filter === "História / Principal") return 9;
+    return kind === "achievement" ? 9 : 12;
   }
 
   function progressionCardHtml(item, store, status, kind) {
@@ -2152,13 +2255,14 @@
     const hiddenSecret = item.secret && status === "locked";
     const statusText = status === "claimed" ? "Recompensa coletada" : status === "ready" ? "Concluída" : status === "locked" ? "Bloqueada" : "Em andamento";
     const rarity = item.rarity ? `<span class="codex-rarity ${item.rarity.toLowerCase()}">${item.rarity}</span>` : "";
-    return `<article class="codex-card ${status} ${hiddenSecret ? "secret" : ""}">
+    const compactMeta = status === "claimed" ? `<div class="codex-compact-meta"><span>Registro concluído</span><strong>${store.claimed[item.id] ? new Date(store.claimed[item.id]).toLocaleDateString("pt-BR") : "Coletada"}</strong></div>` : "";
+    return `<article class="codex-card compact ${status} ${hiddenSecret ? "secret" : ""}">
       <div class="codex-card-top"><div class="codex-icon">${hiddenSecret ? "?" : item.icon}</div><div><span class="eyebrow">${item.category}</span><h3>${hiddenSecret ? "Missão secreta" : item.name}</h3></div><span class="codex-status">${statusText}</span></div>
       ${rarity}
       <p>${hiddenSecret ? "Objetivo oculto até ser descoberto nos mares." : item.description}</p>
-      <div class="codex-objective"><span>Objetivo</span><strong>${formatNumber(Math.min(progress, target))} / ${formatNumber(target)}</strong></div>
+      <div class="codex-objective"><span>Progresso</span><strong>${formatNumber(Math.min(progress, target))} / ${formatNumber(target)}</strong></div>
       <div class="codex-progress"><i style="width:${Math.round(ratio * 100)}%"></i></div>
-      <div class="codex-meta"><span>Nível recomendado: ${item.recommendedLevel || item.level || 1}</span><span>${item.resets === "daily" ? "Reinicia diariamente" : item.resets === "weekly" ? "Reinicia semanalmente" : "Progresso permanente"}</span></div>
+      ${compactMeta || `<div class="codex-meta"><span>Nível ${item.recommendedLevel || item.level || 1}</span><span>${item.resets === "daily" ? "Diária" : item.resets === "weekly" ? "Semanal" : "Permanente"}</span></div>`}
       <div class="codex-reward"><span>Recompensa</span><strong>${hiddenSecret ? "???" : rewardText(item.reward)}</strong></div>
       <button class="button primary" data-claim-${kind}="${item.id}" ${status === "ready" ? "" : "disabled"}>${status === "ready" ? "Coletar recompensa" : status === "claimed" ? "Coletada" : "Ainda não concluída"}</button>
     </article>`;
@@ -2170,8 +2274,11 @@
     renderProgressionFilters("mission-filters", MISSION_FILTERS, activeMissionFilter);
     const complete = completedCount(state.quests, missionDefinitions);
     $("#missions-summary").textContent = `${complete} / ${missionDefinitions.length}`;
-    const cards = missionDefinitions.map(item => [item, progressionStatus(item, state.quests, "quests")]).filter(([item, status]) => shouldShowProgression(item, status, activeMissionFilter));
-    $("#missions-grid").innerHTML = cards.length ? cards.map(([item, status]) => progressionCardHtml(item, state.quests, status, "mission")).join("") : `<p class="empty-state">Nenhuma missão neste filtro por enquanto.</p>`;
+    const cards = progressionList(missionDefinitions, state.quests, "quests", "mission")
+      .filter(entry => shouldShowProgression(entry, activeMissionFilter, "mission"))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, progressionLimit(activeMissionFilter, "mission"));
+    $("#missions-grid").innerHTML = cards.length ? cards.map(({ item, status }) => progressionCardHtml(item, state.quests, status, "mission")).join("") : `<p class="empty-state">Nenhuma missão relevante neste filtro por enquanto.</p>`;
   }
 
   function renderAchievements() {
@@ -2180,8 +2287,11 @@
     renderProgressionFilters("achievement-filters", ACHIEVEMENT_FILTERS, activeAchievementFilter);
     const complete = completedCount(state.achievements, achievementDefinitions);
     $("#achievements-summary").textContent = `${complete} / ${achievementDefinitions.length}`;
-    const cards = achievementDefinitions.map(item => [item, progressionStatus(item, state.achievements, "achievements")]).filter(([item, status]) => shouldShowProgression(item, status, activeAchievementFilter));
-    $("#achievements-grid").innerHTML = cards.length ? cards.map(([item, status]) => progressionCardHtml(item, state.achievements, status, "achievement")).join("") : `<p class="empty-state">Nenhuma conquista neste filtro por enquanto.</p>`;
+    const cards = progressionList(achievementDefinitions, state.achievements, "achievements", "achievement")
+      .filter(entry => shouldShowProgression(entry, activeAchievementFilter, "achievement"))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, progressionLimit(activeAchievementFilter, "achievement"));
+    $("#achievements-grid").innerHTML = cards.length ? cards.map(({ item, status }) => progressionCardHtml(item, state.achievements, status, "achievement")).join("") : `<p class="empty-state">Nenhuma conquista relevante neste filtro por enquanto.</p>`;
   }
 
   function openPrestigeConfirmation() {
@@ -2383,7 +2493,13 @@
     if (target.dataset.claimAchievement) claimProgressionReward("achievement", target.dataset.claimAchievement);
     if (target.dataset.selectMap) {
       const index = Number(target.dataset.selectMap);
-      if (index < state.unlockedRegions) { state.regionIndex = index; state.combat.enemy = null; state.combat.spawnTimer = 0; toast(`Rota definida: ${REGIONS[index].name}.`); renderAll(true); saveGame(); navigate("home"); }
+      if (index < state.unlockedRegions) {
+        const issues = endgameRequirementIssues(index);
+        state.regionIndex = index; state.combat.enemy = null; state.combat.spawnTimer = 0;
+        toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa região.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
+        if (issues.length) addLog(`Alerta de endgame: recomenda-se evoluir antes de avançar. ${issues.join(" • ")}.`, "danger-text");
+        renderAll(true); saveGame(); navigate("home");
+      }
     }
   });
 
@@ -2423,7 +2539,7 @@
     saveGame();
   });
   $("#reset-button").addEventListener("click", () => { resetShip(); renderAll(false); });
-  $("#boss-button").addEventListener("click", () => { if (state.regionKills[state.regionIndex] >= 100 && !state.bossesDefeated[state.regionIndex]) { state.combat.running = true; state.hasStarted = true; trackAction("firstCombat"); state.combat.repairing = false; spawnEnemy(true); renderAll(false); } });
+  $("#boss-button").addEventListener("click", () => { if (state.regionKills[state.regionIndex] >= 100 && !state.bossesDefeated[state.regionIndex]) { const issues = endgameRequirementIssues(state.regionIndex); if (issues.length) toast("Seu Poder Naval está baixo para esse boss. Recomenda-se evoluir antes de avançar.", "danger-toast"); state.combat.running = true; state.hasStarted = true; trackAction("firstCombat"); state.combat.repairing = false; spawnEnemy(true); renderAll(false); } });
   $("#offline-close").addEventListener("click", () => $("#offline-modal").classList.add("hidden"));
   $("#wipe-button").addEventListener("click", () => $("#confirm-modal").classList.remove("hidden"));
   $("#confirm-cancel").addEventListener("click", () => $("#confirm-modal").classList.add("hidden"));
