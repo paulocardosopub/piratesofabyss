@@ -785,6 +785,45 @@
     saveGame();
   }
 
+  function normalizeText(value = "") {
+    return String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+
+  function inferEnemyVisual(name, region = {}, fallback = "PIRATA", tier = 1, isBoss = false) {
+    const raw = `${name} ${region.name || ""} ${region.kind || ""}`;
+    const text = normalizeText(raw);
+    const has = (...words) => words.some(word => text.includes(word));
+    const volcanic = has("vulcan", "lava", "cinza", "flamejante", "obsidiana");
+    const glacial = has("gelo", "glacial", "congel", "artic", "boreal");
+    const spectral = has("fantasma", "espectral", "amaldic", "holandes", "vulto", "perdida", "maldito", "afundado", "abismo");
+    let type = "pirate-ship";
+    let label = ENEMY_CATEGORIES[fallback]?.label || fallback || "INIMIGO";
+    let attack = "cannon";
+    let scale = 1;
+
+    if (has("kraken", "tentaculo")) { type = "kraken"; label = "KRAKEN"; attack = "tentacle"; scale = 1.22; }
+    else if (has("megalodon", "tubarao")) { type = "megalodon"; label = "PREDADOR MARINHO"; attack = "bite"; scale = 1.16; }
+    else if (has("leviata", "jormungandr", "serpente")) { type = "sea-serpent"; label = "SERPENTE MARINHA"; attack = glacial ? "ice" : spectral ? "abyss" : volcanic ? "fire" : "wave"; scale = 1.1; }
+    else if (has("mosasaurus", "mosassauro", "plesiossauro", "ictiossauro", "reptil", "jacare", "crocomar", "deinosuchus", "carapaca", "dragao marinho")) { type = "marine-reptile"; label = "CRIATURA MARINHA"; attack = volcanic ? "fire" : "bite"; scale = has("dragao", "mosasaurus", "deinosuchus") ? 1.18 : 1; }
+    else if (has("pterodactilo", "pteranodonte", "passaro", "aereo")) { type = "flying-creature"; label = "CRIATURA VOADORA"; attack = "dive"; scale = isBoss ? 1.18 : 1; }
+    else if (has("foca")) { type = "seal"; label = "CRIATURA MARINHA"; attack = "splash"; scale = .72; }
+    else if (has("criatura", "guardiao do abismo")) { type = "abyssal-creature"; label = "CRIATURA ABISSAL"; attack = "abyss"; scale = 1.12; }
+    else if (has("jangada")) { type = "raft"; label = has("pescador") ? "PESCADOR" : "JANGADA"; attack = has("caca", "tribal") ? "arrow" : "harpoon"; scale = .82; }
+    else if (has("canoa")) { type = "canoe"; label = has("guerra") ? "CANOA DE GUERRA" : "CANOA"; attack = "arrow"; scale = .86; }
+    else if (has("bote")) { type = has("tribal") ? "tribal-boat" : "small-boat"; label = has("tribal") ? "BOTE TRIBAL" : "BOTE"; attack = has("pesca", "pescador") ? "harpoon" : "cannon"; scale = .88; }
+    else if (has("pescador", "pesca", "baleeiro", "traineira", "remador")) { type = "fishing-boat"; label = "PESCADOR"; attack = has("baleeiro") ? "harpoon" : "net"; scale = .86; }
+    else if (has("cacador", "tribal", "mangue", "guardiao", "cultista", "saqueador", "arqueiro", "guerreiro")) { type = region.kind === "PRIMITIVO" || has("mangue", "tribal") ? "tribal-boat" : "raider-boat"; label = has("guardiao") ? "GUARDIAO" : has("cacador") ? "CACADOR" : "SAQUEADOR"; attack = region.kind === "PRIMITIVO" || has("tribal", "mangue") ? "arrow" : "cannon"; scale = .93; }
+    else if (spectral) { type = has("tripulacao", "vulto") ? "specter" : "ghost-ship"; label = has("frota") ? "FROTA FANTASMA" : "SOBRENATURAL"; attack = "ghost"; scale = has("frota", "dreadnought") ? 1.2 : 1; }
+    else if (has("fragata", "galeao", "linha", "encouracado", "armada", "frota", "imperial", "marinha", "cutter", "patrulha", "corveta", "almirante")) { type = "imperial-ship"; label = has("frota", "armada") ? "ARMADA" : "MARINHA"; attack = "barrage"; scale = has("encouracado", "armada", "linha") ? 1.18 : 1.05; }
+    else if (has("mercante", "transporte", "carga", "contrabandista", "suprimentos")) { type = has("contrabandista") ? "smuggler-ship" : "merchant-ship"; label = has("contrabandista") ? "CONTRABANDISTA" : "MERCANTE"; attack = has("contrabandista") ? "cannon" : "harpoon"; scale = .98; }
+
+    if (volcanic && !["sea-serpent", "marine-reptile"].includes(type)) attack = "fire";
+    if (glacial && !["sea-serpent"].includes(type)) attack = "ice";
+    if (spectral && type.includes("ship")) attack = "ghost";
+    if (isBoss) scale *= 1.18;
+    return { type, label, attack, scale: clamp(scale + Math.max(0, tier - 3) * .04, .68, 1.48), theme: volcanic ? "volcanic" : glacial ? "glacial" : spectral ? "spectral" : region.kind === "PRIMITIVO" ? "primitive" : normalizeText(region.kind || "") };
+  }
+
   class SeaScene {
     constructor(canvas) {
       this.canvas = canvas;
@@ -979,7 +1018,7 @@
         this.drawPet(ctx, w * .43 + attackAdvance, h * .72 + Math.sin(this.time * 2 + pet.id) * 4, pet, Math.min(1.1, w / 850));
       }
       const enemy = state.combat.enemy;
-      if (enemy) this.drawShip(ctx, w * .71, h * .52 + bobEnemy, Math.min(1.02, w / 1050), true, enemy.isBoss ? 5 : enemy.visualTier, enemy.isBoss, state.regionIndex + 20, enemy.visualKind || enemy.kind);
+      if (enemy) this.drawEnemy(ctx, w * .71, h * .52 + bobEnemy, Math.min(1.02, w / 1050), enemy);
 
       this.projectiles.forEach(item => {
         const t = item.age / item.duration;
@@ -1222,6 +1261,179 @@
       ctx.restore();
     }
 
+    drawEnemy(ctx, x, y, scale, enemy) {
+      const visual = enemy.visual || inferEnemyVisual(enemy.name, REGIONS[state.regionIndex], enemy.category, enemy.visualTier, enemy.isBoss);
+      const finalScale = scale * (visual.scale || 1);
+      const type = visual.type;
+      if (["pirate-ship", "imperial-ship", "merchant-ship", "smuggler-ship", "ghost-ship"].includes(type)) {
+        const faction = type === "imperial-ship" ? "MARINHA" : type === "merchant-ship" ? "MERCANTE" : type === "smuggler-ship" ? "CONTRABANDISTA" : type === "ghost-ship" ? "FANTASMA" : visual.theme === "volcanic" ? "VULCÂNICO" : enemy.visualKind || enemy.kind;
+        this.drawShip(ctx, x, y, finalScale, true, enemy.visualTier, enemy.isBoss, state.regionIndex + enemy.visualTier + 20, faction);
+        return;
+      }
+      ctx.save(); ctx.translate(x, y); ctx.scale(-finalScale, finalScale);
+      if (type === "raft") this.drawRaft(ctx, visual);
+      else if (type === "canoe") this.drawCanoe(ctx, visual, enemy.isBoss);
+      else if (type === "small-boat" || type === "tribal-boat" || type === "raider-boat") this.drawOpenBoat(ctx, visual, type, enemy.isBoss);
+      else if (type === "fishing-boat") this.drawFishingBoat(ctx, visual);
+      else if (type === "flying-creature") this.drawFlyingCreature(ctx, enemy.isBoss, visual);
+      else if (type === "sea-serpent") this.drawSeaSerpent(ctx, enemy.isBoss, visual);
+      else if (type === "marine-reptile") this.drawMarineReptile(ctx, enemy.isBoss, visual);
+      else if (type === "megalodon") this.drawMegalodon(ctx, enemy.isBoss, visual);
+      else if (type === "kraken") this.drawKrakenEnemy(ctx, enemy.isBoss, visual);
+      else if (type === "seal") this.drawSealEnemy(ctx, visual);
+      else if (type === "specter") this.drawSpecter(ctx, visual);
+      else if (type === "abyssal-creature") this.drawAbyssalCreature(ctx, enemy.isBoss, visual);
+      else this.drawShip(ctx, 0, 0, 1, false, enemy.visualTier, enemy.isBoss, state.regionIndex + 20, enemy.visualKind || enemy.kind);
+      ctx.restore();
+    }
+
+    waterShadow(ctx, width = 82, y = 28) {
+      ctx.globalAlpha = .18; ctx.fillStyle = "#04141d"; ctx.beginPath(); ctx.ellipse(0, y, width, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = "rgba(226,255,248,.55)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, y - 2, width * .7, 6, 0, 0, Math.PI); ctx.stroke();
+    }
+
+    drawStickHuman(ctx, x, y, scale = 1, color = "#312315", accent = "#d7b56a") {
+      ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(0, -18, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(0, 5); ctx.stroke();
+      ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-12, -7); ctx.lineTo(11, -3); ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 5); ctx.lineTo(-7, 18); ctx.moveTo(0, 5); ctx.lineTo(8, 18); ctx.stroke(); ctx.lineCap = "butt";
+      ctx.restore();
+    }
+
+    drawRaft(ctx, visual) {
+      this.waterShadow(ctx, 64, 24);
+      ctx.strokeStyle = "#2c1f16"; ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        const y = -2 + i * 7;
+        ctx.fillStyle = i % 2 ? "#6b4528" : "#7b5232";
+        ctx.beginPath(); ctx.roundRect(-48, y, 92, 8, 4); ctx.fill(); ctx.stroke();
+      }
+      ctx.strokeStyle = "#cfb16b"; ctx.lineWidth = 2;
+      [-28, 4, 34].forEach(x => { ctx.beginPath(); ctx.moveTo(x, -5); ctx.lineTo(x - 8, 37); ctx.stroke(); });
+      ctx.strokeStyle = "#5b3b23"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(5, -5); ctx.lineTo(5, -58); ctx.stroke();
+      ctx.fillStyle = visual.theme === "primitive" ? "#d5c08b" : "#ded7ba"; ctx.beginPath(); ctx.moveTo(8, -54); ctx.lineTo(41, -33); ctx.lineTo(8, -18); ctx.closePath(); ctx.fill();
+      this.drawStickHuman(ctx, -18, -9, .78, "#2b1d12", "#b95d3c");
+    }
+
+    drawCanoe(ctx, visual, boss = false) {
+      this.waterShadow(ctx, boss ? 85 : 70, 24);
+      const hull = visual.theme === "primitive" ? "#5a351f" : "#6e3f29";
+      ctx.fillStyle = hull; ctx.beginPath(); ctx.moveTo(-72, 4); ctx.quadraticCurveTo(-30, 31, 70, 5); ctx.quadraticCurveTo(28, 14, -58, 8); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#26160e"; ctx.lineWidth = 3; ctx.stroke();
+      ctx.strokeStyle = "#e0c37c"; ctx.lineWidth = 2; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(-42 + i * 25, 7); ctx.lineTo(-34 + i * 25, 17); ctx.stroke(); }
+      this.drawStickHuman(ctx, -28, -2, .75, "#21160f", "#cc6840");
+      this.drawStickHuman(ctx, 18, -4, boss ? .82 : .68, "#21160f", "#cc6840");
+      ctx.strokeStyle = "#d4b56d"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(38, -20); ctx.lineTo(64, -35); ctx.stroke();
+    }
+
+    drawOpenBoat(ctx, visual, type, boss = false) {
+      this.waterShadow(ctx, boss ? 78 : 62, 27);
+      const tribal = type === "tribal-boat";
+      ctx.fillStyle = tribal ? "#654023" : visual.theme === "volcanic" ? "#6f2f22" : "#64402e";
+      ctx.beginPath(); ctx.moveTo(-58, -4); ctx.quadraticCurveTo(-44, 27, 50, 22); ctx.lineTo(65, -2); ctx.quadraticCurveTo(8, 10, -58, -4); ctx.fill();
+      ctx.strokeStyle = tribal ? "#d8b85f" : "#261711"; ctx.lineWidth = 3; ctx.stroke();
+      if (tribal) {
+        ctx.fillStyle = "#ead58a"; [-31, -8, 15, 38].forEach(x => { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 7, 8); ctx.lineTo(x - 6, 9); ctx.closePath(); ctx.fill(); });
+      }
+      this.drawStickHuman(ctx, -16, -9, .78, "#23170f", tribal ? "#d65f3d" : "#d7b56a");
+      ctx.strokeStyle = visual.theme === "volcanic" ? "#ff8650" : "#c8a15f"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(18, -8); ctx.lineTo(50, -27); ctx.stroke();
+    }
+
+    drawFishingBoat(ctx, visual) {
+      this.waterShadow(ctx, 70, 28);
+      ctx.fillStyle = "#496e76"; ctx.beginPath(); ctx.moveTo(-66, -6); ctx.quadraticCurveTo(-48, 30, 53, 22); ctx.lineTo(68, -7); ctx.quadraticCurveTo(6, 6, -66, -6); ctx.fill();
+      ctx.strokeStyle = "#d6e3dc"; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.fillStyle = "#8a6339"; ctx.fillRect(-22, -22, 27, 18); ctx.strokeRect(-22, -22, 27, 18);
+      this.drawStickHuman(ctx, 24, -13, .78, "#2b2118", "#d7d4b5");
+      ctx.strokeStyle = "rgba(220,236,232,.75)"; ctx.lineWidth = 1.4;
+      for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-48 + i * 7, -3); ctx.quadraticCurveTo(-62 + i * 4, 18, -37 + i * 6, 27); ctx.stroke(); }
+      ctx.strokeStyle = "#d9c47a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(34, -27); ctx.quadraticCurveTo(60, -41, 70, -16); ctx.stroke();
+    }
+
+    drawFlyingCreature(ctx, boss, visual) {
+      const flap = Math.sin(this.time * 5) * 10;
+      ctx.translate(0, -58 - Math.sin(this.time * 2) * 8);
+      ctx.globalAlpha = .12; ctx.fillStyle = "#03121a"; ctx.beginPath(); ctx.ellipse(0, 87, boss ? 70 : 54, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.fillStyle = visual.theme === "glacial" ? "#95c0c6" : "#6b4a34";
+      ctx.beginPath(); ctx.ellipse(0, 0, boss ? 29 : 23, boss ? 13 : 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(18, -3); ctx.lineTo(67, -14); ctx.lineTo(31, 9); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#3b281e"; ctx.lineWidth = 4; ctx.lineJoin = "round";
+      [-1, 1].forEach(side => { ctx.beginPath(); ctx.moveTo(-8 * side, -3); ctx.quadraticCurveTo(-64 * side, -45 - flap, -112 * side, 8 + flap); ctx.quadraticCurveTo(-54 * side, 15, -8 * side, 4); ctx.stroke(); });
+      ctx.fillStyle = "rgba(116,74,45,.72)"; [-1, 1].forEach(side => { ctx.beginPath(); ctx.moveTo(-9 * side, -3); ctx.quadraticCurveTo(-60 * side, -38 - flap, -102 * side, 7 + flap); ctx.quadraticCurveTo(-50 * side, 10, -7 * side, 5); ctx.fill(); });
+      ctx.strokeStyle = "#2a1b13"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-4, 9); ctx.lineTo(-15, 24); ctx.moveTo(8, 9); ctx.lineTo(22, 23); ctx.stroke();
+    }
+
+    drawSeaSerpent(ctx, boss, visual) {
+      this.waterShadow(ctx, boss ? 112 : 88, 30);
+      const body = visual.theme === "glacial" ? "#8fc7d7" : visual.theme === "volcanic" ? "#8b3b2f" : visual.theme === "spectral" ? "#294c61" : "#245f65";
+      ctx.strokeStyle = body; ctx.lineCap = "round"; ctx.lineWidth = boss ? 22 : 17;
+      ctx.beginPath(); ctx.moveTo(-92, 18); ctx.bezierCurveTo(-61, -29, -27, 39, 5, 0); ctx.bezierCurveTo(29, -31, 62, -13, 82, -43); ctx.stroke();
+      ctx.strokeStyle = this.mix(body, "#e9f4d8", .28); ctx.lineWidth = boss ? 7 : 5; ctx.beginPath(); ctx.moveTo(-78, 16); ctx.bezierCurveTo(-48, -17, -23, 26, 4, -1); ctx.stroke();
+      ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(95, -50, boss ? 29 : 23, boss ? 18 : 14, -.25, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#e8fff1"; ctx.beginPath(); ctx.arc(105, -56, 3.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#f7eee1"; ctx.beginPath(); ctx.moveTo(112, -43); ctx.lineTo(128, -38); ctx.lineTo(110, -35); ctx.closePath(); ctx.fill();
+      ctx.lineCap = "butt";
+    }
+
+    drawMarineReptile(ctx, boss, visual) {
+      this.waterShadow(ctx, boss ? 96 : 78, 28);
+      const skin = visual.theme === "volcanic" ? "#783f32" : visual.theme === "primitive" ? "#43694c" : "#3d6971";
+      ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(0, 2, boss ? 72 : 58, boss ? 22 : 18, -.08, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(61, -8, boss ? 31 : 24, boss ? 17 : 13, -.16, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-62, 5); ctx.lineTo(-95, -13); ctx.lineTo(-86, 18); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = this.mix(skin, "#d8d17e", .18); for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-32 + i * 16, -16); ctx.lineTo(-22 + i * 16, -32); ctx.lineTo(-12 + i * 16, -13); ctx.fill(); }
+      ctx.fillStyle = "#f5fff0"; ctx.beginPath(); ctx.arc(70, -14, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#143036"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(70, 1); ctx.lineTo(93, 4); ctx.stroke();
+    }
+
+    drawMegalodon(ctx, boss, visual) {
+      this.waterShadow(ctx, boss ? 118 : 96, 31);
+      ctx.fillStyle = "#314f5d"; ctx.beginPath(); ctx.moveTo(-102, 2); ctx.quadraticCurveTo(-36, -39, 86, -8); ctx.quadraticCurveTo(42, 34, -92, 17); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-92, 8); ctx.lineTo(-126, -18); ctx.lineTo(-120, 28); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-5, -26); ctx.lineTo(19, -63); ctx.lineTo(31, -20); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#dce7e4"; ctx.beginPath(); ctx.moveTo(48, 4); ctx.quadraticCurveTo(73, 15, 99, 6); ctx.quadraticCurveTo(74, 32, 42, 20); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffffff"; for (let i = 0; i < 7; i++) { ctx.beginPath(); ctx.moveTo(57 + i * 6, 8); ctx.lineTo(61 + i * 6, 18); ctx.lineTo(65 + i * 6, 8); ctx.fill(); }
+      ctx.fillStyle = "#07131a"; ctx.beginPath(); ctx.arc(67, -13, 3.2, 0, Math.PI * 2); ctx.fill();
+    }
+
+    drawKrakenEnemy(ctx, boss, visual) {
+      this.waterShadow(ctx, boss ? 118 : 88, 34);
+      const color = visual.theme === "spectral" ? "#3b315f" : "#5a2f68";
+      ctx.strokeStyle = color; ctx.lineCap = "round";
+      for (let i = 0; i < (boss ? 7 : 5); i++) {
+        const start = -70 + i * 24;
+        ctx.lineWidth = boss ? 13 - i * .35 : 10 - i * .4;
+        ctx.beginPath(); ctx.moveTo(start, 32); ctx.bezierCurveTo(start - 28, -12, start + Math.sin(this.time * 1.5 + i) * 26, -69, start + 18, -93 + Math.sin(i) * 18); ctx.stroke();
+      }
+      ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(5, 2, boss ? 48 : 36, boss ? 31 : 24, 0, Math.PI, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#f4e6b1"; [-13, 18].forEach(x => { ctx.beginPath(); ctx.arc(x, -13, 4, 0, Math.PI * 2); ctx.fill(); });
+      ctx.lineCap = "butt";
+    }
+
+    drawSealEnemy(ctx, visual) {
+      this.waterShadow(ctx, 48, 20);
+      ctx.fillStyle = "#9db7bd"; ctx.beginPath(); ctx.ellipse(0, -2, 38, 16, -.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(34, -11, 15, 11, -.25, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-34, 4); ctx.lineTo(-58, -9); ctx.lineTo(-50, 18); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#07131a"; ctx.beginPath(); ctx.arc(39, -14, 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+
+    drawSpecter(ctx, visual) {
+      ctx.save(); ctx.globalAlpha = .72 + Math.sin(this.time * 3) * .08; ctx.shadowColor = "#6df5e8"; ctx.shadowBlur = 16;
+      ctx.fillStyle = "rgba(110,232,220,.54)"; ctx.beginPath(); ctx.arc(0, -34, 22, Math.PI, 0); ctx.lineTo(22, 7); ctx.quadraticCurveTo(13, -1, 4, 8); ctx.quadraticCurveTo(-5, -1, -16, 8); ctx.quadraticCurveTo(-23, -8, -22, -34); ctx.fill();
+      ctx.fillStyle = "#dffefa"; [-7, 8].forEach(x => { ctx.beginPath(); ctx.arc(x, -36, 3, 0, Math.PI * 2); ctx.fill(); });
+      ctx.restore();
+    }
+
+    drawAbyssalCreature(ctx, boss, visual) {
+      this.waterShadow(ctx, boss ? 96 : 76, 29);
+      ctx.fillStyle = "#222945"; ctx.beginPath(); ctx.ellipse(0, -1, boss ? 65 : 50, boss ? 28 : 22, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#30225a"; ctx.lineCap = "round"; for (let i = 0; i < 6; i++) { ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-38 + i * 15, 13); ctx.quadraticCurveTo(-55 + i * 19, 42 + Math.sin(this.time * 2 + i) * 9, -29 + i * 15, 51); ctx.stroke(); }
+      ctx.fillStyle = "#8ef9e8"; [-16, 13].forEach(x => { ctx.beginPath(); ctx.arc(x, -8, 4, 0, Math.PI * 2); ctx.fill(); });
+      ctx.lineCap = "butt";
+    }
+
     drawShip(ctx, x, y, scale, flipped, tier, boss, variant = 0, faction = "Pirata") {
       const direction = flipped ? -1 : 1;
       ctx.save(); ctx.translate(x, y); ctx.scale(direction * scale, scale);
@@ -1368,11 +1580,14 @@
     const profile = isBoss ? null : ENEMY_CATEGORIES[encounter.category];
     const mod = ENDGAME_ENEMY_MODS[state.regionIndex] || {};
     const stage = getEndgameStageMultiplier(state.regionIndex);
+    const enemyName = isBoss ? region.boss : encounter.name;
+    const visual = inferEnemyVisual(enemyName, region, isBoss ? "BOSS" : encounter.category, isBoss ? 5 : encounter.tier, isBoss);
     const hp = Math.round(region.baseHp * variation * (isBoss ? 34 * (mod.bossHp || 1) : profile.hp * stage * (mod.hp || 1)));
     state.combat.enemy = {
-      name: isBoss ? region.boss : encounter.name,
-      kind: isBoss ? "BOSS" : profile.label,
+      name: enemyName,
+      kind: isBoss ? `BOSS ${visual.label}` : visual.label,
       category: isBoss ? "BOSS" : encounter.category,
+      visual,
       visualKind: isBoss ? region.kind : profile.visual,
       visualTier: isBoss ? 5 : encounter.tier,
       isBoss,
@@ -1469,8 +1684,9 @@
       if (enemy.special.includes("abissal")) state.combat.petAttackTimer = Math.max(0, state.combat.petAttackTimer - 650);
       addLog(`${enemy.name} aplica ${enemy.special}.`, "danger-text");
     }
-    scene.fire(false, "#ff8c68");
-    setTimeout(() => { scene.burst(false, "#ff7657"); scene.floatDamage(damage, false, "#ffb09b"); }, 340);
+    const attackColor = enemy.visual?.attack === "ghost" ? "#9ff4e9" : enemy.visual?.attack === "ice" ? "#8ee8ff" : enemy.visual?.attack === "fire" ? "#ff7048" : enemy.visual?.attack === "abyss" ? "#b18cff" : enemy.visual?.attack === "wave" || enemy.visual?.attack === "splash" ? "#7bdfff" : enemy.visual?.attack === "arrow" || enemy.visual?.attack === "harpoon" ? "#e3c06f" : "#ff8c68";
+    scene.fire(false, attackColor);
+    setTimeout(() => { scene.burst(false, attackColor); scene.floatDamage(damage, false, attackColor); }, 340);
     if (state.combat.playerHp <= 0) {
       if (enemy.isBoss) cancelBossBattle();
       else beginRepair();
