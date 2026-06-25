@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=14">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -34,8 +34,8 @@
 
           <div class="region-badge">
             <span class="eyebrow">REGIÃO ATUAL</span>
-            <strong id="scene-region">Costa dos Náufragos</strong>
-            <span id="scene-weather">Brisa costeira</span>
+            <strong id="scene-region">Lagoa dos Primeiros Remadores</strong>
+            <span id="scene-weather">Águas tranquilas</span>
           </div>
 
           <div class="enemy-panel battle-hud">
@@ -47,7 +47,7 @@
 
           <div class="player-panel battle-hud">
             <div class="hud-line"><span>SEU NAVIO</span><strong id="ship-level-badge">NV. 1</strong></div>
-            <h2 id="ship-name">Bote Armado</h2>
+            <h2 id="ship-name">Bote de Tronco</h2>
             <div class="health-bar player-health"><i id="player-health-fill"></i></div>
             <div class="health-numbers" id="player-health-text">140 / 140</div>
           </div>
@@ -125,7 +125,7 @@
         <div class="upgrade-section active" id="upgrade-improvements">
           <div class="current-ship-banner">
             <div class="mini-ship" aria-hidden="true"><canvas id="yard-ship-canvas" class="mini-ship-canvas"></canvas></div>
-            <div><span class="eyebrow">NAVIO ATUAL</span><h2 id="yard-ship-name">Bote Armado</h2><p id="yard-ship-tier">Tier 1 • Embarcação pirata</p></div>
+            <div><span class="eyebrow">NAVIO ATUAL</span><h2 id="yard-ship-name">Bote de Tronco</h2><p id="yard-ship-tier">Tier 0 • Embarcação primitiva</p></div>
             <div class="ship-stat-row" id="yard-ship-stats"></div>
           </div>
           <div class="upgrade-grid" id="upgrade-grid"></div>
@@ -147,15 +147,41 @@
           <div><span class="eyebrow">COMPANHEIROS MARÍTIMOS</span><h1 id="pets-title">Pets</h1><p>Adote uma criatura, equipe um companheiro e aumente seu poder nos mares.</p></div>
           <div class="power-seal"><span>PETS COMPRADOS</span><strong id="pets-owned-count">0 / 10</strong></div>
         </div>
+        <div class="pet-prestige-notice">
+          <div><span class="eyebrow">REQUISITO PERMANENTE</span><strong>Pets só liberam com Prestígio</strong><p>Cada pet exige Prestígios acumulados e Moedas Pirata. O primeiro pet exige 1 Prestígio, o segundo exige 2, e assim por diante.</p></div>
+          <button class="button prestige-button" data-screen-target="prestige">Ir para Prestígio</button>
+        </div>
         <div class="pet-current-banner" id="pet-current-banner"></div>
         <div class="pets-grid" id="pets-grid"></div>
+      </section>
+
+      <section class="screen" id="screen-prestige" aria-labelledby="prestige-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">CICLO DE RENASCIMENTO</span><h1 id="prestige-title">Prestígio</h1><p>Recomece sua jornada mais forte e transforme seu progresso em poder permanente.</p></div>
+          <div class="prestige-wallet"><span>MOEDAS PIRATA</span><strong id="prestige-coins">0</strong></div>
+        </div>
+        <div class="prestige-locked card" id="prestige-locked">
+          <span class="prestige-lock-icon">🔒</span><div><span class="eyebrow">SISTEMA BLOQUEADO</span><h2>Conclua Oceano Profundo</h2><p>Derrote o Megalodon Ancestral na região 10 para liberar o Prestígio. Concluir apenas o prólogo não libera este sistema.</p></div>
+        </div>
+        <div id="prestige-content">
+          <div class="prestige-summary-grid" id="prestige-summary"></div>
+          <article class="card prestige-reward-card"><div><span class="eyebrow">RESETAR AGORA</span><h2>Você receberá</h2><strong class="prestige-reward" id="prestige-reward">0 Moedas Pirata</strong><p>Quanto mais longe e mais forte chegar, maior será a recompensa.</p></div><button class="button prestige-button" id="prestige-button">Realizar Prestígio</button></article>
+          <div class="prestige-columns">
+            <article class="card"><span class="eyebrow">SERÁ MANTIDO</span><h2>Progresso permanente</h2><ul class="prestige-list keep"><li>Prestígios acumulados</li><li>Moedas Pirata</li><li>Pets comprados e pet equipado</li><li>Histórico e bônus derivados do Prestígio</li></ul></article>
+            <article class="card"><span class="eyebrow">SERÁ RESETADO</span><h2>Jornada atual</h2><ul class="prestige-list reset"><li>Ouro e todos os recursos</li><li>Mapas, inimigos e bosses</li><li>Navios, equipamentos e upgrades</li><li>Nível, XP, skills, comércio e recompensas offline</li></ul></article>
+          </div>
+          <article class="card prestige-bonuses"><span class="eyebrow">BÔNUS PERMANENTES</span><h2>Força de todos os ciclos</h2><div id="prestige-bonuses"></div></article>
+          <article class="card prestige-history-card"><span class="eyebrow">DIÁRIO DOS CICLOS</span><h2>Histórico de Prestígios</h2><div id="prestige-history"></div></article>
+          <article class="card prestige-achievements"><span class="eyebrow">CONQUISTAS DE PRESTÍGIO</span><h2>Marcos permanentes</h2><div id="prestige-achievements"></div></article>
+        </div>
       </section>
 
       <section class="screen" id="screen-maps" aria-labelledby="maps-title">
         <div class="page-heading">
           <div><span class="eyebrow">CARTA NÁUTICA</span><h1 id="maps-title">Mapas</h1><p>Retorne a regiões antigas para buscar os materiais certos.</p></div>
-          <div class="map-counter"><strong id="maps-unlocked">1</strong><span>de 10 regiões</span></div>
+          <div class="map-counter"><strong id="maps-unlocked">1</strong><span id="maps-total">de 15 regiões</span></div>
         </div>
+        <div class="map-era-notice"><strong>Era Primitiva:</strong> as 5 primeiras regiões são o novo prólogo com navios Tier 0. Depois delas começa a jornada pirata original.</div>
         <div class="maps-grid" id="maps-grid"></div>
       </section>
 
@@ -201,6 +227,7 @@
       <button data-screen-target="resources"><span>◆</span><strong>Recursos</strong></button>
       <button data-screen-target="trade"><span>⚖</span><strong>Comércio</strong></button>
       <button data-screen-target="pets"><span>🐾</span><strong>Pets</strong></button>
+      <button data-screen-target="prestige"><span>☠</span><strong>Prestígio</strong></button>
       <button data-screen-target="stats"><span>▥</span><strong>Estatísticas</strong></button>
     </nav>
   </div>
@@ -237,6 +264,17 @@
     </div>
   </div>
 
-  <script src="game.js?v=12"></script>
+  <div class="modal-backdrop hidden" id="prestige-modal" role="dialog" aria-modal="true" aria-labelledby="prestige-modal-title">
+    <div class="modal prestige-confirm-modal">
+      <div class="modal-icon">☠</div><span class="eyebrow" id="prestige-confirm-step">CONFIRMAÇÃO 1 DE 2</span>
+      <h2 id="prestige-modal-title">Reiniciar esta jornada?</h2>
+      <p id="prestige-modal-message">Você manterá Prestígios, Moedas Pirata e pets. Todo o restante será reiniciado.</p>
+      <div class="prestige-modal-reward" id="prestige-modal-reward"></div>
+      <div class="prestige-modal-lists"><div><strong>MANTÉM</strong><span>Prestígios • Moedas Pirata • Pets</span></div><div><strong>RESETA</strong><span>Ouro • Recursos • Mapas • Navios • Upgrades • Skills • Missões</span></div></div>
+      <div class="modal-actions"><button class="button" id="prestige-cancel">Cancelar</button><button class="button prestige-button" id="prestige-confirm">Continuar</button></div>
+    </div>
+  </div>
+
+  <script src="game.js?v=14"></script>
 </body>
 </html>

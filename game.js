@@ -3,6 +3,9 @@
 
   const SAVE_KEY = "pirates-of-the-abyss-save-v1";
   const OFFLINE_REWARD_RATE = .3;
+  const PRESTIGE_REGION_NAME = "Oceano Profundo";
+  const PRESTIGE_BOSS_NAME = "Megalodon Ancestral";
+  const PET_PIRATE_COIN_COSTS = [10, 18, 30, 45, 65, 90, 120, 155, 200, 260];
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -26,7 +29,15 @@
 
   const RARITY_COLORS = { common: "#b5c5c4", uncommon: "#67d997", rare: "#64aef4", epic: "#c38af1", legendary: "#ffb349" };
 
-  const REGIONS = [
+  const PRIMITIVE_REGIONS = [
+    { name: "Lagoa dos Primeiros Remadores", weather: "Águas tranquilas", description: "O primeiro remo, a primeira rota e os primeiros perigos.", boss: "Crocomar Ancião", enemies: ["Remador Rival", "Pescador Primitivo", "Jacaré da Lagoa"], drops: { madeira: .30, comida: .28, tecido: .12 }, baseHp: 24, baseDamage: 3, gold: 6, goldRange: [3, 9], bossGold: [60, 100], xp: 5, sky: "#9ec8b7", sea: "#398b82", land: "#6e925d", kind: "PRIMITIVO" },
+    { name: "Manguezal dos Ancestrais", weather: "Névoa do mangue", description: "Raízes densas escondem caçadores e materiais antigos.", boss: "Deinosuchus do Mangue", enemies: ["Canoa Tribal", "Caçador do Mangue", "Réptil das Raízes"], drops: { madeira: .32, comida: .25, ferro: .08 }, baseHp: 34, baseDamage: 4, gold: 8, goldRange: [5, 12], bossGold: [90, 140], xp: 7, sky: "#789b79", sea: "#356d61", land: "#486b45", kind: "PRIMITIVO" },
+    { name: "Ilhas dos Pterodáctilos", weather: "Ventos jurássicos", description: "Sombras aladas rondam canoas entre ilhas escarpadas.", boss: "Rei Pteranodonte", enemies: ["Canoa de Couro", "Pterodáctilo Caçador", "Remador das Ilhas"], drops: { madeira: .25, tecido: .20, comida: .22 }, baseHp: 46, baseDamage: 5.2, gold: 10, goldRange: [6, 15], bossGold: [120, 190], xp: 9, sky: "#d1a86c", sea: "#337b8a", land: "#766847", kind: "PRIMITIVO" },
+    { name: "Selva dos Répteis Marinhos", weather: "Chuva tropical", description: "Predadores aquáticos cercam as rotas da selva.", boss: "Mosasaurus Jovem", enemies: ["Jangada de Caça", "Ictiossauro", "Saqueador da Selva"], drops: { madeira: .24, ferro: .11, comida: .26 }, baseHp: 60, baseDamage: 6.5, gold: 13, goldRange: [8, 19], bossGold: [170, 260], xp: 11, sky: "#618f72", sea: "#176d76", land: "#3f7349", kind: "PRIMITIVO" },
+    { name: "Canal do Titã Jurássico", weather: "Tremores ancestrais", description: "A última travessia antes da verdadeira era pirata.", boss: "Leviatã Jurássico", enemies: ["Canoa de Guerra", "Plesiossauro", "Guardião do Canal"], drops: { madeira: .22, ferro: .14, tecido: .18, comida: .24 }, baseHp: 75, baseDamage: 7.5, gold: 16, goldRange: [9, 23], bossGold: [240, 360], xp: 13, sky: "#8e7967", sea: "#245c69", land: "#4a5941", kind: "PRIMITIVO" }
+  ];
+
+  const MAIN_REGIONS = [
     { name: "Costa dos Náufragos", weather: "Brisa costeira", description: "Mar calmo, naufrágios e saqueadores inexperientes.", boss: "Capitão Barba de Ferro", enemies: ["Saqueador da Costa", "Bote Renegado", "Pescador Hostil", "Corsário Perdido"], drops: { madeira: .28, ferro: .16, tecido: .22 }, baseHp: 86.4, baseDamage: 8.4, gold: 18, goldRange: [10, 25], bossGold: [500, 1000], xp: 14, sky: "#78b9c1", sea: "#167087", land: "#5d8b58", kind: "PIRATA" },
     { name: "Ilhas Comerciais", weather: "Céu aberto", description: "Portos ricos, mercantes e contrabandistas discretos.", boss: "Rainha Corsária Scarlet", enemies: ["Mercante Armado", "Contrabandista Veloz", "Guarda do Porto", "Corveta Mercante"], drops: { comida: .25, tecido: .24, madeira: .18 }, baseHp: 160, baseDamage: 15, gold: 32, goldRange: [20, 45], bossGold: [1000, 2000], xp: 31, sky: "#78b6d4", sea: "#17627e", land: "#659a61", kind: "MERCANTE" },
     { name: "Mar das Tempestades", weather: "Temporal elétrico", description: "Chuva, raios e embarcações endurecidas pelo caos.", boss: "Tempestade Viva", enemies: ["Brigue Trovejante", "Caçador da Tormenta", "Nau do Relâmpago", "Corsário das Nuvens"], drops: { polvora: .16, cristal: .065 }, baseHp: 350, baseDamage: 31, gold: 52, goldRange: [35, 70], bossGold: [2000, 4000], xp: 66, sky: "#394d61", sea: "#153d54", land: "#465a55", kind: "TEMPESTADE" },
@@ -38,8 +49,17 @@
     { name: "Reino Congelado", weather: "Nevasca cortante", description: "Icebergs, monstros gelados e navios presos no gelo.", boss: "Jormungandr de Gelo", enemies: ["Quebra-Gelo Hostil", "Corsário Boreal", "Serpente de Gelo", "Fragata Congelada"], drops: { cristal: .11, gema: .04 }, baseHp: 29800, baseDamage: 2200, gold: 335, goldRange: [220, 450], bossGold: [60000, 100000], xp: 4950, sky: "#b4d4df", sea: "#447b91", land: "#d2e2e1", kind: "GLACIAL" },
     { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Cultista do Kraken", "Dreadnought Afundado", "Tentáculo Abissal", "Leviatã Menor"], drops: { fragmentos: .008, gema: .045, cristal: .12 }, baseHp: 62500, baseDamage: 4500, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 10200, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
   ];
+  const REGIONS = [...PRIMITIVE_REGIONS, ...MAIN_REGIONS];
 
-  const SHIPS = [
+  const PRIMITIVE_SHIPS = [
+    { name: "Bote de Tronco", type: "Primitivo", tier: 0, levelReq: 1, hp: 62, damage: 7, speed: 86, armor: 0, costs: { ouro: 0, madeira: 0 } },
+    { name: "Jangada de Cipó", type: "Primitivo", tier: 0, levelReq: 1, hp: 76, damage: 9, speed: 91, armor: 1, costs: { ouro: 45, madeira: 12 } },
+    { name: "Canoa de Caça", type: "Primitivo", tier: 0, levelReq: 2, hp: 92, damage: 12, speed: 96, armor: 1, costs: { ouro: 90, madeira: 22, comida: 8 } },
+    { name: "Jangada Reforçada Primitiva", type: "Primitivo", tier: 0, levelReq: 2, hp: 112, damage: 15, speed: 99, armor: 2, costs: { ouro: 160, madeira: 34, tecido: 8 } },
+    { name: "Canoa do Titã", type: "Primitivo", tier: 0, levelReq: 3, hp: 132, damage: 17, speed: 102, armor: 2, costs: { ouro: 260, madeira: 48, ferro: 12 } }
+  ];
+
+  const MAIN_SHIPS = [
     { name: "Bote Armado", type: "Pirata", tier: 1, levelReq: 1, hp: 140, damage: 18, speed: 103, armor: 2, costs: { ouro: 0, madeira: 0 } },
     { name: "Jangada Reforçada", type: "Civil", tier: 1, levelReq: 2, hp: 175, damage: 21, speed: 108, armor: 3, costs: { ouro: 150, madeira: 25 } },
     { name: "Barco de Pesca Adaptado", type: "Pescador", tier: 1, levelReq: 3, hp: 215, damage: 24, speed: 116, armor: 4, costs: { ouro: 300, madeira: 40, tecido: 15 } },
@@ -61,7 +81,8 @@
     { name: "Fragata Fantasma", type: "Espectral", tier: 5, levelReq: 65, hp: 44000, damage: 3600, speed: 245, armor: 170, costs: { ouro: 600000, madeira: 4500, ferro: 2500, ambar: 150, perola: 150, gema: 50 } },
     { name: "Kraken Hunter", type: "Caçador", tier: 5, levelReq: 72, hp: 57000, damage: 4700, speed: 238, armor: 205, costs: { ouro: 800000, madeira: 4800, ferro: 2800, polvora: 1600, cristal: 180, gema: 75, fragmentos: 15 } },
     { name: "Black Abyss", type: "Espectral", tier: 5, levelReq: 80, hp: 78000, damage: 6500, speed: 260, armor: 250, costs: { ouro: 1000000, madeira: 5000, ferro: 3000, polvora: 2000, cristal: 250, gema: 100, fragmentos: 25 } }
-  ].map((ship, id) => ({ id, bossReq: 0, ...ship }));
+  ];
+  const SHIPS = [...PRIMITIVE_SHIPS, ...MAIN_SHIPS].map((ship, id) => ({ id, bossReq: 0, ...ship }));
 
   const ENEMY_CATEGORIES = {
     PESCADOR: { label: "PESCADOR", visual: "PESCADOR", hp: .66, damage: .48, armor: .45, gold: .72, xp: .78, attackSpeed: 1.12, evasion: .01, drops: { comida: .34, tecido: .18, madeira: .22 } },
@@ -73,7 +94,15 @@
     CRIATURA: { label: "CRIATURA MARÍTIMA", visual: "ABISSAL", hp: 1.3, damage: 1.36, armor: 1.2, gold: 1.25, xp: 1.5, attackSpeed: .92, evasion: .06, drops: { perola: .1, cristal: .05 } }
   };
 
-  const REGION_ENCOUNTERS = [
+  const PRIMITIVE_ENCOUNTERS = [
+    [{ name: "Remador Rival", category: "PESCADOR", tier: 0, weight: 3 }, { name: "Pescador Primitivo", category: "PESCADOR", tier: 0, weight: 2 }, { name: "Jacaré da Lagoa", category: "CRIATURA", tier: 0 }],
+    [{ name: "Canoa Tribal", category: "PIRATA", tier: 0, weight: 2 }, { name: "Caçador do Mangue", category: "PESCADOR", tier: 0 }, { name: "Réptil das Raízes", category: "CRIATURA", tier: 0 }],
+    [{ name: "Canoa de Couro", category: "PIRATA", tier: 0 }, { name: "Pterodáctilo Caçador", category: "CRIATURA", tier: 0, weight: 2 }, { name: "Remador das Ilhas", category: "PESCADOR", tier: 0 }],
+    [{ name: "Jangada de Caça", category: "PESCADOR", tier: 0 }, { name: "Ictiossauro", category: "CRIATURA", tier: 0, weight: 2 }, { name: "Saqueador da Selva", category: "PIRATA", tier: 0 }],
+    [{ name: "Canoa de Guerra", category: "PIRATA", tier: 0, weight: 2 }, { name: "Plesiossauro", category: "CRIATURA", tier: 0 }, { name: "Guardião do Canal", category: "MARINHA", tier: 0 }]
+  ];
+
+  const MAIN_REGION_ENCOUNTERS = [
     [{ name: "Jangada de Pescador", category: "PESCADOR", tier: 1, weight: 3 }, { name: "Barco Costeiro", category: "PESCADOR", tier: 1, weight: 3 }, { name: "Bote Pirata", category: "PIRATA", tier: 1 }, { name: "Pequeno Contrabandista", category: "CONTRABANDISTA", tier: 1 }, { name: "Escuna Pirata", category: "PIRATA", tier: 1 }],
     [{ name: "Bote de Pesca Hostil", category: "PESCADOR", tier: 1, weight: 2 }, { name: "Traineira Saqueadora", category: "PESCADOR", tier: 2, weight: 2 }, { name: "Barco Mercante Pequeno", category: "MERCANTE", tier: 1 }, { name: "Navio de Carga", category: "MERCANTE", tier: 2 }, { name: "Escuna Rápida", category: "CONTRABANDISTA", tier: 2 }, { name: "Patrulha Naval", category: "MARINHA", tier: 2 }, { name: "Transporte de Ouro", category: "MERCANTE", tier: 2 }],
     [{ name: "Brigantina Pirata", category: "PIRATA", tier: 3 }, { name: "Corveta da Marinha", category: "MARINHA", tier: 3 }, { name: "Navio Quebra-Bloqueio", category: "CONTRABANDISTA", tier: 3 }, { name: "Navio Danificado", category: "PIRATA", tier: 2 }, { name: "Caçador da Tormenta", category: "PIRATA", tier: 3 }],
@@ -85,6 +114,7 @@
     [{ name: "Barco Costeiro Congelado", category: "PESCADOR", tier: 3 }, { name: "Corsário Boreal", category: "PIRATA", tier: 4 }, { name: "Fragata Congelada", category: "MARINHA", tier: 5 }, { name: "Navio Fantasma do Gelo", category: "FANTASMA", tier: 5 }, { name: "Serpente de Gelo", category: "CRIATURA", tier: 5 }],
     [{ name: "Cultista do Kraken", category: "PIRATA", tier: 5 }, { name: "Dreadnought Afundado", category: "FANTASMA", tier: 5 }, { name: "Frota Imperial Perdida", category: "MARINHA", tier: 5 }, { name: "Leviatã Menor", category: "CRIATURA", tier: 5 }, { name: "Navio Fantasma Lendário", category: "FANTASMA", tier: 5 }]
   ];
+  const REGION_ENCOUNTERS = [...PRIMITIVE_ENCOUNTERS, ...MAIN_REGION_ENCOUNTERS];
 
   const SKILL_META = {
     fire: { name: "Canhão de Fogo", icon: "🔥", unlock: 5, cooldown: 8, factor: 1.8, burnDuration: 4, burnFactor: .22, effect: "1,8× de dano e incêndio por 4s.", materials: ["polvora", "ferro"] },
@@ -130,20 +160,25 @@
     { name: "Arraia Elétrica", icon: "⚡", type: "Controle", rarity: "Raro", rarityKey: "rare", damage: 42, interval: 2.3, power: 230, levelReq: 16, costs: { ouro: 20000, comida: 350, cristal: 10 }, description: "Descargas aquáticas podem desacelerar o inimigo.", bonus: "15% de chance de lentidão", slowChance: .15, color: "#57ddff", visual: "ray" },
     { name: "Tubarão", icon: "🦈", type: "Ofensivo", rarity: "Épico", rarityKey: "epic", damage: 75, interval: 2, power: 350, levelReq: 25, costs: { ouro: 50000, comida: 700, gema: 10 }, description: "Uma mordida brutal acompanhada por forte splash.", color: "#92aebb", visual: "shark" },
     { name: "Baleia Assassina", icon: "🐋", type: "Pesado", rarity: "Épico", rarityKey: "epic", damage: 120, interval: 2.7, power: 520, levelReq: 35, costs: { ouro: 100000, comida: 1200, gema: 15, perola: 10 }, description: "Orca imponente que concede +4% de vida máxima.", bonus: "+4% vida máxima", hpBonus: .04, color: "#e4f1f0", visual: "orca" },
-    { name: "Megalodon", icon: "🦈", type: "Lendário ofensivo", rarity: "Lendário", rarityKey: "legendary", damage: 250, interval: 2.5, power: 1100, levelReq: 55, regionReq: 5, costs: { ouro: 500000, comida: 2500, gema: 50, perola: 25, fragmentos: 10 }, description: "Predador pré-histórico do Oceano Profundo.", bonus: "+3% DPS do navio", dpsBonus: .03, color: "#ffb349", visual: "megalodon" },
-    { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 500, interval: 3, power: 3500, levelReq: 75, regionReq: 10, bossReq: 9, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários com +15% de dano contra bosses.", bonus: "+15% contra bosses", bossBonus: .15, color: "#c485ff", visual: "kraken" }
+    { name: "Megalodon", icon: "🦈", type: "Lendário ofensivo", rarity: "Lendário", rarityKey: "legendary", damage: 250, interval: 2.5, power: 1100, levelReq: 55, regionReq: 10, costs: { ouro: 500000, comida: 2500, gema: 50, perola: 25, fragmentos: 10 }, description: "Predador pré-histórico do Oceano Profundo.", bonus: "+3% DPS do navio", dpsBonus: .03, color: "#ffb349", visual: "megalodon" },
+    { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 500, interval: 3, power: 3500, levelReq: 75, regionReq: 15, bossReq: 14, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários com +15% de dano contra bosses.", bonus: "+15% contra bosses", bossBonus: .15, color: "#c485ff", visual: "kraken" }
   ].map((pet, id) => ({ id, dps: pet.damage / pet.interval, ...pet }));
 
   function createDefaultState() {
     return {
-      version: 3,
+      version: 5,
       resources: { ouro: 1200, madeira: 90, ferro: 55, tecido: 45, comida: 22, polvora: 28, pedra: 0, cristal: 0, perola: 0, gema: 0, ambar: 0, fragmentos: 0 },
+      pirateCoins: 0,
+      prestiges: 0,
+      prestigeHistory: [],
+      journeyStartedAt: Date.now(),
+      maxRegionReached: 0,
       pirateLevel: 1,
       xp: 0,
       regionIndex: 0,
       unlockedRegions: 1,
-      regionKills: Array(10).fill(0),
-      bossesDefeated: Array(10).fill(false),
+      regionKills: Array(REGIONS.length).fill(0),
+      bossesDefeated: Array(REGIONS.length).fill(false),
       shipId: 0,
       ownedShips: [0],
       ownedPets: [],
@@ -176,17 +211,30 @@
       merged.skills = Object.fromEntries(Object.keys(SKILL_META).map(key => [key, { ...defaults.skills[key], ...((saved.skills || {})[key] || {}) }]));
       merged.lifetime = { ...defaults.lifetime, ...(saved.lifetime || {}) };
       merged.combat = { ...defaults.combat, ...(saved.combat || {}), enemy: null, repairing: false, spawnTimer: 0 };
-      merged.regionKills = defaults.regionKills.map((_, i) => Number(saved.regionKills?.[i] || 0));
-      merged.bossesDefeated = defaults.bossesDefeated.map((_, i) => Boolean(saved.bossesDefeated?.[i]));
       const previousVersion = Number(saved.version || 1);
-      const migratedOwned = Array.isArray(saved.ownedShips) ? saved.ownedShips.map(id => previousVersion < 2 && Number(id) === 19 ? 20 : Number(id)) : [0];
+      if (previousVersion < 4) {
+        merged.regionKills = [...Array(PRIMITIVE_REGIONS.length).fill(100), ...MAIN_REGIONS.map((_, i) => Number(saved.regionKills?.[i] || 0))];
+        merged.bossesDefeated = [...Array(PRIMITIVE_REGIONS.length).fill(true), ...MAIN_REGIONS.map((_, i) => Boolean(saved.bossesDefeated?.[i]))];
+        merged.regionIndex = clamp(Number(saved.regionIndex || 0) + PRIMITIVE_REGIONS.length, PRIMITIVE_REGIONS.length, REGIONS.length - 1);
+        merged.unlockedRegions = clamp(Number(saved.unlockedRegions || 1) + PRIMITIVE_REGIONS.length, PRIMITIVE_REGIONS.length + 1, REGIONS.length);
+      } else {
+        merged.regionKills = defaults.regionKills.map((_, i) => Number(saved.regionKills?.[i] || 0));
+        merged.bossesDefeated = defaults.bossesDefeated.map((_, i) => Boolean(saved.bossesDefeated?.[i]));
+      }
+      const shipOffset = previousVersion < 4 ? PRIMITIVE_SHIPS.length : 0;
+      const migratedOwned = Array.isArray(saved.ownedShips) ? saved.ownedShips.map(id => (previousVersion < 2 && Number(id) === 19 ? 20 : Number(id)) + shipOffset) : [0];
       merged.ownedShips = [...new Set([0, ...migratedOwned])].filter(id => Number.isInteger(id) && id >= 0 && id < SHIPS.length);
-      merged.shipId = previousVersion < 2 && Number(saved.shipId) === 19 ? 20 : Number(saved.shipId || 0);
+      merged.shipId = (previousVersion < 2 && Number(saved.shipId) === 19 ? 20 : Number(saved.shipId || 0)) + shipOffset;
       if (!merged.ownedShips.includes(merged.shipId) || !SHIPS[merged.shipId]) merged.shipId = 0;
       merged.ownedPets = [...new Set((saved.ownedPets || []).map(Number))].filter(id => Number.isInteger(id) && PETS[id]);
       merged.equippedPetId = saved.equippedPetId === null || saved.equippedPetId === undefined ? null : Number(saved.equippedPetId);
       if (!merged.ownedPets.includes(merged.equippedPetId) || !PETS[merged.equippedPetId]) merged.equippedPetId = null;
-      merged.version = 3;
+      merged.pirateCoins = Math.max(0, Math.floor(Number(saved.pirateCoins || 0)));
+      merged.prestiges = Math.max(0, Math.floor(Number(saved.prestiges || 0)));
+      merged.prestigeHistory = Array.isArray(saved.prestigeHistory) ? saved.prestigeHistory.slice(0, 20) : [];
+      merged.journeyStartedAt = Number(saved.journeyStartedAt || Date.now());
+      merged.maxRegionReached = clamp(Math.max(Number(saved.maxRegionReached || 0), merged.regionIndex), 0, REGIONS.length - 1);
+      merged.version = 5;
       return merged;
     } catch (error) {
       console.warn("Não foi possível carregar o save.", error);
@@ -203,6 +251,7 @@
   let hiddenAt = 0;
   const tradeQuantities = Object.fromEntries(Object.keys(TRADE_PRICES).map(key => [key, 1]));
   let pendingTrade = null;
+  let prestigeConfirmationStage = 0;
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
 
@@ -221,7 +270,27 @@
   function isSkillUnlocked(key) { return state.pirateLevel >= SKILL_META[key].unlock; }
   function getEquippedPet() { return state.equippedPetId === null ? null : PETS[state.equippedPetId] || null; }
   function isPetUnlocked(pet) {
-    return state.pirateLevel >= pet.levelReq && (!pet.regionReq || state.unlockedRegions >= pet.regionReq) && (pet.bossReq === undefined || state.bossesDefeated[pet.bossReq]);
+    return state.prestiges >= pet.id + 1 && state.pirateLevel >= pet.levelReq && (!pet.regionReq || state.unlockedRegions >= pet.regionReq) && (pet.bossReq === undefined || state.bossesDefeated[pet.bossReq]);
+  }
+
+  function prestigeRegionIndex() { return REGIONS.findIndex(region => region.name === PRESTIGE_REGION_NAME); }
+  function canPrestige() {
+    const index = prestigeRegionIndex();
+    return index >= 0 && state.unlockedRegions > index && state.bossesDefeated[index] && REGIONS[index].boss === PRESTIGE_BOSS_NAME;
+  }
+  function getPrestigeBonuses() {
+    return { gold: state.prestiges * .02, xp: state.prestiges * .02, dps: state.prestiges * .01, speed: state.prestiges * .01, drop: state.prestiges * .01, idle: state.prestiges * .01 };
+  }
+  function getPrestigeReward() {
+    if (!canPrestige()) return 0;
+    const stats = getStats();
+    const resourceScore = Object.values(state.resources).reduce((sum, value) => sum + Math.log10(1 + Math.max(0, value)), 0);
+    const upgradeScore = Object.values(state.levels).reduce((sum, value) => sum + Math.max(0, value - 1), 0);
+    const nextPetCost = PET_PIRATE_COIN_COSTS[Math.min(state.prestiges, PET_PIRATE_COIN_COSTS.length - 1)];
+    const progressScore = (state.maxRegionReached - prestigeRegionIndex()) * 3 + bossesCount() * .8 + state.pirateLevel * .12;
+    const strengthScore = Math.sqrt(stats.power) / 14 + Math.sqrt(stats.dps) / 18 + Math.sqrt(stats.maxHp) / 30;
+    const journeyScore = upgradeScore * .12 + Math.log10(1 + state.lifetime.enemies) * 1.5 + resourceScore * .08 + state.ownedPets.length;
+    return Math.max(nextPetCost, Math.floor(nextPetCost + Math.max(0, progressScore + strengthScore + journeyScore - 8)));
   }
 
   function getSkillCooldown(key, level = state.skills[key].level, speed = getStats().speed) {
@@ -245,8 +314,9 @@
     const damageBonus = 1 + (state.levels.cannons - 1) * .13;
     const speedBonus = 1 + (state.levels.sails - 1) * .075;
     const hpBonus = 1 + (state.levels.hull - 1) * .15;
-    let damage = ship.damage * overall * damageBonus;
-    let speed = ship.speed * overall * speedBonus;
+    const prestigeBonuses = getPrestigeBonuses();
+    let damage = ship.damage * overall * damageBonus * (1 + prestigeBonuses.dps);
+    let speed = ship.speed * overall * speedBonus * (1 + prestigeBonuses.speed);
     let maxHp = ship.hp * overall * hpBonus;
     let armor = ship.armor + (state.levels.hull - 1) * 2.2 + (state.levels.ship - 1) * .7;
     let precision = Math.min(.98, .83 + (state.levels.cannons - 1) * .006);
@@ -340,7 +410,7 @@
   }
 
   function gainXp(amount) {
-    state.xp += amount;
+    state.xp += amount * (1 + getPrestigeBonuses().xp);
     while (state.xp >= xpNeeded()) {
       state.xp -= xpNeeded();
       state.pirateLevel += 1;
@@ -1047,7 +1117,7 @@
     const dropKeys = new Set([...Object.keys(region.drops), ...Object.keys(enemy?.bonusDrops || {})]);
     dropKeys.forEach(key => {
       const chance = Math.min(.88, (region.drops[key] || 0) + (enemy?.bonusDrops?.[key] || 0));
-      if (Math.random() < chance * lootBonus * (multiplier > 1 ? 1.65 : 1)) {
+      if (Math.random() < chance * lootBonus * (1 + getPrestigeBonuses().drop) * (multiplier > 1 ? 1.65 : 1)) {
         const amount = Math.max(1, Math.round(integerBetween(1, 1 + Math.floor(state.regionIndex / 2)) * multiplier));
         state.resources[key] += amount;
         state.lifetime.resources += amount;
@@ -1064,7 +1134,7 @@
     const region = REGIONS[state.regionIndex];
     if (getEquippedPet()) state.lifetime.petKills += 1;
     if (enemy.isBoss) {
-      const reward = integerBetween(region.bossGold[0], region.bossGold[1]);
+      const reward = Math.round(integerBetween(region.bossGold[0], region.bossGold[1]) * (1 + getPrestigeBonuses().gold));
       state.resources.ouro += reward;
       state.lifetime.gold += reward;
       state.lifetime.bosses += 1;
@@ -1075,11 +1145,14 @@
       addLog(`${region.boss} derrotado! Tesouro: ${formatNumber(reward)} ouro.`, "loot");
       toast(`${region.boss} foi derrotado!`, "gold-toast");
       if (state.regionIndex < REGIONS.length - 1) {
+        const completedPrologue = state.regionIndex === PRIMITIVE_REGIONS.length - 1;
         state.unlockedRegions = Math.max(state.unlockedRegions, state.regionIndex + 2);
         state.regionIndex += 1;
+        state.maxRegionReached = Math.max(state.maxRegionReached, state.regionIndex);
         state.combat.enemy = null;
         state.combat.spawnTimer = -700;
         toast(`${REGIONS[state.regionIndex].name} foi desbloqueada.`, "gold-toast");
+        if (completedPrologue) setTimeout(() => toast("A Era Primitiva ficou para trás. Agora começa a verdadeira jornada pirata.", "gold-toast"), 450);
       } else {
         state.combat.running = false;
         toast("Você conquistou o Abismo e se tornou uma lenda!", "gold-toast");
@@ -1087,7 +1160,7 @@
       if (materials.length) addLog(`Tesouro do boss: ${materials.join(", ")}.`, "loot");
     } else {
       const weightedGold = region.gold * (enemy.goldMultiplier || 1) * randomBetween(.88, 1.15);
-      const gold = Math.round(clamp(weightedGold, region.goldRange[0], region.goldRange[1]));
+      const gold = Math.round(clamp(weightedGold, region.goldRange[0], region.goldRange[1]) * (1 + getPrestigeBonuses().gold));
       state.resources.ouro += gold;
       state.lifetime.gold += gold;
       state.lifetime.enemies += 1;
@@ -1177,10 +1250,11 @@
     const capped = Math.min(86400, seconds);
     const region = REGIONS[state.regionIndex];
     const stats = getStats();
-    const efficiency = .55 + Math.min(.25, (state.resources.comida || 0) / 5000);
+    const prestigeIdle = getPrestigeBonuses().idle;
+    const efficiency = (.55 + Math.min(.25, (state.resources.comida || 0) / 5000)) * (1 + prestigeIdle);
     const cycle = region.baseHp / Math.max(1, stats.dps) + getSpawnDelay() / 1000;
     const kills = Math.max(1, Math.floor(capped / cycle * efficiency * OFFLINE_REWARD_RATE));
-    const gold = Math.round(kills * region.gold * .94);
+    const gold = Math.round(kills * region.gold * .94 * (1 + getPrestigeBonuses().gold));
     const xp = Math.round(kills * region.xp * .94);
     state.resources.ouro += gold;
     state.lifetime.gold += gold;
@@ -1189,7 +1263,7 @@
     gainXp(xp);
     const rewards = [{ name: "Ouro", amount: gold }, { name: "XP", amount: xp }, { name: "Vitórias", amount: kills }];
     Object.entries(region.drops).forEach(([key, chance]) => {
-      const amount = Math.floor(kills * chance * randomBetween(.75, 1.15));
+      const amount = Math.floor(kills * chance * (1 + getPrestigeBonuses().drop) * randomBetween(.75, 1.15));
       if (amount > 0) {
         state.resources[key] += amount;
         state.lifetime.resources += amount;
@@ -1197,7 +1271,7 @@
       }
     });
     if (showModal) {
-      $("#offline-time").textContent = `Sua frota navegou por ${formatDuration(capped)} (limite de 24 horas). Eficiência offline: 30% do combate ativo.`;
+      $("#offline-time").textContent = `Sua frota navegou por ${formatDuration(capped)} (limite de 24 horas). Eficiência offline: ${Math.round(OFFLINE_REWARD_RATE * (1 + prestigeIdle) * 100)}% do combate ativo.`;
       $("#offline-rewards").innerHTML = rewards.map(item => `<div><span>${item.name}</span><strong>+${formatNumber(item.amount)}</strong></div>`).join("");
       $("#offline-modal").classList.remove("hidden");
     }
@@ -1254,11 +1328,11 @@
 
   function renderTopbar() {
     const bar = $("#top-resources");
-    const entries = Object.entries(RESOURCE_META);
+    const entries = [["pirateCoins", { name: "Moedas Pirata", icon: "☠", rarityKey: "legendary", uses: "Pets e progresso permanente" }], ...Object.entries(RESOURCE_META)];
     if (bar.childElementCount !== entries.length) {
-      bar.innerHTML = entries.map(([key, meta]) => `<div class="top-resource-chip" data-top-resource="${key}" title="${meta.name}: ${meta.uses}" style="--resource-color:${RARITY_COLORS[meta.rarityKey]}"><span class="resource-symbol">${meta.icon}</span><span class="top-resource-copy"><span class="top-resource-name">${meta.name}</span><strong class="top-resource-amount">${formatNumber(state.resources[key])}</strong></span></div>`).join("");
+      bar.innerHTML = entries.map(([key, meta]) => `<div class="top-resource-chip" data-top-resource="${key}" title="${meta.name}: ${meta.uses}" style="--resource-color:${RARITY_COLORS[meta.rarityKey]}"><span class="resource-symbol">${meta.icon}</span><span class="top-resource-copy"><span class="top-resource-name">${meta.name}</span><strong class="top-resource-amount">${formatNumber(key === "pirateCoins" ? state.pirateCoins : state.resources[key])}</strong></span></div>`).join("");
     } else {
-      entries.forEach(([key]) => { const amount = $(`[data-top-resource="${key}"] .top-resource-amount`, bar); if (amount) amount.textContent = formatNumber(state.resources[key]); });
+      entries.forEach(([key]) => { const amount = $(`[data-top-resource="${key}"] .top-resource-amount`, bar); if (amount) amount.textContent = formatNumber(key === "pirateCoins" ? state.pirateCoins : state.resources[key]); });
     }
     $("#top-naval-power").textContent = formatNumber(getStats().power);
     $("#top-level").textContent = state.pirateLevel;
@@ -1323,6 +1397,7 @@
 
   function getPetIssues(pet) {
     const issues = [];
+    if (state.prestiges < pet.id + 1) issues.push(`${pet.id + 1} Prestígio${pet.id ? "s" : ""} realizado${pet.id ? "s" : ""}`);
     if (state.pirateLevel < pet.levelReq) issues.push(`Nível ${pet.levelReq} do pirata`);
     if (pet.regionReq && state.unlockedRegions < pet.regionReq) issues.push(pet.id === 8 ? "Oceano Profundo desbloqueado" : "Abismo do Kraken desbloqueado");
     if (pet.bossReq !== undefined && !state.bossesDefeated[pet.bossReq]) issues.push("Kraken Primordial derrotado");
@@ -1338,13 +1413,15 @@
       const equipped = state.equippedPetId === pet.id;
       const issues = getPetIssues(pet);
       const unlocked = isPetUnlocked(pet);
-      const affordable = canAfford(pet.costs);
+      const pirateCoinCost = PET_PIRATE_COIN_COSTS[pet.id];
+      const affordable = canAfford(pet.costs) && state.pirateCoins >= pirateCoinCost;
       const status = equipped ? "EQUIPADO" : owned ? "COMPRADO" : unlocked ? "DISPONÍVEL" : "BLOQUEADO";
       const deltaDamage = current ? pet.damage - current.damage : pet.damage;
       const deltaDps = current ? pet.dps - current.dps : pet.dps;
       const comparison = equipped ? "Este é seu companheiro atual." : `<span class="${deltaDamage >= 0 ? "positive" : "negative"}">Dano ${deltaDamage >= 0 ? "+" : "-"}${formatNumber(Math.abs(deltaDamage))}</span><span class="${deltaDps >= 0 ? "positive" : "negative"}">DPS ${deltaDps >= 0 ? "+" : "-"}${Math.abs(deltaDps).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span>Ataque ${current && pet.interval > current.interval ? "mais lento" : current && pet.interval < current.interval ? "mais rápido" : "equivalente"}</span>`;
       const button = owned ? `<button class="button ${equipped ? "" : "primary"}" data-equip-pet="${pet.id}" ${equipped ? "disabled" : ""}>${equipped ? "Equipado" : "Equipar"}</button>` : `<button class="button primary" data-buy-pet="${pet.id}" ${!unlocked || !affordable ? "disabled" : ""}>Comprar</button>`;
-      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="--pet-color:${pet.color}"><div class="pet-visual"><span>${pet.icon}</span><i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? "<span class=\"cost-chip\">Adoção permanente</span>" : resourceCostHtml(pet.costs)}</div>${issues.length ? `<div class="pet-requirements">Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready">Nível ${pet.levelReq} • pronto para navegar</div>`}${button}</article>`;
+      const prestigeLine = `Prestígio necessário: ${state.prestiges} / ${pet.id + 1}`;
+      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="--pet-color:${pet.color}"><div class="pet-visual"><span>${pet.icon}</span><i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? "<span class=\"cost-chip\">Adoção permanente</span>" : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${issues.length ? `<div class="pet-requirements"><strong>${prestigeLine}</strong><br>Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready"><strong>${prestigeLine}</strong><br>${state.pirateCoins >= pirateCoinCost ? "Moedas e requisitos disponíveis" : `Faltam ${pirateCoinCost - state.pirateCoins} Moedas Pirata`}</div>`}${button}</article>`;
     }).join("");
   }
 
@@ -1396,6 +1473,10 @@
 
   function getShipRequirements(ship) {
     const issues = [];
+    const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
+    if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
+    const prestigeReq = Math.max(0, ship.tier - 1);
+    if (state.prestiges < prestigeReq) issues.push(`Prestígios atuais: ${state.prestiges} / ${prestigeReq}`);
     if (state.pirateLevel < ship.levelReq) issues.push(`Requer nível ${ship.levelReq}`);
     Object.entries(ship.costs).forEach(([key, amount]) => {
       const missing = Math.max(0, amount - (state.resources[key] || 0));
@@ -1414,11 +1495,15 @@
       const current = state.shipId === ship.id;
       const issues = owned ? [] : getShipRequirements(ship);
       const levelMet = state.pirateLevel >= ship.levelReq;
+      const prologueMet = ship.tier === 0 || state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
+      const prestigeReq = Math.max(0, ship.tier - 1);
+      const prestigeMet = state.prestiges >= prestigeReq;
       const affordable = canAfford(ship.costs);
-      const status = current ? "EQUIPADO" : owned ? "COMPRADO" : levelMet && affordable ? "DISPONÍVEL" : "BLOQUEADO";
-      const statusKey = current ? "equipped" : owned ? "purchased" : levelMet && affordable ? "available" : "blocked";
-      const button = current ? `<button class="button" disabled>Equipado</button>` : owned ? `<button class="button primary" data-equip-ship="${ship.id}">Equipar navio</button>` : `<button class="button ${levelMet && affordable ? "primary" : ""}" data-buy-ship="${ship.id}" ${levelMet && affordable ? "" : "disabled"}>${levelMet && affordable ? "Comprar e equipar" : levelMet ? "Recursos insuficientes" : `Requer nível ${ship.levelReq}`}</button>`;
-      const issueHtml = issues.length ? `<ul class="ship-issues">${issues.slice(0, 4).map(issue => `<li>${issue}</li>`).join("")}${issues.length > 4 ? `<li>+${issues.length - 4} requisitos</li>` : ""}</ul>` : `<p class="ship-ready">${owned ? "Disponível permanentemente na sua frota." : "Todos os requisitos foram atendidos."}</p>`;
+      const available = prologueMet && prestigeMet && levelMet && affordable;
+      const status = current ? "EQUIPADO" : owned ? "COMPRADO" : !prologueMet ? "BLOQUEADO PELO PRÓLOGO" : !prestigeMet ? "BLOQUEADO POR PRESTÍGIO" : available ? "DISPONÍVEL" : "BLOQUEADO";
+      const statusKey = current ? "equipped" : owned ? "purchased" : available ? "available" : "blocked";
+      const button = current ? `<button class="button" disabled>Equipado</button>` : owned ? `<button class="button primary" data-equip-ship="${ship.id}">Equipar navio</button>` : `<button class="button ${available ? "primary" : ""}" data-buy-ship="${ship.id}" ${available ? "" : "disabled"}>${available ? "Comprar e equipar" : !prologueMet ? "Conclua o prólogo" : !prestigeMet ? `Requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}` : levelMet ? "Recursos insuficientes" : `Requer nível ${ship.levelReq}`}</button>`;
+      const issueHtml = issues.length ? `<ul class="ship-issues">${issues.slice(0, 4).map(issue => `<li>${issue}</li>`).join("")}${issues.length > 4 ? `<li>+${issues.length - 4} requisitos</li>` : ""}</ul>` : `<p class="ship-ready">${owned ? "Disponível durante esta jornada." : "Todos os requisitos foram atendidos."}</p>`;
       const candidatePower = getStats(ship.id).power;
       const powerDelta = candidatePower - getStats().power;
       return `<article class="ship-card ${owned ? "owned" : statusKey === "blocked" ? "locked" : ""} ${current ? "current" : ""} ${statusKey}"><div class="ship-tier">TIER ${ship.tier}</div><div class="ship-status ${statusKey}">${status}</div><div class="ship-visual"><canvas data-ship-preview="${ship.id}" aria-label="Miniatura de ${ship.name}"></canvas></div><div class="ship-title-row"><div><h3>${ship.name}</h3><span>${ship.type}</span></div><span class="ship-level-req">NÍVEL ${ship.levelReq}</span></div><div class="ship-mini-stats"><span><small>VIDA</small>❤ ${formatNumber(ship.hp)}</span><span><small>DANO</small>☄ ${formatNumber(ship.damage)}</span><span><small>VELOC.</small>» ${formatNumber(ship.speed)}</span><span><small>DEFESA</small>⬡ ${formatNumber(ship.armor)}</span></div><div class="ship-power-comparison"><span>PODER NAVAL</span><strong>${formatNumber(candidatePower)}</strong><small class="${powerDelta >= 0 ? "positive" : "negative"}">${current ? "Navio atual" : `${powerDelta >= 0 ? "+" : "−"}${formatNumber(Math.abs(powerDelta))} vs. atual`}</small></div><div class="ship-costs"><span class="ship-section-label">CUSTO DE CONSTRUÇÃO</span><div class="cost-list">${resourceCostHtml(ship.costs)}</div></div>${issueHtml}${button}</article>`;
@@ -1447,12 +1532,14 @@
 
   function renderMaps() {
     $("#maps-unlocked").textContent = state.unlockedRegions;
+    $("#maps-total").textContent = `de ${REGIONS.length} regiões`;
     $("#maps-grid").innerHTML = REGIONS.map((region, index) => {
       const unlocked = index < state.unlockedRegions;
       const current = state.regionIndex === index;
+      const eraLabel = index < PRIMITIVE_REGIONS.length ? "Prólogo Primitivo" : "Jornada Pirata";
       const tags = Object.keys(region.drops).map(key => `<span>${RESOURCE_META[key].name} • ${Math.round(region.drops[key] * 100)}%</span>`).join("");
       const enemyTags = [...new Set(REGION_ENCOUNTERS[index].map(enemy => ENEMY_CATEGORIES[enemy.category].label))].map(label => `<span class="enemy-tag">⚔ ${label}</span>`).join("");
-      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land}"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div><div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
+      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land}"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div><div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
     }).join("");
   }
 
@@ -1565,6 +1652,77 @@
     $("#trade-modal").classList.add("hidden");
   }
 
+  function renderPrestige() {
+    const unlocked = canPrestige();
+    const stats = getStats();
+    const reward = getPrestigeReward();
+    const bonuses = getPrestigeBonuses();
+    const bestShip = SHIPS[Math.max(...state.ownedShips)];
+    $("#prestige-coins").textContent = formatNumber(state.pirateCoins);
+    $("#prestige-locked").classList.toggle("hidden", unlocked);
+    $("#prestige-content").classList.toggle("prestige-disabled", !unlocked);
+    $("#prestige-summary").innerHTML = [
+      ["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Mapa máximo", `${state.maxRegionReached + 1} • ${REGIONS[state.maxRegionReached].name}`],
+      ["Bosses derrotados", bossesCount()], ["Poder Naval", stats.power], ["DPS total", stats.dps], ["Nível pirata", state.pirateLevel], ["Melhor navio", bestShip.name]
+    ].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
+    $("#prestige-reward").textContent = `${formatNumber(reward)} Moedas Pirata`;
+    $("#prestige-button").disabled = !unlocked;
+    $("#prestige-bonuses").innerHTML = [["Ouro", bonuses.gold], ["XP", bonuses.xp], ["DPS", bonuses.dps], ["Velocidade", bonuses.speed], ["Chance de drop", bonuses.drop], ["Eficiência idle", bonuses.idle]].map(([label, value]) => `<div><span>${label}</span><strong>+${Math.round(value * 100)}%</strong></div>`).join("");
+    $("#prestige-history").innerHTML = state.prestigeHistory.length ? state.prestigeHistory.map(item => `<div class="prestige-history-row"><strong>#${item.number}</strong><span>${item.date}</span><span>Mapa ${item.map} • ${item.boss}</span><span>${formatNumber(item.power)} poder</span><span>+${formatNumber(item.coins)} ☠</span><small>${item.ship} • ${item.pet || "Sem pet"} • ${formatDuration(item.duration || 0)}</small></div>`).join("") : `<p class="empty-state">Seu primeiro ciclo aparecerá aqui.</p>`;
+    const achievements = [
+      ["Primeiro Prestígio", state.prestiges >= 1], ["Pirata Renascido", state.prestiges >= 3], ["Ciclo Infinito", state.prestiges >= 5], ["Mestre dos Prestígios", state.prestiges >= 10], ["Colecionador de Moedas", state.pirateCoins >= 100], ["Companheiro Permanente", state.ownedPets.length >= 1]
+    ];
+    const missions = [["Missão: realizar 1 Prestígio", state.prestiges >= 1], ["Missão: comprar o primeiro pet", state.ownedPets.length >= 1], ["Missão: liberar navios Tier 3", state.prestiges >= 2], ["Missão: alcançar 10 Prestígios", state.prestiges >= 10]];
+    $("#prestige-achievements").innerHTML = [...achievements, ...missions].map(([name, earned]) => `<span class="prestige-achievement ${earned ? "earned" : ""}">${earned ? "✓" : "◇"} ${name}</span>`).join("");
+  }
+
+  function openPrestigeConfirmation() {
+    if (!canPrestige()) return toast(`Derrote ${PRESTIGE_BOSS_NAME} em ${PRESTIGE_REGION_NAME} para liberar.`, "danger-toast");
+    prestigeConfirmationStage = 1;
+    $("#prestige-confirm-step").textContent = "CONFIRMAÇÃO 1 DE 2";
+    $("#prestige-modal-title").textContent = "Reiniciar esta jornada?";
+    $("#prestige-modal-message").textContent = "Você manterá Prestígios, Moedas Pirata e pets. Todo o restante será reiniciado.";
+    $("#prestige-modal-reward").innerHTML = `Você receberá <strong>+${formatNumber(getPrestigeReward())} Moedas Pirata</strong>`;
+    $("#prestige-confirm").textContent = "Continuar";
+    $("#prestige-modal").classList.remove("hidden");
+  }
+
+  function closePrestigeConfirmation() {
+    prestigeConfirmationStage = 0;
+    $("#prestige-modal").classList.add("hidden");
+  }
+
+  function confirmPrestige() {
+    if (prestigeConfirmationStage === 1) {
+      prestigeConfirmationStage = 2;
+      $("#prestige-confirm-step").textContent = "CONFIRMAÇÃO 2 DE 2";
+      $("#prestige-modal-title").textContent = "Confirma o Prestígio?";
+      $("#prestige-modal-message").textContent = "Esta é a confirmação final. A jornada atual não poderá ser recuperada.";
+      $("#prestige-confirm").textContent = "Confirmar Prestígio";
+      return;
+    }
+    if (prestigeConfirmationStage !== 2 || !canPrestige()) return closePrestigeConfirmation();
+    const reward = getPrestigeReward();
+    const currentPet = getEquippedPet();
+    const strongestBossIndex = state.bossesDefeated.reduce((best, defeated, index) => defeated ? index : best, 0);
+    const entry = {
+      number: state.prestiges + 1, date: new Date().toLocaleDateString("pt-BR"), map: state.maxRegionReached + 1,
+      boss: REGIONS[strongestBossIndex].boss, power: getStats().power, coins: reward,
+      ship: SHIPS[Math.max(...state.ownedShips)].name, pet: currentPet?.name || null,
+      duration: Math.max(0, Math.floor((Date.now() - state.journeyStartedAt) / 1000))
+    };
+    const permanent = { prestiges: state.prestiges + 1, pirateCoins: state.pirateCoins + reward, ownedPets: [...state.ownedPets], equippedPetId: state.equippedPetId, prestigeHistory: [entry, ...state.prestigeHistory].slice(0, 20) };
+    state = createDefaultState();
+    Object.assign(state, permanent);
+    state.combat.playerHp = getStats().maxHp;
+    addLog(`Prestígio #${state.prestiges} concluído. A nova jornada começou com ${formatNumber(reward)} Moedas Pirata.`, "loot");
+    closePrestigeConfirmation();
+    navigate("prestige");
+    renderAll(true);
+    saveGame();
+    toast(`Prestígio concluído! +${formatNumber(reward)} Moedas Pirata.`, "gold-toast");
+  }
+
   function renderStats() {
     const stats = getStats();
     const skillLevels = Object.values(state.skills).reduce((sum, item) => sum + item.level, 0);
@@ -1577,7 +1735,7 @@
     $("#progression-stats").innerHTML = list([
       ["Navio atual", SHIPS[state.shipId].name], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
-    $("#career-stats").innerHTML = [["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
+    $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
   }
 
   function renderAll(expensive = true) {
@@ -1587,6 +1745,7 @@
     if (expensive || currentScreen === "resources") renderResources();
     if (expensive || currentScreen === "trade") renderTrade();
     if (expensive || currentScreen === "pets") renderPets();
+    if (expensive || currentScreen === "prestige") renderPrestige();
     if (expensive || currentScreen === "stats") renderStats();
   }
 
@@ -1607,6 +1766,9 @@
   function buyShip(id) {
     const ship = SHIPS[id];
     if (!ship || state.ownedShips.includes(id)) return;
+    if (ship.tier >= 1 && !state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) return toast("Conclua o prólogo da Era Primitiva para acessar navios piratas.", "danger-toast");
+    const prestigeReq = Math.max(0, ship.tier - 1);
+    if (state.prestiges < prestigeReq) return toast(`Tier ${ship.tier} requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}.`, "danger-toast");
     if (state.pirateLevel < ship.levelReq) return toast(`Requer nível ${ship.levelReq} para comprar ${ship.name}.`, "danger-toast");
     if (!canAfford(ship.costs)) return toast("Ainda faltam recursos para construir este navio.", "danger-toast");
     spend(ship.costs); state.ownedShips.push(id); state.shipId = id; state.combat.playerHp = getStats().maxHp; state.combat.enemy = null; state.combat.spawnTimer = 0;
@@ -1624,8 +1786,10 @@
     if (!pet || state.ownedPets.includes(id)) return;
     const issues = getPetIssues(pet);
     if (issues.length) return toast(`Pet bloqueado: ${issues.join(" • ")}.`, "danger-toast");
+    const pirateCoinCost = PET_PIRATE_COIN_COSTS[id];
+    if (state.pirateCoins < pirateCoinCost) return toast("Moedas Pirata insuficientes para este pet.", "danger-toast");
     if (!canAfford(pet.costs)) return toast("Ainda faltam recursos para adotar este pet.", "danger-toast");
-    spend(pet.costs); state.ownedPets.push(id); state.equippedPetId = id; state.combat.petAttackTimer = 0; state.lifetime.petsBought += 1;
+    spend(pet.costs); state.pirateCoins -= pirateCoinCost; state.ownedPets.push(id); state.equippedPetId = id; state.combat.petAttackTimer = 0; state.lifetime.petsBought += 1;
     toast(`${pet.name} foi comprado e equipado!`, "gold-toast"); addLog(`${pet.name} agora acompanha seu navio.`, "loot"); renderAll(true); saveGame();
   }
 
@@ -1667,6 +1831,7 @@
     if (screen === "resources") renderResources();
     if (screen === "trade") renderTrade();
     if (screen === "pets") renderPets();
+    if (screen === "prestige") renderPrestige();
     if (screen === "stats") renderStats();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -1735,6 +1900,9 @@
   $("#confirm-wipe").addEventListener("click", () => { localStorage.removeItem(SAVE_KEY); state = createDefaultState(); $("#confirm-modal").classList.add("hidden"); toast("Progresso apagado. Uma nova jornada começou."); renderAll(true); saveGame(); });
   $("#trade-cancel").addEventListener("click", closeTradeModal);
   $("#trade-confirm").addEventListener("click", executeTrade);
+  $("#prestige-button").addEventListener("click", openPrestigeConfirmation);
+  $("#prestige-cancel").addEventListener("click", closePrestigeConfirmation);
+  $("#prestige-confirm").addEventListener("click", confirmPrestige);
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { hiddenAt = Date.now(); saveGame(); }
@@ -1745,7 +1913,7 @@
   const offlineSeconds = (Date.now() - Number(state.lastSeen || Date.now())) / 1000;
   if (offlineSeconds >= 30) applyOfflineProgress(offlineSeconds, true);
   state.combat.playerHp = clamp(state.combat.playerHp || getStats().maxHp, 1, getStats().maxHp);
-  if (!state.logs.length) addLog("O Bote Armado está pronto para sua primeira patrulha.");
+  if (!state.logs.length) addLog(`${SHIPS[state.shipId].name} está pronto para sua primeira patrulha.`);
   renderAll(true);
   requestAnimationFrame(gameLoop);
 

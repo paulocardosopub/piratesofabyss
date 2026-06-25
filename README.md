@@ -21,7 +21,9 @@ Depois, acesse `http://localhost:4173`.
 - **Resetar navio:** restaura a vida e reinicia o combate sem apagar progresso.
 - **Ícones de skill:** toque para ligar ou desligar o lançamento automático.
 - **Comércio:** compre ou venda materiais usando Ouro, com confirmação de cada transação.
-- **Frota:** compre 21 navios em cinco tiers usando nível, Ouro, Madeira e materiais especiais; navios comprados ficam disponíveis permanentemente.
+- **Prólogo:** atravesse cinco mapas da Era Primitiva com embarcações Tier 0 antes de iniciar a jornada pirata original.
+- **Frota:** compre navios em seis tiers usando nível, Prestígios, Ouro, Madeira e materiais especiais; a frota da jornada é reiniciada ao realizar Prestígio.
+- **Prestígio:** após derrotar o Megalodon Ancestral em Oceano Profundo, reinicie a jornada para ganhar Moedas Pirata, bônus permanentes e pets que nunca são perdidos.
 - **Encontros:** enfrente pescadores, comerciantes, contrabandistas, piratas, marinha, fantasmas e criaturas com atributos e recompensas diferentes.
 - **Animais clicáveis:** toque em pássaros, peixes, tubarões e no Kraken para receber 10, 20, 30 ou 100 de Comida.
 - **Progresso offline:** rende 10% do combate ativo, com limite máximo de 24 horas.
