@@ -556,6 +556,18 @@
   }
 
   function addLog(message, type = "") {
+    const importantPatterns = [
+      /Vit/i,
+      /Derrota/i,
+      /Drop/i,
+      /Boss derrotado/i,
+      /Novo mapa/i,
+      /Miss/i,
+      /Conquista/i,
+      /acompanha/i,
+      /Prest/i
+    ];
+    if (!importantPatterns.some(pattern => pattern.test(message))) return;
     const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     state.logs.unshift({ message, type, time });
     state.logs = state.logs.slice(0, 100);
@@ -1418,7 +1430,7 @@
     state.combat.spawnTimer = 0;
     state.combat.running = true;
     clearCombatTimers();
-    addLog(`${bossName} venceu o duelo. Batalha cancelada e navio restaurado; o boss continua disponível.`, "danger-text");
+    addLog(`Derrota contra ${bossName}. Navio restaurado.`, "danger-text");
     toast("Derrota para o boss — navio restaurado para uma nova tentativa.", "danger-toast");
     saveGame();
   }
@@ -1427,7 +1439,7 @@
     state.combat.repairing = true;
     state.combat.repairStarted = performance.now();
     trackAction("repair");
-    addLog("Casco destruído. Reparo automático iniciado!", "danger-text");
+    addLog(`Derrota contra ${state.combat.enemy?.name || "inimigo"}. Reparo iniciado.`, "danger-text");
     toast("Navio destruído — reparo automático em andamento.", "danger-toast");
   }
 
@@ -1473,7 +1485,7 @@
       state.bossesDefeated[state.regionIndex] = true;
       gainXp(region.xp * 35);
       const materials = rewardMaterials(8, enemy);
-      addLog(`${region.boss} derrotado! Tesouro: ${formatNumber(reward)} ouro.`, "loot");
+      addLog(`Boss derrotado: ${region.boss}. Drop: ${formatNumber(reward)} Ouro.`, "loot");
       toast(`${region.boss} foi derrotado!`, "gold-toast");
       if (state.regionIndex < REGIONS.length - 1) {
         const completedPrologue = state.regionIndex === PRIMITIVE_REGIONS.length - 1;
@@ -1483,12 +1495,13 @@
         state.combat.enemy = null;
         state.combat.spawnTimer = -700;
         toast(`${REGIONS[state.regionIndex].name} foi desbloqueada.`, "gold-toast");
+        addLog(`Novo mapa desbloqueado: ${REGIONS[state.regionIndex].name}.`, "loot");
         if (completedPrologue) setTimeout(() => toast("A Era Primitiva ficou para trás. Agora começa a verdadeira jornada pirata.", "gold-toast"), 450);
       } else {
         state.combat.running = false;
         toast("Você conquistou o Abismo e se tornou uma lenda!", "gold-toast");
       }
-      if (materials.length) addLog(`Tesouro do boss: ${materials.join(", ")}.`, "loot");
+      if (materials.length) addLog(`Drop do boss: ${materials.join(", ")}.`, "loot");
     } else {
       const weightedGold = region.gold * (enemy.goldMultiplier || 1) * randomBetween(.88, 1.15);
       const gold = Math.round(clamp(weightedGold, region.goldRange[0], region.goldRange[1]) * (1 + getPrestigeBonuses().gold));
@@ -1500,7 +1513,7 @@
       gainXp(Math.round(region.xp * (enemy.xpMultiplier || 1) * randomBetween(.92, 1.08)));
       const materials = rewardMaterials(1, enemy);
       trackAction("enemy", { onlyGold: materials.length === 0, multiResource: materials.length >= 2, survivor: state.combat.playerHp > 0 && state.combat.playerHp <= getStats().maxHp * .05 });
-      addLog(materials.length ? `Vitória: +${formatNumber(gold)} ouro, ${materials.join(", ")}.` : `Vitória: +${formatNumber(gold)} ouro. Nenhum material.`, materials.length ? "loot" : "");
+      addLog(materials.length ? `Vitória contra ${enemy.name}. Drop: ${formatNumber(gold)} Ouro + ${materials.join(", ")}.` : `Vitória contra ${enemy.name}. Drop: ${formatNumber(gold)} Ouro.`, materials.length ? "loot" : "");
       if (state.regionKills[state.regionIndex] === 100 && !state.bossesDefeated[state.regionIndex]) toast(`${region.boss} está disponível para desafio!`, "gold-toast");
       state.combat.enemy = null;
       state.combat.spawnTimer = 0;
@@ -1794,9 +1807,11 @@
     $("#scene-weather").textContent = region.weather;
     $("#metric-damage").textContent = formatNumber(stats.damage);
     $("#metric-dps").textContent = formatNumber(stats.dps);
-    $("#metric-speed").textContent = formatNumber(stats.speed);
+    const speedMetric = $("#metric-speed");
+    if (speedMetric) speedMetric.textContent = formatNumber(stats.speed);
     $("#metric-hp").textContent = formatNumber(stats.maxHp);
-    $("#metric-power").textContent = formatNumber(stats.power);
+    const powerMetric = $("#metric-power");
+    if (powerMetric) powerMetric.textContent = formatNumber(stats.power);
     $("#kill-progress-text").textContent = `${Math.min(100, kills)} / 100`;
     $("#boss-progress-fill").style.width = `${Math.min(100, kills)}%`;
     $("#boss-name").textContent = region.boss;
@@ -1806,19 +1821,21 @@
     $("#boss-status").textContent = defeated ? "Boss derrotado • continue farmando" : available ? "Desafio disponível agora" : `Faltam ${Math.max(0, 100 - kills)} vitórias`;
     $("#boss-button").disabled = !available || Boolean(state.combat.enemy?.isBoss);
     $("#boss-button").textContent = defeated ? "Boss derrotado" : state.combat.enemy?.isBoss ? "Em combate" : "Desafiar boss";
-    $("#start-button").textContent = state.combat.running ? "▶ Em andamento" : state.hasStarted ? "▶ Continuar" : "▶ Iniciar";
-    $("#start-button").disabled = state.combat.running;
-    $("#pause-button").disabled = !state.combat.running;
+    $("#start-button").textContent = `Combate Auto: ${state.combat.running ? "ON" : "OFF"}`;
     const needed = xpNeeded();
-    $("#xp-text").textContent = `${formatNumber(state.xp)} / ${formatNumber(needed)} XP`;
-    $("#pirate-level-text").textContent = `Nível ${state.pirateLevel}`;
-    $("#xp-fill").style.width = `${state.xp / needed * 100}%`;
-    $("#battle-log").innerHTML = state.logs.length ? state.logs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>O mar está calmo. Inicie a jornada quando estiver pronto.</li>";
+    const xpText = $("#xp-text");
+    const pirateLevelText = $("#pirate-level-text");
+    const xpFill = $("#xp-fill");
+    if (xpText) xpText.textContent = `${formatNumber(state.xp)} / ${formatNumber(needed)} XP`;
+    if (pirateLevelText) pirateLevelText.textContent = `Nível ${state.pirateLevel}`;
+    if (xpFill) xpFill.style.width = `${state.xp / needed * 100}%`;
+    const homeLogs = state.logs.slice(0, 5);
+    $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
     const pet = getEquippedPet();
     $("#home-pet-icon").textContent = pet?.icon || "🐾";
     $("#home-pet-name").textContent = pet?.name || "Nenhum pet equipado";
     $("#home-pet-card").classList.toggle("equipped", Boolean(pet));
-    $("#home-pet-stats").innerHTML = pet ? `<span>DANO <strong>${formatNumber(pet.damage)}</strong></span><span>DPS <strong>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>ATAQUE <strong>${pet.interval.toLocaleString("pt-BR")}s</strong></span>` : "Escolha um companheiro para ajudar no combate.";
+    $("#home-pet-stats").innerHTML = pet ? `<span>DPS <strong>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>AUTO</span>` : "Automático";
     renderSkillDock();
   }
 
@@ -1859,12 +1876,12 @@
         const node = $(`[data-skill-dock="${key}"]`, dock);
         node.classList.toggle("off", !state.skills[key].auto);
         node.classList.toggle("locked", !isSkillUnlocked(key));
-        node.querySelector("small").textContent = isSkillUnlocked(key) ? `N${state.skills[key].level}` : `N${SKILL_META[key].unlock}`;
+        node.querySelector("small").textContent = isSkillUnlocked(key) ? (state.skills[key].auto ? "AUTO" : "OFF") : `N${SKILL_META[key].unlock}`;
         node.title = isSkillUnlocked(key) ? `${SKILL_META[key].name} • auto ${state.skills[key].auto ? "ligado" : "desligado"}` : `Desbloqueia no nível ${SKILL_META[key].unlock}`;
       });
       return;
     }
-    dock.innerHTML = Object.entries(SKILL_META).map(([key, meta]) => `<button class="skill-orb ${isSkillUnlocked(key) ? "" : "locked"}" data-skill-dock="${key}" title="${meta.name}"><span class="cooldown"></span><span class="icon">${meta.icon}</span><small>${isSkillUnlocked(key) ? `N${state.skills[key].level}` : `N${meta.unlock}`}</small></button>`).join("");
+    dock.innerHTML = Object.entries(SKILL_META).map(([key, meta]) => `<button class="skill-orb ${isSkillUnlocked(key) ? "" : "locked"}" data-skill-dock="${key}" title="${meta.name}"><span class="cooldown"></span><span class="icon">${meta.icon}</span><small>${isSkillUnlocked(key) ? (state.skills[key].auto ? "AUTO" : "OFF") : `N${meta.unlock}`}</small></button>`).join("");
   }
 
   function updateSkillCooldowns() {
@@ -2394,8 +2411,17 @@
   });
   ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
 
-  $("#start-button").addEventListener("click", () => { state.combat.running = true; state.hasStarted = true; trackAction("firstCombat"); if (state.combat.playerHp <= 0) finishRepair(true); if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay(); addLog("A frota iniciou a patrulha automática."); renderAll(false); });
-  $("#pause-button").addEventListener("click", () => { state.combat.running = false; addLog("Combate pausado pelo capitão."); renderAll(false); saveGame(); });
+  $("#start-button").addEventListener("click", () => {
+    state.combat.running = !state.combat.running;
+    if (state.combat.running) {
+      state.hasStarted = true;
+      trackAction("firstCombat");
+      if (state.combat.playerHp <= 0) finishRepair(true);
+      if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay();
+    }
+    renderAll(false);
+    saveGame();
+  });
   $("#reset-button").addEventListener("click", () => { resetShip(); renderAll(false); });
   $("#boss-button").addEventListener("click", () => { if (state.regionKills[state.regionIndex] >= 100 && !state.bossesDefeated[state.regionIndex]) { state.combat.running = true; state.hasStarted = true; trackAction("firstCombat"); state.combat.repairing = false; spawnEnemy(true); renderAll(false); } });
   $("#offline-close").addEventListener("click", () => $("#offline-modal").classList.add("hidden"));

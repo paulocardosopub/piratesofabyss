@@ -139,7 +139,6 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   box-shadow: var(--shadow);
 }
 #sea-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: manipulation; }
-.wildlife-hint { position: absolute; z-index: 3; top: 66px; left: 50%; transform: translateX(-50%); padding: 5px 9px; white-space: nowrap; border: 1px solid rgba(247,189,74,.24); border-radius: 999px; color: #ffe19a; background: rgba(4,22,32,.58); font-size: 8px; font-weight: 900; letter-spacing: .07em; pointer-events: none; backdrop-filter: blur(5px); }
 .scene-vignette { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(3, 16, 25, .42), transparent 35%, transparent 68%, rgba(3,16,25,.28)), linear-gradient(0deg, rgba(3, 16, 25, .45), transparent 26%); }
 .eyebrow { display: block; color: var(--cyan-2); font-size: 10px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
 .region-badge {
@@ -179,13 +178,15 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .skill-orb { position: relative; width: 52px; height: 52px; padding: 0; overflow: hidden; border: 2px solid rgba(255,255,255,.26); border-radius: 14px; background: rgba(4,21,31,.85); cursor: pointer; box-shadow: 0 9px 20px rgba(0,0,0,.25); }
 .skill-orb .icon { position: relative; z-index: 2; font-size: 24px; }
 .skill-orb .cooldown { position: absolute; inset: 0; z-index: 1; transform-origin: bottom; background: rgba(3, 11, 17, .72); }
-.skill-orb small { position: absolute; z-index: 3; right: 3px; bottom: 2px; padding: 1px 3px; color: var(--deep); border-radius: 3px; background: var(--cyan-2); font-size: 8px; font-weight: 900; }
+.skill-orb small { position: absolute; z-index: 3; right: 3px; bottom: 2px; padding: 1px 3px; color: var(--deep); border-radius: 3px; background: var(--cyan-2); font-size: 7px; font-weight: 900; letter-spacing: 0; }
 .skill-orb.off { filter: grayscale(.8); opacity: .55; }
 .skill-orb.locked { cursor: not-allowed; filter: grayscale(1); opacity: .45; }
 
 .dashboard-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 14px; margin-top: 14px; }
+.home-clean-grid { grid-template-columns: .8fr 1.2fr; align-items: stretch; }
 .card { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(13, 42, 59, .92), rgba(7, 27, 40, .94)); box-shadow: 0 9px 28px rgba(0,0,0,.15); }
 .progression-card, .controls-card, .captain-card, .log-card, .home-pet-card { padding: 18px; }
+.quick-controls-card { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
 .home-pet-card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 15px; border-color: rgba(100,174,244,.2); }
 .home-pet-card.equipped { background: linear-gradient(135deg, rgba(33,113,143,.18), rgba(10,31,44,.92)); }
 .home-pet-visual { width: 56px; height: 56px; display: grid; place-items: center; border: 1px solid rgba(110,239,226,.25); border-radius: 50%; background: rgba(29,117,143,.17); font-size: 30px; }
@@ -213,6 +214,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .boss-button:not(:disabled) { color: #2c1707; border-color: #ffcb61; background: linear-gradient(135deg, #ffd56f, #e89a37); box-shadow: 0 0 22px rgba(247,189,74,.18); }
 
 .metric-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.compact-metrics { grid-template-columns: repeat(3, 1fr); }
 .metric-grid > div { padding: 10px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: rgba(0,0,0,.12); }
 .metric-grid span { display: block; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
 .metric-grid strong { display: block; margin-top: 3px; color: var(--cyan-2); font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -701,33 +703,35 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .app-shell { padding-bottom: 82px; }
   .topbar { height: 58px; }
   .brand-mark { width: 35px; height: 35px; }
-  .top-resources { justify-content: flex-start; gap: 5px; overflow-x: auto; scrollbar-width: none; }
+  .top-resources { justify-content: flex-start; gap: 5px; overflow: hidden; scrollbar-width: none; }
   .top-resources > div { min-width: 68px; padding: 5px 7px; }
+  .top-resources > div:nth-child(n+5) { display: none; }
   .pirate-level { padding: 4px; border: 0; }
   .pirate-level span { display: none; }
   .pirate-level strong { width: 32px; height: 32px; }
   .main-content { padding: 10px 10px 30px; }
-  .battle-stage { height: 57vh; min-height: 440px; max-height: 580px; border-radius: 16px; }
+  .battle-stage { height: 58vh; min-height: 430px; max-height: 580px; border-radius: 16px; }
   .region-badge { top: 10px; min-width: 190px; padding: 8px 11px; }
   .region-badge strong { font-size: 15px; }
   .battle-hud { width: calc(100% - 24px); padding: 9px 11px; }
   .enemy-panel { top: 75px; right: 12px; }
   .player-panel { bottom: 92px; left: 12px; }
   .battle-hud h2 { margin: 3px 0 5px; font-size: 14px; }
-  .wildlife-hint { top: 64px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
   .combat-state { bottom: 10px; left: 12px; transform: none; max-width: 160px; }
   .skill-dock { right: 10px; bottom: 8px; gap: 5px; }
   .skill-orb { width: 43px; height: 43px; border-radius: 11px; }
   .skill-orb .icon { font-size: 19px; }
-  .dashboard-grid { grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+  .dashboard-grid, .home-clean-grid { grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
   .progression-card, .controls-card, .captain-card, .log-card, .home-pet-card { padding: 14px; }
   .home-pet-card { grid-template-columns: auto 1fr; }
   .home-pet-card .button { grid-column: 1 / -1; }
   .boss-row { grid-template-columns: auto 1fr; }
   .boss-row .button { grid-column: 1 / -1; width: 100%; }
-  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+  .metric-grid, .compact-metrics { grid-template-columns: repeat(3, 1fr); }
   .control-row { flex-wrap: wrap; }
   .control-row .button { min-width: 42%; }
+  .quick-controls-card .button { min-height: 46px; }
+  .battle-log { height: 96px; }
   .bottom-nav { bottom: 7px; width: calc(100% - 14px); height: 62px; border-radius: 16px; }
   .bottom-nav button { flex-direction: column; gap: 2px; padding: 2px; }
   .bottom-nav button > span { font-size: 17px; }

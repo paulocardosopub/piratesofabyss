@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -28,8 +28,7 @@
       <section class="screen active" id="screen-home" aria-labelledby="home-title">
         <h1 class="sr-only" id="home-title">Combate naval</h1>
         <div class="battle-stage" id="battle-stage">
-          <canvas id="sea-canvas" aria-label="Duelo naval automático. Toque nos animais para obter Comida."></canvas>
-          <div class="wildlife-hint" aria-hidden="true">⌖ TOQUE NOS ANIMAIS • COMIDA BÔNUS</div>
+          <canvas id="sea-canvas" aria-label="Duelo naval automático."></canvas>
           <div class="scene-vignette"></div>
 
           <div class="region-badge">
@@ -59,53 +58,40 @@
           <div class="skill-dock" id="skill-dock" aria-label="Skills automáticas"></div>
         </div>
 
-        <div class="dashboard-grid">
+        <div class="dashboard-grid home-clean-grid">
+          <article class="card controls-card quick-controls-card">
+            <div class="metric-grid compact-metrics">
+              <div><span>DPS</span><strong id="metric-dps">0</strong></div>
+              <div><span>DANO</span><strong id="metric-damage">0</strong></div>
+              <div><span>VIDA</span><strong id="metric-hp">0</strong></div>
+            </div>
+            <div class="control-row">
+              <button class="button primary" id="start-button">Combate Auto: OFF</button>
+              <button class="button subtle" id="reset-button">Resetar Navio</button>
+            </div>
+          </article>
+
           <article class="card progression-card">
             <div class="card-heading">
-              <div><span class="eyebrow">CAÇADA REGIONAL</span><h2 id="progress-title">O boss aguarda</h2></div>
+              <div><span class="eyebrow">BOSS</span><h2 id="progress-title">O boss aguarda</h2></div>
               <strong class="progress-count" id="kill-progress-text">0 / 100</strong>
             </div>
             <div class="boss-progress"><i id="boss-progress-fill"></i></div>
             <div class="boss-row">
               <div class="boss-portrait" id="boss-portrait">☠</div>
-              <div><span class="eyebrow">BOSS DA REGIÃO</span><strong id="boss-name">Capitão Barba de Ferro</strong><small id="boss-status">Derrote 100 inimigos para desafiar</small></div>
-              <button class="button boss-button" id="boss-button" disabled>Desafiar boss</button>
-            </div>
-          </article>
-
-          <article class="card controls-card">
-            <div class="metric-grid">
-              <div><span>DANO</span><strong id="metric-damage">0</strong></div>
-              <div><span>DPS</span><strong id="metric-dps">0</strong></div>
-              <div><span>VELOCIDADE</span><strong id="metric-speed">0</strong></div>
-              <div><span>VIDA MÁX.</span><strong id="metric-hp">0</strong></div>
-              <div><span>PODER NAVAL</span><strong id="metric-power">0</strong></div>
-            </div>
-            <div class="control-row">
-              <button class="button primary" id="start-button">▶ Iniciar</button>
-              <button class="button" id="pause-button" disabled>Ⅱ Pausar</button>
-              <button class="button subtle" id="reset-button">↻ Resetar navio</button>
+              <div><span class="eyebrow">REGIÃO</span><strong id="boss-name">Boss regional</strong><small id="boss-status">Derrote 100 inimigos</small></div>
+              <button class="button boss-button" id="boss-button" disabled>Desafiar Boss</button>
             </div>
           </article>
 
           <article class="card home-pet-card" id="home-pet-card">
-            <div class="home-pet-visual" id="home-pet-icon" aria-hidden="true">🐠</div>
-            <div class="home-pet-info"><span class="eyebrow">COMPANHEIRO MARÍTIMO</span><h2 id="home-pet-name">Nenhum pet equipado</h2><div id="home-pet-stats">Escolha um companheiro para ajudar no combate.</div></div>
-            <button class="button" data-screen-target="pets">Ver Pets</button>
-          </article>
-
-          <article class="card captain-card">
-            <div class="captain-avatar" aria-hidden="true"><span>☠</span></div>
-            <div class="captain-info">
-              <span class="eyebrow">CAPITÃO DA FROTA</span>
-              <h2>Capitão Abissal</h2>
-              <div class="xp-line"><span id="xp-text">0 / 100 XP</span><strong id="pirate-level-text">Nível 1</strong></div>
-              <div class="xp-bar"><i id="xp-fill"></i></div>
-            </div>
+            <div class="home-pet-visual" id="home-pet-icon" aria-hidden="true">Pet</div>
+            <div class="home-pet-info"><span class="eyebrow">PET EQUIPADO</span><h2 id="home-pet-name">Nenhum pet equipado</h2><div id="home-pet-stats">Automático</div></div>
+            <button class="button" data-screen-target="pets">Pets</button>
           </article>
 
           <article class="card log-card">
-            <div class="card-heading compact"><div><span class="eyebrow">DIÁRIO DE BORDO</span><h2>Últimos eventos</h2></div><span class="live-pill">AO VIVO</span></div>
+            <div class="card-heading compact"><div><span class="eyebrow">RESUMO</span><h2>Últimos eventos</h2></div></div>
             <ol id="battle-log" class="battle-log" aria-live="polite"></ol>
           </article>
         </div>
@@ -295,6 +281,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=16"></script>
+  <script src="game.js?v=17"></script>
 </body>
 </html>
