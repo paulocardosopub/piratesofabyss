@@ -61,25 +61,25 @@
 
   const MAIN_SHIPS = [
     { name: "Bote Armado", type: "Pirata", tier: 1, levelReq: 1, hp: 140, damage: 18, speed: 103, armor: 2, costs: { ouro: 0, madeira: 0 } },
-    { name: "Jangada Reforçada", type: "Civil", tier: 1, levelReq: 2, hp: 175, damage: 21, speed: 108, armor: 3, costs: { ouro: 150, madeira: 25 } },
-    { name: "Barco de Pesca Adaptado", type: "Pescador", tier: 1, levelReq: 3, hp: 215, damage: 24, speed: 116, armor: 4, costs: { ouro: 300, madeira: 40, tecido: 15 } },
-    { name: "Escuna Leve", type: "Pirata", tier: 1, levelReq: 3, hp: 270, damage: 31, speed: 132, armor: 5, costs: { ouro: 500, madeira: 50 } },
-    { name: "Escuna Mercante", type: "Mercante", tier: 2, levelReq: 5, hp: 390, damage: 43, speed: 140, armor: 8, costs: { ouro: 1200, madeira: 120, tecido: 30 } },
-    { name: "Cutter Real", type: "Marinha", tier: 2, levelReq: 7, hp: 530, damage: 59, speed: 158, armor: 12, costs: { ouro: 2400, madeira: 190, ferro: 55, tecido: 45 } },
-    { name: "Brigantina Pequena", type: "Pirata", tier: 2, levelReq: 9, hp: 720, damage: 80, speed: 150, armor: 15, costs: { ouro: 3800, madeira: 300, ferro: 90, polvora: 35 } },
-    { name: "Corveta Simples", type: "Marinha", tier: 2, levelReq: 12, hp: 990, damage: 105, speed: 162, armor: 19, costs: { ouro: 6500, madeira: 520, ferro: 160, tecido: 80 } },
-    { name: "Brigantina Pirata", type: "Pirata", tier: 3, levelReq: 15, hp: 1500, damage: 160, speed: 172, armor: 24, costs: { ouro: 12000, madeira: 750, ferro: 260, polvora: 100 } },
-    { name: "Corveta Armada", type: "Marinha", tier: 3, levelReq: 18, hp: 2250, damage: 230, speed: 178, armor: 31, costs: { ouro: 22000, madeira: 1100, ferro: 500, polvora: 180 } },
-    { name: "Galeota", type: "Corsário", tier: 3, levelReq: 20, hp: 3100, damage: 310, speed: 185, armor: 38, costs: { ouro: 32000, madeira: 1500, ferro: 650, tecido: 240, pedra: 90 } },
-    { name: "Navio Mercante Armado", type: "Mercante", tier: 3, levelReq: 22, hp: 4300, damage: 390, speed: 176, armor: 46, costs: { ouro: 40000, madeira: 1800, ferro: 750, tecido: 350, comida: 250 } },
-    { name: "Galeão Mercante", type: "Mercante", tier: 4, levelReq: 23, hp: 6100, damage: 520, speed: 180, armor: 57, costs: { ouro: 45000, madeira: 1900, ferro: 850, tecido: 450, perola: 25 } },
-    { name: "Galeão Pirata", type: "Pirata", tier: 4, levelReq: 24, hp: 7800, damage: 680, speed: 187, armor: 64, costs: { ouro: 48000, madeira: 1950, ferro: 950, polvora: 280 } },
-    { name: "Fragata Real", type: "Marinha", tier: 4, levelReq: 25, hp: 10500, damage: 890, speed: 202, armor: 78, costs: { ouro: 85000, madeira: 2600, ferro: 1400, polvora: 450, cristal: 40 } },
+    { name: "Jangada Reforçada", type: "Civil", tier: 1, levelReq: 2, hp: 175, damage: 21, speed: 108, armor: 3, costs: { ouro: 1500, madeira: 25 } },
+    { name: "Barco de Pesca Adaptado", type: "Pescador", tier: 1, levelReq: 3, hp: 215, damage: 24, speed: 116, armor: 4, costs: { ouro: 3000, madeira: 40, tecido: 15 } },
+    { name: "Escuna Leve", type: "Pirata", tier: 1, levelReq: 3, hp: 270, damage: 60, speed: 150, armor: 10, costs: { ouro: 5000, madeira: 50 } },
+    { name: "Escuna Mercante", type: "Mercante", tier: 2, levelReq: 5, hp: 390, damage: 60, speed: 150, armor: 8, costs: { ouro: 12000, madeira: 120, tecido: 30 } },
+    { name: "Cutter Real", type: "Marinha", tier: 2, levelReq: 7, hp: 530, damage: 65, speed: 158, armor: 12, costs: { ouro: 24000, madeira: 190, ferro: 55, tecido: 45 } },
+    { name: "Brigantina Pequena", type: "Pirata", tier: 2, levelReq: 9, hp: 720, damage: 80, speed: 150, armor: 15, costs: { ouro: 38000, madeira: 300, ferro: 90, polvora: 35 } },
+    { name: "Corveta Simples", type: "Marinha", tier: 2, levelReq: 12, hp: 990, damage: 105, speed: 162, armor: 19, costs: { ouro: 65000, madeira: 520, ferro: 160, tecido: 80 } },
+    { name: "Brigantina Pirata", type: "Pirata", tier: 3, levelReq: 15, hp: 1500, damage: 160, speed: 172, armor: 24, costs: { ouro: 80000, madeira: 750, ferro: 260, polvora: 100 } },
+    { name: "Corveta Armada", type: "Marinha", tier: 3, levelReq: 18, hp: 2250, damage: 230, speed: 178, armor: 31, costs: { ouro: 90000, madeira: 1100, ferro: 500, polvora: 180 } },
+    { name: "Galeota", type: "Corsário", tier: 3, levelReq: 20, hp: 3100, damage: 310, speed: 185, armor: 38, costs: { ouro: 100000, madeira: 1500, ferro: 650, tecido: 240, pedra: 90 } },
+    { name: "Navio Mercante Armado", type: "Mercante", tier: 3, levelReq: 22, hp: 4300, damage: 390, speed: 176, armor: 46, costs: { ouro: 120000, madeira: 1800, ferro: 750, tecido: 350, comida: 250 } },
+    { name: "Galeão Mercante", type: "Mercante", tier: 4, levelReq: 23, hp: 6100, damage: 520, speed: 180, armor: 57, costs: { ouro: 120000, madeira: 1900, ferro: 850, tecido: 450, perola: 25 } },
+    { name: "Galeão Pirata", type: "Pirata", tier: 4, levelReq: 24, hp: 7800, damage: 680, speed: 187, armor: 64, costs: { ouro: 140000, madeira: 1950, ferro: 950, polvora: 280 } },
+    { name: "Fragata Real", type: "Marinha", tier: 4, levelReq: 25, hp: 10500, damage: 890, speed: 202, armor: 78, costs: { ouro: 140000, madeira: 2600, ferro: 1400, polvora: 450, cristal: 40 } },
     { name: "Fragata Corsária", type: "Corsário", tier: 4, levelReq: 30, hp: 13900, damage: 1190, speed: 214, armor: 88, costs: { ouro: 140000, madeira: 3200, ferro: 1800, polvora: 650, cristal: 65, perola: 40 } },
-    { name: "Galeão de Guerra", type: "Pirata", tier: 5, levelReq: 25, hp: 18500, damage: 1580, speed: 205, armor: 105, costs: { ouro: 50000, madeira: 2000, ferro: 1000, polvora: 300 } },
-    { name: "Encouraçado Imperial", type: "Marinha", tier: 5, levelReq: 50, hp: 29500, damage: 2400, speed: 218, armor: 145, costs: { ouro: 300000, madeira: 4000, ferro: 2500, polvora: 1200, pedra: 400, cristal: 100 } },
-    { name: "Fragata Fantasma", type: "Espectral", tier: 5, levelReq: 65, hp: 44000, damage: 3600, speed: 245, armor: 170, costs: { ouro: 600000, madeira: 4500, ferro: 2500, ambar: 150, perola: 150, gema: 50 } },
-    { name: "Kraken Hunter", type: "Caçador", tier: 5, levelReq: 72, hp: 57000, damage: 4700, speed: 238, armor: 205, costs: { ouro: 800000, madeira: 4800, ferro: 2800, polvora: 1600, cristal: 180, gema: 75, fragmentos: 15 } },
+    { name: "Galeão de Guerra", type: "Pirata", tier: 5, levelReq: 25, hp: 18500, damage: 1580, speed: 205, armor: 105, costs: { ouro: 500000, madeira: 2000, ferro: 1000, polvora: 300 } },
+    { name: "Encouraçado Imperial", type: "Marinha", tier: 5, levelReq: 50, hp: 29500, damage: 2400, speed: 218, armor: 145, costs: { ouro: 500000, madeira: 4000, ferro: 2500, polvora: 1200, pedra: 400, cristal: 100 } },
+    { name: "Fragata Fantasma", type: "Espectral", tier: 5, levelReq: 65, hp: 44000, damage: 3600, speed: 245, armor: 170, costs: { ouro: 550000, madeira: 4500, ferro: 2500, ambar: 150, perola: 150, gema: 50 } },
+    { name: "Kraken Hunter", type: "Caçador", tier: 5, levelReq: 72, hp: 57000, damage: 4700, speed: 238, armor: 205, costs: { ouro: 750000, madeira: 4800, ferro: 2800, polvora: 1600, cristal: 180, gema: 75, fragmentos: 15 } },
     { name: "Black Abyss", type: "Espectral", tier: 5, levelReq: 80, hp: 78000, damage: 6500, speed: 260, armor: 250, costs: { ouro: 1000000, madeira: 5000, ferro: 3000, polvora: 2000, cristal: 250, gema: 100, fragmentos: 25 } }
   ];
   const SHIPS = [...PRIMITIVE_SHIPS, ...MAIN_SHIPS].map((ship, id) => ({ id, bossReq: 0, ...ship }));
@@ -124,10 +124,10 @@
   };
 
   const EQUIPMENT_META = {
-    compass: { name: "Bússola Naval", icon: "✥", effect: "+12% velocidade e +8% chance de loot", costs: { cristal: 20, perola: 5, ouro: 5000 } },
-    spyglass: { name: "Luneta Imperial", icon: "⌕", effect: "+8% precisão e +7% crítico", costs: { cristal: 30, gema: 10, ouro: 10000 } },
-    anchor: { name: "Âncora Reforçada", icon: "⚓", effect: "+20 armadura e +10% de vida", costs: { ferro: 100, pedra: 20, ouro: 5000 } },
-    amulet: { name: "Amuleto do Abismo", icon: "☠", effect: "+25% DPS e +20% contra bosses", costs: { ambar: 20, perola: 10, fragmentos: 5, ouro: 50000 } }
+    compass: { name: "Bússola Naval", icon: "✥", effect: "+12% velocidade e +8% chance de loot", costs: { cristal: 200, perola: 50, ouro: 50000 } },
+    spyglass: { name: "Luneta Imperial", icon: "⌕", effect: "+8% precisão e +7% crítico", costs: { cristal: 300, gema: 100, ouro: 75000 } },
+    anchor: { name: "Âncora Reforçada", icon: "⚓", effect: "+20 armadura e +10% de vida", costs: { ferro: 1000, pedra: 200, ouro: 50000 } },
+    amulet: { name: "Amuleto do Abismo", icon: "☠", effect: "+25% DPS e +20% contra bosses", costs: { ambar: 200, perola: 100, fragmentos: 10, ouro: 100000 } }
   };
 
   const TRADE_PRICES = {
@@ -152,16 +152,16 @@
   };
 
   const PETS = [
-    { name: "Peixe-palhaço", icon: "🐠", type: "Pet inicial", rarity: "Comum", rarityKey: "common", damage: 5, interval: 2, power: 30, levelReq: 1, costs: { ouro: 500, comida: 20 }, description: "Pequeno, ligeiro e sempre perto do casco.", color: "#ff9c45", visual: "fish" },
-    { name: "Água-viva", icon: "🪼", type: "Aquático mágico", rarity: "Incomum", rarityKey: "uncommon", damage: 8, interval: 2.2, power: 48, levelReq: 3, costs: { ouro: 1200, comida: 40 }, description: "Flutua com um brilho azul e lança bolhas elétricas.", color: "#75dcff", visual: "jelly" },
-    { name: "Tartaruga Marinha", icon: "🐢", type: "Defensivo", rarity: "Incomum", rarityKey: "uncommon", damage: 12, interval: 2.5, power: 72, levelReq: 5, costs: { ouro: 2500, comida: 75, madeira: 25 }, description: "Casco resistente que concede +3% de defesa.", bonus: "+3% defesa do navio", defenseBonus: .03, color: "#67d997", visual: "turtle" },
-    { name: "Foca", icon: "🦭", type: "Ágil", rarity: "Incomum", rarityKey: "uncommon", damage: 18, interval: 2, power: 105, levelReq: 8, costs: { ouro: 5000, comida: 120 }, description: "Emerge em saltos rápidos para atingir o alvo.", color: "#b9d5dc", visual: "seal" },
-    { name: "Golfinho", icon: "🐬", type: "Veloz", rarity: "Raro", rarityKey: "rare", damage: 30, interval: 1.7, power: 170, levelReq: 12, costs: { ouro: 12000, comida: 250, perola: 5 }, description: "Nado elegante que concede +3% de velocidade.", bonus: "+3% velocidade do navio", speedBonus: .03, color: "#5ab9ed", visual: "dolphin" },
-    { name: "Arraia Elétrica", icon: "⚡", type: "Controle", rarity: "Raro", rarityKey: "rare", damage: 42, interval: 2.3, power: 230, levelReq: 16, costs: { ouro: 20000, comida: 350, cristal: 10 }, description: "Descargas aquáticas podem desacelerar o inimigo.", bonus: "15% de chance de lentidão", slowChance: .15, color: "#57ddff", visual: "ray" },
-    { name: "Tubarão", icon: "🦈", type: "Ofensivo", rarity: "Épico", rarityKey: "epic", damage: 75, interval: 2, power: 350, levelReq: 25, costs: { ouro: 50000, comida: 700, gema: 10 }, description: "Uma mordida brutal acompanhada por forte splash.", color: "#92aebb", visual: "shark" },
-    { name: "Baleia Assassina", icon: "🐋", type: "Pesado", rarity: "Épico", rarityKey: "epic", damage: 120, interval: 2.7, power: 520, levelReq: 35, costs: { ouro: 100000, comida: 1200, gema: 15, perola: 10 }, description: "Orca imponente que concede +4% de vida máxima.", bonus: "+4% vida máxima", hpBonus: .04, color: "#e4f1f0", visual: "orca" },
-    { name: "Megalodon", icon: "🦈", type: "Lendário ofensivo", rarity: "Lendário", rarityKey: "legendary", damage: 250, interval: 2.5, power: 1100, levelReq: 55, regionReq: 10, costs: { ouro: 500000, comida: 2500, gema: 50, perola: 25, fragmentos: 10 }, description: "Predador pré-histórico do Oceano Profundo.", bonus: "+3% DPS do navio", dpsBonus: .03, color: "#ffb349", visual: "megalodon" },
-    { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 500, interval: 3, power: 3500, levelReq: 75, regionReq: 15, bossReq: 14, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários com +15% de dano contra bosses.", bonus: "+15% contra bosses", bossBonus: .15, color: "#c485ff", visual: "kraken" }
+    { name: "Peixe-palhaço", icon: "🐠", type: "Pet inicial", rarity: "Comum", rarityKey: "common", damage: 50, interval: 2, power: 300, levelReq: 1, costs: { ouro: 500, comida: 20 }, description: "Pequeno, ligeiro e sempre perto do casco.", color: "#ff9c45", visual: "fish" },
+    { name: "Água-viva", icon: "🪼", type: "Aquático mágico", rarity: "Incomum", rarityKey: "uncommon", damage: 80, interval: 2.2, power: 480, levelReq: 3, costs: { ouro: 1200, comida: 40 }, description: "Flutua com um brilho azul e lança bolhas elétricas.", color: "#75dcff", visual: "jelly" },
+    { name: "Tartaruga Marinha", icon: "🐢", type: "Defensivo", rarity: "Incomum", rarityKey: "uncommon", damage: 120, interval: 2.5, power: 720, levelReq: 5, costs: { ouro: 2500, comida: 75, madeira: 25 }, description: "Casco resistente que concede +3% de defesa.", bonus: "+3% defesa do navio", defenseBonus: .03, color: "#67d997", visual: "turtle" },
+    { name: "Foca", icon: "🦭", type: "Ágil", rarity: "Incomum", rarityKey: "uncommon", damage: 180, interval: 2, power: 1050, levelReq: 8, costs: { ouro: 5000, comida: 120 }, description: "Emerge em saltos rápidos para atingir o alvo.", color: "#b9d5dc", visual: "seal" },
+    { name: "Golfinho", icon: "🐬", type: "Veloz", rarity: "Raro", rarityKey: "rare", damage: 300, interval: 1.7, power: 1700, levelReq: 12, costs: { ouro: 12000, comida: 250, perola: 5 }, description: "Nado elegante que concede +3% de velocidade.", bonus: "+3% velocidade do navio", speedBonus: .03, color: "#5ab9ed", visual: "dolphin" },
+    { name: "Arraia Elétrica", icon: "⚡", type: "Controle", rarity: "Raro", rarityKey: "rare", damage: 420, interval: 2.3, power: 2300, levelReq: 16, costs: { ouro: 20000, comida: 350, cristal: 10 }, description: "Descargas aquáticas podem desacelerar o inimigo.", bonus: "15% de chance de lentidão", slowChance: .15, color: "#57ddff", visual: "ray" },
+    { name: "Tubarão", icon: "🦈", type: "Ofensivo", rarity: "Épico", rarityKey: "epic", damage: 750, interval: 2, power: 3500, levelReq: 25, costs: { ouro: 50000, comida: 700, gema: 10 }, description: "Uma mordida brutal acompanhada por forte splash.", color: "#92aebb", visual: "shark" },
+    { name: "Baleia Assassina", icon: "🐋", type: "Pesado", rarity: "Épico", rarityKey: "epic", damage: 1200, interval: 2.7, power: 5200, levelReq: 35, costs: { ouro: 100000, comida: 1200, gema: 15, perola: 10 }, description: "Orca imponente que concede +4% de vida máxima.", bonus: "+4% vida máxima", hpBonus: .04, color: "#e4f1f0", visual: "orca" },
+    { name: "Megalodon", icon: "🦈", type: "Lendário ofensivo", rarity: "Lendário", rarityKey: "legendary", damage: 2500, interval: 2.5, power: 11000, levelReq: 55, regionReq: 10, costs: { ouro: 500000, comida: 2500, gema: 50, perola: 25, fragmentos: 10 }, description: "Predador pré-histórico do Oceano Profundo.", bonus: "+3% DPS do navio", dpsBonus: .03, color: "#ffb349", visual: "megalodon" },
+    { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 5000, interval: 3, power: 35000, levelReq: 75, regionReq: 15, bossReq: 14, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários com +15% de dano contra bosses.", bonus: "+15% contra bosses", bossBonus: .15, color: "#c485ff", visual: "kraken" }
   ].map((pet, id) => ({ id, dps: pet.damage / pet.interval, ...pet }));
 
   const TODAY_KEY = () => new Date().toLocaleDateString("sv-SE");
