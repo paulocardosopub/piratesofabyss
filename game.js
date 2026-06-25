@@ -164,6 +164,88 @@
     { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 500, interval: 3, power: 3500, levelReq: 75, regionReq: 15, bossReq: 14, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários com +15% de dano contra bosses.", bonus: "+15% contra bosses", bossBonus: .15, color: "#c485ff", visual: "kraken" }
   ].map((pet, id) => ({ id, dps: pet.damage / pet.interval, ...pet }));
 
+  const TODAY_KEY = () => new Date().toLocaleDateString("sv-SE");
+  const WEEK_KEY = () => {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), 0, 1);
+    const day = Math.floor((now - first) / 86400000);
+    return `${now.getFullYear()}-W${String(Math.ceil((day + first.getDay() + 1) / 7)).padStart(2, "0")}`;
+  };
+  const MISSION_FILTERS = ["Todas", "Pronta", "Em andamento", "Bloqueada", "Principal", "Combate", "Boss", "Mapas", "Recursos", "Upgrades", "Navios", "Skills", "Comércio", "Idle", "Diária", "Semanal", "Endgame", "Secretas"];
+  const ACHIEVEMENT_FILTERS = ["Todas", "Concluídas", "Em andamento", "Bloqueadas", "Primeiros Passos", "Combate", "Bosses", "Mapas", "Recursos", "Upgrades", "Navios", "Skills", "Comércio", "Idle", "Secretas", "Endgame"];
+  let activeMissionFilter = "Todas";
+  let activeAchievementFilter = "Todas";
+
+  function rewardText(reward = {}) {
+    const parts = Object.entries(reward.resources || {}).filter(([, value]) => value > 0).map(([key, value]) => `${formatNumber(value)} ${RESOURCE_META[key]?.name || key}`);
+    if (reward.xp) parts.push(`${formatNumber(reward.xp)} XP`);
+    if (reward.title) parts.push(`Título "${reward.title}"`);
+    if (reward.cosmetic) parts.push(reward.cosmetic);
+    return parts.join(" + ") || "Glória pirata";
+  }
+
+  function makeProgressionDefaults() {
+    return {
+      totalUpgrades: 0, upgradesByType: { ship: 0, cannons: 0, sails: 0, hull: 0 },
+      skillUses: { total: 0, fire: 0, ice: 0, ghost: 0, chain: 0 },
+      trade: { transactions: 0, buys: 0, sells: 0, resourcesBought: 0, resourcesSold: 0 },
+      offline: { claims: 0, seconds: 0, maxClaimSeconds: 0 },
+      repairs: 0, shipSwitches: 0, krakenSightings: 0, onlyGoldBattles: 0, multiResourceDrops: 0,
+      resourcesByKey: Object.fromEntries(Object.keys(RESOURCE_META).map(key => [key, 0])),
+      resourceTypesSeen: {}, dayKey: TODAY_KEY(), weekKey: WEEK_KEY(),
+      daily: { enemies: 0, gold: 0, upgrades: 0, skillUses: 0, trades: 0 },
+      weekly: { enemies: 0, bosses: 0, upgrades: 0, resources: 0, trades: 0 }
+    };
+  }
+
+  const roman = ["I", "II", "III", "IV", "V", "VI", "VII"];
+  const missionDefinitions = (() => {
+    const defs = [];
+    const shortNumber = value => Number(value).toLocaleString("pt-BR");
+    const add = item => defs.push({ id: `m${String(defs.length + 1).padStart(3, "0")}`, icon: "✦", level: 1, category: "Principal", type: "main", reward: { resources: { ouro: 100 } }, ...item });
+    [
+      ["Primeiro Comando", "Inicie o jogo e equipe o primeiro navio.", { kind: "started" }, { ouro: 100, madeira: 10 }],
+      ["Primeiro Combate", "Entre em combate pela primeira vez.", { kind: "firstCombat" }, { ouro: 150 }],
+      ["Primeiro Inimigo Afundado", "Derrote 1 inimigo.", { kind: "enemies", target: 1 }, { ouro: 200, madeira: 10 }],
+      ["Primeiros Saques", "Colete 100 Ouro.", { kind: "gold", target: 100 }, { ouro: 100, ferro: 10 }],
+      ["Melhorar Canhões I", "Compre 1 upgrade de canhão.", { kind: "upgrade", type: "cannons", target: 1 }, { ouro: 300, polvora: 15 }],
+      ["Melhorar Velas I", "Compre 1 upgrade de vela.", { kind: "upgrade", type: "sails", target: 1 }, { ouro: 300, tecido: 15 }],
+      ["Melhorar Casco I", "Compre 1 upgrade de casco.", { kind: "upgrade", type: "hull", target: 1 }, { ouro: 300, madeira: 15 }],
+      ["Preparado para o Mar", "Tenha 1 upgrade em canhões, velas e casco.", { kind: "allCoreUpgrades", target: 1 }, { ouro: 750 }],
+      ["Dez Afundamentos", "Derrote 10 inimigos.", { kind: "enemies", target: 10 }, { ouro: 500, madeira: 25, ferro: 25 }],
+      ["Pirata Iniciante", "Alcance nível 3 de pirata.", { kind: "pirateLevel", target: 3 }, { ouro: 1000 }]
+    ].forEach(([name, description, objective, resources], index) => add({ name, description, objective, reward: { resources, xp: index < 3 ? 10 : 50 }, recommendedLevel: Math.max(1, Math.ceil((index + 1) / 2)), icon: "☠" }));
+    [25, 50, 100, 250, 500, 1000, 5000].forEach((target, i) => add({ name: `Caçador dos Mares ${roman[i]}`, description: `Derrote ${shortNumber(target)} inimigos no total.`, category: "Combate", type: "combat", objective: { kind: "enemies", target }, reward: { resources: { ouro: 750 * (i + 1), polvora: i < 3 ? 25 * (i + 1) : 0, cristal: i >= 4 ? i : 0 }, xp: 25 * (i + 1) }, recommendedLevel: 2 + i * 3, icon: "⚔" }));
+    [1, 3, 5, 10, REGIONS.length].forEach((target, i) => add({ name: `Boss Hunter ${roman[i]}`, description: i === 0 ? "Derrote o primeiro boss regional." : `Derrote ${target} bosses regionais.`, category: "Boss", type: "boss", objective: { kind: "bosses", target }, reward: { resources: { ouro: 2500 * (i + 1), cristal: i >= 1 ? 3 * i : 0, fragmentos: i >= 3 ? i : 0 }, xp: 100 * (i + 1) }, recommendedLevel: 8 + i * 8, icon: "👑" }));
+    MAIN_REGIONS.slice(0, 10).forEach((region, i) => add({ name: region.name, description: `Desbloqueie ${region.name}.`, category: "Mapas", type: "map", objective: { kind: "regionUnlocked", target: PRIMITIVE_REGIONS.length + i + 1 }, reward: { resources: { ouro: 1800 * (i + 1), ...(i > 6 ? { fragmentos: 1 } : i > 3 ? { perola: 2 } : { madeira: 40 }) }, xp: 75 * (i + 1) }, recommendedLevel: 3 + i * 5, icon: "⌖" }));
+    Object.entries({ madeira: [100, 500, 1000], ferro: [100, 500], tecido: [100, 500], polvora: [250], cristal: [100], perola: [50], ambar: [50], fragmentos: [10] }).forEach(([key, targets]) => targets.forEach((target, i) => add({ name: `${RESOURCE_META[key].name} ${roman[i]}`, description: `Colete ${shortNumber(target)} ${RESOURCE_META[key].name}.`, category: "Recursos", type: "resource", objective: { kind: "resource", key, target }, reward: { resources: { ouro: target * 8, [key]: Math.max(2, Math.round(target * .1)) }, xp: Math.round(target / 4) }, recommendedLevel: key === "fragmentos" ? 70 : key === "ambar" ? 45 : key === "cristal" ? 18 : 5, icon: RESOURCE_META[key].icon })));
+    ["cannons", "sails", "hull"].forEach(type => [1, 3, 5, 10, 25].forEach((target, i) => add({ name: `${type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} ${roman[i]}`, description: `Compre ${target} upgrades de ${type === "cannons" ? "canhões" : type === "sails" ? "velas" : "casco"}.`, category: "Upgrades", type: "upgrade", objective: { kind: "upgrade", type, target }, reward: { resources: { ouro: 600 * target, [type === "cannons" ? "polvora" : type === "sails" ? "tecido" : "madeira"]: 20 * (i + 1) }, xp: 40 * (i + 1) }, recommendedLevel: 4 + i * 6, icon: type === "cannons" ? "☄" : type === "sails" ? "◒" : "⬡" })));
+    [2, 5, 10, 15, SHIPS.length].forEach((target, i) => add({ name: ["Novo Navio", "Pequena Frota", "Frota de Guerra", "Estaleiro Pirata", "Dono da Frota"][i], description: `Compre ${target === SHIPS.length ? "todos os navios" : `${target} navios`}.`, category: "Navios", type: "ship", objective: { kind: "shipsOwned", target }, reward: { resources: { ouro: 2000 * (i + 1) ** 2, madeira: 100 * (i + 1), fragmentos: i === 4 ? 10 : 0 }, xp: 100 * (i + 1) }, recommendedLevel: 5 + i * 15, icon: "⛵" }));
+    Object.keys(SKILL_META).forEach((key, i) => add({ name: `${SKILL_META[key].name} em Ação`, description: `Use ${SKILL_META[key].name} 25 vezes.`, category: "Skills", type: "skill", objective: { kind: "skillUse", key, target: 25 }, reward: { resources: { ouro: 2000 + i * 1000, [SKILL_META[key].materials[0]]: 25 }, xp: 75 }, recommendedLevel: SKILL_META[key].unlock, icon: SKILL_META[key].icon }));
+    add({ name: "Skills Automáticas", description: "Ative auto lançamento em 3 skills.", category: "Skills", type: "skill", objective: { kind: "skillAuto", target: 3 }, reward: { resources: { ouro: 5000 }, xp: 100 }, recommendedLevel: 20, icon: "⚙" });
+    [["Primeiro Negócio", "Compre recurso no Comércio pela primeira vez.", "tradeBuys", 1], ["Venda no Porto", "Venda recurso no Comércio pela primeira vez.", "tradeSells", 1], ["Mercador Iniciante", "Faça 10 transações no Comércio.", "tradeTransactions", 10], ["Mestre Mercador", "Faça 100 transações no Comércio.", "tradeTransactions", 100]].forEach(([name, description, kind, target], i) => add({ name, description, category: "Comércio", type: "trade", objective: { kind, target }, reward: { resources: { ouro: 500 * (i + 1) ** 2, comida: i > 1 ? 50 : 0 }, xp: 40 * (i + 1) }, recommendedLevel: 10 + i * 6, icon: "⚖" }));
+    [[1, "Recompensa Offline"], [3600, "Capitão Ausente"], [28800, "Viagem Longa"], [86400, "Maratona Idle"]].forEach(([target, name], i) => add({ name, description: i === 0 ? "Colete recompensa offline pela primeira vez." : `Acumule ${formatDuration(target)} de recompensa offline.`, category: "Idle", type: "idle", objective: { kind: i === 0 ? "offlineClaims" : "offlineSeconds", target }, reward: { resources: { ouro: 1000 * (i + 1), comida: i ? 50 * i : 0, cristal: i >= 2 ? 3 : 0, fragmentos: i === 3 ? 3 : 0 }, xp: 50 * (i + 1) }, recommendedLevel: 3 + i * 10, icon: "☾" }));
+    [[100, "DPS Inicial", "dps"], [1000, "DPS Forte", "dps"], [10000, "DPS Absurdo", "dps"], [1000, "Vida Reforçada", "maxHp"], [10000, "Casco Imortal", "maxHp"]].forEach(([target, name, kind], i) => add({ name, description: `Atinja ${shortNumber(target)} ${kind === "dps" ? "DPS" : "HP máximo"}.`, category: "Endgame", type: "stats", objective: { kind, target }, reward: { resources: { ouro: 1000 * (i + 1) ** 2, cristal: i > 0 ? 5 : 0, fragmentos: i === 2 ? 5 : 0 }, xp: 80 * (i + 1) }, recommendedLevel: 8 + i * 12, icon: "◆" }));
+    [["Caçada Diária", "Derrote 50 inimigos hoje.", "dailyEnemies", 50], ["Saque Diário", "Colete 1.000 Ouro hoje.", "dailyGold", 1000], ["Upgrade Diário", "Faça 1 upgrade hoje.", "dailyUpgrades", 1], ["Skill Diária", "Use skills 10 vezes hoje.", "dailySkillUses", 10], ["Comércio Diário", "Faça 3 transações hoje.", "dailyTrades", 3]].forEach(([name, description, kind, target]) => add({ name, description, category: "Diária", type: "daily", objective: { kind, target }, reward: { resources: { ouro: 500, polvora: kind === "dailySkillUses" ? 25 : 0, comida: kind === "dailyTrades" ? 25 : 0 }, xp: 50 }, recommendedLevel: 1, icon: "☀", resets: "daily" }));
+    [["Semana de Guerra", "Derrote 500 inimigos na semana.", "weeklyEnemies", 500], ["Semana de Boss", "Derrote 3 bosses na semana.", "weeklyBosses", 3], ["Semana de Upgrades", "Faça 10 upgrades na semana.", "weeklyUpgrades", 10], ["Semana de Recursos", "Colete 1.000 recursos na semana.", "weeklyResources", 1000], ["Semana Mercante", "Realize 25 transações na semana.", "weeklyTrades", 25]].forEach(([name, description, kind, target]) => add({ name, description, category: "Semanal", type: "weekly", objective: { kind, target }, reward: { resources: { ouro: 10000, cristal: 5, perola: kind === "weeklyBosses" ? 3 : 0, gema: kind === "weeklyUpgrades" ? 3 : 0 }, xp: 250 }, recommendedLevel: 10, icon: "☽", resets: "weekly" }));
+    [["Black Abyss", "Compre o navio Black Abyss.", { kind: "shipName", name: "Black Abyss" }, "Black Abyss"], ["Poder Lendário", "Equipe um navio lendário e alcance 10.000 DPS.", { kind: "legendaryPower", target: 10000 }, "Poder Lendário"], ["Rei dos Bosses", "Derrote todos os bosses regionais.", { kind: "allBosses" }, "Rei dos Bosses"], ["Mestre dos Recursos", "Colete todos os tipos de recursos pelo menos uma vez.", { kind: "allResourcesSeen" }, "Mestre dos Recursos"], ["Arsenal Final", "Desbloqueie todas as skills base.", { kind: "allSkillsUnlocked" }, "Arsenal Final"], ["Navio Perfeito", "Tenha canhões, velas e casco no nível 25.", { kind: "perfectShip", target: 25 }, "Navio Perfeito"], ["Missão Final", "Complete 99 missões.", { kind: "missionsCompleted", target: 99 }, "Lenda das Missões"]].forEach(([name, description, objective, title], i) => add({ name, description, category: "Endgame", type: "endgame", objective, reward: { resources: { ouro: 100000 * (i + 1), fragmentos: 5 + i }, title, xp: 500 }, recommendedLevel: 60, icon: "✹" }));
+    [["Testemunha do Abismo", "Veja a animação rara do Kraken no cenário.", { kind: "krakenSightings", target: 1 }, "Testemunha do Abismo"], ["Sorte do Pirata", "Receba múltiplos recursos em uma única batalha.", { kind: "multiResourceDrops", target: 1 }, null], ["Sem Materiais", "Receba apenas Ouro em 100 batalhas.", { kind: "onlyGoldBattles", target: 100 }, null], ["Sobrevivente", "Vença uma batalha com menos de 5% de HP.", { kind: "survivorWins", target: 1 }, "Sobrevivente"]].forEach(([name, description, objective, title]) => add({ name, description, category: "Secretas", type: "secret", objective, reward: { resources: { ouro: 25000, cristal: 5 }, title, xp: 100 }, recommendedLevel: 20, icon: "?" }));
+    return defs.slice(0, 100).map((item, index, all) => ({ ...item, nextId: all[index + 1]?.type === item.type ? all[index + 1].id : null }));
+  })();
+
+  const achievementDefinitions = (() => missionDefinitions.map((mission, index) => ({
+    id: `a${String(index + 1).padStart(3, "0")}`,
+    name: index === 99 ? "Lenda do Abismo" : index < 10 ? ["Primeiro Mar", "Primeiro Navio", "Primeira Batalha", "Primeiro Afundamento", "Capitão Iniciante", "Primeira Coleta", "Primeira Melhoria", "Primeira Skill", "Primeira Região", "Começo da Lenda"][index] : mission.name.replace(/ I$/, ""),
+    description: index === 99 ? "Complete todas as outras 99 conquistas." : mission.description,
+    category: mission.category === "Principal" ? "Primeiros Passos" : mission.category === "Boss" ? "Bosses" : mission.category,
+    objective: index === 99 ? { kind: "achievementsCompleted", target: 99 } : mission.objective,
+    reward: index === 99 ? { resources: { ouro: 1000000, fragmentos: 25 }, title: "Lenda do Abismo", cosmetic: "Skin lendária exclusiva" } : mission.reward,
+    rarity: index > 88 ? "Lendária" : index > 70 ? "Épica" : index > 35 ? "Rara" : index > 12 ? "Incomum" : "Comum",
+    icon: mission.icon || "★",
+    level: mission.recommendedLevel || 1,
+    secret: mission.category === "Secretas"
+  })))();
+
   function createDefaultState() {
     return {
       version: 5,
@@ -192,6 +274,10 @@
         chain: { level: 1, auto: true, remaining: 8 }
       },
       lifetime: { enemies: 0, bosses: 0, resources: 0, gold: 0, highestDamage: 0, playSeconds: 0, petsBought: 0, petAttacks: 0, petKills: 0, bossesWithPet: 0 },
+      progression: makeProgressionDefaults(),
+      quests: { completed: {}, claimed: {} },
+      achievements: { completed: {}, claimed: {} },
+      titles: [],
       combat: { running: false, repairing: false, repairStarted: 0, playerHp: 140, enemy: null, attackTimer: 0, petAttackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
       logs: [],
       hasStarted: false,
@@ -210,6 +296,10 @@
       merged.equipment = { ...defaults.equipment, ...(saved.equipment || {}) };
       merged.skills = Object.fromEntries(Object.keys(SKILL_META).map(key => [key, { ...defaults.skills[key], ...((saved.skills || {})[key] || {}) }]));
       merged.lifetime = { ...defaults.lifetime, ...(saved.lifetime || {}) };
+      merged.progression = mergeProgression(saved.progression, defaults.progression);
+      merged.quests = { completed: { ...(saved.quests?.completed || {}) }, claimed: { ...(saved.quests?.claimed || {}) } };
+      merged.achievements = { completed: { ...(saved.achievements?.completed || {}) }, claimed: { ...(saved.achievements?.claimed || {}) } };
+      merged.titles = Array.isArray(saved.titles) ? [...new Set(saved.titles)].slice(0, 80) : [];
       merged.combat = { ...defaults.combat, ...(saved.combat || {}), enemy: null, repairing: false, spawnTimer: 0 };
       const previousVersion = Number(saved.version || 1);
       if (previousVersion < 4) {
@@ -418,6 +508,42 @@
       canBuyAndExecute: purchasable.length > 0 && state.resources.ouro >= total + goldCost && blocked.every(item => item.key === "ouro")
     };
   }
+
+  function mergeProgression(saved = {}, defaults = makeProgressionDefaults()) {
+    const merged = {
+      ...defaults,
+      ...saved,
+      upgradesByType: { ...defaults.upgradesByType, ...(saved.upgradesByType || {}) },
+      skillUses: { ...defaults.skillUses, ...(saved.skillUses || {}) },
+      trade: { ...defaults.trade, ...(saved.trade || {}) },
+      offline: { ...defaults.offline, ...(saved.offline || {}) },
+      resourcesByKey: { ...defaults.resourcesByKey, ...(saved.resourcesByKey || {}) },
+      resourceTypesSeen: { ...(saved.resourceTypesSeen || {}) },
+      daily: { ...defaults.daily, ...(saved.daily || {}) },
+      weekly: { ...defaults.weekly, ...(saved.weekly || {}) }
+    };
+    return merged;
+  }
+
+  function resetPeriodicProgressIfNeeded() {
+    const defaults = makeProgressionDefaults();
+    if (state.progression.dayKey !== defaults.dayKey) {
+      state.progression.dayKey = defaults.dayKey;
+      state.progression.daily = defaults.daily;
+      missionDefinitions.filter(item => item.resets === "daily").forEach(item => {
+        delete state.quests.completed[item.id];
+        delete state.quests.claimed[item.id];
+      });
+    }
+    if (state.progression.weekKey !== defaults.weekKey) {
+      state.progression.weekKey = defaults.weekKey;
+      state.progression.weekly = defaults.weekly;
+      missionDefinitions.filter(item => item.resets === "weekly").forEach(item => {
+        delete state.quests.completed[item.id];
+        delete state.quests.claimed[item.id];
+      });
+    }
+  }
   function buyMissingResources(cost) {
     const info = getMissingPurchaseInfo(cost);
     if (!info.purchasable.length) return { ok: false, message: "Nenhum recurso faltante pode ser comprado direto." };
@@ -457,6 +583,169 @@
   function saveGame() {
     state.lastSeen = Date.now();
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (error) { console.warn("Não foi possível salvar.", error); }
+  }
+
+  function addCollectedResource(key, amount) {
+    if (!RESOURCE_META[key] || amount <= 0) return;
+    state.progression.resourcesByKey[key] = (state.progression.resourcesByKey[key] || 0) + amount;
+    state.progression.resourceTypesSeen[key] = true;
+    state.progression.weekly.resources += amount;
+  }
+
+  function trackAction(kind, payload = {}) {
+    resetPeriodicProgressIfNeeded();
+    if (kind === "enemy") {
+      state.progression.daily.enemies += payload.count || 1;
+      state.progression.weekly.enemies += payload.count || 1;
+      if (payload.onlyGold) state.progression.onlyGoldBattles += 1;
+      if (payload.multiResource) state.progression.multiResourceDrops += 1;
+      if (payload.survivor) state.progression.survivorWins = (state.progression.survivorWins || 0) + 1;
+    }
+    if (kind === "boss") state.progression.weekly.bosses += 1;
+    if (kind === "gold") state.progression.daily.gold += payload.amount || 0;
+    if (kind === "upgrade") {
+      state.progression.totalUpgrades += 1;
+      state.progression.upgradesByType[payload.type] = (state.progression.upgradesByType[payload.type] || 0) + 1;
+      state.progression.daily.upgrades += 1;
+      state.progression.weekly.upgrades += 1;
+    }
+    if (kind === "skill") {
+      state.progression.skillUses.total += 1;
+      state.progression.skillUses[payload.key] = (state.progression.skillUses[payload.key] || 0) + 1;
+      state.progression.daily.skillUses += 1;
+    }
+    if (kind === "trade") {
+      state.progression.trade.transactions += 1;
+      state.progression.trade[payload.action === "buy" ? "buys" : "sells"] += 1;
+      state.progression.trade[payload.action === "buy" ? "resourcesBought" : "resourcesSold"] += payload.quantity || 0;
+      state.progression.daily.trades += 1;
+      state.progression.weekly.trades += 1;
+    }
+    if (kind === "offline") {
+      state.progression.offline.claims += 1;
+      state.progression.offline.seconds += payload.seconds || 0;
+      state.progression.offline.maxClaimSeconds = Math.max(state.progression.offline.maxClaimSeconds || 0, payload.seconds || 0);
+    }
+    if (kind === "repair") state.progression.repairs += 1;
+    if (kind === "shipSwitch") state.progression.shipSwitches += 1;
+    if (kind === "kraken") state.progression.krakenSightings += 1;
+    checkProgressionUnlocks();
+  }
+
+  function completedCount(store, definitions) {
+    return definitions.filter(item => store.completed[item.id] || store.claimed[item.id]).length;
+  }
+
+  function objectiveProgress(objective) {
+    const stats = getStats();
+    const p = state.progression;
+    const values = {
+      started: state.hasStarted || state.journeyStartedAt > 0 ? 1 : 0,
+      firstCombat: state.hasStarted ? 1 : 0,
+      enemies: state.lifetime.enemies,
+      bosses: state.lifetime.bosses,
+      gold: state.lifetime.gold,
+      pirateLevel: state.pirateLevel,
+      regionUnlocked: state.unlockedRegions,
+      shipsOwned: state.ownedShips.length,
+      tradeTransactions: p.trade.transactions,
+      tradeBuys: p.trade.buys,
+      tradeSells: p.trade.sells,
+      offlineClaims: p.offline.claims,
+      offlineSeconds: p.offline.seconds,
+      dps: stats.dps,
+      maxHp: stats.maxHp,
+      dailyEnemies: p.daily.enemies,
+      dailyGold: p.daily.gold,
+      dailyUpgrades: p.daily.upgrades,
+      dailySkillUses: p.daily.skillUses,
+      dailyTrades: p.daily.trades,
+      weeklyEnemies: p.weekly.enemies,
+      weeklyBosses: p.weekly.bosses,
+      weeklyUpgrades: p.weekly.upgrades,
+      weeklyResources: p.weekly.resources,
+      weeklyTrades: p.weekly.trades,
+      krakenSightings: p.krakenSightings,
+      multiResourceDrops: p.multiResourceDrops,
+      onlyGoldBattles: p.onlyGoldBattles,
+      survivorWins: p.survivorWins || 0,
+      missionsCompleted: completedCount(state.quests, missionDefinitions),
+      achievementsCompleted: completedCount(state.achievements, achievementDefinitions)
+    };
+    if (objective.kind === "upgrade") return p.upgradesByType[objective.type] || Math.max(0, state.levels[objective.type] - 1);
+    if (objective.kind === "allCoreUpgrades") return Math.min(p.upgradesByType.cannons || 0, p.upgradesByType.sails || 0, p.upgradesByType.hull || 0);
+    if (objective.kind === "resource") return p.resourcesByKey[objective.key] || 0;
+    if (objective.kind === "skillUse") return p.skillUses[objective.key] || 0;
+    if (objective.kind === "skillAuto") return Object.keys(SKILL_META).filter(key => isSkillUnlocked(key) && state.skills[key].auto).length;
+    if (objective.kind === "shipName") return state.ownedShips.some(id => SHIPS[id]?.name === objective.name) ? 1 : 0;
+    if (objective.kind === "legendaryPower") return SHIPS[state.shipId].tier >= 5 && stats.dps >= objective.target ? objective.target : Math.min(stats.dps, objective.target - 1);
+    if (objective.kind === "allBosses") return bossesCount();
+    if (objective.kind === "allResourcesSeen") return Object.keys(RESOURCE_META).filter(key => p.resourceTypesSeen[key] || (state.resources[key] || 0) > 0).length;
+    if (objective.kind === "allSkillsUnlocked") return Object.keys(SKILL_META).filter(isSkillUnlocked).length;
+    if (objective.kind === "perfectShip") return Math.min(state.levels.cannons, state.levels.sails, state.levels.hull);
+    return values[objective.kind] || 0;
+  }
+
+  function objectiveTarget(objective) {
+    if (objective.kind === "started" || objective.kind === "firstCombat" || objective.kind === "shipName" || objective.kind === "legendaryPower") return objective.target || 1;
+    if (objective.kind === "allBosses") return REGIONS.length;
+    if (objective.kind === "allResourcesSeen") return Object.keys(RESOURCE_META).length;
+    if (objective.kind === "allSkillsUnlocked") return Object.keys(SKILL_META).length;
+    return objective.target || 1;
+  }
+
+  function isProgressionUnlocked(item, definitions, storeName) {
+    if (item.secret && !state[storeName].completed[item.id] && objectiveProgress(item.objective) < objectiveTarget(item.objective)) return false;
+    if (state.pirateLevel < (item.level || item.recommendedLevel || 1)) return false;
+    if (item.objective.kind === "resource" && ["cristal", "perola", "ambar", "pedra", "fragmentos"].includes(item.objective.key)) {
+      const index = REGIONS.findIndex(region => region.drops[item.objective.key]);
+      if (index >= 0 && state.unlockedRegions <= index) return false;
+    }
+    return true;
+  }
+
+  function checkProgressionUnlocks() {
+    if (!state?.quests || !state?.achievements) return;
+    resetPeriodicProgressIfNeeded();
+    [
+      [missionDefinitions, state.quests, "Missão concluída", "quests"],
+      [achievementDefinitions, state.achievements, "Conquista desbloqueada", "achievements"]
+    ].forEach(([definitions, store, label, storeName]) => {
+      definitions.forEach(item => {
+        if (store.completed[item.id] || store.claimed[item.id] || !isProgressionUnlocked(item, definitions, storeName)) return;
+        if (objectiveProgress(item.objective) >= objectiveTarget(item.objective)) {
+          store.completed[item.id] = Date.now();
+          toast(`${label}: ${item.name}`, "gold-toast");
+          addLog(`${label}: ${item.name}. Recompensa disponível: ${rewardText(item.reward)}.`, "loot");
+        }
+      });
+    });
+  }
+
+  function claimProgressionReward(kind, id) {
+    const definitions = kind === "mission" ? missionDefinitions : achievementDefinitions;
+    const store = kind === "mission" ? state.quests : state.achievements;
+    const item = definitions.find(entry => entry.id === id);
+    if (!item || !store.completed[id] || store.claimed[id]) return;
+    Object.entries(item.reward.resources || {}).forEach(([key, amount]) => {
+      if (!amount) return;
+      state.resources[key] = (state.resources[key] || 0) + amount;
+      if (key !== "ouro") {
+        state.lifetime.resources += amount;
+        addCollectedResource(key, amount);
+      } else {
+        state.lifetime.gold += amount;
+      }
+    });
+    if (item.reward.xp) gainXp(item.reward.xp);
+    if (item.reward.title && !state.titles.includes(item.reward.title)) state.titles.push(item.reward.title);
+    store.claimed[id] = Date.now();
+    delete store.completed[id];
+    toast(`${kind === "mission" ? "Missão" : "Conquista"} recompensada: ${item.name}`, "gold-toast");
+    addLog(`Recompensa coletada: ${item.name} — ${rewardText(item.reward)}.`, "loot");
+    checkProgressionUnlocks();
+    renderAll(true);
+    saveGame();
   }
 
   class SeaScene {
@@ -532,6 +821,8 @@
       this.lootFloaters.push({ text: `+${reward.food} Comida`, x: burstX, y: burstY, age: 0, color: reward.color });
       state.resources.comida += reward.food;
       state.lifetime.resources += reward.food;
+      addCollectedResource("comida", reward.food);
+      if (event.kind === "kraken") trackAction("kraken");
       addLog(`${reward.name} capturado: +${reward.food} Comida.`, "loot");
       toast(`+${reward.food} Comida • ${reward.name}`, "gold-toast");
       renderAll(false);
@@ -565,6 +856,7 @@
     spawnEnvironmentEvent(kind) {
       const direction = Math.random() < .5 ? 1 : -1;
       const durations = { bird: randomBetween(8, 13), fish: randomBetween(4, 7), shark: randomBetween(7, 10), kraken: randomBetween(6, 9) };
+      if (kind === "kraken") trackAction("kraken");
       this.environmentEvents.push({
         kind, direction, age: 0, duration: durations[kind],
         depth: kind === "bird" ? randomBetween(.18, .72) : kind === "kraken" ? randomBetween(.06, .14) : kind === "shark" ? randomBetween(.78, .9) : randomBetween(.52, .88),
@@ -1078,6 +1370,7 @@
     if (key === "ice") { dealToEnemy(base, { color: "#81e8ff" }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
     if (key === "ghost") dealToEnemy(base, { color: "#c58cff", ignoreArmor: true });
     if (key === "chain") { dealToEnemy(base, { color: "#d9e4df" }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
+    trackAction("skill", { key });
     addLog(`${meta.name} disparado automaticamente.`, "loot");
   }
 
@@ -1133,6 +1426,7 @@
   function beginRepair() {
     state.combat.repairing = true;
     state.combat.repairStarted = performance.now();
+    trackAction("repair");
     addLog("Casco destruído. Reparo automático iniciado!", "danger-text");
     toast("Navio destruído — reparo automático em andamento.", "danger-toast");
   }
@@ -1155,6 +1449,7 @@
         const amount = Math.max(1, Math.round(integerBetween(1, 1 + Math.floor(state.regionIndex / 2)) * multiplier));
         state.resources[key] += amount;
         state.lifetime.resources += amount;
+        addCollectedResource(key, amount);
         found.push(`${amount} ${RESOURCE_META[key].name}`);
       }
     });
@@ -1172,6 +1467,8 @@
       state.resources.ouro += reward;
       state.lifetime.gold += reward;
       state.lifetime.bosses += 1;
+      trackAction("gold", { amount: reward });
+      trackAction("boss");
       if (getEquippedPet()) state.lifetime.bossesWithPet += 1;
       state.bossesDefeated[state.regionIndex] = true;
       gainXp(region.xp * 35);
@@ -1199,8 +1496,10 @@
       state.lifetime.gold += gold;
       state.lifetime.enemies += 1;
       state.regionKills[state.regionIndex] += 1;
+      trackAction("gold", { amount: gold });
       gainXp(Math.round(region.xp * (enemy.xpMultiplier || 1) * randomBetween(.92, 1.08)));
       const materials = rewardMaterials(1, enemy);
+      trackAction("enemy", { onlyGold: materials.length === 0, multiResource: materials.length >= 2, survivor: state.combat.playerHp > 0 && state.combat.playerHp <= getStats().maxHp * .05 });
       addLog(materials.length ? `Vitória: +${formatNumber(gold)} ouro, ${materials.join(", ")}.` : `Vitória: +${formatNumber(gold)} ouro. Nenhum material.`, materials.length ? "loot" : "");
       if (state.regionKills[state.regionIndex] === 100 && !state.bossesDefeated[state.regionIndex]) toast(`${region.boss} está disponível para desafio!`, "gold-toast");
       state.combat.enemy = null;
@@ -1294,6 +1593,9 @@
     state.lifetime.gold += gold;
     state.lifetime.enemies += kills;
     state.regionKills[state.regionIndex] += kills;
+    trackAction("gold", { amount: gold });
+    trackAction("enemy", { count: kills });
+    trackAction("offline", { seconds: capped });
     gainXp(xp);
     const rewards = [{ name: "Ouro", amount: gold }, { name: "XP", amount: xp }, { name: "Vitórias", amount: kills }];
     Object.entries(region.drops).forEach(([key, chance]) => {
@@ -1301,6 +1603,7 @@
       if (amount > 0) {
         state.resources[key] += amount;
         state.lifetime.resources += amount;
+        addCollectedResource(key, amount);
         rewards.push({ name: RESOURCE_META[key].name, amount });
       }
     });
@@ -1757,6 +2060,8 @@
       if (state.resources.ouro < total) { toast("Ouro insuficiente.", "danger-toast"); closeTradeModal(); return; }
       state.resources.ouro -= total;
       state.resources[key] += quantity;
+      addCollectedResource(key, quantity);
+      trackAction("trade", { action, quantity });
       toast("Compra realizada com sucesso.", "gold-toast");
       addLog(`Mercado: ${quantity} ${RESOURCE_META[key].name} comprados por ${formatNumber(total)} Ouro.`, "loot");
     } else {
@@ -1764,6 +2069,8 @@
       state.resources[key] -= quantity;
       state.resources.ouro += total;
       state.lifetime.gold += total;
+      trackAction("gold", { amount: total });
+      trackAction("trade", { action, quantity });
       toast("Venda realizada com sucesso.", "gold-toast");
       addLog(`Mercado: ${quantity} ${RESOURCE_META[key].name} vendidos por ${formatNumber(total)} Ouro.`, "loot");
     }
@@ -1800,6 +2107,64 @@
     ];
     const missions = [["Missão: realizar 1 Prestígio", state.prestiges >= 1], ["Missão: comprar o primeiro pet", state.ownedPets.length >= 1], ["Missão: liberar navios Tier 3", state.prestiges >= 2], ["Missão: alcançar 10 Prestígios", state.prestiges >= 10]];
     $("#prestige-achievements").innerHTML = [...achievements, ...missions].map(([name, earned]) => `<span class="prestige-achievement ${earned ? "earned" : ""}">${earned ? "✓" : "◇"} ${name}</span>`).join("");
+  }
+
+  function progressionStatus(item, store, storeName) {
+    const unlocked = isProgressionUnlocked(item, storeName === "quests" ? missionDefinitions : achievementDefinitions, storeName);
+    if (store.claimed[item.id]) return "claimed";
+    if (store.completed[item.id] || (unlocked && objectiveProgress(item.objective) >= objectiveTarget(item.objective))) return "ready";
+    return unlocked ? "progress" : "locked";
+  }
+
+  function renderProgressionFilters(rootId, filters, active) {
+    $(`#${rootId}`).innerHTML = filters.map(filter => `<button class="${filter === active ? "active" : ""}" data-progression-filter="${rootId}" data-filter-value="${filter}">${filter}</button>`).join("");
+  }
+
+  function shouldShowProgression(item, status, filter) {
+    if (filter === "Todas") return true;
+    if (["Pronta", "Concluídas"].includes(filter)) return status === "ready" || status === "claimed";
+    if (filter === "Em andamento") return status === "progress";
+    if (filter === "Bloqueada" || filter === "Bloqueadas") return status === "locked";
+    return item.category === filter;
+  }
+
+  function progressionCardHtml(item, store, status, kind) {
+    const progress = objectiveProgress(item.objective);
+    const target = objectiveTarget(item.objective);
+    const ratio = clamp(progress / Math.max(1, target), 0, 1);
+    const hiddenSecret = item.secret && status === "locked";
+    const statusText = status === "claimed" ? "Recompensa coletada" : status === "ready" ? "Concluída" : status === "locked" ? "Bloqueada" : "Em andamento";
+    const rarity = item.rarity ? `<span class="codex-rarity ${item.rarity.toLowerCase()}">${item.rarity}</span>` : "";
+    return `<article class="codex-card ${status} ${hiddenSecret ? "secret" : ""}">
+      <div class="codex-card-top"><div class="codex-icon">${hiddenSecret ? "?" : item.icon}</div><div><span class="eyebrow">${item.category}</span><h3>${hiddenSecret ? "Missão secreta" : item.name}</h3></div><span class="codex-status">${statusText}</span></div>
+      ${rarity}
+      <p>${hiddenSecret ? "Objetivo oculto até ser descoberto nos mares." : item.description}</p>
+      <div class="codex-objective"><span>Objetivo</span><strong>${formatNumber(Math.min(progress, target))} / ${formatNumber(target)}</strong></div>
+      <div class="codex-progress"><i style="width:${Math.round(ratio * 100)}%"></i></div>
+      <div class="codex-meta"><span>Nível recomendado: ${item.recommendedLevel || item.level || 1}</span><span>${item.resets === "daily" ? "Reinicia diariamente" : item.resets === "weekly" ? "Reinicia semanalmente" : "Progresso permanente"}</span></div>
+      <div class="codex-reward"><span>Recompensa</span><strong>${hiddenSecret ? "???" : rewardText(item.reward)}</strong></div>
+      <button class="button primary" data-claim-${kind}="${item.id}" ${status === "ready" ? "" : "disabled"}>${status === "ready" ? "Coletar recompensa" : status === "claimed" ? "Coletada" : "Ainda não concluída"}</button>
+    </article>`;
+  }
+
+  function renderMissions() {
+    resetPeriodicProgressIfNeeded();
+    checkProgressionUnlocks();
+    renderProgressionFilters("mission-filters", MISSION_FILTERS, activeMissionFilter);
+    const complete = completedCount(state.quests, missionDefinitions);
+    $("#missions-summary").textContent = `${complete} / ${missionDefinitions.length}`;
+    const cards = missionDefinitions.map(item => [item, progressionStatus(item, state.quests, "quests")]).filter(([item, status]) => shouldShowProgression(item, status, activeMissionFilter));
+    $("#missions-grid").innerHTML = cards.length ? cards.map(([item, status]) => progressionCardHtml(item, state.quests, status, "mission")).join("") : `<p class="empty-state">Nenhuma missão neste filtro por enquanto.</p>`;
+  }
+
+  function renderAchievements() {
+    resetPeriodicProgressIfNeeded();
+    checkProgressionUnlocks();
+    renderProgressionFilters("achievement-filters", ACHIEVEMENT_FILTERS, activeAchievementFilter);
+    const complete = completedCount(state.achievements, achievementDefinitions);
+    $("#achievements-summary").textContent = `${complete} / ${achievementDefinitions.length}`;
+    const cards = achievementDefinitions.map(item => [item, progressionStatus(item, state.achievements, "achievements")]).filter(([item, status]) => shouldShowProgression(item, status, activeAchievementFilter));
+    $("#achievements-grid").innerHTML = cards.length ? cards.map(([item, status]) => progressionCardHtml(item, state.achievements, status, "achievement")).join("") : `<p class="empty-state">Nenhuma conquista neste filtro por enquanto.</p>`;
   }
 
   function openPrestigeConfirmation() {
@@ -1870,6 +2235,8 @@
     if (expensive || currentScreen === "maps") renderMaps();
     if (expensive || currentScreen === "resources") renderResources();
     if (expensive || currentScreen === "trade") renderTrade();
+    if (expensive || currentScreen === "missions") renderMissions();
+    if (expensive || currentScreen === "achievements") renderAchievements();
     if (expensive || currentScreen === "pets") { renderPets(); decorateMissingPurchasePanels($("#screen-pets")); }
     if (expensive || currentScreen === "prestige") renderPrestige();
     if (expensive || currentScreen === "stats") renderStats();
@@ -1881,6 +2248,7 @@
     const cost = getUpgradeCost(type);
     if (!canAfford(cost)) return toast("Recursos insuficientes para essa melhoria.", "danger-toast");
     spend(cost); state.levels[type] += 1;
+    trackAction("upgrade", { type });
     const newStats = getStats();
     if (type === "hull" || type === "ship") state.combat.playerHp = Math.max(state.combat.playerHp, Math.round(newStats.maxHp * oldRatio));
     addLog(`${type === "ship" ? "Navio" : type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} melhorado para o nível ${state.levels[type]}.`, "loot");
@@ -1898,12 +2266,14 @@
     if (state.pirateLevel < ship.levelReq) return toast(`Requer nível ${ship.levelReq} para comprar ${ship.name}.`, "danger-toast");
     if (!canAfford(ship.costs)) return toast("Ainda faltam recursos para construir este navio.", "danger-toast");
     spend(ship.costs); state.ownedShips.push(id); state.shipId = id; state.combat.playerHp = getStats().maxHp; state.combat.enemy = null; state.combat.spawnTimer = 0;
+    trackAction("shipSwitch");
     toast(`${ship.name} foi construído e equipado!`, "gold-toast"); addLog(`${ship.name} agora lidera sua frota.`, "loot"); renderAll(true); saveGame();
   }
 
   function equipShip(id) {
     if (!state.ownedShips.includes(id)) return;
     state.shipId = id; state.combat.playerHp = getStats().maxHp; state.combat.enemy = null; state.combat.spawnTimer = 0;
+    trackAction("shipSwitch");
     toast(`${SHIPS[id].name} selecionado.`); renderAll(true); saveGame();
   }
 
@@ -1937,6 +2307,7 @@
     const cost = getSkillCost(key); if (!canAfford(cost)) return;
     const oldPower = getStats().power;
     spend(cost); state.skills[key].level += 1;
+    trackAction("upgrade", { type: "skill" });
     const newPower = getStats().power;
     toast(`${SKILL_META[key].name} nível ${state.skills[key].level}. Poder Naval +${formatNumber(newPower - oldPower)}.`); renderAll(true); saveGame();
   }
@@ -1956,6 +2327,8 @@
     if (screen === "maps") renderMaps();
     if (screen === "resources") renderResources();
     if (screen === "trade") renderTrade();
+    if (screen === "missions") renderMissions();
+    if (screen === "achievements") renderAchievements();
     if (screen === "pets") { renderPets(); decorateMissingPurchasePanels($("#screen-pets")); }
     if (screen === "prestige") renderPrestige();
     if (screen === "stats") renderStats();
@@ -1987,6 +2360,10 @@
     }
     if (target.dataset.tradeAction && target.dataset.tradeResource) openTradeConfirmation(target.dataset.tradeResource, target.dataset.tradeAction);
     if (target.dataset.tradeStep && target.dataset.tradeResource) stepTradeQuantity(target.dataset.tradeResource, Number(target.dataset.tradeStep));
+    if (target.dataset.progressionFilter === "mission-filters") { activeMissionFilter = target.dataset.filterValue; renderMissions(); }
+    if (target.dataset.progressionFilter === "achievement-filters") { activeAchievementFilter = target.dataset.filterValue; renderAchievements(); }
+    if (target.dataset.claimMission) claimProgressionReward("mission", target.dataset.claimMission);
+    if (target.dataset.claimAchievement) claimProgressionReward("achievement", target.dataset.claimAchievement);
     if (target.dataset.selectMap) {
       const index = Number(target.dataset.selectMap);
       if (index < state.unlockedRegions) { state.regionIndex = index; state.combat.enemy = null; state.combat.spawnTimer = 0; toast(`Rota definida: ${REGIONS[index].name}.`); renderAll(true); saveGame(); navigate("home"); }
@@ -2017,10 +2394,10 @@
   });
   ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
 
-  $("#start-button").addEventListener("click", () => { state.combat.running = true; state.hasStarted = true; if (state.combat.playerHp <= 0) finishRepair(true); if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay(); addLog("A frota iniciou a patrulha automática."); renderAll(false); });
+  $("#start-button").addEventListener("click", () => { state.combat.running = true; state.hasStarted = true; trackAction("firstCombat"); if (state.combat.playerHp <= 0) finishRepair(true); if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay(); addLog("A frota iniciou a patrulha automática."); renderAll(false); });
   $("#pause-button").addEventListener("click", () => { state.combat.running = false; addLog("Combate pausado pelo capitão."); renderAll(false); saveGame(); });
   $("#reset-button").addEventListener("click", () => { resetShip(); renderAll(false); });
-  $("#boss-button").addEventListener("click", () => { if (state.regionKills[state.regionIndex] >= 100 && !state.bossesDefeated[state.regionIndex]) { state.combat.running = true; state.hasStarted = true; state.combat.repairing = false; spawnEnemy(true); renderAll(false); } });
+  $("#boss-button").addEventListener("click", () => { if (state.regionKills[state.regionIndex] >= 100 && !state.bossesDefeated[state.regionIndex]) { state.combat.running = true; state.hasStarted = true; trackAction("firstCombat"); state.combat.repairing = false; spawnEnemy(true); renderAll(false); } });
   $("#offline-close").addEventListener("click", () => $("#offline-modal").classList.add("hidden"));
   $("#wipe-button").addEventListener("click", () => $("#confirm-modal").classList.remove("hidden"));
   $("#confirm-cancel").addEventListener("click", () => $("#confirm-modal").classList.add("hidden"));

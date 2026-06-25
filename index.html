@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -203,6 +203,24 @@
         <div class="trade-grid" id="trade-grid"></div>
       </section>
 
+      <section class="screen" id="screen-missions" aria-labelledby="missions-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">ROTAS DO CAPITÃO</span><h1 id="missions-title">Missões</h1><p>Objetivos guiados para evoluir seu navio, abrir mapas, derrotar bosses e manter a frota sempre com um rumo claro.</p></div>
+          <div class="codex-counter"><span>MISSÕES</span><strong id="missions-summary">0 / 100</strong></div>
+        </div>
+        <div class="codex-tabs" id="mission-filters" aria-label="Filtros de missões"></div>
+        <div class="codex-grid" id="missions-grid"></div>
+      </section>
+
+      <section class="screen" id="screen-achievements" aria-labelledby="achievements-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">LENDAS DO ABISMO</span><h1 id="achievements-title">Conquistas</h1><p>100 marcos permanentes conectados ao combate, mapas, navios, recursos, skills, comércio, idle e segredos do cenário.</p></div>
+          <div class="codex-counter"><span>CONQUISTAS</span><strong id="achievements-summary">0 / 100</strong></div>
+        </div>
+        <div class="codex-tabs" id="achievement-filters" aria-label="Filtros de conquistas"></div>
+        <div class="codex-grid" id="achievements-grid"></div>
+      </section>
+
       <section class="screen" id="screen-stats" aria-labelledby="stats-title">
         <div class="page-heading">
           <div><span class="eyebrow">LIVRO DO CAPITÃO</span><h1 id="stats-title">Estatísticas</h1><p>O retrato completo da sua jornada pelos mares.</p></div>
@@ -226,6 +244,8 @@
       <button data-screen-target="maps"><span>⌖</span><strong>Mapas</strong></button>
       <button data-screen-target="resources"><span>◆</span><strong>Recursos</strong></button>
       <button data-screen-target="trade"><span>⚖</span><strong>Comércio</strong></button>
+      <button data-screen-target="missions"><span>✦</span><strong>Missões</strong></button>
+      <button data-screen-target="achievements"><span>★</span><strong>Conquistas</strong></button>
       <button data-screen-target="pets"><span>🐾</span><strong>Pets</strong></button>
       <button data-screen-target="prestige"><span>☠</span><strong>Prestígio</strong></button>
       <button data-screen-target="stats"><span>▥</span><strong>Estatísticas</strong></button>
@@ -275,6 +295,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=15"></script>
+  <script src="game.js?v=16"></script>
 </body>
 </html>

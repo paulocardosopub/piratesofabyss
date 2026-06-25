@@ -244,7 +244,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   width: min(980px, calc(100% - 26px));
   height: 64px;
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(10, 1fr);
   padding: 6px;
   transform: translateX(-50%);
   border: 1px solid rgba(159, 205, 203, .2);
@@ -257,6 +257,128 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .bottom-nav button > span { font-size: 18px; }
 .bottom-nav button strong { font-size: 11px; }
 .bottom-nav button.active { color: var(--cyan-2); background: rgba(53,212,207,.1); }
+
+.codex-counter {
+  min-width: 128px;
+  padding: 14px 18px;
+  text-align: right;
+  border: 1px solid rgba(247,189,74,.28);
+  border-radius: var(--radius);
+  background: rgba(247,189,74,.08);
+}
+.codex-counter span, .codex-counter strong { display: block; }
+.codex-counter span { color: var(--gold); font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.codex-counter strong { margin-top: 4px; font-size: 24px; }
+.codex-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 4px 2px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.codex-tabs::-webkit-scrollbar { display: none; }
+.codex-tabs button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255,255,255,.04);
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.codex-tabs button.active {
+  color: #06202a;
+  border-color: var(--cyan-2);
+  background: linear-gradient(135deg, var(--cyan-2), #35d4cf);
+}
+.codex-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.codex-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 310px;
+  padding: 17px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(145deg, rgba(13,42,59,.94), rgba(7,27,40,.98));
+}
+.codex-card.ready { border-color: rgba(247,189,74,.48); box-shadow: 0 0 0 1px rgba(247,189,74,.08), 0 14px 34px rgba(247,189,74,.08); }
+.codex-card.claimed { opacity: .74; }
+.codex-card.locked { filter: grayscale(.35); }
+.codex-card.secret { border-style: dashed; }
+.codex-card-top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+.codex-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+  border: 1px solid rgba(247,189,74,.28);
+  border-radius: 13px;
+  background: rgba(247,189,74,.08);
+  font-size: 22px;
+}
+.codex-card h3 { margin: 2px 0 0; font: 700 18px Georgia, serif; }
+.codex-status {
+  padding: 5px 7px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255,255,255,.055);
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.codex-card.ready .codex-status { color: #2b1805; background: var(--gold); }
+.codex-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.codex-rarity {
+  width: max-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  color: var(--cyan-2);
+  font-size: 9px;
+  font-weight: 900;
+}
+.codex-rarity.épica, .codex-rarity.lendária { color: var(--gold); }
+.codex-objective, .codex-reward {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0,0,0,.13);
+}
+.codex-objective span, .codex-reward span { color: var(--muted); font-size: 9px; font-weight: 900; text-transform: uppercase; }
+.codex-objective strong, .codex-reward strong { color: #dce9e6; font-size: 11px; text-align: right; }
+.codex-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0,0,0,.32);
+}
+.codex-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), var(--gold)); transition: width .25s ease; }
+.codex-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: auto; }
+.codex-meta span {
+  padding: 5px 7px;
+  border-radius: 7px;
+  color: var(--muted);
+  background: rgba(255,255,255,.045);
+  font-size: 9px;
+  font-weight: 800;
+}
+.codex-card .button { width: 100%; }
 
 .page-heading { display: flex; align-items: center; justify-content: space-between; min-height: 120px; gap: 24px; }
 .page-heading h1 { margin: 4px 0 5px; font: 700 clamp(28px, 4vw, 42px) Georgia, serif; }
@@ -568,7 +690,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .brand > span:last-child { display: none; }
   .top-resources > div { min-width: 78px; }
   .upgrade-grid { grid-template-columns: repeat(2, 1fr); }
-  .fleet-grid, .equipment-grid, .resources-grid { grid-template-columns: repeat(3, 1fr); }
+  .fleet-grid, .equipment-grid, .resources-grid, .codex-grid { grid-template-columns: repeat(3, 1fr); }
   .skills-grid { grid-template-columns: repeat(2, 1fr); }
   .pets-grid { grid-template-columns: repeat(2, 1fr); }
   .prestige-summary-grid { grid-template-columns: repeat(2, 1fr); }
@@ -623,7 +745,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .mini-ship { width: 55px; height: 55px; }
   .ship-stat-row { grid-column: 1 / -1; justify-content: space-between; }
   .ship-stat-row div { text-align: center; }
-  .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid, .trade-grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
+  .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid, .trade-grid, .codex-grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
   .upgrade-card, .equipment-card, .skill-card, .ship-card, .resource-card { padding: 14px; }
   .ship-visual { margin: -14px -14px 11px; }
   .map-card { min-height: 240px; }
@@ -645,7 +767,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .page-heading p { max-width: 220px; }
   .power-seal, .map-counter, .cargo-total, .rank-medallion, .trade-wallet, .prestige-wallet { min-width: 82px; }
   .trade-wallet strong { font-size: 16px; }
-  .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid, .trade-grid { grid-template-columns: 1fr; }
+  .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid, .trade-grid, .codex-grid { grid-template-columns: 1fr; }
   .upgrade-card p, .equipment-card p, .skill-card p { min-height: auto; }
   .ship-card { min-height: 420px; }
   .resource-card { min-height: 170px; }
