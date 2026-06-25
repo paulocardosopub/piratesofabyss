@@ -251,6 +251,7 @@
   let hiddenAt = 0;
   const tradeQuantities = Object.fromEntries(Object.keys(TRADE_PRICES).map(key => [key, 1]));
   let pendingTrade = null;
+  let pendingMissingPurchase = null;
   let prestigeConfirmationStage = 0;
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
@@ -394,6 +395,39 @@
 
   function canAfford(cost) { return Object.entries(cost).every(([key, amount]) => (state.resources[key] || 0) >= amount); }
   function spend(cost) { Object.entries(cost).forEach(([key, amount]) => { state.resources[key] -= amount; }); }
+  function isDirectlyPurchasableResource(key) { return key !== "ouro" && key !== "fragmentos" && Boolean(TRADE_PRICES[key]); }
+  function getMissingResourceEntries(cost) {
+    return Object.entries(cost).map(([key, amount]) => ({ key, amount, owned: state.resources[key] || 0, missing: Math.max(0, amount - (state.resources[key] || 0)) })).filter(item => item.missing > 0);
+  }
+  function getMissingPurchaseInfo(cost) {
+    const missing = getMissingResourceEntries(cost);
+    const purchasable = missing.filter(item => isDirectlyPurchasableResource(item.key)).map(item => {
+      const unitPrice = TRADE_PRICES[item.key].buy;
+      return { ...item, unitPrice, total: item.missing * unitPrice };
+    });
+    const blocked = missing.filter(item => !isDirectlyPurchasableResource(item.key));
+    const total = purchasable.reduce((sum, item) => sum + item.total, 0);
+    const goldAfterPurchase = state.resources.ouro - total;
+    const goldCost = cost.ouro || 0;
+    return {
+      missing,
+      purchasable,
+      blocked,
+      total,
+      canBuyMissing: purchasable.length > 0 && state.resources.ouro >= total,
+      canBuyAndExecute: purchasable.length > 0 && state.resources.ouro >= total + goldCost && blocked.every(item => item.key === "ouro")
+    };
+  }
+  function buyMissingResources(cost) {
+    const info = getMissingPurchaseInfo(cost);
+    if (!info.purchasable.length) return { ok: false, message: "Nenhum recurso faltante pode ser comprado direto." };
+    if (state.resources.ouro < info.total) return { ok: false, message: "Ouro insuficiente para comprar os recursos faltantes." };
+    state.resources.ouro -= info.total;
+    info.purchasable.forEach(item => { state.resources[item.key] += item.missing; });
+    const bought = info.purchasable.map(item => `${formatNumber(item.missing)} ${RESOURCE_META[item.key].name}`).join(" • ");
+    addLog(`Compra direta: ${bought} por ${formatNumber(info.total)} Ouro.`, "loot");
+    return { ok: true, total: info.total, bought };
+  }
 
   function addLog(message, type = "") {
     const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -1295,6 +1329,96 @@
     return missing.length ? `Faltam: ${missing.join(" • ")}` : "Recursos suficientes para melhorar";
   }
 
+  function missingPurchasePanelHtml(cost, context) {
+    const info = getMissingPurchaseInfo(cost);
+    if (!info.missing.length) return `<div class="missing-purchase-panel ready">Recursos suficientes para continuar.</div>`;
+    const missingLines = info.missing.map(item => `<span class="${item.key === "ouro" || !isDirectlyPurchasableResource(item.key) ? "blocked" : ""}">${RESOURCE_META[item.key].name}: ${formatNumber(item.owned)} / ${formatNumber(item.amount)} <strong>faltam ${formatNumber(item.missing)}</strong></span>`).join("");
+    const purchasableLines = info.purchasable.length ? info.purchasable.map(item => `<span>${RESOURCE_META[item.key].name}: ${formatNumber(item.missing)} × ${formatNumber(item.unitPrice)} = <strong>${formatNumber(item.total)} Ouro</strong></span>`).join("") : `<span>Nenhum material faltante pode ser comprado direto.</span>`;
+    const blockedLines = info.blocked.filter(item => item.key !== "ouro").map(item => `<small>${RESOURCE_META[item.key].name} deve ser conquistado jogando.</small>`).join("");
+    const goldWarning = info.total > 0 && state.resources.ouro < info.total ? `<small class="danger">Ouro insuficiente: precisa de ${formatNumber(info.total)} Ouro, possui ${formatNumber(state.resources.ouro)}. Faltam ${formatNumber(info.total - state.resources.ouro)} Ouro.</small>` : "";
+    const afterBuyWarning = info.canBuyMissing && !info.canBuyAndExecute && (cost.ouro || 0) > state.resources.ouro - info.total ? `<small class="danger">Depois da compra ainda faltara Ouro para concluir esta melhoria.</small>` : "";
+    return `<div class="missing-purchase-panel"><strong>Voce nao possui recursos suficientes.</strong><div class="missing-lines">${missingLines}</div><div class="missing-buy-lines">${purchasableLines}</div>${blockedLines}${goldWarning}${afterBuyWarning}<div class="missing-actions"><button class="button primary" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" ${info.canBuyMissing ? "" : "disabled"}>Comprar recursos faltantes${info.total ? ` (${formatNumber(info.total)} Ouro)` : ""}</button><button class="button" data-screen-target="trade">Ir para Comercio</button><button class="button prestige-button" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" data-buy-missing-then="1" ${info.canBuyAndExecute ? "" : "disabled"}>Comprar e melhorar agora</button></div></div>`;
+  }
+
+  function insertMissingPurchasePanel(button, cost, context, allowed = true) {
+    if (!allowed || canAfford(cost) || button.parentElement.querySelector(".missing-purchase-panel")) return;
+    button.insertAdjacentHTML("beforebegin", missingPurchasePanelHtml(cost, context));
+  }
+
+  function decorateMissingPurchasePanels(root = document) {
+    $$("[data-upgrade]", root).forEach(button => insertMissingPurchasePanel(button, getUpgradeCost(button.dataset.upgrade), { kind: "upgrade", id: button.dataset.upgrade }));
+    $$("[data-upgrade-skill]", root).forEach(button => {
+      const key = button.dataset.upgradeSkill;
+      if (isSkillUnlocked(key)) insertMissingPurchasePanel(button, getSkillCost(key), { kind: "skill", id: key });
+    });
+    $$("[data-craft-equipment]", root).forEach(button => {
+      const key = button.dataset.craftEquipment;
+      const item = EQUIPMENT_META[key];
+      if (item && !state.equipment[key]) insertMissingPurchasePanel(button, item.costs, { kind: "equipment", id: key });
+    });
+    $$("[data-buy-ship]", root).forEach(button => {
+      const id = Number(button.dataset.buyShip);
+      const ship = SHIPS[id];
+      if (!ship || state.ownedShips.includes(id)) return;
+      const prestigeReq = Math.max(0, ship.tier - 1);
+      const progressionOk = (ship.tier === 0 || state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) && state.prestiges >= prestigeReq && state.pirateLevel >= ship.levelReq;
+      insertMissingPurchasePanel(button, ship.costs, { kind: "ship", id }, progressionOk);
+    });
+    $$("[data-buy-pet]", root).forEach(button => {
+      const id = Number(button.dataset.buyPet);
+      const pet = PETS[id];
+      if (!pet || state.ownedPets.includes(id)) return;
+      const progressionOk = isPetUnlocked(pet) && state.pirateCoins >= PET_PIRATE_COIN_COSTS[id];
+      insertMissingPurchasePanel(button, pet.costs, { kind: "pet", id }, progressionOk);
+    });
+  }
+
+  function getMissingPurchaseContext(kind, rawId) {
+    const id = ["ship", "pet"].includes(kind) ? Number(rawId) : rawId;
+    if (kind === "upgrade") {
+      const names = { ship: "Conves e Estrutura", cannons: "Canhoes", sails: "Velas", hull: "Casco" };
+      return { cost: getUpgradeCost(id), label: `${names[id] || "Melhoria"} nivel ${state.levels[id] + 1}`, execute: () => upgrade(id) };
+    }
+    if (kind === "skill" && SKILL_META[id] && isSkillUnlocked(id)) return { cost: getSkillCost(id), label: `${SKILL_META[id].name} nivel ${state.skills[id].level + 1}`, execute: () => upgradeSkill(id) };
+    if (kind === "equipment" && EQUIPMENT_META[id] && !state.equipment[id]) return { cost: EQUIPMENT_META[id].costs, label: EQUIPMENT_META[id].name, execute: () => craftEquipment(id) };
+    if (kind === "ship" && SHIPS[id] && !state.ownedShips.includes(id)) return { cost: SHIPS[id].costs, label: SHIPS[id].name, execute: () => buyShip(id) };
+    if (kind === "pet" && PETS[id] && !state.ownedPets.includes(id)) return { cost: PETS[id].costs, label: PETS[id].name, execute: () => buyPet(id) };
+    return null;
+  }
+
+  function openMissingPurchaseConfirmation(kind, id, completeAfterPurchase = false) {
+    const context = getMissingPurchaseContext(kind, id);
+    if (!context) return toast("Compra direta indisponivel.", "danger-toast");
+    const info = getMissingPurchaseInfo(context.cost);
+    if (!info.purchasable.length) return toast("Nenhum recurso faltante pode ser comprado direto.", "danger-toast");
+    if (state.resources.ouro < info.total) return toast(`Ouro insuficiente. Faltam ${formatNumber(info.total - state.resources.ouro)} Ouro.`, "danger-toast");
+    if (completeAfterPurchase && !info.canBuyAndExecute) return toast("Ainda faltara Ouro ou requisito especial para concluir agora.", "danger-toast");
+    pendingMissingPurchase = { kind, id, label: context.label, completeAfterPurchase };
+    $("#trade-modal-icon").textContent = "⚖";
+    $("#trade-modal-title").textContent = completeAfterPurchase ? `Comprar e melhorar ${context.label}?` : `Comprar recursos para ${context.label}?`;
+    const lines = info.purchasable.map(item => `<span>${RESOURCE_META[item.key].name}</span><strong>${formatNumber(item.missing)} × ${formatNumber(item.unitPrice)} = ${formatNumber(item.total)} Ouro</strong>`).join("");
+    $("#trade-summary").innerHTML = `<span>Objetivo</span><strong>${context.label}</strong>${lines}<span>Total</span><strong>${formatNumber(info.total)} Ouro</strong><span>Ouro atual</span><strong>${formatNumber(state.resources.ouro)}</strong><span>Ouro apos compra</span><strong>${formatNumber(state.resources.ouro - info.total)}</strong>`;
+    $("#trade-modal-message").textContent = completeAfterPurchase ? "O jogo comprara os recursos faltantes e tentara concluir a melhoria imediatamente." : "O Ouro sera descontado e os recursos entrarao no seu porao agora.";
+    $("#trade-confirm").textContent = completeAfterPurchase ? "Comprar e melhorar agora" : "Confirmar compra";
+    $("#trade-modal").classList.remove("hidden");
+  }
+
+  function executeMissingPurchase() {
+    if (!pendingMissingPurchase) return;
+    const context = getMissingPurchaseContext(pendingMissingPurchase.kind, pendingMissingPurchase.id);
+    if (!context) { closeTradeModal(); return; }
+    const result = buyMissingResources(context.cost);
+    if (!result.ok) { toast(result.message, "danger-toast"); closeTradeModal(); return; }
+    const shouldComplete = pendingMissingPurchase.completeAfterPurchase;
+    closeTradeModal();
+    if (shouldComplete) context.execute();
+    else {
+      toast(`Recursos comprados: ${result.bought}.`, "gold-toast");
+      renderAll(true);
+      saveGame();
+    }
+  }
+
   function renderCombatHud() {
     const stats = getStats();
     const ship = SHIPS[state.shipId];
@@ -1468,7 +1592,7 @@
       const cost = getUpgradeCost(card.key);
       return `<article class="upgrade-card"><div class="upgrade-icon">${card.icon}</div><span class="level-label">NÍVEL ${state.levels[card.key]}</span><h3>${card.name}</h3><p>${card.desc}</p><div class="bonus-line"><span>Próximo nível</span><strong>${card.bonus}</strong></div><div class="cost-list">${resourceCostHtml(cost)}</div><button class="button primary" data-upgrade="${card.key}" ${canAfford(cost) ? "" : "disabled"}>Melhorar para nível ${state.levels[card.key] + 1}</button></article>`;
     }).join("");
-    renderFleet(); renderEquipment(); renderSkills();
+    renderFleet(); renderEquipment(); renderSkills(); decorateMissingPurchasePanels($("#screen-upgrades"));
   }
 
   function getShipRequirements(ship) {
@@ -1624,6 +1748,7 @@
   }
 
   function executeTrade() {
+    if (pendingMissingPurchase) return executeMissingPurchase();
     if (!pendingTrade) return;
     const { key, action, quantity, unitPrice } = pendingTrade;
     const total = quantity * unitPrice;
@@ -1649,6 +1774,7 @@
 
   function closeTradeModal() {
     pendingTrade = null;
+    pendingMissingPurchase = null;
     $("#trade-modal").classList.add("hidden");
   }
 
@@ -1744,7 +1870,7 @@
     if (expensive || currentScreen === "maps") renderMaps();
     if (expensive || currentScreen === "resources") renderResources();
     if (expensive || currentScreen === "trade") renderTrade();
-    if (expensive || currentScreen === "pets") renderPets();
+    if (expensive || currentScreen === "pets") { renderPets(); decorateMissingPurchasePanels($("#screen-pets")); }
     if (expensive || currentScreen === "prestige") renderPrestige();
     if (expensive || currentScreen === "stats") renderStats();
   }
@@ -1830,7 +1956,7 @@
     if (screen === "maps") renderMaps();
     if (screen === "resources") renderResources();
     if (screen === "trade") renderTrade();
-    if (screen === "pets") renderPets();
+    if (screen === "pets") { renderPets(); decorateMissingPurchasePanels($("#screen-pets")); }
     if (screen === "prestige") renderPrestige();
     if (screen === "stats") renderStats();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1852,6 +1978,7 @@
     if (target.dataset.equipPet) equipPet(Number(target.dataset.equipPet));
     if (target.dataset.craftEquipment) craftEquipment(target.dataset.craftEquipment);
     if (target.dataset.upgradeSkill) upgradeSkill(target.dataset.upgradeSkill);
+    if (target.dataset.buyMissing) openMissingPurchaseConfirmation(target.dataset.buyMissing, target.dataset.buyMissingId, target.dataset.buyMissingThen === "1");
     if (target.dataset.toggleSkill) toggleSkill(target.dataset.toggleSkill);
     if (target.dataset.skillDock) toggleSkill(target.dataset.skillDock);
     if (target.dataset.tradeQty && target.dataset.tradeResource) {

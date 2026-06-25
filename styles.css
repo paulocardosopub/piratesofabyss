@@ -300,6 +300,15 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .cost-list { min-height: 50px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 5px; margin: 10px 0; }
 .cost-chip { padding: 4px 7px; border-radius: 6px; color: #bdd0cf; background: rgba(255,255,255,.055); font-size: 10px; }
 .cost-chip.missing { color: #ff9c89; background: rgba(224,82,82,.1); }
+.missing-purchase-panel { display: grid; gap: 7px; margin: 8px 0 10px; padding: 10px; border: 1px solid rgba(224,82,82,.2); border-radius: 9px; background: rgba(224,82,82,.075); font-size: 9px; line-height: 1.4; }
+.missing-purchase-panel.ready { color: var(--green); border-color: rgba(89,211,157,.22); background: rgba(89,211,157,.06); }
+.missing-purchase-panel > strong { color: #ffd1c8; font-size: 10px; }
+.missing-lines, .missing-buy-lines { display: grid; gap: 4px; }
+.missing-lines span, .missing-buy-lines span, .missing-purchase-panel small { display: block; color: #ffc2b7; }
+.missing-lines span:not(.blocked), .missing-buy-lines strong { color: var(--gold); }
+.missing-purchase-panel small.danger { color: #ff9c89; }
+.missing-actions { display: grid; grid-template-columns: 1fr; gap: 5px; }
+.missing-actions .button { min-height: 31px; padding: 5px 7px; font-size: 9px; }
 .upgrade-card .button, .equipment-card .button, .skill-card .button { width: 100%; }
 
 .fleet-overview { display: grid; grid-template-columns: auto 1fr; gap: 7px 22px; align-items: center; margin-bottom: 14px; padding: 15px 18px; border: 1px solid rgba(53,212,207,.2); border-radius: var(--radius); background: linear-gradient(110deg, rgba(53,212,207,.09), rgba(7,27,40,.9)); }
@@ -333,6 +342,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .ship-issues { min-height: 44px; margin: 0 0 10px; padding: 7px 9px 7px 24px; border-radius: 7px; color: #ffae9d; background: rgba(224,82,82,.075); font-size: 9px; line-height: 1.45; }
 .ship-ready { min-height: 44px; height: auto !important; margin: 0 0 10px !important; padding: 8px 9px; border-radius: 7px; color: var(--green) !important; background: rgba(103,217,151,.07); font-size: 9px !important; }
 .ship-card .button { width: 100%; min-height: 36px; margin-top: auto; padding: 6px; }
+.ship-card .missing-actions .button { margin-top: 0; }
 .ship-power-comparison { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3px 8px; margin: 0 0 9px; padding: 8px 9px; border-radius: 8px; background: rgba(247,189,74,.07); }
 .ship-power-comparison span { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .07em; }
 .ship-power-comparison strong { color: var(--gold); font-size: 14px; }
