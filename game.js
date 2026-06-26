@@ -117,11 +117,14 @@
   const REGION_ENCOUNTERS = [...PRIMITIVE_ENCOUNTERS, ...MAIN_REGION_ENCOUNTERS];
 
   const SKILL_META = {
-    fire: { name: "Canhão de Fogo", icon: "🔥", unlock: 5, cooldown: 8, factor: 1.8, burnDuration: 4, burnFactor: .22, effect: "1,8× de dano e incêndio por 4s.", materials: ["polvora", "ferro"] },
-    ice: { name: "Canhão de Gelo", icon: "❄", unlock: 10, cooldown: 11, factor: 2.4, slowDuration: 5, effect: "2,4× de dano e ataque inimigo mais lento por 5s.", materials: ["cristal", "tecido"] },
-    ghost: { name: "Canhão Fantasma", icon: "👻", unlock: 20, cooldown: 14, factor: 3.4, effect: "3,4× de dano espectral que ignora toda a armadura.", materials: ["ambar", "cristal"] },
-    chain: { name: "Bolas de Corrente", icon: "⛓", unlock: 30, cooldown: 10, factor: 4.4, attackDelay: 2500, effect: "4,4× de dano e atrasa o próximo ataque em 2,5s.", materials: ["ferro", "perola"] }
+    fire: { name: "Canhão de Fogo", icon: "🔥", unlock: 5, cooldown: 8, factor: 3.6, burnDuration: 4, burnFactor: .44, effect: "3,6× de dano e incêndio reforçado por 4s.", materials: ["polvora", "ferro"] },
+    ice: { name: "Canhão de Gelo", icon: "❄", unlock: 10, cooldown: 11, factor: 4.8, slowDuration: 5, slowMultiplier: 3.3, effect: "4,8× de dano e lentidão reforçada por 5s.", materials: ["cristal", "tecido"] },
+    ghost: { name: "Canhão Fantasma", icon: "👻", unlock: 20, cooldown: 14, factor: 6.8, effect: "6,8× de dano espectral que ignora toda a armadura.", materials: ["ambar", "cristal"] },
+    chain: { name: "Bolas de Corrente", icon: "⛓", unlock: 30, cooldown: 10, factor: 8.8, attackDelay: 5000, effect: "8,8× de dano e atrasa o próximo ataque em 5s.", materials: ["ferro", "perola"] }
   };
+  const SKILL_DAMAGE_LEVEL_GAIN = .48;
+  const SKILL_BURN_LEVEL_GAIN = .08;
+  const DEFAULT_SLOW_MULTIPLIER = 1.65;
 
   const EQUIPMENT_META = {
     compass: { name: "Bússola Naval", icon: "✥", effect: "+12% velocidade e +8% chance de loot", costs: { cristal: 200, perola: 50, ouro: 50000 } },
@@ -360,6 +363,11 @@
   let state = loadState();
   let currentScreen = "home";
   let activeUpgradeTab = "improvements";
+  let activeTalentCategory = "attack";
+  let selectedTalentId = "upgrade:cannons";
+  let showAvailableTalentsOnly = false;
+  let upgradeBatchMode = "1";
+  let lastTalentUpgradeId = "";
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
   let lastSave = performance.now();
@@ -370,6 +378,31 @@
   let prestigeConfirmationStage = 0;
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
+
+  const TALENT_CATEGORIES = [
+    { key: "attack", label: "Ataque", icon: "☄" },
+    { key: "defense", label: "Defesa", icon: "⬡" },
+    { key: "resources", label: "Recursos", icon: "◉" },
+    { key: "pets", label: "Pets", icon: "✦" },
+    { key: "navio", label: "Navio", icon: "⛵" },
+    { key: "special", label: "Especial", icon: "✹" }
+  ];
+
+  const CORE_TALENT_META = {
+    ship: { name: "Convés e Estrutura", icon: "⛵", category: "navio", description: "Eleva o nível geral do navio e melhora todos os atributos.", unit: "atributos", value: 6 },
+    cannons: { name: "Canhões", icon: "☄", category: "attack", description: "Mais dano, precisão e chance de acerto crítico.", unit: "dano", value: 13 },
+    sails: { name: "Velas", icon: "◒", category: "resources", description: "Acelera ataques, skills e a chegada de novos inimigos.", unit: "velocidade", value: 7.5 },
+    hull: { name: "Casco", icon: "⬡", category: "defense", description: "Aumenta a vida máxima, armadura e resistência do navio.", unit: "vida", value: 15 }
+  };
+
+  const EQUIPMENT_TALENT_LAYOUT = {
+    spyglass: { category: "attack", branch: 1, requirements: [{ id: "upgrade:cannons", level: 8 }] },
+    anchor: { category: "defense", branch: 0, requirements: [{ id: "upgrade:hull", level: 6 }] },
+    compass: { category: "resources", branch: 0, requirements: [{ id: "upgrade:sails", level: 5 }] },
+    amulet: { category: "special", branch: 0, requirements: [{ id: "upgrade:ship", level: 12 }] }
+  };
+
+  const TALENT_RESOURCE_KEYS = ["ouro", "madeira", "ferro", "polvora", "tecido", "cristal", "perola", "gema"];
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   function formatNumber(value) {
@@ -417,9 +450,9 @@
 
   function getSkillValues(key, level = state.skills[key].level, stats = getStats()) {
     const meta = SKILL_META[key];
-    const damage = stats.damage * (meta.factor + (level - 1) * .24);
+    const damage = stats.damage * (meta.factor + (level - 1) * SKILL_DAMAGE_LEVEL_GAIN);
     const duration = key === "fire" ? meta.burnDuration + (level - 1) * .25 : key === "ice" ? meta.slowDuration + (level - 1) * .2 : 0;
-    const extraDps = key === "fire" ? stats.damage * (meta.burnFactor + (level - 1) * .04) : 0;
+    const extraDps = key === "fire" ? stats.damage * (meta.burnFactor + (level - 1) * SKILL_BURN_LEVEL_GAIN) : 0;
     const cooldown = getSkillCooldown(key, level, stats.speed);
     return { damage: Math.round(damage), duration, extraDps: Math.round(extraDps), cooldown, dps: Math.round((damage + extraDps * duration) / cooldown) };
   }
@@ -452,8 +485,8 @@
       if (!isSkillUnlocked(key) || !state.skills[key].auto) return;
       const level = state.skills[key].level;
       const effectiveCooldown = getSkillCooldown(key, level, speed);
-      skillDps += damage * (meta.factor + (level - 1) * .24) / effectiveCooldown;
-      if (key === "fire") skillDps += damage * (meta.burnFactor + (level - 1) * .04) * meta.burnDuration / effectiveCooldown;
+      skillDps += damage * (meta.factor + (level - 1) * SKILL_DAMAGE_LEVEL_GAIN) / effectiveCooldown;
+      if (key === "fire") skillDps += damage * (meta.burnFactor + (level - 1) * SKILL_BURN_LEVEL_GAIN) * meta.burnDuration / effectiveCooldown;
     });
     const shipDps = basicDps;
     const boostedSkillDps = skillDps;
@@ -1913,6 +1946,7 @@
       burnTime: 0,
       burnDps: 0,
       slowed: 0,
+      slowMultiplier: DEFAULT_SLOW_MULTIPLIER,
       defeated: false
     };
     state.combat.attackTimer = 0;
@@ -1956,9 +1990,9 @@
     if (!enemy || enemy.defeated) return;
     const meta = SKILL_META[key];
     const level = state.skills[key].level;
-    const base = getStats().damage * (meta.factor + (level - 1) * .24) * (1 + (getEquippedPet()?.dpsBonus || 0));
-    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a", skill: true }); enemy.burnTime = meta.burnDuration + (level - 1) * .25; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04) * (1 - (enemy.skillResist || 0)); }
-    if (key === "ice") { dealToEnemy(base, { color: "#81e8ff", skill: true }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
+    const base = getStats().damage * (meta.factor + (level - 1) * SKILL_DAMAGE_LEVEL_GAIN) * (1 + (getEquippedPet()?.dpsBonus || 0));
+    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a", skill: true }); enemy.burnTime = meta.burnDuration + (level - 1) * .25; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * SKILL_BURN_LEVEL_GAIN) * (1 - (enemy.skillResist || 0)); }
+    if (key === "ice") { dealToEnemy(base, { color: "#81e8ff", skill: true }); enemy.slowed = meta.slowDuration + (level - 1) * .2; enemy.slowMultiplier = Math.max(enemy.slowMultiplier || DEFAULT_SLOW_MULTIPLIER, meta.slowMultiplier || DEFAULT_SLOW_MULTIPLIER); }
     if (key === "ghost") dealToEnemy(base, { color: "#c58cff", ignoreArmor: true, skill: true });
     if (key === "chain") { dealToEnemy(base, { color: "#d9e4df", skill: true }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
     trackAction("skill", { key });
@@ -1974,6 +2008,7 @@
     state.lifetime.petAttacks += 1;
     if (pet.slowChance && Math.random() < pet.slowChance && state.combat.enemy) {
       state.combat.enemy.slowed = Math.max(state.combat.enemy.slowed, 2.5);
+      state.combat.enemy.slowMultiplier = Math.max(state.combat.enemy.slowMultiplier || DEFAULT_SLOW_MULTIPLIER, DEFAULT_SLOW_MULTIPLIER);
       addLog(`${pet.name} eletrizou a água e desacelerou o inimigo.`, "loot");
     }
   }
@@ -2142,6 +2177,7 @@
       if (enemy.hp <= 0) defeatEnemy();
     }
     if (enemy.slowed > 0) enemy.slowed -= dt;
+    else enemy.slowMultiplier = DEFAULT_SLOW_MULTIPLIER;
     const stats = getStats();
     state.combat.attackTimer += dt * 1000;
     let shots = 0;
@@ -2154,7 +2190,7 @@
       while (state.combat.petAttackTimer >= pet.interval * 1000 && petStrikes < 3 && state.combat.enemy) { state.combat.petAttackTimer -= pet.interval * 1000; petAttack(); petStrikes++; }
     }
     if (!state.combat.enemy) return;
-    const enemyInterval = (state.combat.enemy.isBoss ? 1450 : 1900) * (enemy.attackSpeed || 1) * (enemy.slowed > 0 ? 1.65 : 1);
+    const enemyInterval = (state.combat.enemy.isBoss ? 1450 : 1900) * (enemy.attackSpeed || 1) * (enemy.slowed > 0 ? (enemy.slowMultiplier || DEFAULT_SLOW_MULTIPLIER) : 1);
     state.combat.enemyAttackTimer += dt * 1000;
     if (state.combat.enemyAttackTimer >= enemyInterval) { state.combat.enemyAttackTimer -= enemyInterval; enemyAttack(); }
     Object.entries(SKILL_META).forEach(([key, meta]) => {
@@ -2230,6 +2266,353 @@
   function missingResourcesText(cost) {
     const missing = Object.entries(cost).filter(([key, amount]) => (state.resources[key] || 0) < amount).map(([key, amount]) => `${formatNumber(amount - (state.resources[key] || 0))} ${RESOURCE_META[key].name}`);
     return missing.length ? `Faltam: ${missing.join(" • ")}` : "Recursos suficientes para melhorar";
+  }
+
+  function formatTalentPercent(value) {
+    return `${value.toLocaleString("pt-BR", { maximumFractionDigits: value % 1 ? 1 : 0 })}%`;
+  }
+
+  function coreTalentBonus(type, level) {
+    const meta = CORE_TALENT_META[type];
+    const value = Math.max(0, (level - 1) * meta.value);
+    return `+${formatTalentPercent(value)} ${meta.unit}`;
+  }
+
+  function skillEffectLine(key, level = state.skills[key].level) {
+    const meta = SKILL_META[key];
+    const values = getSkillValues(key, level);
+    if (key === "fire") return `Queimadura: ${formatNumber(values.extraDps)} DPS por ${values.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s`;
+    if (key === "ice") return `Lentidão: ${values.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s com força ${((meta.slowMultiplier || DEFAULT_SLOW_MULTIPLIER) / DEFAULT_SLOW_MULTIPLIER).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}×`;
+    if (key === "chain") return `Atraso no ataque inimigo: ${(meta.attackDelay / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s`;
+    return meta.effect;
+  }
+
+  function talentDisplayName(id) {
+    const [kind, rawId] = id.split(":");
+    if (kind === "upgrade") return CORE_TALENT_META[rawId]?.name || "Talento";
+    if (kind === "skill") return SKILL_META[rawId]?.name || "Skill";
+    if (kind === "equipment") return EQUIPMENT_META[rawId]?.name || "Equipamento";
+    if (kind === "ship") return SHIPS[Number(rawId)]?.name || "Navio";
+    if (kind === "pet") return PETS[Number(rawId)]?.name || "Pet";
+    return "Talento";
+  }
+
+  function talentProgressValue(id) {
+    const [kind, rawId] = id.split(":");
+    if (kind === "upgrade") return state.levels[rawId] || 0;
+    if (kind === "skill") return isSkillUnlocked(rawId) ? state.skills[rawId]?.level || 0 : 0;
+    if (kind === "equipment") return state.equipment[rawId] ? 1 : 0;
+    if (kind === "ship") return state.ownedShips.includes(Number(rawId)) ? 1 : 0;
+    if (kind === "pet") return state.ownedPets.includes(Number(rawId)) ? 1 : 0;
+    return 0;
+  }
+
+  function requirementText(req) {
+    if (req.kind === "pirateLevel") return `Alcance nível ${req.level} de pirata`;
+    if (req.id) return `${talentDisplayName(req.id)} nível ${req.level}`;
+    return "Talento anterior";
+  }
+
+  function requirementMet(req) {
+    if (req.kind === "pirateLevel") return state.pirateLevel >= req.level;
+    if (req.id) return talentProgressValue(req.id) >= req.level;
+    return true;
+  }
+
+  function shipProgressionIssues(ship) {
+    const issues = [];
+    const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
+    if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
+    const prestigeReq = Math.max(0, ship.tier - 1);
+    if (state.prestiges < prestigeReq) issues.push(`Prestígios ${state.prestiges}/${prestigeReq}`);
+    if (state.pirateLevel < ship.levelReq) issues.push(`Nível de pirata ${state.pirateLevel}/${ship.levelReq}`);
+    return issues;
+  }
+
+  function petProgressionIssues(pet) {
+    const issues = [];
+    if (state.prestiges < pet.id + 1) issues.push(`Prestígio ${state.prestiges}/${pet.id + 1}`);
+    if (state.pirateLevel < pet.levelReq) issues.push(`Nível de pirata ${state.pirateLevel}/${pet.levelReq}`);
+    if (pet.regionReq && state.unlockedRegions < pet.regionReq) issues.push(`Abra ${pet.regionReq} regiões`);
+    if (pet.bossReq !== undefined && !state.bossesDefeated[pet.bossReq]) issues.push(`Derrote ${REGIONS[pet.bossReq]?.boss || "o boss exigido"}`);
+    return issues;
+  }
+
+  function makeCoreTalent(type, branch = 0, requirements = []) {
+    const meta = CORE_TALENT_META[type];
+    const level = state.levels[type];
+    return {
+      id: `upgrade:${type}`, kind: "upgrade", key: type, category: meta.category, branch,
+      name: meta.name, icon: meta.icon, description: meta.description, level, maxLabel: "∞",
+      evolved: level > 1, maxed: false, cost: getUpgradeCost(type), requirements,
+      currentBonus: coreTalentBonus(type, level),
+      nextBonus: coreTalentBonus(type, level + 1),
+      metaLine: `Nível ${level}/∞`
+    };
+  }
+
+  function makeSkillTalent(key, branch = 0, requirements = []) {
+    const meta = SKILL_META[key];
+    const skill = state.skills[key];
+    const current = getSkillValues(key, skill.level);
+    const next = getSkillValues(key, skill.level + 1);
+    return {
+      id: `skill:${key}`, kind: "skill", key, category: "attack", branch,
+      name: meta.name, icon: meta.icon, description: meta.effect, level: skill.level, maxLabel: "∞",
+      evolved: isSkillUnlocked(key) && skill.level > 1, maxed: false, cost: getSkillCost(key),
+      requirements: [{ kind: "pirateLevel", level: meta.unlock }, ...requirements],
+      currentBonus: `Dano ${formatNumber(current.damage)} • DPS ${formatNumber(current.dps)}`,
+      nextBonus: `Dano ${formatNumber(next.damage)} • DPS ${formatNumber(next.dps)}`,
+      effectDetail: `${skillEffectLine(key)} • Próximo: ${skillEffectLine(key, skill.level + 1)}`,
+      metaLine: isSkillUnlocked(key) ? `Nível ${skill.level}/∞` : `Libera no nível ${meta.unlock}`
+    };
+  }
+
+  function makeEquipmentTalent(key, branch = 0) {
+    const item = EQUIPMENT_META[key];
+    const layout = EQUIPMENT_TALENT_LAYOUT[key] || { category: "special", requirements: [] };
+    const equipped = state.equipment[key];
+    return {
+      id: `equipment:${key}`, kind: "equipment", key, category: layout.category, branch,
+      name: item.name, icon: item.icon, description: item.effect, level: equipped ? 1 : 0, maxLabel: "1",
+      evolved: equipped, maxed: equipped, cost: item.costs, requirements: layout.requirements || [],
+      currentBonus: equipped ? "Bônus ativo permanentemente" : "Ainda não forjado",
+      nextBonus: item.effect,
+      metaLine: `${equipped ? 1 : 0}/1`
+    };
+  }
+
+  function makeShipTalent(ship, index) {
+    const owned = state.ownedShips.includes(ship.id);
+    const current = state.shipId === ship.id;
+    const candidatePower = getStats(ship.id).power;
+    const branch = index === 0 ? 0 : (ship.tier % 3) - 1;
+    return {
+      id: `ship:${ship.id}`, kind: "ship", key: ship.id, category: "navio", branch,
+      name: ship.name, icon: ship.tier >= 5 ? "✹" : ship.tier >= 3 ? "☠" : "⛵",
+      description: `${ship.type} • Tier ${ship.tier}`, level: owned ? 1 : 0, maxLabel: "1",
+      evolved: owned, maxed: owned, current, owned, cost: ship.costs, requirements: [],
+      progressionIssues: shipProgressionIssues(ship),
+      currentBonus: owned ? (current ? "Navio equipado" : "Navio construído") : `Poder Naval previsto: ${formatNumber(candidatePower)}`,
+      nextBonus: `Vida ${formatNumber(ship.hp)} • Dano ${formatNumber(ship.damage)} • Defesa ${formatNumber(ship.armor)}`,
+      metaLine: owned ? (current ? "Equipado" : "Comprado") : `Nível ${ship.levelReq}`
+    };
+  }
+
+  function makePetTalent(pet, index) {
+    const owned = state.ownedPets.includes(pet.id);
+    const current = state.equippedPetId === pet.id;
+    return {
+      id: `pet:${pet.id}`, kind: "pet", key: pet.id, category: "pets", branch: (index % 3) - 1,
+      name: pet.name, icon: pet.icon, description: pet.description, level: owned ? 1 : 0, maxLabel: "1",
+      evolved: owned, maxed: owned, current, owned, cost: pet.costs, coinCost: PET_PIRATE_COIN_COSTS[pet.id],
+      requirements: [], progressionIssues: petProgressionIssues(pet),
+      currentBonus: owned ? (current ? "Pet equipado" : "Pet adotado") : `DPS ${formatNumber(pet.dps)} • Poder ${formatNumber(pet.power)}`,
+      nextBonus: pet.bonus || `Ataque a cada ${pet.interval.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s`,
+      metaLine: owned ? (current ? "Equipado" : "Comprado") : `Nível ${pet.levelReq}`
+    };
+  }
+
+  function buildTalentList(category = activeTalentCategory) {
+    if (category === "attack") return [
+      makeCoreTalent("cannons", 0),
+      makeSkillTalent("fire", -1, [{ id: "upgrade:cannons", level: 5 }]),
+      makeEquipmentTalent("spyglass", 1),
+      makeSkillTalent("ice", -1, [{ id: "skill:fire", level: 2 }]),
+      makeSkillTalent("ghost", 0, [{ id: "skill:ice", level: 2 }]),
+      makeSkillTalent("chain", 1, [{ id: "skill:ghost", level: 2 }])
+    ];
+    if (category === "defense") return [makeCoreTalent("hull", 0), makeEquipmentTalent("anchor", 0)];
+    if (category === "resources") return [makeCoreTalent("sails", 0), makeEquipmentTalent("compass", 0)];
+    if (category === "pets") return PETS.map((pet, index) => makePetTalent(pet, index));
+    if (category === "navio") return [makeCoreTalent("ship", 0), ...SHIPS.map((ship, index) => makeShipTalent(ship, index))];
+    if (category === "special") return [makeEquipmentTalent("amulet", 0)];
+    return [];
+  }
+
+  function allTalentList() {
+    return TALENT_CATEGORIES.flatMap(category => buildTalentList(category.key));
+  }
+
+  function findTalent(id) {
+    return allTalentList().find(talent => talent.id === id) || null;
+  }
+
+  function talentProgressionIssues(talent) {
+    const issues = [...(talent.progressionIssues || [])];
+    (talent.requirements || []).forEach(req => {
+      if (!requirementMet(req)) issues.push(requirementText(req));
+    });
+    return issues;
+  }
+
+  function canAffordTalent(talent) {
+    return canAfford(talent.cost || {}) && (!talent.coinCost || state.pirateCoins >= talent.coinCost);
+  }
+
+  function talentCostHtml(talent) {
+    const chips = Object.entries(talent.cost || {}).map(([key, amount]) => `<span class="cost-chip ${(state.resources[key] || 0) < amount ? "missing" : ""}">${RESOURCE_META[key].icon} ${formatNumber(amount)} ${RESOURCE_META[key].name}</span>`);
+    if (talent.coinCost) chips.unshift(`<span class="cost-chip ${state.pirateCoins < talent.coinCost ? "missing" : ""}">☠ ${formatNumber(talent.coinCost)} Moedas Pirata</span>`);
+    return chips.join("") || "<span class=\"cost-chip\">Sem custo</span>";
+  }
+
+  function talentMissingText(talent) {
+    const missing = Object.entries(talent.cost || {}).filter(([key, amount]) => (state.resources[key] || 0) < amount).map(([key, amount]) => `${formatNumber(amount - (state.resources[key] || 0))} ${RESOURCE_META[key].name}`);
+    if (talent.coinCost && state.pirateCoins < talent.coinCost) missing.push(`${formatNumber(talent.coinCost - state.pirateCoins)} Moedas Pirata`);
+    return missing.length ? `Faltam: ${missing.join(" • ")}` : "Recursos suficientes para melhorar";
+  }
+
+  function batchLabel() {
+    if (upgradeBatchMode === "max") return "Máximo";
+    return `${upgradeBatchMode}x`;
+  }
+
+  function talentStatus(talent) {
+    const issues = talentProgressionIssues(talent);
+    const progressionOk = issues.length === 0;
+    const affordable = canAffordTalent(talent);
+    const base = { issues, progressionOk, affordable, stateKey: "available", disabled: false, canExecute: false, countAvailable: false, buttonText: "Melhorar" };
+    if (talent.kind === "ship" && talent.owned) {
+      return talent.current
+        ? { ...base, stateKey: "max", disabled: true, buttonText: "Navio equipado" }
+        : { ...base, stateKey: "max", canExecute: true, buttonText: "Equipar navio" };
+    }
+    if (talent.kind === "pet" && talent.owned) {
+      return talent.current
+        ? { ...base, stateKey: "max", disabled: true, buttonText: "Pet equipado" }
+        : { ...base, stateKey: "max", canExecute: true, buttonText: "Equipar pet" };
+    }
+    if (talent.maxed) return { ...base, stateKey: "max", disabled: true, buttonText: "MAX" };
+    if (!progressionOk) return { ...base, stateKey: "locked", disabled: true, buttonText: "Desbloqueie o talento anterior" };
+    if (!affordable) return { ...base, stateKey: "poor", disabled: true, buttonText: "Recursos insuficientes" };
+    const action = talent.kind === "equipment" ? "Forjar" : talent.kind === "ship" ? "Construir" : talent.kind === "pet" ? "Adotar" : `Melhorar ${batchLabel()}`;
+    return { ...base, stateKey: "available", canExecute: true, countAvailable: true, buttonText: action };
+  }
+
+  function talentNodeHtml(talent, recommended) {
+    const status = talentStatus(talent);
+    const selected = selectedTalentId === talent.id;
+    const classes = ["talent-node", status.stateKey, talent.evolved ? "evolved" : "", recommended?.id === talent.id ? "recommended" : "", selected ? "selected" : "", lastTalentUpgradeId === talent.id ? "just-upgraded" : ""].filter(Boolean).join(" ");
+    const statusText = status.stateKey === "locked" ? "Bloqueado" : status.stateKey === "poor" ? "Sem recursos" : status.stateKey === "max" ? "MAX" : talent.evolved ? "Evoluído" : "Disponível";
+    const linkClass = status.stateKey === "locked" ? "locked" : status.stateKey === "available" && status.countAvailable ? "ready" : "open";
+    return `<div class="talent-node-row" style="--branch:${talent.branch || 0}"><span class="talent-link ${linkClass}"></span><button class="${classes}" data-select-talent="${talent.id}" aria-pressed="${selected ? "true" : "false"}"><span class="talent-node-ring"><span class="talent-node-icon">${status.stateKey === "locked" ? "🔒" : talent.icon}</span></span><span class="talent-node-copy"><strong>${talent.name}</strong><small>${talent.metaLine}</small></span><span class="talent-node-state">${statusText}</span>${status.stateKey === "max" ? "<i>MAX</i>" : ""}</button></div>`;
+  }
+
+  function renderTalentResources() {
+    const strip = $("#talent-resource-strip");
+    if (!strip) return;
+    const entries = [["pirateCoins", { name: "Moedas Pirata", icon: "☠", rarityKey: "legendary" }], ...TALENT_RESOURCE_KEYS.map(key => [key, RESOURCE_META[key]])];
+    strip.innerHTML = entries.map(([key, meta]) => `<div class="talent-resource" style="--resource-color:${RARITY_COLORS[meta.rarityKey]}"><span>${meta.icon}</span><strong>${formatNumber(key === "pirateCoins" ? state.pirateCoins : state.resources[key])}</strong><small>${meta.name}</small></div>`).join("");
+  }
+
+  function renderTalentTabs() {
+    const tabs = $("#talent-tabs");
+    if (!tabs) return;
+    tabs.innerHTML = TALENT_CATEGORIES.map(category => {
+      const talents = buildTalentList(category.key);
+      const available = talents.filter(talent => talentStatus(talent).countAvailable).length;
+      const evolved = talents.filter(talent => talent.evolved).length;
+      const active = activeTalentCategory === category.key;
+      return `<button class="${active ? "active" : ""}" data-talent-category="${category.key}" role="tab" aria-selected="${active ? "true" : "false"}"><span>${category.icon}</span><strong>${category.label}</strong>${available ? `<em>${available}</em>` : ""}<small>${evolved}/${talents.length}</small></button>`;
+    }).join("");
+  }
+
+  function renderTalentDetail(talent) {
+    const panel = $("#talent-detail-panel");
+    if (!panel || !talent) return;
+    const status = talentStatus(talent);
+    const requirement = status.issues.length ? `<div class="talent-requirement"><span>Requisito</span><strong>${status.issues[0]}</strong></div>` : "";
+    const readiness = `<div class="resource-readiness ${status.affordable ? "ready" : "missing"}">${talentMissingText(talent)}</div>`;
+    panel.innerHTML = `<div class="talent-detail-main ${lastTalentUpgradeId === talent.id ? "just-upgraded" : ""}"><div class="talent-detail-icon">${talent.icon}</div><div class="talent-detail-copy"><span class="eyebrow">${TALENT_CATEGORIES.find(category => category.key === talent.category)?.label || "Talento"}</span><h2>${talent.name}</h2><p>${talent.description}</p></div><div class="talent-detail-level"><span>NÍVEL</span><strong>${talent.level}/${talent.maxLabel}</strong></div></div><div class="talent-detail-grid"><div><span>BÔNUS ATUAL</span><strong>${talent.currentBonus}</strong></div><div><span>PRÓXIMO BÔNUS</span><strong>${talent.nextBonus}</strong></div></div>${talent.effectDetail ? `<div class="talent-effect-detail">${talent.effectDetail}</div>` : ""}<div class="talent-cost-row"><span>Custo</span><div class="cost-list">${talentCostHtml(talent)}</div></div>${readiness}${requirement}<button class="button primary talent-action-button" data-talent-action="${talent.id}" ${status.disabled ? "disabled" : ""}>${status.buttonText}</button>`;
+  }
+
+  function renderTalentTree() {
+    const all = buildTalentList(activeTalentCategory);
+    const recommended = all.find(talent => talentStatus(talent).countAvailable);
+    const visible = showAvailableTalentsOnly ? all.filter(talent => talentStatus(talent).countAvailable) : all;
+    const fallback = visible[0] || all[0] || null;
+    if (!visible.some(talent => talent.id === selectedTalentId)) selectedTalentId = fallback?.id || selectedTalentId;
+    const selected = findTalent(selectedTalentId) || fallback;
+    const evolved = all.filter(talent => talent.evolved).length;
+    const category = TALENT_CATEGORIES.find(item => item.key === activeTalentCategory);
+    $("#talent-category-progress").innerHTML = `<strong>${category?.label || "Talentos"}</strong><span>${evolved}/${all.length} talentos evoluídos</span>`;
+    $("#talent-recommendation").innerHTML = recommended ? `<span>Próximo recomendado</span><strong>${recommended.name}</strong>` : "<span>Nenhuma melhoria disponível agora</span><strong>Continue navegando</strong>";
+    $("#talent-tree").innerHTML = visible.length ? visible.map(talent => talentNodeHtml(talent, recommended)).join("") : `<div class="talent-empty"><strong>Nenhum talento disponível</strong><span>Desative o filtro ou conquiste mais recursos.</span></div>`;
+    renderTalentDetail(selected);
+    const filter = $("[data-toggle-talent-filter]");
+    if (filter) {
+      filter.classList.toggle("active", showAvailableTalentsOnly);
+      filter.setAttribute("aria-pressed", showAvailableTalentsOnly ? "true" : "false");
+    }
+    $$("[data-upgrade-batch]").forEach(button => button.classList.toggle("active", button.dataset.upgradeBatch === upgradeBatchMode));
+  }
+
+  function renderTalentHeader() {
+    const stats = getStats();
+    const all = allTalentList();
+    const evolved = all.filter(talent => talent.evolved).length;
+    $("#naval-power").textContent = formatNumber(stats.power);
+    $("#talent-pirate-level").textContent = state.pirateLevel;
+    $("#talent-total-progress").textContent = `${evolved}/${all.length}`;
+    $("#talent-header-copy").textContent = `${SHIPS[state.shipId].name} • ${REGIONS[state.regionIndex].name}`;
+    renderShipPreview($("#talent-ship-canvas"), SHIPS[state.shipId], true);
+  }
+
+  function getTalentBatchLimit() {
+    return upgradeBatchMode === "max" ? 1000 : Math.max(1, Number(upgradeBatchMode) || 1);
+  }
+
+  function improveCoreTalent(type, quantity = 1) {
+    const oldStats = getStats();
+    const oldRatio = oldStats.maxHp ? state.combat.playerHp / oldStats.maxHp : 1;
+    let bought = 0;
+    while (bought < quantity) {
+      const cost = getUpgradeCost(type);
+      if (!canAfford(cost)) break;
+      spend(cost);
+      state.levels[type] += 1;
+      trackAction("upgrade", { type });
+      bought += 1;
+    }
+    if (!bought) return toast("Recursos insuficientes para essa melhoria.", "danger-toast");
+    const newStats = getStats();
+    if (type === "hull" || type === "ship") state.combat.playerHp = Math.max(state.combat.playerHp, Math.round(newStats.maxHp * oldRatio));
+    const label = CORE_TALENT_META[type]?.name || "Talento";
+    addLog(`${label} melhorado ${bought > 1 ? `${bought} vezes` : `para o nível ${state.levels[type]}`}.`, "loot");
+    lastTalentUpgradeId = `upgrade:${type}`;
+    toast(`${label}: ${bought} melhoria${bought === 1 ? "" : "s"} concluída${bought === 1 ? "" : "s"}. Poder Naval +${formatNumber(Math.max(0, newStats.power - oldStats.power))}.`);
+    renderAll(true); saveGame();
+  }
+
+  function improveSkillTalent(key, quantity = 1) {
+    if (!isSkillUnlocked(key)) return toast(`Essa skill libera no nível ${SKILL_META[key].unlock}.`, "danger-toast");
+    const oldPower = getStats().power;
+    let bought = 0;
+    while (bought < quantity) {
+      const cost = getSkillCost(key);
+      if (!canAfford(cost)) break;
+      spend(cost);
+      state.skills[key].level += 1;
+      trackAction("upgrade", { type: "skill" });
+      bought += 1;
+    }
+    if (!bought) return toast("Recursos insuficientes para essa skill.", "danger-toast");
+    const newPower = getStats().power;
+    lastTalentUpgradeId = `skill:${key}`;
+    toast(`${SKILL_META[key].name}: ${bought} melhoria${bought === 1 ? "" : "s"} concluída${bought === 1 ? "" : "s"}. Poder Naval +${formatNumber(newPower - oldPower)}.`);
+    renderAll(true); saveGame();
+  }
+
+  function executeTalentAction(id) {
+    const talent = findTalent(id);
+    if (!talent) return;
+    const status = talentStatus(talent);
+    if (!status.canExecute) return toast(status.issues[0] || talentMissingText(talent), "danger-toast");
+    if (talent.kind === "upgrade") return improveCoreTalent(talent.key, getTalentBatchLimit());
+    if (talent.kind === "skill") return improveSkillTalent(talent.key, getTalentBatchLimit());
+    if (talent.kind === "equipment") return craftEquipment(talent.key);
+    if (talent.kind === "ship") return talent.owned ? equipShip(talent.key) : buyShip(talent.key);
+    if (talent.kind === "pet") return talent.owned ? equipPet(talent.key) : buyPet(talent.key);
   }
 
   function missingPurchasePanelHtml(cost, context) {
@@ -2482,24 +2865,10 @@
   }
 
   function renderUpgrades() {
-    const ship = SHIPS[state.shipId];
-    const stats = getStats();
-    $("#naval-power").textContent = formatNumber(stats.power);
-    $("#yard-ship-name").textContent = ship.name;
-    $("#yard-ship-tier").textContent = `Tier ${ship.tier} • Embarcação ${ship.type.toLowerCase()}`;
-    $("#yard-ship-stats").innerHTML = `<div><span>VIDA</span><strong>${formatNumber(stats.maxHp)}</strong></div><div><span>DANO</span><strong>${formatNumber(stats.damage)}</strong></div><div><span>VELOCIDADE</span><strong>${formatNumber(stats.speed)}</strong></div><div><span>DEFESA</span><strong>${formatNumber(stats.armor)}</strong></div>`;
-    renderShipPreview($("#yard-ship-canvas"), ship, true);
-    const cards = [
-      { key: "ship", name: "Convés e Estrutura", icon: "⛵", desc: "Eleva o nível geral do navio e melhora todos os atributos.", bonus: "+6% atributos" },
-      { key: "cannons", name: "Canhões", icon: "☄", desc: "Mais dano, precisão e chance de acerto crítico.", bonus: "+13% dano" },
-      { key: "sails", name: "Velas", icon: "◒", desc: "Acelera ataques, skills e a chegada de novos inimigos.", bonus: "+7,5% velocidade" },
-      { key: "hull", name: "Casco", icon: "⬡", desc: "Aumenta a vida máxima, armadura e resistência do navio.", bonus: "+15% vida" }
-    ];
-    $("#upgrade-grid").innerHTML = cards.map(card => {
-      const cost = getUpgradeCost(card.key);
-      return `<article class="upgrade-card"><div class="upgrade-icon">${card.icon}</div><span class="level-label">NÍVEL ${state.levels[card.key]}</span><h3>${card.name}</h3><p>${card.desc}</p><div class="bonus-line"><span>Próximo nível</span><strong>${card.bonus}</strong></div><div class="cost-list">${resourceCostHtml(cost)}</div><button class="button primary" data-upgrade="${card.key}" ${canAfford(cost) ? "" : "disabled"}>Melhorar para nível ${state.levels[card.key] + 1}</button></article>`;
-    }).join("");
-    renderFleet(); renderEquipment(); renderSkills(); decorateMissingPurchasePanels($("#screen-upgrades"));
+    renderTalentHeader();
+    renderTalentResources();
+    renderTalentTabs();
+    renderTalentTree();
   }
 
   function getShipRequirements(ship) {
@@ -2907,18 +3276,7 @@
   }
 
   function upgrade(type) {
-    const oldStats = getStats();
-    const oldRatio = state.combat.playerHp / oldStats.maxHp;
-    const cost = getUpgradeCost(type);
-    if (!canAfford(cost)) return toast("Recursos insuficientes para essa melhoria.", "danger-toast");
-    spend(cost); state.levels[type] += 1;
-    trackAction("upgrade", { type });
-    const newStats = getStats();
-    if (type === "hull" || type === "ship") state.combat.playerHp = Math.max(state.combat.playerHp, Math.round(newStats.maxHp * oldRatio));
-    addLog(`${type === "ship" ? "Navio" : type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} melhorado para o nível ${state.levels[type]}.`, "loot");
-    const powerGain = Math.max(0, newStats.power - oldStats.power);
-    toast(`Melhoria concluída! Poder Naval: ${formatNumber(oldStats.power)} → ${formatNumber(newStats.power)} (+${formatNumber(powerGain)}).`);
-    renderAll(true); saveGame();
+    improveCoreTalent(type, 1);
   }
 
   function buyShip(id) {
@@ -2931,6 +3289,7 @@
     if (!canAfford(ship.costs)) return toast("Ainda faltam recursos para construir este navio.", "danger-toast");
     spend(ship.costs); state.ownedShips.push(id); state.shipId = id; state.combat.playerHp = getStats().maxHp; state.combat.enemy = null; state.combat.spawnTimer = 0;
     trackAction("shipSwitch");
+    lastTalentUpgradeId = `ship:${id}`;
     toast(`${ship.name} foi construído e equipado!`, "gold-toast"); addLog(`${ship.name} agora lidera sua frota.`, "loot"); renderAll(true); saveGame();
   }
 
@@ -2950,6 +3309,7 @@
     if (state.pirateCoins < pirateCoinCost) return toast("Moedas Pirata insuficientes para este pet.", "danger-toast");
     if (!canAfford(pet.costs)) return toast("Ainda faltam recursos para adotar este pet.", "danger-toast");
     spend(pet.costs); state.pirateCoins -= pirateCoinCost; state.ownedPets.push(id); state.equippedPetId = id; state.combat.petAttackTimer = 0; state.lifetime.petsBought += 1;
+    lastTalentUpgradeId = `pet:${id}`;
     toast(`${pet.name} foi comprado e equipado!`, "gold-toast"); addLog(`${pet.name} agora acompanha seu navio.`, "loot"); renderAll(true); saveGame();
   }
 
@@ -2963,17 +3323,12 @@
     const item = EQUIPMENT_META[key];
     if (!item || state.equipment[key] || !canAfford(item.costs)) return;
     spend(item.costs); state.equipment[key] = true; state.combat.playerHp = Math.min(getStats().maxHp, state.combat.playerHp);
+    lastTalentUpgradeId = `equipment:${key}`;
     toast(`${item.name} forjado e equipado!`, "gold-toast"); addLog(`${item.name} agora fortalece o navio.`, "loot"); renderAll(true); saveGame();
   }
 
   function upgradeSkill(key) {
-    if (!isSkillUnlocked(key)) return;
-    const cost = getSkillCost(key); if (!canAfford(cost)) return;
-    const oldPower = getStats().power;
-    spend(cost); state.skills[key].level += 1;
-    trackAction("upgrade", { type: "skill" });
-    const newPower = getStats().power;
-    toast(`${SKILL_META[key].name} nível ${state.skills[key].level}. Poder Naval +${formatNumber(newPower - oldPower)}.`); renderAll(true); saveGame();
+    improveSkillTalent(key, 1);
   }
 
   function toggleSkill(key) {
@@ -3003,6 +3358,24 @@
     const target = event.target.closest("button");
     if (!target) return;
     if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);
+    if (target.dataset.talentCategory) {
+      activeTalentCategory = target.dataset.talentCategory;
+      showAvailableTalentsOnly = false;
+      renderUpgrades();
+    }
+    if (target.dataset.toggleTalentFilter) {
+      showAvailableTalentsOnly = !showAvailableTalentsOnly;
+      renderUpgrades();
+    }
+    if (target.dataset.upgradeBatch) {
+      upgradeBatchMode = target.dataset.upgradeBatch;
+      renderUpgrades();
+    }
+    if (target.dataset.selectTalent) {
+      selectedTalentId = target.dataset.selectTalent;
+      renderTalentTree();
+    }
+    if (target.dataset.talentAction) executeTalentAction(target.dataset.talentAction);
     if (target.dataset.upgradeTab) {
       activeUpgradeTab = target.dataset.upgradeTab;
       $$("[data-upgrade-tab]").forEach(node => node.classList.toggle("active", node.dataset.upgradeTab === activeUpgradeTab));
