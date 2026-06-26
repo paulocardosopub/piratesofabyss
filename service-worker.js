@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v32-hud-island-nav";
+const CACHE = "pirates-abyss-v34-smart-upgrades";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -145,8 +145,8 @@ const PET_ASSET_FILES = [
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=28",
-  "game.js?v=44",
+  "styles.css?v=30",
+  "game.js?v=46",
   "icon.svg",
   "manifest.webmanifest",
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),

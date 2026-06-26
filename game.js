@@ -119,10 +119,10 @@
     }, layout[0]);
     return [{
       ...primary,
-      x: clamp(primary.x, .24, .76),
-      width: clamp(primary.width * 1.18, .36, .48),
-      height: clamp((primary.height || .26) * 1.08, .27, .34),
-      sea: clamp((primary.sea || .052) + .012, .055, .078),
+      x: clamp(.5 + (primary.x - .5) * .45, .36, .64),
+      width: clamp(primary.width * 1.32, .42, .56),
+      height: clamp((primary.height || .26) * 1.14, .30, .38),
+      sea: clamp((primary.sea || .052) + .028, .075, .105),
       alpha: 1,
       spriteIndex: clamp(index + (primary.spriteOffset || 0), 0, ISLAND_ASSET_FILES.length - 1)
     }];
@@ -131,9 +131,9 @@
   function mapIslandLayersHtml(index) {
     return getIslandComposition(index).map((layer, order) => {
       const islandUrl = getRegionIslandUrl(layer.spriteIndex);
-      const width = `${Math.round(layer.width * 112)}%`;
-      const height = `${Math.round((layer.height || .28) * 330)}px`;
-      return `<span class="map-island" style="--island-image:url('${islandUrl}');--island-left:${Math.round(layer.x * 100)}%;--island-width:${width};--island-height:${height};--island-bottom:0px;--island-order:${order};"></span>`;
+      const width = `${Math.round(layer.width * 120)}%`;
+      const height = `${Math.round((layer.height || .30) * 350)}px`;
+      return `<span class="map-island" style="--island-image:url('${islandUrl}');--island-left:${Math.round(layer.x * 100)}%;--island-width:${width};--island-height:${height};--island-bottom:-8px;--island-order:${order};"></span>`;
     }).join("");
   }
 
@@ -1316,7 +1316,7 @@
       this.drawEnvironmentEvents(ctx, horizon, w, h);
 
       if (!this.drawRegionIslandSprite(ctx, w, h, horizon, state.regionIndex)) {
-        this.drawIsland(ctx, w * .28, horizon + 10, w * .42, region.land, 1.08, 0);
+        this.drawIsland(ctx, w * .27, horizon + 16, w * .46, region.land, 1.12, 0);
       }
       if (state.regionIndex === 6) this.drawFort(ctx, w * .82, horizon - 22);
 
@@ -2540,11 +2540,6 @@
       $("#enemy-health-fill").style.width = "0%";
       $("#enemy-health-text").textContent = "Aguardando inimigo";
     }
-    const status = $("#combat-state");
-    status.className = "combat-state";
-    if (state.combat.repairing) { status.classList.add("repairing"); status.querySelector("strong").textContent = "REPARANDO NAVIO"; }
-    else if (state.combat.running) { status.classList.add("running"); status.querySelector("strong").textContent = enemy?.isBoss ? "BOSS EM COMBATE" : "COMBATE AUTOMÁTICO"; }
-    else status.querySelector("strong").textContent = "COMBATE PAUSADO";
   }
 
   function renderTopbar() {
@@ -2727,10 +2722,18 @@
 
   function upgradeActionHtml(kind, id, cost, canExecute, options = {}) {
     if (options.completed) return `<div class="upgrade-row-action"><span class="upgrade-row-status">${options.completedText || "Comprado"}</span>${options.hint ? `<small>${options.hint}</small>` : ""}</div>`;
-    const missing = cost && !canAfford(cost) && !options.blocked;
-    const info = missing ? getMissingPurchaseInfo(cost) : null;
     const attrs = kind === "upgrade" ? `data-upgrade="${id}"` : kind === "ship" ? `data-buy-ship="${id}"` : kind === "equipment" ? `data-craft-equipment="${id}"` : `data-upgrade-skill="${id}"`;
-    return `<div class="upgrade-row-action ${missing ? "split" : ""}">${missing ? `<button class="button buy-resources" data-buy-missing="${kind}" data-buy-missing-id="${id}" ${info.canBuyMissing ? "" : "disabled"}>Comprar recursos</button>` : ""}<button class="button primary" ${attrs} ${canExecute ? "" : "disabled"}>Comprar</button>${options.hint ? `<small>${options.hint}</small>` : ""}</div>`;
+    const affordable = cost && canAfford(cost);
+    const info = cost && !affordable && !options.blocked ? getMissingPurchaseInfo(cost) : null;
+    const goldCost = cost?.ouro || 0;
+    const smartTotal = affordable ? goldCost : info?.canBuyAndExecute ? info.total + goldCost : 0;
+    const afterGold = Math.max(0, state.resources.ouro - smartTotal);
+    const directLabel = kind === "upgrade" || kind === "skill" ? "Melhorar" : "Comprar";
+    const label = options.blocked ? "Bloqueado" : affordable ? directLabel : info?.canBuyAndExecute ? "Comprar tudo" : "Saldo insuficiente";
+    const disabled = options.blocked || (!affordable && !info?.canBuyAndExecute);
+    const actionAttrs = affordable ? attrs : `data-smart-upgrade="${kind}" data-smart-upgrade-id="${id}"`;
+    const balanceClass = disabled && !options.blocked ? " danger" : "";
+    return `<div class="upgrade-row-action"><button class="button primary" ${actionAttrs} ${disabled ? "disabled" : ""}>${label}</button><div class="upgrade-balance${balanceClass}"><span>Saldo atual: <strong>${formatNumber(state.resources.ouro)} Ouro</strong></span><span>Após compra: <strong>${disabled && !options.blocked ? "Saldo insuficiente" : `${formatNumber(afterGold)} Ouro`}</strong></span></div>${options.hint ? `<small>${options.hint}</small>` : ""}</div>`;
   }
 
   function getShipProgressionIssues(ship) {
@@ -2817,8 +2820,8 @@
       { key: "hull", name: "Casco", icon: "⬡", desc: "Amplia vida, defesa e resistência em combate." }
     ].map(upgradeLineHtml);
     $("#upgrade-feed").innerHTML = [
-      renderUpgradeSection("Melhorias", improvements),
       renderUpgradeSection("Frota", [fleetLineHtml()]),
+      renderUpgradeSection("Melhorias", improvements),
       renderUpgradeSection("Equipamentos", Object.entries(EQUIPMENT_META).map(equipmentLineHtml)),
       renderUpgradeSection("Skills", Object.entries(SKILL_META).map(skillLineHtml))
     ].join("");
@@ -2851,7 +2854,7 @@
       const endgameIssues = endgameRequirementIssues(index);
       const endgameNotice = ENDGAME_REQUIREMENTS[index] ? `<div class="endgame-warning ${endgameIssues.length ? "danger" : "ready"}"><strong>${ENDGAME_REQUIREMENTS[index].label}</strong><span>${endgameIssues.length ? `Recomendado antes de avançar: ${endgameIssues.slice(0, 3).join(" • ")}${endgameIssues.length > 3 ? " • ..." : ""}` : "Preparação recomendada atingida."}</span></div>` : "";
       const oceanUrl = `${OCEAN_SPRITE_PATH}${OCEAN_SPRITE.file}`;
-      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land};--map-ocean:url('${oceanUrl}')"><div class="map-islands">${mapIslandLayersHtml(index)}</div><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
+    return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land};--map-ocean:url('${oceanUrl}')"><div class="map-islands">${mapIslandLayersHtml(index)}</div><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
     }).join("");
   }
 
@@ -3316,6 +3319,7 @@
     const target = event.target.closest("button");
     if (!target) return;
     if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);
+    if (target.dataset.smartUpgrade) executeSmartUpgrade(target.dataset.smartUpgrade, target.dataset.smartUpgradeId);
     if (target.dataset.upgrade) upgrade(target.dataset.upgrade);
     if (target.dataset.buyShip) buyShip(Number(target.dataset.buyShip));
     if (target.dataset.equipShip) equipShip(Number(target.dataset.equipShip));
@@ -3358,6 +3362,17 @@
     tradeHoldTimeout = setTimeout(() => {
       tradeHoldInterval = setInterval(() => stepTradeQuantity(key, delta), 85);
     }, 350);
+  }
+
+  function executeSmartUpgrade(kind, id) {
+    const context = getMissingPurchaseContext(kind, id);
+    if (!context) return toast("Upgrade indisponível.", "danger-toast");
+    if (canAfford(context.cost)) return context.execute();
+    const info = getMissingPurchaseInfo(context.cost);
+    if (!info.canBuyAndExecute) return toast("Saldo insuficiente para comprar tudo.", "danger-toast");
+    const result = buyMissingResources(context.cost);
+    if (!result.ok) return toast(result.message, "danger-toast");
+    context.execute();
   }
 
   function toggleAutoCombat() {

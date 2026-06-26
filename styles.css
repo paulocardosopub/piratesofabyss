@@ -187,12 +187,6 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .enemy-health i { background: linear-gradient(90deg, #d64242, #f27a58); }
 .player-health i { background: linear-gradient(90deg, #26a6a9, #59e2d4); }
 .health-numbers { margin-top: 2px; color: #d2e2e0; font-size: 8px; text-align: right; font-variant-numeric: tabular-nums; }
-.combat-state { position: absolute; left: 50%; bottom: 23px; display: flex; align-items: center; gap: 7px; padding: 8px 12px; transform: translateX(-50%); border: 1px solid rgba(255,255,255,.17); border-radius: 99px; background: rgba(4, 21, 31, .72); font-size: 9px; letter-spacing: .12em; backdrop-filter: blur(8px); }
-.state-dot { width: 7px; height: 7px; border-radius: 50%; background: #8aa0a4; box-shadow: 0 0 0 4px rgba(138,160,164,.12); }
-.combat-state.running .state-dot { background: var(--green); box-shadow: 0 0 12px var(--green); animation: pulse 1s infinite; }
-.combat-state.repairing .state-dot { background: var(--gold); box-shadow: 0 0 12px var(--gold); }
-@keyframes pulse { 50% { opacity: .45; } }
-
 .skill-dock { position: absolute; right: 16px; bottom: 16px; display: flex; gap: 6px; }
 .skill-orb { position: relative; width: 42px; height: 42px; padding: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.24); border-radius: 10px; background: rgba(4,21,31,.78); cursor: pointer; box-shadow: 0 7px 15px rgba(0,0,0,.22); }
 .skill-orb .icon { position: relative; z-index: 2; font-size: 19px; }
@@ -585,8 +579,6 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   gap: 4px;
   align-content: center;
 }
-.upgrade-row-action.split { grid-template-columns: 1fr 1fr; }
-.upgrade-row-action.split small { grid-column: 1 / -1; }
 .upgrade-row-action .button {
   width: 100%;
   min-height: 30px;
@@ -601,11 +593,6 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   line-height: 1.05;
   white-space: nowrap;
 }
-.upgrade-row-action .button.buy-resources {
-  color: #f5fbf9;
-  border-color: rgba(110,239,226,.42);
-  background: linear-gradient(180deg, #30515c, #17323d);
-}
 .upgrade-row-action .button:disabled {
   color: #f0f0f0;
   border-color: rgba(255,255,255,.28);
@@ -617,6 +604,23 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   font-size: 7px;
   text-align: center;
 }
+.upgrade-balance {
+  display: grid;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 4px;
+  background: rgba(0,0,0,.2);
+  color: #c5d1d0;
+  font-size: 7px;
+  line-height: 1.15;
+}
+.upgrade-balance span {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+}
+.upgrade-balance strong { color: #fff0bc; }
+.upgrade-balance.danger strong { color: #ff9c89; }
 .upgrade-row-status {
   display: grid;
   place-items: center;
@@ -1128,7 +1132,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .map-visual { position: relative; height: 104px; padding: 14px; overflow: hidden; background: linear-gradient(160deg, var(--map-sky, #397e91) 0 45%, rgba(255,255,255,0) 46%), var(--map-ocean, none) center / cover no-repeat, linear-gradient(160deg, var(--map-sky, #397e91) 0 47%, var(--map-sea, #15536d) 48%); }
 .map-visual::after { content: "⛵"; position: absolute; z-index: 3; left: 29%; bottom: 15px; font-size: 28px; filter: drop-shadow(0 5px 3px rgba(0,0,0,.35)); }
 .map-islands { position: absolute; z-index: 1; inset: 0; pointer-events: none; }
-.map-island { position: absolute; z-index: calc(1 + var(--island-order, 0)); left: var(--island-left, 50%); bottom: var(--island-bottom, 0); width: var(--island-width, 76%); height: var(--island-height, 100px); transform: translateX(-50%); opacity: 1; background: var(--island-image) center bottom / contain no-repeat; filter: saturate(.98) contrast(1) drop-shadow(0 7px 4px rgba(0,0,0,.25)); }
+.map-island { position: absolute; z-index: calc(1 + var(--island-order, 0)); left: var(--island-left, 50%); bottom: var(--island-bottom, -8px); width: var(--island-width, 82%); height: var(--island-height, 110px); transform: translateX(-50%); opacity: 1; background: var(--island-image) center bottom / contain no-repeat; filter: saturate(.98) contrast(1) drop-shadow(0 7px 4px rgba(0,0,0,.25)); }
 .map-number { position: relative; z-index: 4; color: rgba(255,255,255,.72); font-size: 10px; font-weight: 900; letter-spacing: .13em; }
 .map-lock { position: absolute; z-index: 5; inset: 0; display: grid; place-items: center; background: rgba(3,14,22,.55); font-size: 28px; }
 .map-body { padding: 15px 17px 17px; }
@@ -1354,10 +1358,10 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .top-resources { max-width: 240px; }
   .top-resources > div { min-width: 96px; }
   .upgrade-row { grid-template-columns: 48px minmax(0, 1fr); }
-  .upgrade-row-action { grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: center; }
-  .upgrade-row-action.split { grid-template-columns: minmax(124px, 1fr) minmax(96px, 1fr); }
+  .upgrade-row-action { grid-column: 1 / -1; grid-template-columns: minmax(124px, 1fr) minmax(160px, auto); align-items: center; }
   .upgrade-row-action .missing-purchase-panel { grid-column: 1 / -1; }
   .upgrade-row-action .button { min-height: 30px; }
+  .upgrade-balance { min-width: 155px; }
   .upgrade-grid { grid-template-columns: repeat(2, 1fr); }
   .fleet-grid, .equipment-grid, .resources-grid, .codex-grid { grid-template-columns: repeat(3, 1fr); }
   .skills-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1396,8 +1400,6 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .battle-hud h2 { margin: 1px 0 3px; font-size: 10px; }
   .health-bar { height: 4px; }
   .health-numbers { display: none; }
-  .combat-state { bottom: 7px; left: 7px; max-width: 132px; padding: 6px 8px; transform: none; font-size: 7px; letter-spacing: .07em; }
-  .state-dot { width: 5px; height: 5px; }
   .skill-dock { right: 7px; bottom: 6px; gap: 3px; }
   .skill-orb { width: 31px; height: 31px; border-radius: 8px; }
   .skill-orb .icon { font-size: 14px; }
@@ -1427,8 +1429,8 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .upgrade-row-main p { font-size: 10px; }
   .upgrade-row-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .upgrade-row-action { grid-template-columns: 1fr; }
-  .upgrade-row-action.split { grid-template-columns: minmax(124px, 1fr) minmax(96px, 1fr); }
   .upgrade-row-action .button { font-size: 11px; }
+  .upgrade-balance { min-width: 0; }
   .fleet-overview { grid-template-columns: 1fr; gap: 7px; padding: 13px; }
   .fleet-rule { grid-column: 1; }
   .power-seal, .map-counter, .cargo-total, .rank-medallion, .trade-wallet, .prestige-wallet { min-width: 94px; padding: 10px; }
@@ -1469,7 +1471,6 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .battle-stage { --hud-gap: 5px; --hud-top: 5px; --region-hud-width: min(112px, 35%); }
   .battle-hud { padding: 4px 5px; }
   .battle-hud h2 { font-size: 9px; }
-  .combat-state { max-width: 118px; padding: 5px 7px; }
   .skill-orb { width: 28px; height: 28px; }
   .page-heading { align-items: flex-start; }
   .page-heading h1 { font-size: 29px; }
@@ -1523,7 +1524,6 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .battle-hud { padding: 4px 6px; }
   .battle-hud h2 { font-size: 9px; }
   .health-numbers { display: none; }
-  .combat-state { bottom: 7px; left: 50%; max-width: none; padding: 5px 8px; transform: translateX(-50%); font-size: 7px; }
   .skill-dock { right: 8px; bottom: 6px; }
   .skill-orb { width: 28px; height: 28px; }
   .skill-orb .icon { font-size: 13px; }
