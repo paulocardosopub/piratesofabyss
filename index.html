@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=36">
+  <link rel="stylesheet" href="styles.css?v=38">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -19,9 +19,14 @@
       </button>
       <div class="top-power" title="Poder Naval total"><span>PODER NAVAL</span><strong id="top-naval-power">0</strong></div>
       <div class="top-resources" id="top-resources" aria-label="Gold e Moedas Pirata"></div>
-      <div class="pirate-level" title="Nível do pirata">
-        <span>NÍVEL</span><strong id="top-level">1</strong>
-      </div>
+      <button class="captain-topbar" id="top-captain" data-screen-target="captain" aria-label="Abrir Capitão">
+        <span class="captain-topbar-avatar" id="top-captain-avatar" aria-hidden="true">★</span>
+        <span class="captain-topbar-copy">
+          <strong id="top-captain-title">Capitão aguardando</strong>
+          <span class="captain-topbar-meta"><span id="top-captain-level">Nv. 1</span><small id="top-captain-xp-text">0 / 100 XP</small></span>
+          <span class="captain-topbar-xp" aria-hidden="true"><i id="top-captain-xp-fill"></i></span>
+        </span>
+      </button>
     </header>
 
     <main class="main-content">
@@ -92,12 +97,6 @@
               <div><span class="eyebrow">REGIÃO</span><strong id="boss-name">Boss regional</strong><small id="boss-status">Derrote 100 inimigos</small></div>
               <button class="button boss-button" id="boss-button" disabled>Desafiar Boss</button>
             </div>
-          </article>
-
-          <article class="card home-captain-card" id="home-captain-card">
-            <div class="home-captain-visual" id="home-captain-icon" aria-hidden="true">★</div>
-            <div class="home-captain-info"><span class="eyebrow">CAPITÃO</span><h2 id="home-captain-name">Capitão aguardando</h2><div id="home-captain-stats">Escolha seu visual</div></div>
-            <button class="button" data-screen-target="captain">Capitão</button>
           </article>
 
           <article class="card home-pet-card" id="home-pet-card">
@@ -275,6 +274,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=53"></script>
+  <script src="game.js?v=55"></script>
 </body>
 </html>

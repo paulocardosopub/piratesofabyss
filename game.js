@@ -61,40 +61,50 @@
       id: "lagoa-primeiros-remadores",
       mapIndex: 1,
       title: "Lagoa dos Primeiros Remadores",
-      x: 18,
-      y: 74,
+      x: 2.5,
+      y: 66.5,
+      width: 29,
+      height: 28,
       description: "A primeira parada da jornada. Águas rasas, jangadas primitivas e uma rota segura para aprender os fundamentos da navegação."
     },
     {
       id: "manguezal-ancestrais",
       mapIndex: 2,
       title: "Manguezal dos Ancestrais",
-      x: 27,
-      y: 49,
+      x: 4,
+      y: 31.5,
+      width: 32,
+      height: 31,
       description: "Canais estreitos, raízes antigas e criaturas escondidas no mangue. O jogador começa a enfrentar riscos reais de exploração."
     },
     {
       id: "ilhas-pterodactilos",
       mapIndex: 3,
       title: "Ilhas dos Pterodáctilos",
-      x: 54,
-      y: 30,
+      x: 36.5,
+      y: 18.5,
+      width: 29.5,
+      height: 28.5,
       description: "Rochedos altos, ninhos nos penhascos e pterodáctilos sobrevoando a rota. Um mapa com sensação vertical e perigosa."
     },
     {
       id: "selva-repteis-marinhos",
       mapIndex: 4,
       title: "Selva dos Répteis Marinhos",
-      x: 65,
-      y: 66,
+      x: 46.5,
+      y: 51.5,
+      width: 38.5,
+      height: 32,
       description: "Uma ilha mais densa e selvagem, marcada por ossadas antigas e répteis marinhos rondando a costa."
     },
     {
       id: "canal-ancestral-primeiros",
       mapIndex: 5,
       title: "Canal Ancestral dos Primeiros",
-      x: 82,
-      y: 39,
+      x: 69.5,
+      y: 10.5,
+      width: 27.5,
+      height: 34,
       description: "O clímax do prólogo. Um canal antigo, redemoinhos, ruínas primitivas e criaturas sombrias guardando a passagem."
     }
   ];
@@ -2948,7 +2958,22 @@
       entries.forEach(([key]) => { const amount = $(`[data-top-resource="${key}"] .top-resource-amount`, bar); if (amount) amount.textContent = formatNumber(amountFor(key)); });
     }
     $("#top-naval-power").textContent = formatNumber(getStats().power);
-    $("#top-level").textContent = state.pirateLevel;
+    syncCaptainRuntimeState(state);
+    const captain = getCurrentCaptain();
+    const runtimeNeeded = captainRuntimeXpNeeded(state.captainRuntimeLevel);
+    const runtimeRatio = clamp(state.captainCurrentXp / runtimeNeeded, 0, 1);
+    const topCaptain = $("#top-captain");
+    const avatar = $("#top-captain-avatar");
+    const title = captain?.name || "Capitão aguardando";
+    if (topCaptain) topCaptain.title = captain ? `${title} - Nv. ${state.captainRuntimeLevel}` : "Escolher Capitão";
+    if (avatar) {
+      if (captain) avatar.innerHTML = `<img src="${captain.image}" alt="">`;
+      else avatar.textContent = "★";
+    }
+    $("#top-captain-title").textContent = title;
+    $("#top-captain-level").textContent = captain ? `Nv. ${state.captainRuntimeLevel}` : "Escolha";
+    $("#top-captain-xp-text").textContent = `${formatNumber(state.captainCurrentXp)} / ${formatNumber(runtimeNeeded)} XP`;
+    $("#top-captain-xp-fill").style.width = `${runtimeRatio * 100}%`;
   }
 
   function renderShipPreview(canvas, ship, compact = false) {
@@ -3004,21 +3029,6 @@
     if (xpFill) xpFill.style.width = `${state.xp / needed * 100}%`;
     const homeLogs = state.logs.slice(0, 5);
     $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
-    const captain = getCurrentCaptain();
-    const captainCard = $("#home-captain-card");
-    syncCaptainRuntimeState(state);
-    if (captain) {
-      const runtimeNeeded = captainRuntimeXpNeeded(state.captainRuntimeLevel);
-      const runtimeRatio = clamp(state.captainCurrentXp / runtimeNeeded, 0, 1);
-      $("#home-captain-icon").innerHTML = `<img src="${captain.image}" alt="">`;
-      $("#home-captain-name").textContent = captain.name;
-      $("#home-captain-stats").innerHTML = `<span>Nv. temporário <strong>${state.captainRuntimeLevel}</strong></span><span>XP <strong>${formatNumber(state.captainCurrentXp)} / ${formatNumber(runtimeNeeded)}</strong></span><div class="home-captain-xp"><i style="width:${runtimeRatio * 100}%"></i></div><small>${captain.name}</small>`;
-    } else {
-      $("#home-captain-icon").textContent = "★";
-      $("#home-captain-name").textContent = "Capitão aguardando";
-      $("#home-captain-stats").textContent = "Escolha seu visual";
-    }
-    captainCard.classList.toggle("selected", Boolean(captain));
     const pet = getEquippedPet();
     const petCard = $("#home-pet-card");
     $("#home-pet-icon").innerHTML = pet ? `<img src="${getPetSpriteUrl(pet.visual)}" alt="">` : "🐾";
@@ -3418,8 +3428,7 @@
     const prologueMapPointHtml = point => {
       const index = point.mapIndex - 1;
       const status = mapStatus(index);
-      const markerState = status.key === "locked" ? "▣" : status.key === "completed" ? "✓" : "";
-      return `<button class="prologue-map-marker ${status.key}" style="--point-x:${point.x}%;--point-y:${point.y}%;" data-prologue-map="${index}" aria-label="${point.title}"><span>${point.mapIndex}</span>${markerState ? `<small>${markerState}</small>` : ""}</button>`;
+      return `<button class="prologue-map-marker ${status.key}" style="--point-x:${point.x}%;--point-y:${point.y}%;--point-w:${point.width}%;--point-h:${point.height}%;" data-prologue-map="${index}" aria-label="${point.title} - ${status.label}" title="${point.title}"><span class="sr-only">${point.title}</span></button>`;
     };
     const prologueModalHtml = () => {
       if (activePrologueMapIndex === null) return "";
