@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v23-scenery";
+const CACHE = "pirates-abyss-v22-full-sprites";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -110,37 +110,15 @@ const SHIP_ASSET_FILES = [
   "kraken_hunter.png",
   "navio_mercante_armado.png"
 ];
-const ISLAND_BACKGROUND_FILES = [
-  "01_lagoa_dos_primeiros_remadores.png",
-  "02_manguezal_dos_ancestrais.png",
-  "03_ilhas_dos_pterodactilos.png",
-  "04_selva_dos_repteis_marinhos.png",
-  "05_canal_do_tita_jurassico.png",
-  "06_costa_dos_naufragos.png",
-  "07_ilhas_comerciais.png",
-  "08_mar_das_tempestades.png",
-  "09_baia_dos_corsarios.png",
-  "10_oceano_profundo.png",
-  "11_triangulo_maldito.png",
-  "12_mar_imperial.png",
-  "13_arquipelago_vulcanico.png",
-  "14_reino_congelado.png",
-  "15_abismo_do_kraken.png"
-];
-const OCEAN_BACKGROUND_FILES = [
-  "16_fundo_do_mar_oceano.png"
-];
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=20",
-  "game.js?v=30",
+  "styles.css?v=19",
+  "game.js?v=29",
   "icon.svg",
   "manifest.webmanifest",
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),
-  ...SHIP_ASSET_FILES.map(file => `assets/ships/${file}`),
-  ...ISLAND_BACKGROUND_FILES.map(file => `assets/backgrounds/islands/${file}`),
-  ...OCEAN_BACKGROUND_FILES.map(file => `assets/backgrounds/ocean/${file}`)
+  ...SHIP_ASSET_FILES.map(file => `assets/ships/${file}`)
 ];
 
 self.addEventListener("install", event => {
