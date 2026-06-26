@@ -797,6 +797,51 @@
     return String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
+  const SCENERY_ISLAND_PATH = "assets/backgrounds/islands/";
+  const OCEAN_BACKGROUND_PATH = "assets/backgrounds/ocean/16_fundo_do_mar_oceano.png";
+  const OCEAN_BACKGROUND = new Image();
+  OCEAN_BACKGROUND.decoding = "async";
+  OCEAN_BACKGROUND.src = OCEAN_BACKGROUND_PATH;
+
+  const REGION_SCENERY = [
+    ["Lagoa dos Primeiros Remadores", "01_lagoa_dos_primeiros_remadores.png", { widthRatio: .52, maxHeightRatio: .31, bottomRatio: .2 }],
+    ["Manguezal dos Ancestrais", "02_manguezal_dos_ancestrais.png", { widthRatio: .53, maxHeightRatio: .32, bottomRatio: .21 }],
+    ["Ilhas dos Pterodactilos", "03_ilhas_dos_pterodactilos.png", { widthRatio: .46, maxHeightRatio: .36, bottomRatio: .22 }],
+    ["Selva dos Repteis Marinhos", "04_selva_dos_repteis_marinhos.png", { widthRatio: .53, maxHeightRatio: .34, bottomRatio: .21 }],
+    ["Canal do Tita Jurassico", "05_canal_do_tita_jurassico.png", { widthRatio: .5, maxHeightRatio: .37, bottomRatio: .22 }],
+    ["Costa dos Naufragos", "06_costa_dos_naufragos.png", { widthRatio: .51, maxHeightRatio: .32, bottomRatio: .21 }],
+    ["Ilhas Comerciais", "07_ilhas_comerciais.png", { widthRatio: .51, maxHeightRatio: .32, bottomRatio: .2 }],
+    ["Mar das Tempestades", "08_mar_das_tempestades.png", { widthRatio: .44, maxHeightRatio: .38, bottomRatio: .21 }],
+    ["Baia dos Corsarios", "09_baia_dos_corsarios.png", { widthRatio: .47, maxHeightRatio: .37, bottomRatio: .22 }],
+    ["Oceano Profundo", "10_oceano_profundo.png", { widthRatio: .51, maxHeightRatio: .36, bottomRatio: .21 }],
+    ["Triangulo Maldito", "11_triangulo_maldito.png", { widthRatio: .44, maxHeightRatio: .42, bottomRatio: .23 }],
+    ["Mar Imperial", "12_mar_imperial.png", { widthRatio: .48, maxHeightRatio: .39, bottomRatio: .22 }],
+    ["Arquipelago Vulcanico", "13_arquipelago_vulcanico.png", { widthRatio: .45, maxHeightRatio: .42, bottomRatio: .23 }],
+    ["Reino Congelado", "14_reino_congelado.png", { widthRatio: .52, maxHeightRatio: .35, bottomRatio: .21 }],
+    ["Abismo do Kraken", "15_abismo_do_kraken.png", { widthRatio: .5, maxHeightRatio: .38, bottomRatio: .22 }]
+  ].reduce((scenery, [name, file, options]) => {
+    const image = new Image();
+    const path = `${SCENERY_ISLAND_PATH}${file}`;
+    image.decoding = "async";
+    image.src = path;
+    scenery[normalizeText(name)] = {
+      image,
+      file,
+      path,
+      widthRatio: options.widthRatio,
+      maxHeightRatio: options.maxHeightRatio,
+      bottomRatio: options.bottomRatio,
+      offsetX: options.offsetX || 0,
+      offsetY: options.offsetY || 0,
+      opacity: options.opacity ?? .94
+    };
+    return scenery;
+  }, {});
+
+  function getRegionScenery(name) {
+    return REGION_SCENERY[normalizeText(name)];
+  }
+
   const SHIP_SPRITE_PATH = "assets/ships/";
   const SHIP_SPRITES = [
     ["Bote de Tronco", "bote_de_tronco.png", { width: 230, anchorY: .63 }],
@@ -1149,20 +1194,12 @@
       this.drawCloud(ctx, ((w * .51 + this.time * 1.5) % (w + 160)) - 80, h * .095, .78, day.darkness);
       this.drawCloud(ctx, ((w * .82 + this.time * 1.1) % (w + 140)) - 70, h * .22, .56, day.darkness);
 
-      const sea = ctx.createLinearGradient(0, horizon, 0, h);
-      sea.addColorStop(0, day.water);
-      sea.addColorStop(.3, this.mix(region.sea, day.darkness > .4 ? "#102c46" : "#6fbac1", .22));
-      sea.addColorStop(1, this.mix(region.sea, "#02101c", .52 + day.darkness * .18));
-      ctx.fillStyle = sea;
-      ctx.fillRect(0, horizon, w, h - horizon);
+      this.drawOcean(ctx, horizon, w, h, region, day);
       if (!celestialNight && day.cycle < .58) this.drawSunPath(ctx, sunX, horizon, h);
+      this.drawRegionIsland(ctx, region, horizon, w, h, day);
       this.drawWaves(ctx, horizon, w, h);
       this.drawEnvironmentEvents(ctx, horizon, w, h);
-
-      this.drawIsland(ctx, -w * .035, horizon + 8, w * .31, region.land, 1.18, 0);
-      this.drawIsland(ctx, w * .73, horizon + 3, w * .29, region.land, .94, 1);
-      this.drawIsland(ctx, w * .43, horizon - 3, w * .11, region.land, .48, 2);
-      if (state.regionIndex === 6) this.drawFort(ctx, w * .82, horizon - 22);
+      if (!this.imageReady(getRegionScenery(region.name)?.image) && state.regionIndex === 6) this.drawFort(ctx, w * .82, horizon - 22);
 
       if (state.regionIndex === 2) this.drawRain(ctx, w, h);
       if (state.regionIndex === 8) this.drawSnow(ctx, w, h);
@@ -1239,10 +1276,86 @@
       });
     }
 
+    imageReady(image) {
+      return image?.complete && image.naturalWidth > 0;
+    }
+
+    drawCoverImage(ctx, image, x, y, width, height, focusY = .45) {
+      const imageRatio = image.naturalWidth / image.naturalHeight;
+      const targetRatio = width / height;
+      let sx = 0, sy = 0, sw = image.naturalWidth, sh = image.naturalHeight;
+      if (imageRatio > targetRatio) {
+        sw = sh * targetRatio;
+        sx = (image.naturalWidth - sw) / 2;
+      } else {
+        sh = sw / targetRatio;
+        sy = clamp((image.naturalHeight - sh) * focusY, 0, image.naturalHeight - sh);
+      }
+      ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height);
+    }
+
+    drawOcean(ctx, horizon, w, h, region, day) {
+      const seaHeight = h - horizon;
+      if (this.imageReady(OCEAN_BACKGROUND)) {
+        ctx.save();
+        ctx.filter = `brightness(${Math.max(.54, 1 - day.darkness * .42)}) saturate(${Math.max(.72, 1 - day.darkness * .18)})`;
+        this.drawCoverImage(ctx, OCEAN_BACKGROUND, 0, horizon, w, seaHeight, .42);
+        ctx.filter = "none";
+        ctx.fillStyle = day.darkness > .4 ? `rgba(2, 12, 24, ${day.darkness * .28})` : this.rgba(region.sea, .08);
+        ctx.fillRect(0, horizon, w, seaHeight);
+        ctx.restore();
+        return;
+      }
+
+      const sea = ctx.createLinearGradient(0, horizon, 0, h);
+      sea.addColorStop(0, day.water);
+      sea.addColorStop(.3, this.mix(region.sea, day.darkness > .4 ? "#102c46" : "#6fbac1", .22));
+      sea.addColorStop(1, this.mix(region.sea, "#02101c", .52 + day.darkness * .18));
+      ctx.fillStyle = sea;
+      ctx.fillRect(0, horizon, w, seaHeight);
+    }
+
+    drawRegionIsland(ctx, region, horizon, w, h, day) {
+      const scenery = getRegionScenery(region.name);
+      if (!scenery || !this.imageReady(scenery.image)) {
+        this.drawIsland(ctx, -w * .035, horizon + 8, w * .31, region.land, 1.18, 0);
+        this.drawIsland(ctx, w * .73, horizon + 3, w * .29, region.land, .94, 1);
+        this.drawIsland(ctx, w * .43, horizon - 3, w * .11, region.land, .48, 2);
+        return;
+      }
+
+      const image = scenery.image;
+      const aspect = image.naturalHeight / image.naturalWidth;
+      let targetWidth = Math.min(w * scenery.widthRatio, (h * scenery.maxHeightRatio) / aspect);
+      targetWidth = Math.max(targetWidth, Math.min(w * .28, 240));
+      const targetHeight = targetWidth * aspect;
+      const x = w * .5 - targetWidth * .5 + w * scenery.offsetX;
+      const baseY = horizon + h * scenery.bottomRatio + h * scenery.offsetY;
+      const y = baseY - targetHeight;
+
+      ctx.save();
+      ctx.globalAlpha = scenery.opacity;
+      ctx.filter = `brightness(${Math.max(.58, 1 - day.darkness * .38)}) saturate(${Math.max(.7, 1 - day.darkness * .18)})`;
+      ctx.drawImage(image, x, y, targetWidth, targetHeight);
+      ctx.filter = "none";
+      ctx.globalAlpha = .34;
+      ctx.strokeStyle = day.darkness > .4 ? "rgba(137, 197, 213, .45)" : "rgba(231, 255, 247, .7)";
+      ctx.lineWidth = Math.max(1, h * .0035);
+      ctx.beginPath();
+      ctx.ellipse(w * .5 + w * scenery.offsetX, baseY - h * .015, targetWidth * .28, Math.max(4, h * .009), 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     mix(a, b, amount) {
       const parse = hex => hex.match(/\w\w/g).map(v => parseInt(v, 16));
       const ca = parse(a), cb = parse(b);
       return `rgb(${ca.map((v, i) => Math.round(v + (cb[i] - v) * amount)).join(",")})`;
+    }
+
+    rgba(hex, alpha) {
+      const [r, g, b] = hex.match(/\w\w/g).map(v => parseInt(v, 16));
+      return `rgba(${r},${g},${b},${alpha})`;
     }
 
     drawCloud(ctx, x, y, scale, darkness = 0) {
@@ -2459,7 +2572,9 @@
       const enemyTags = [...new Set(REGION_ENCOUNTERS[index].map(enemy => ENEMY_CATEGORIES[enemy.category].label))].map(label => `<span class="enemy-tag">⚔ ${label}</span>`).join("");
       const endgameIssues = endgameRequirementIssues(index);
       const endgameNotice = ENDGAME_REQUIREMENTS[index] ? `<div class="endgame-warning ${endgameIssues.length ? "danger" : "ready"}"><strong>${ENDGAME_REQUIREMENTS[index].label}</strong><span>${endgameIssues.length ? `Recomendado antes de avançar: ${endgameIssues.slice(0, 3).join(" • ")}${endgameIssues.length > 3 ? " • ..." : ""}` : "Preparação recomendada atingida."}</span></div>` : "";
-      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land}"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
+      const scenery = getRegionScenery(region.name);
+      const mapStyle = `--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land};${scenery ? `--map-island:url('${scenery.path}')` : ""}`;
+      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="${mapStyle}"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
     }).join("");
   }
 
