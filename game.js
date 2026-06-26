@@ -2726,14 +2726,18 @@
     const affordable = cost && canAfford(cost);
     const info = cost && !affordable && !options.blocked ? getMissingPurchaseInfo(cost) : null;
     const goldCost = cost?.ouro || 0;
-    const smartTotal = affordable ? goldCost : info?.canBuyAndExecute ? info.total + goldCost : 0;
+    const requiredGold = affordable ? goldCost : info ? info.total + goldCost : goldCost;
+    const missingGold = Math.max(0, requiredGold - state.resources.ouro);
+    const unavailableLabel = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro` : "Faltam recursos";
+    const smartTotal = affordable ? goldCost : info?.canBuyAndExecute ? requiredGold : 0;
     const afterGold = Math.max(0, state.resources.ouro - smartTotal);
     const directLabel = kind === "upgrade" || kind === "skill" ? "Melhorar" : "Comprar";
-    const label = options.blocked ? "Bloqueado" : affordable ? directLabel : info?.canBuyAndExecute ? "Comprar tudo" : "Saldo insuficiente";
+    const label = options.blocked ? "Bloqueado" : affordable ? directLabel : info?.canBuyAndExecute ? "Comprar tudo" : unavailableLabel;
     const disabled = options.blocked || (!affordable && !info?.canBuyAndExecute);
     const actionAttrs = affordable ? attrs : `data-smart-upgrade="${kind}" data-smart-upgrade-id="${id}"`;
     const balanceClass = disabled && !options.blocked ? " danger" : "";
-    return `<div class="upgrade-row-action"><button class="button primary" ${actionAttrs} ${disabled ? "disabled" : ""}>${label}</button><div class="upgrade-balance${balanceClass}"><span>Saldo atual: <strong>${formatNumber(state.resources.ouro)} Ouro</strong></span><span>Após compra: <strong>${disabled && !options.blocked ? "Saldo insuficiente" : `${formatNumber(afterGold)} Ouro`}</strong></span></div>${options.hint ? `<small>${options.hint}</small>` : ""}</div>`;
+    const afterText = disabled && !options.blocked ? unavailableLabel : `${formatNumber(afterGold)} Ouro`;
+    return `<div class="upgrade-row-action"><button class="button primary" ${actionAttrs} ${disabled ? "disabled" : ""}>${label}</button><div class="upgrade-balance${balanceClass}"><span>Saldo atual: <strong>${formatNumber(state.resources.ouro)} Ouro</strong></span><span>Após compra: <strong>${afterText}</strong></span></div>${options.hint ? `<small>${options.hint}</small>` : ""}</div>`;
   }
 
   function getShipProgressionIssues(ship) {
@@ -3369,7 +3373,12 @@
     if (!context) return toast("Upgrade indisponível.", "danger-toast");
     if (canAfford(context.cost)) return context.execute();
     const info = getMissingPurchaseInfo(context.cost);
-    if (!info.canBuyAndExecute) return toast("Saldo insuficiente para comprar tudo.", "danger-toast");
+    if (!info.canBuyAndExecute) {
+      const missingGold = Math.max(0, info.total + (context.cost.ouro || 0) - state.resources.ouro);
+      const blockedResources = info.blocked.filter(item => item.key !== "ouro").map(item => RESOURCE_META[item.key].name);
+      const message = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro para comprar este upgrade.` : `Ainda faltam recursos${blockedResources.length ? `: ${blockedResources.join(", ")}` : ""}.`;
+      return toast(message, "danger-toast");
+    }
     const result = buyMissingResources(context.cost);
     if (!result.ok) return toast(result.message, "danger-toast");
     context.execute();

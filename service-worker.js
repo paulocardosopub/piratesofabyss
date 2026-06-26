@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v34-smart-upgrades";
+const CACHE = "pirates-abyss-v35-upgrade-missing-gold";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -146,7 +146,7 @@ const ASSETS = [
   "./",
   "index.html",
   "styles.css?v=30",
-  "game.js?v=46",
+  "game.js?v=47",
   "icon.svg",
   "manifest.webmanifest",
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),
