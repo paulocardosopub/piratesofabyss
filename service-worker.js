@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v26-compact-upgrades-pets";
+const CACHE = "pirates-abyss-v27-pet-skins-final";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",

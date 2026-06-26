@@ -205,6 +205,35 @@
     { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 5000, interval: 3, power: 35000, levelReq: 75, regionReq: 15, bossReq: 14, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários com +15% de dano contra bosses.", bonus: "+15% contra bosses", bossBonus: .15, color: "#c485ff", visual: "kraken" }
   ].map((pet, id) => ({ id, dps: pet.damage / pet.interval, ...pet }));
 
+  const PET_SPRITE_PATH = "assets/pets/";
+  const PET_SPRITE_CONFIG = {
+    fish: { file: "peixe_palhaco.png", width: 48, anchorX: .36, anchorY: .56, offsetY: 1 },
+    jelly: { file: "agua_viva.png", width: 58, anchorX: .42, anchorY: .55, offsetY: -4 },
+    turtle: { file: "tartaruga_marinha.png", width: 68, anchorX: .38, anchorY: .54, offsetY: 1 },
+    seal: { file: "foca.png", width: 76, anchorX: .38, anchorY: .58, offsetY: 3, bob: 8 },
+    dolphin: { file: "golfinho.png", width: 84, anchorX: .38, anchorY: .56, offsetY: -2, bob: 7 },
+    ray: { file: "arraia_eletrica.png", width: 88, anchorX: .4, anchorY: .55, offsetY: 0 },
+    shark: { file: "tubarao.png", width: 104, anchorX: .38, anchorY: .55, offsetY: 0 },
+    orca: { file: "baleia_assassina.png", width: 116, anchorX: .39, anchorY: .55, offsetY: -1 },
+    megalodon: { file: "megalodon.png", width: 126, anchorX: .39, anchorY: .55, offsetY: 0 },
+    kraken: { file: "kraken.png", width: 138, anchorX: .43, anchorY: .58, offsetY: -3, bob: 5 }
+  };
+  const PET_SPRITES = Object.fromEntries(Object.entries(PET_SPRITE_CONFIG).map(([visual, config]) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = `${PET_SPRITE_PATH}${config.file}`;
+    return [visual, { ...config, image }];
+  }));
+
+  function getPetSprite(visual) {
+    return PET_SPRITES[visual];
+  }
+
+  function getPetSpriteUrl(visual) {
+    const sprite = getPetSprite(visual);
+    return sprite ? `${PET_SPRITE_PATH}${sprite.file}` : "";
+  }
+
   const TODAY_KEY = () => new Date().toLocaleDateString("sv-SE");
   const WEEK_KEY = () => {
     const now = new Date();
@@ -1507,6 +1536,7 @@
     }
 
     drawPet(ctx, x, y, pet, baseScale = 1) {
+      if (this.drawPetSprite(ctx, x, y, pet, baseScale)) return;
       const size = [0.48, 0.55, 0.68, 0.7, 0.82, 0.9, 1, 1.18, 1.38, 1.55][pet.id] * baseScale;
       const jump = pet.visual === "dolphin" || pet.visual === "seal" ? Math.max(0, Math.sin(this.time * 1.25 + pet.id)) * 15 : 0;
       ctx.save(); ctx.translate(x, y - jump); ctx.scale(size, size);
@@ -1547,6 +1577,43 @@
         ctx.fillStyle="#07131a"; ctx.beginPath(); ctx.arc(24,-5,2.3,0,Math.PI*2); ctx.fill();
       }
       ctx.restore();
+    }
+
+    drawPetSprite(ctx, x, y, pet, baseScale = 1) {
+      const sprite = getPetSprite(pet.visual);
+      const image = sprite?.image;
+      if (!image?.complete || !image.naturalWidth) return false;
+      const bob = Math.sin(this.time * 1.75 + pet.id) * (sprite.bob ?? 4) * baseScale;
+      const targetWidth = sprite.width * baseScale;
+      const targetHeight = targetWidth * (image.naturalHeight / image.naturalWidth);
+      const drawX = -targetWidth * sprite.anchorX;
+      const drawY = -targetHeight * sprite.anchorY;
+      ctx.save();
+      ctx.translate(x, y + (sprite.offsetY || 0) * baseScale + bob);
+      if (pet.level) {
+        const pulse = 1 + Math.sin(this.time * 2.6 + pet.id) * .06;
+        ctx.save();
+        ctx.globalAlpha = Math.min(.5, .15 + pet.level * .06);
+        ctx.strokeStyle = pet.color;
+        ctx.lineWidth = Math.max(1, 1.2 + pet.level * .32) * baseScale;
+        ctx.shadowColor = pet.color;
+        ctx.shadowBlur = (8 + pet.level * 3) * baseScale;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, targetWidth * .52 * pulse, targetHeight * .42 * pulse, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.globalAlpha = .16;
+      ctx.fillStyle = "#dffcff";
+      ctx.beginPath();
+      ctx.ellipse(targetWidth * .1, targetHeight * .32, targetWidth * .42, Math.max(3, targetHeight * .06), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.shadowColor = "rgba(0,0,0,.34)";
+      ctx.shadowBlur = 8 * baseScale;
+      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      ctx.restore();
+      return true;
     }
 
     drawEnemySprite(ctx, x, y, scale, sprite) {
@@ -2440,7 +2507,7 @@
     $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
     const pet = getEquippedPet();
     const petCard = $("#home-pet-card");
-    $("#home-pet-icon").textContent = pet?.icon || "🐾";
+    $("#home-pet-icon").innerHTML = pet ? `<img src="${getPetSpriteUrl(pet.visual)}" alt="">` : "🐾";
     $("#home-pet-name").textContent = pet?.name || "Nenhum pet equipado";
     petCard.classList.toggle("equipped", Boolean(pet));
     petCard.setAttribute("style", pet ? getPetAuraStyle(pet) : "");
@@ -2463,7 +2530,7 @@
     const banner = $("#pet-current-banner");
     banner.className = `pet-current-banner${current ? " equipped" : ""}`;
     banner.setAttribute("style", current ? getPetAuraStyle(current) : "");
-    banner.innerHTML = current ? `<div class="pet-current-icon">${current.icon}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
+    banner.innerHTML = current ? `<div class="pet-current-icon"><img src="${getPetSpriteUrl(current.visual)}" alt=""></div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
     $("#pets-grid").innerHTML = PETS.map(basePet => {
       const owned = state.ownedPets.includes(basePet.id);
       const level = owned ? getPetLevel(basePet.id) : 1;
@@ -2487,7 +2554,7 @@
       const requirement = owned
         ? `<div class="pet-requirements ready"><strong>Upgrade permanente</strong><br>${upgradeCost ? state.pirateCoins >= upgradeCost ? "Moedas Pirata disponíveis para evoluir." : `Faltam ${formatNumber(upgradeCost - state.pirateCoins)} Moedas Pirata para evoluir.` : "Este pet já atingiu o nível máximo."}</div>`
         : issues.length ? `<div class="pet-requirements"><strong>${prestigeLine}</strong><br>Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready"><strong>${prestigeLine}</strong><br>${state.pirateCoins >= pirateCoinCost ? "Moedas e requisitos disponíveis" : `Faltam ${pirateCoinCost - state.pirateCoins} Moedas Pirata`}</div>`;
-      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-visual"><span>${pet.icon}</span><i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
+      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-visual"><img src="${getPetSpriteUrl(pet.visual)}" alt=""><i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
     }).join("");
   }
 
@@ -2547,6 +2614,24 @@
     return `<div class="upgrade-row-stats">${rows.map(row => `<div><span>${row.label}</span><strong>${row.value}</strong>${row.delta ? `<small>${row.delta}</small>` : ""}</div>`).join("")}</div>`;
   }
 
+  function upgradeActionHtml(kind, id, cost, canExecute, options = {}) {
+    if (options.completed) return `<div class="upgrade-row-action"><span class="upgrade-row-status">${options.completedText || "Comprado"}</span>${options.hint ? `<small>${options.hint}</small>` : ""}</div>`;
+    const missing = cost && !canAfford(cost) && !options.blocked;
+    const info = missing ? getMissingPurchaseInfo(cost) : null;
+    const attrs = kind === "upgrade" ? `data-upgrade="${id}"` : kind === "ship" ? `data-buy-ship="${id}"` : kind === "equipment" ? `data-craft-equipment="${id}"` : `data-upgrade-skill="${id}"`;
+    return `<div class="upgrade-row-action ${missing ? "split" : ""}">${missing ? `<button class="button buy-resources" data-buy-missing="${kind}" data-buy-missing-id="${id}" ${info.canBuyMissing ? "" : "disabled"}>Comprar recursos</button>` : ""}<button class="button primary" ${attrs} ${canExecute ? "" : "disabled"}>Comprar</button>${options.hint ? `<small>${options.hint}</small>` : ""}</div>`;
+  }
+
+  function getShipProgressionIssues(ship) {
+    const issues = [];
+    const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
+    if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
+    const prestigeReq = Math.max(0, ship.tier - 1);
+    if (state.prestiges < prestigeReq) issues.push(`Prestígios atuais: ${state.prestiges} / ${prestigeReq}`);
+    if (state.pirateLevel < ship.levelReq) issues.push(`Requer nível ${ship.levelReq}`);
+    return issues;
+  }
+
   function getImprovementRows(type) {
     const current = getStats();
     const next = getStatsPreview({ [type]: state.levels[type] + 1 });
@@ -2560,7 +2645,7 @@
   function upgradeLineHtml(item) {
     const cost = getUpgradeCost(item.key);
     const affordable = canAfford(cost);
-    return `<article class="upgrade-row ${affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">NÍVEL ${state.levels[item.key]}</span><h3>${item.name}</h3><p>${item.desc}</p>${statRowsHtml(getImprovementRows(item.key))}<div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div></div><div class="upgrade-row-action"><button class="button primary" data-upgrade="${item.key}" ${affordable ? "" : "disabled"}>Upgrade</button><small>Próximo: nível ${state.levels[item.key] + 1}</small></div></article>`;
+    return `<article class="upgrade-row ${affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">NÍVEL ${state.levels[item.key]}</span><h3>${item.name}</h3><p>${item.desc}</p>${statRowsHtml(getImprovementRows(item.key))}<div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div></div>${upgradeActionHtml("upgrade", item.key, cost, affordable, { hint: `Próximo: nível ${state.levels[item.key] + 1}` })}</article>`;
   }
 
   function fleetLineHtml() {
@@ -2569,25 +2654,24 @@
     if (!nextShip) {
       return `<article class="upgrade-row completed"><div class="upgrade-row-icon">⛵</div><div class="upgrade-row-main"><span class="level-label">FROTA COMPLETA</span><h3>Frota: troque de barco!</h3><p>Todos os barcos da jornada já foram construídos.</p>${statRowsHtml([{ label: "Navio atual", value: currentShip.name }, { label: "Tier", value: currentShip.tier }, { label: "Poder", value: formatNumber(getStats().power) }])}</div><div class="upgrade-row-action"><button class="button" disabled>Completo</button></div></article>`;
     }
-    const issues = getShipRequirements(nextShip);
+    const progressionIssues = getShipProgressionIssues(nextShip);
     const affordable = canAfford(nextShip.costs);
     const currentStats = getStats();
     const nextStats = getStats(nextShip.id);
-    const canBuy = issues.length === 0 && affordable;
-    const buttonText = issues.length ? issues[0] : affordable ? "Trocar para o próximo barco" : "Recursos insuficientes";
+    const canBuy = progressionIssues.length === 0 && affordable;
     const rows = [
       { label: "Novo barco", value: nextShip.name, delta: `Tier ${nextShip.tier}` },
       { label: "Dano", value: `${formatNumber(currentStats.damage)} → ${formatNumber(nextStats.damage)}`, delta: formatStatDelta(nextStats.damage - currentStats.damage) },
       { label: "Vida", value: `${formatNumber(currentStats.maxHp)} → ${formatNumber(nextStats.maxHp)}`, delta: formatStatDelta(nextStats.maxHp - currentStats.maxHp) },
       { label: "Poder", value: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`, delta: formatStatDelta(nextStats.power - currentStats.power) }
     ];
-    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${state.ownedShips.length}/${SHIPS.length}</span><h3>Frota: troque de barco!</h3><p>Construa os barcos em sequência. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${issues.length ? `Requisito: ${issues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div><div class="upgrade-row-action"><button class="button primary" data-buy-ship="${nextShip.id}" ${canBuy ? "" : "disabled"}>${buttonText}</button><small>Atual: ${currentShip.name}</small></div></article>`;
+    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${state.ownedShips.length}/${SHIPS.length}</span><h3>Frota: troque de barco!</h3><p>Construa os barcos em sequência. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${upgradeActionHtml("ship", nextShip.id, nextShip.costs, canBuy, { blocked: progressionIssues.length > 0, hint: `Atual: ${currentShip.name}` })}</article>`;
   }
 
   function equipmentLineHtml([key, item]) {
     const equipped = state.equipment[key];
     const affordable = canAfford(item.costs);
-    return `<article class="upgrade-row ${equipped ? "completed" : affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">${equipped ? "EQUIPAMENTO ATIVO" : "EQUIPAMENTO"}</span><h3>${item.name}</h3><p>${item.effect}</p>${statRowsHtml([{ label: "Bônus atual", value: equipped ? "Ativo" : "Não comprado" }, { label: "Ao comprar", value: item.effect }])}<div class="cost-list">${equipped ? "<span class=\"cost-chip\">Bônus ativo permanentemente</span>" : resourceCostHtml(item.costs)}</div>${equipped ? "" : `<div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(item.costs)}</div>`}</div><div class="upgrade-row-action"><button class="button ${equipped ? "" : "primary"}" data-craft-equipment="${key}" ${equipped || !affordable ? "disabled" : ""}>${equipped ? "Comprado" : "Comprar"}</button></div></article>`;
+    return `<article class="upgrade-row ${equipped ? "completed" : affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">${equipped ? "EQUIPAMENTO ATIVO" : "EQUIPAMENTO"}</span><h3>${item.name}</h3><p>${item.effect}</p>${statRowsHtml([{ label: "Bônus atual", value: equipped ? "Ativo" : "Não comprado" }, { label: "Ao comprar", value: item.effect }])}<div class="cost-list">${equipped ? "<span class=\"cost-chip\">Bônus ativo permanentemente</span>" : resourceCostHtml(item.costs)}</div>${equipped ? "" : `<div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(item.costs)}</div>`}</div>${upgradeActionHtml("equipment", key, item.costs, !equipped && affordable, { completed: equipped, completedText: "Comprado" })}</article>`;
   }
 
   function skillLineHtml([key, meta]) {
@@ -2605,7 +2689,7 @@
           { label: "DPS skill", value: `${formatNumber(current.dps)} → ${formatNumber(next.dps)}`, delta: formatStatDelta(next.dps - current.dps) }
         ]
       : [{ label: "Bloqueada", value: `Libera no nível ${meta.unlock}` }, { label: "Efeito", value: meta.effect }];
-    return `<article class="upgrade-row skill-upgrade ${affordable ? "available" : ""} ${unlocked ? "" : "locked"}"><div class="upgrade-row-icon">${meta.icon}</div><div class="upgrade-row-main"><span class="level-label">${unlocked ? `NÍVEL ${skill.level}` : `LIBERA NO NÍVEL ${meta.unlock}`}</span><h3>${meta.name}</h3><p>${effectLine}</p>${statRowsHtml(rows)}${unlocked ? `<div class="auto-switch compact"><span>Lançamento automático</span><button class="toggle ${skill.auto ? "on" : ""}" data-toggle-skill="${key}" aria-label="Alternar lançamento automático"></button></div><div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div>` : ""}</div><div class="upgrade-row-action"><button class="button primary" data-upgrade-skill="${key}" ${affordable ? "" : "disabled"}>${unlocked ? "Upgrade" : "Bloqueado"}</button>${unlocked ? `<small>Próximo: nível ${skill.level + 1}</small>` : ""}</div></article>`;
+    return `<article class="upgrade-row skill-upgrade ${affordable ? "available" : ""} ${unlocked ? "" : "locked"}"><div class="upgrade-row-icon">${meta.icon}</div><div class="upgrade-row-main"><span class="level-label">${unlocked ? `NÍVEL ${skill.level}` : `LIBERA NO NÍVEL ${meta.unlock}`}</span><h3>${meta.name}</h3><p>${effectLine}</p>${statRowsHtml(rows)}${unlocked ? `<div class="auto-switch compact"><span>Lançamento automático</span><button class="toggle ${skill.auto ? "on" : ""}" data-toggle-skill="${key}" aria-label="Alternar lançamento automático"></button></div><div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div>` : ""}</div>${upgradeActionHtml("skill", key, cost, affordable, { blocked: !unlocked, hint: unlocked ? `Próximo: nível ${skill.level + 1}` : `Libera no nível ${meta.unlock}` })}</article>`;
   }
 
   function renderUpgradeSection(title, rows) {
@@ -2628,7 +2712,6 @@
       renderUpgradeSection("Skills", Object.entries(SKILL_META).map(skillLineHtml))
     ].join("");
     $$("[data-next-ship-preview]", $("#upgrade-feed")).forEach(canvas => renderShipPreview(canvas, SHIPS[Number(canvas.dataset.nextShipPreview)], true));
-    decorateMissingPurchasePanels($("#screen-upgrades"));
   }
 
   function getShipRequirements(ship) {

@@ -1213,6 +1213,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 
 .pet-current-banner { min-height: 104px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; margin-bottom: 15px; padding: 17px 22px; border: 1px solid rgba(110,239,226,.2); border-radius: var(--radius); background: linear-gradient(110deg, rgba(41,141,157,.18), rgba(13,42,59,.8) 55%); }
 .pet-current-icon { position: relative; width: 68px; height: 68px; display: grid; place-items: center; isolation: isolate; border-radius: 50%; background: rgba(0,0,0,.2); font-size: 38px; }
+.pet-current-icon img { width: 86%; height: 86%; object-fit: contain; filter: drop-shadow(0 7px 7px rgba(0,0,0,.34)); }
 .pet-current-banner.equipped .pet-current-icon::before, .pet-current-banner.equipped .pet-current-icon::after { content: ""; position: absolute; inset: -7px; z-index: -1; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--pet-color) 72%, transparent); opacity: var(--pet-aura-alpha, .45); box-shadow: 0 0 var(--pet-aura-glow, 28px) color-mix(in srgb, var(--pet-color) 55%, transparent); animation: pet-aura-pulse 2.2s ease-in-out infinite; }
 .pet-current-banner.equipped .pet-current-icon::after { inset: -15px; opacity: calc(var(--pet-aura-alpha, .45) * .5); animation-delay: -1.05s; }
 .pet-current-banner h2 { margin: 3px 0 4px; font: 700 23px Georgia, serif; }
