@@ -55,6 +55,49 @@
     { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Criatura Abissal", "Navio Amaldiçoado", "Tentáculo Menor", "Leviatã Jovem", "Guardião do Abismo", "Frota Fantasma"], drops: { fragmentos: .008, gema: .05, cristal: .13 }, baseHp: 320000, baseDamage: 18000, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 18000, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
   ];
   const REGIONS = [...PRIMITIVE_REGIONS, ...MAIN_REGIONS];
+  const PROLOGUE_MAP_ASSET = "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif";
+  const PROLOGUE_MAP_POINTS = [
+    {
+      id: "lagoa-primeiros-remadores",
+      mapIndex: 1,
+      title: "Lagoa dos Primeiros Remadores",
+      x: 18,
+      y: 74,
+      description: "A primeira parada da jornada. Águas rasas, jangadas primitivas e uma rota segura para aprender os fundamentos da navegação."
+    },
+    {
+      id: "manguezal-ancestrais",
+      mapIndex: 2,
+      title: "Manguezal dos Ancestrais",
+      x: 27,
+      y: 49,
+      description: "Canais estreitos, raízes antigas e criaturas escondidas no mangue. O jogador começa a enfrentar riscos reais de exploração."
+    },
+    {
+      id: "ilhas-pterodactilos",
+      mapIndex: 3,
+      title: "Ilhas dos Pterodáctilos",
+      x: 54,
+      y: 30,
+      description: "Rochedos altos, ninhos nos penhascos e pterodáctilos sobrevoando a rota. Um mapa com sensação vertical e perigosa."
+    },
+    {
+      id: "selva-repteis-marinhos",
+      mapIndex: 4,
+      title: "Selva dos Répteis Marinhos",
+      x: 65,
+      y: 66,
+      description: "Uma ilha mais densa e selvagem, marcada por ossadas antigas e répteis marinhos rondando a costa."
+    },
+    {
+      id: "canal-ancestral-primeiros",
+      mapIndex: 5,
+      title: "Canal Ancestral dos Primeiros",
+      x: 82,
+      y: 39,
+      description: "O clímax do prólogo. Um canal antigo, redemoinhos, ruínas primitivas e criaturas sombrias guardando a passagem."
+    }
+  ];
 
   const ISLAND_SPRITE_PATH = "assets/backgrounds/islands/";
   const ISLAND_ASSET_FILES = [
@@ -720,6 +763,7 @@
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
   let lastCaptainEquipmentUpgrade = null;
+  let activePrologueMapIndex = null;
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   function formatNumber(value) {
@@ -3348,15 +3392,19 @@
   function renderMaps() {
     $("#maps-unlocked").textContent = state.unlockedRegions;
     $("#maps-total").textContent = `de ${REGIONS.length} regiões`;
-    const mapCardHtml = (region, index) => {
+    const mapStatus = index => {
       const unlocked = index < state.unlockedRegions;
       const current = state.regionIndex === index;
       const completed = state.bossesDefeated[index];
-      const statusKey = current ? "current" : !unlocked ? "locked" : completed ? "completed" : "available";
-      const statusLabel = current ? "Atual" : !unlocked ? "Bloqueado" : completed ? "Concluído" : "Disponível";
-      const requirement = !unlocked
+      const key = current ? "current" : !unlocked ? "locked" : completed ? "completed" : "available";
+      const label = current ? "Atual" : !unlocked ? "Bloqueado" : completed ? "Concluído" : "Disponível";
+      return { unlocked, current, completed, key, label };
+    };
+    const mapCardHtml = (region, index) => {
+      const status = mapStatus(index);
+      const requirement = !status.unlocked
         ? "Requisito: conclua a região anterior"
-        : completed
+        : status.completed
           ? `Boss: ${region.boss} derrotado`
           : `Boss: ${region.boss} • ${Math.min(100, state.regionKills[index])}/100 inimigos`;
       const drops = Object.entries(region.drops).map(([key, chance]) => {
@@ -3365,11 +3413,26 @@
       }).join("");
       const endgameIssues = endgameRequirementIssues(index);
       const endgameNotice = ENDGAME_REQUIREMENTS[index] ? `<div class="endgame-warning ${endgameIssues.length ? "danger" : "ready"}"><strong>${ENDGAME_REQUIREMENTS[index].label}</strong><span>${endgameIssues.length ? `Recomendado antes de avançar: ${endgameIssues.slice(0, 3).join(" • ")}${endgameIssues.length > 3 ? " • ..." : ""}` : "Preparação recomendada atingida."}</span></div>` : "";
-      return `<article class="map-card ${statusKey}" style="--map-accent:${region.sea}"><div class="map-row-main"><div class="map-title-line"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span><span class="map-status ${statusKey}">${statusLabel}</span></div><h3>${region.name}</h3><p class="map-requirement">${requirement}</p></div><div class="map-yields"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div><div class="map-drops">${drops}</div><div class="map-action"><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${unlocked ? current ? "Atual" : "Viajar" : "Bloqueado"}</button></div>${endgameNotice}</article>`;
+      return `<article class="map-card ${status.key}" style="--map-accent:${region.sea}"><div class="map-row-main"><div class="map-title-line"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span><span class="map-status ${status.key}">${status.label}</span></div><h3>${region.name}</h3><p class="map-requirement">${requirement}</p></div><div class="map-yields"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div><div class="map-drops">${drops}</div><div class="map-action"><button class="button ${status.current ? "primary" : ""}" data-select-map="${index}" ${!status.unlocked || status.current ? "disabled" : ""}>${status.unlocked ? status.current ? "Atual" : "Viajar" : "Bloqueado"}</button></div>${endgameNotice}</article>`;
     };
+    const prologueMapPointHtml = point => {
+      const index = point.mapIndex - 1;
+      const status = mapStatus(index);
+      const markerState = status.key === "locked" ? "▣" : status.key === "completed" ? "✓" : "";
+      return `<button class="prologue-map-marker ${status.key}" style="--point-x:${point.x}%;--point-y:${point.y}%;" data-prologue-map="${index}" aria-label="${point.title}"><span>${point.mapIndex}</span>${markerState ? `<small>${markerState}</small>` : ""}</button>`;
+    };
+    const prologueModalHtml = () => {
+      if (activePrologueMapIndex === null) return "";
+      const point = PROLOGUE_MAP_POINTS.find(entry => entry.mapIndex - 1 === activePrologueMapIndex);
+      if (!point) return "";
+      const region = REGIONS[activePrologueMapIndex];
+      const status = mapStatus(activePrologueMapIndex);
+      return `<div class="prologue-map-modal-layer" data-close-prologue-map><article class="prologue-map-modal-card" role="dialog" aria-modal="true" aria-labelledby="prologue-map-title"><button class="prologue-map-close" data-close-prologue-map aria-label="Fechar">×</button><span class="map-number">PRÓLOGO • MAPA ${point.mapIndex}/5</span><h3 id="prologue-map-title">${point.title}</h3><span class="map-status ${status.key}">${status.label}</span><p>${point.description}</p><div class="prologue-map-modal-meta"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div><div class="prologue-map-modal-actions"><button class="button primary" data-select-map="${activePrologueMapIndex}" ${!status.unlocked || status.current ? "disabled" : ""}>${status.unlocked ? status.current ? "Atual" : "Viajar" : "Bloqueado"}</button><button class="button" data-close-prologue-map>Fechar</button></div></article></div>`;
+    };
+    const prologueMapHtml = () => `<section class="map-section prologue-map-section"><div class="map-section-heading"><h2>Prólogo Pré-Histórico</h2><span>5 mapas iniciais</span></div><div class="prologue-map-board"><img src="${PROLOGUE_MAP_ASSET}" alt="Mapa animado do prólogo" class="prologue-map-image"><div class="prologue-map-points">${PROLOGUE_MAP_POINTS.map(prologueMapPointHtml).join("")}</div>${prologueModalHtml()}</div></section>`;
     const mapSectionHtml = (title, subtitle, regions, offset) => `<section class="map-section"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="map-section-list">${regions.map((region, index) => mapCardHtml(region, index + offset)).join("")}</div></section>`;
     $("#maps-grid").innerHTML = [
-      mapSectionHtml("Prólogo Pré-Histórico", "5 mapas iniciais", PRIMITIVE_REGIONS, 0),
+      prologueMapHtml(),
       mapSectionHtml("Jornada Pirata", "10 mapas principais", MAIN_REGIONS, PRIMITIVE_REGIONS.length)
     ].join("");
   }
@@ -3901,6 +3964,7 @@
 
   function navigate(screen) {
     screen = normalizeScreen(screen);
+    if (screen !== "maps") activePrologueMapIndex = null;
     currentScreen = screen;
     setActiveScreen(screen);
     renderScreen(screen);
@@ -3919,12 +3983,24 @@
     renderMissions();
   }
 
+  function openPrologueMapInfo(index) {
+    if (index < 0 || index >= PRIMITIVE_REGIONS.length) return;
+    activePrologueMapIndex = index;
+    renderMaps();
+  }
+
+  function closePrologueMapInfo() {
+    activePrologueMapIndex = null;
+    renderMaps();
+  }
+
   function handleMapSelection(target) {
     if (!target.dataset.selectMap) return;
     const index = Number(target.dataset.selectMap);
     if (!(index < state.unlockedRegions)) return;
     const issues = endgameRequirementIssues(index);
     state.regionIndex = index;
+    activePrologueMapIndex = null;
     syncCaptainEquipmentState(state);
     clearCurrentEnemy();
     toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa região.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
@@ -3933,8 +4009,21 @@
   }
 
   function handleGlobalButtonClick(event) {
+    const prologueCloseTarget = event.target.closest("[data-close-prologue-map]");
+    if (prologueCloseTarget && !event.target.closest(".prologue-map-modal-card")) {
+      closePrologueMapInfo();
+      return;
+    }
     const target = event.target.closest("button");
     if (!target) return;
+    if (target.dataset.closePrologueMap !== undefined) {
+      closePrologueMapInfo();
+      return;
+    }
+    if (target.dataset.prologueMap !== undefined) {
+      openPrologueMapInfo(Number(target.dataset.prologueMap));
+      return;
+    }
     if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);
     if (target.dataset.smartUpgrade) executeSmartUpgrade(target.dataset.smartUpgrade, target.dataset.smartUpgradeId);
     if (target.dataset.upgrade) upgrade(target.dataset.upgrade);

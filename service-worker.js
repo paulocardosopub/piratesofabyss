@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v40-captain-points";
+const CACHE = "pirates-abyss-v41-prologue-map";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -167,10 +167,11 @@ const CAPTAIN_ASSET_FILES = [
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=35",
-  "game.js?v=52",
+  "styles.css?v=36",
+  "game.js?v=53",
   "icon.svg",
   "manifest.webmanifest",
+  "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif",
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),
   ...SHIP_ASSET_FILES.map(file => `assets/ships/${file}`),
   ...ISLAND_ASSET_FILES.map(file => `assets/backgrounds/islands/${file}`),

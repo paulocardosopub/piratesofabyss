@@ -1211,6 +1211,31 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .map-section-heading h2 { margin: 0; font: 700 21px Georgia, serif; }
 .map-section-heading span { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .map-section-list { display: grid; gap: 8px; }
+.prologue-map-board { position: relative; overflow: hidden; border: 1px solid rgba(110,239,226,.2); border-radius: 12px; background: radial-gradient(circle at 50% 30%, rgba(53,212,207,.12), rgba(7,27,40,.96) 68%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.035); }
+.prologue-map-image { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: rgba(2,12,18,.62); }
+.prologue-map-points { position: absolute; inset: 0; pointer-events: none; }
+.prologue-map-marker { position: absolute; left: var(--point-x); top: var(--point-y); z-index: 2; width: clamp(30px, 4.4vw, 42px); height: clamp(30px, 4.4vw, 42px); display: grid; place-items: center; padding: 0; border: 2px solid rgba(255,232,168,.85); border-radius: 50%; color: #061d25; background: radial-gradient(circle at 35% 28%, #fff4b8, var(--gold) 58%, #a96f19); box-shadow: 0 0 0 4px rgba(247,189,74,.13), 0 8px 18px rgba(0,0,0,.36); font-size: 13px; font-weight: 950; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease; }
+.prologue-map-marker:hover:not(:disabled) { transform: translate(-50%, -50%) scale(1.08); box-shadow: 0 0 0 5px rgba(110,239,226,.16), 0 10px 22px rgba(0,0,0,.42); }
+.prologue-map-marker.available, .prologue-map-marker.current { animation: prologue-marker-pulse 1.9s ease-in-out infinite; }
+.prologue-map-marker.current { border-color: rgba(110,239,226,.95); background: radial-gradient(circle at 35% 28%, #dbfffb, var(--cyan-2) 58%, #137f84); }
+.prologue-map-marker.completed { border-color: rgba(120,237,177,.95); background: radial-gradient(circle at 35% 28%, #e2ffed, #63d99d 58%, #1c7e51); }
+.prologue-map-marker.locked { color: #d8cbbf; border-color: rgba(184,198,195,.32); background: linear-gradient(145deg, rgba(45,61,65,.92), rgba(15,27,32,.96)); box-shadow: 0 0 0 3px rgba(255,255,255,.055), 0 8px 18px rgba(0,0,0,.34); opacity: .72; }
+.prologue-map-marker small { position: absolute; right: -5px; bottom: -4px; width: 16px; height: 16px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.42); border-radius: 50%; color: #edf7f4; background: rgba(4,18,25,.92); font-size: 8px; line-height: 1; }
+@keyframes prologue-marker-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(247,189,74,.13), 0 8px 18px rgba(0,0,0,.36); }
+  50% { box-shadow: 0 0 0 8px rgba(110,239,226,.13), 0 10px 24px rgba(0,0,0,.42); }
+}
+.prologue-map-modal-layer { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(2,12,19,.68); backdrop-filter: blur(5px); }
+.prologue-map-modal-card { position: relative; width: min(390px, 100%); padding: 18px; border: 1px solid rgba(110,239,226,.25); border-radius: 12px; background: linear-gradient(145deg, rgba(13,42,59,.97), rgba(7,27,40,.99)); box-shadow: 0 24px 60px rgba(0,0,0,.42); }
+.prologue-map-modal-card h3 { margin: 6px 30px 7px 0; font: 700 22px Georgia, serif; line-height: 1.12; }
+.prologue-map-modal-card p { margin: 12px 0; color: #c9d9d7; font-size: 12px; line-height: 1.5; }
+.prologue-map-close { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid rgba(255,255,255,.13); border-radius: 8px; color: #dce9e7; background: rgba(255,255,255,.06); font-size: 17px; cursor: pointer; }
+.prologue-map-close:hover { border-color: rgba(110,239,226,.35); background: rgba(255,255,255,.1); }
+.prologue-map-modal-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 12px 0; }
+.prologue-map-modal-meta span { padding: 8px; border: 1px solid rgba(110,239,226,.14); border-radius: 8px; background: rgba(53,212,207,.055); }
+.prologue-map-modal-meta small { display: block; color: var(--muted); font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.prologue-map-modal-meta strong { display: block; margin-top: 3px; color: #fff0bc; font-size: 13px; }
+.prologue-map-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .map-card { min-height: 0; display: grid; grid-template-columns: minmax(180px, 1.25fr) minmax(150px, .8fr) minmax(190px, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; overflow: visible; border-left: 3px solid var(--map-accent, var(--cyan)); border-radius: 8px; }
 .map-card.locked { filter: none; opacity: .62; }
 .map-card.current { border-color: rgba(110,239,226,.5); border-left-color: var(--cyan-2); box-shadow: inset 0 0 0 1px rgba(110,239,226,.18); }
@@ -1525,6 +1550,14 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .map-section { gap: 7px; }
   .map-section-heading h2 { font-size: 18px; }
   .map-section-heading span { font-size: 8px; }
+  .prologue-map-board { border-radius: 10px; }
+  .prologue-map-marker { width: 29px; height: 29px; font-size: 10px; border-width: 1px; }
+  .prologue-map-marker small { right: -5px; bottom: -5px; width: 14px; height: 14px; font-size: 7px; }
+  .prologue-map-modal-layer { padding: 10px; }
+  .prologue-map-modal-card { padding: 14px; }
+  .prologue-map-modal-card h3 { font-size: 18px; }
+  .prologue-map-modal-card p { font-size: 11px; }
+  .prologue-map-modal-actions .button { flex: 1; min-height: 36px; padding-inline: 8px; }
   .map-card { min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(84px, auto); gap: 4px 8px; padding: 7px 8px; }
   .map-title-line { gap: 4px; }
   .map-number, .map-status { font-size: 7px; }
@@ -1603,6 +1636,9 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .page-heading { align-items: flex-start; }
   .page-heading h1 { font-size: 29px; }
   .page-heading p { max-width: 220px; }
+  .prologue-map-marker { width: 26px; height: 26px; font-size: 9px; }
+  .prologue-map-modal-meta { gap: 5px; }
+  .prologue-map-modal-actions { gap: 6px; }
   .upgrade-row { grid-template-columns: 44px minmax(0, 1fr); }
   .upgrade-row-icon { width: 40px; height: 40px; font-size: 20px; }
   .upgrade-row-stats strong { font-size: 10px; }
