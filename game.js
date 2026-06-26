@@ -117,10 +117,10 @@
   const REGION_ENCOUNTERS = [...PRIMITIVE_ENCOUNTERS, ...MAIN_REGION_ENCOUNTERS];
 
   const SKILL_META = {
-    fire: { name: "Canhão de Fogo", icon: "🔥", unlock: 5, cooldown: 8, factor: 1.8, burnDuration: 4, burnFactor: .22, effect: "1,8× de dano e incêndio por 4s.", materials: ["polvora", "ferro"] },
-    ice: { name: "Canhão de Gelo", icon: "❄", unlock: 10, cooldown: 11, factor: 2.4, slowDuration: 5, effect: "2,4× de dano e ataque inimigo mais lento por 5s.", materials: ["cristal", "tecido"] },
-    ghost: { name: "Canhão Fantasma", icon: "👻", unlock: 20, cooldown: 14, factor: 3.4, effect: "3,4× de dano espectral que ignora toda a armadura.", materials: ["ambar", "cristal"] },
-    chain: { name: "Bolas de Corrente", icon: "⛓", unlock: 30, cooldown: 10, factor: 4.4, attackDelay: 2500, effect: "4,4× de dano e atrasa o próximo ataque em 2,5s.", materials: ["ferro", "perola"] }
+    fire: { name: "Canhão de Fogo", icon: "🔥", unlock: 5, cooldown: 8, factor: 1.8, burnDuration: 4, burnFactor: .22, effect: "2× de dano e incêndio por 4s.", materials: ["polvora", "ferro"] },
+    ice: { name: "Canhão de Gelo", icon: "❄", unlock: 10, cooldown: 11, factor: 2.4, slowDuration: 5, effect: "4× de dano e ataque inimigo mais lento por 5s.", materials: ["cristal", "tecido"] },
+    ghost: { name: "Canhão Fantasma", icon: "👻", unlock: 20, cooldown: 14, factor: 3.4, effect: "6× de dano espectral que ignora toda a armadura.", materials: ["ambar", "cristal"] },
+    chain: { name: "Bolas de Corrente", icon: "⛓", unlock: 30, cooldown: 10, factor: 4.4, attackDelay: 2500, effect: "8,8× de dano e atrasa o próximo ataque em 2,5s.", materials: ["ferro", "perola"] }
   };
 
   const EQUIPMENT_META = {

@@ -114,7 +114,7 @@ const ASSETS = [
   "./",
   "index.html",
   "styles.css?v=19",
-  "game.js?v=29",
+  "game.js?v=38",
   "icon.svg",
   "manifest.webmanifest",
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),
