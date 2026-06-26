@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v24-clean-ui-pets";
+const CACHE = "pirates-abyss-v26-compact-upgrades-pets";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -130,17 +130,30 @@ const ISLAND_ASSET_FILES = [
 const OCEAN_ASSET_FILES = [
   "16_fundo_do_mar_oceano.png"
 ];
+const PET_ASSET_FILES = [
+  "peixe_palhaco.png",
+  "agua_viva.png",
+  "tartaruga_marinha.png",
+  "foca.png",
+  "golfinho.png",
+  "arraia_eletrica.png",
+  "tubarao.png",
+  "baleia_assassina.png",
+  "megalodon.png",
+  "kraken.png"
+];
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=21",
-  "game.js?v=40",
+  "styles.css?v=23",
+  "game.js?v=41",
   "icon.svg",
   "manifest.webmanifest",
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),
   ...SHIP_ASSET_FILES.map(file => `assets/ships/${file}`),
   ...ISLAND_ASSET_FILES.map(file => `assets/backgrounds/islands/${file}`),
-  ...OCEAN_ASSET_FILES.map(file => `assets/backgrounds/ocean/${file}`)
+  ...OCEAN_ASSET_FILES.map(file => `assets/backgrounds/ocean/${file}`),
+  ...PET_ASSET_FILES.map(file => `assets/pets/${file}`)
 ];
 
 self.addEventListener("install", event => {
