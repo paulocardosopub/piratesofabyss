@@ -51,6 +51,44 @@
   ];
   const REGIONS = [...PRIMITIVE_REGIONS, ...MAIN_REGIONS];
 
+  const ISLAND_SPRITE_PATH = "assets/backgrounds/islands/";
+  const ISLAND_ASSET_FILES = [
+    "01_lagoa_dos_primeiros_remadores.png",
+    "02_manguezal_dos_ancestrais.png",
+    "03_ilhas_dos_pterodactilos.png",
+    "04_selva_dos_repteis_marinhos.png",
+    "05_canal_do_tita_jurassico.png",
+    "06_costa_dos_naufragos.png",
+    "07_ilhas_comerciais.png",
+    "08_mar_das_tempestades.png",
+    "09_baia_dos_corsarios.png",
+    "10_oceano_profundo.png",
+    "11_triangulo_maldito.png",
+    "12_mar_imperial.png",
+    "13_arquipelago_vulcanico.png",
+    "14_reino_congelado.png",
+    "15_abismo_do_kraken.png"
+  ];
+  const OCEAN_SPRITE_PATH = "assets/backgrounds/ocean/";
+  const OCEAN_ASSET_FILES = ["16_fundo_do_mar_oceano.png"];
+  const loadSceneSprite = src => {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = src;
+    return image;
+  };
+  const ISLAND_SPRITES = ISLAND_ASSET_FILES.map(file => ({ file, image: loadSceneSprite(`${ISLAND_SPRITE_PATH}${file}`) }));
+  const OCEAN_SPRITE = { file: OCEAN_ASSET_FILES[0], image: loadSceneSprite(`${OCEAN_SPRITE_PATH}${OCEAN_ASSET_FILES[0]}`) };
+
+  function getRegionIslandSprite(index) {
+    return ISLAND_SPRITES[index];
+  }
+
+  function getRegionIslandUrl(index) {
+    const file = ISLAND_ASSET_FILES[index];
+    return file ? `${ISLAND_SPRITE_PATH}${file}` : "";
+  }
+
   const PRIMITIVE_SHIPS = [
     { name: "Bote de Tronco", type: "Primitivo", tier: 0, levelReq: 1, hp: 62, damage: 7, speed: 86, armor: 0, costs: { ouro: 0, madeira: 0 } },
     { name: "Jangada de Cipó", type: "Primitivo", tier: 0, levelReq: 1, hp: 76, damage: 9, speed: 91, armor: 1, costs: { ouro: 45, madeira: 12 } },
@@ -359,7 +397,6 @@
 
   let state = loadState();
   let currentScreen = "home";
-  let activeUpgradeTab = "improvements";
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
   let lastSave = performance.now();
@@ -1155,13 +1192,16 @@
       sea.addColorStop(1, this.mix(region.sea, "#02101c", .52 + day.darkness * .18));
       ctx.fillStyle = sea;
       ctx.fillRect(0, horizon, w, h - horizon);
+      this.drawOceanTexture(ctx, horizon, w, h, day.darkness);
       if (!celestialNight && day.cycle < .58) this.drawSunPath(ctx, sunX, horizon, h);
       this.drawWaves(ctx, horizon, w, h);
       this.drawEnvironmentEvents(ctx, horizon, w, h);
 
-      this.drawIsland(ctx, -w * .035, horizon + 8, w * .31, region.land, 1.18, 0);
-      this.drawIsland(ctx, w * .73, horizon + 3, w * .29, region.land, .94, 1);
-      this.drawIsland(ctx, w * .43, horizon - 3, w * .11, region.land, .48, 2);
+      if (!this.drawRegionIslandSprite(ctx, w, h, horizon, state.regionIndex)) {
+        this.drawIsland(ctx, -w * .035, horizon + 8, w * .31, region.land, 1.18, 0);
+        this.drawIsland(ctx, w * .73, horizon + 3, w * .29, region.land, .94, 1);
+        this.drawIsland(ctx, w * .43, horizon - 3, w * .11, region.land, .48, 2);
+      }
       if (state.regionIndex === 6) this.drawFort(ctx, w * .82, horizon - 22);
 
       if (state.regionIndex === 2) this.drawRain(ctx, w, h);
@@ -1243,6 +1283,52 @@
       const parse = hex => hex.match(/\w\w/g).map(v => parseInt(v, 16));
       const ca = parse(a), cb = parse(b);
       return `rgb(${ca.map((v, i) => Math.round(v + (cb[i] - v) * amount)).join(",")})`;
+    }
+
+    drawOceanTexture(ctx, horizon, w, h, darkness = 0) {
+      const image = OCEAN_SPRITE.image;
+      if (!image?.complete || !image.naturalWidth) return false;
+      const waterHeight = h - horizon;
+      const scale = Math.max(w / image.naturalWidth, waterHeight / image.naturalHeight);
+      const targetWidth = image.naturalWidth * scale;
+      const targetHeight = image.naturalHeight * scale;
+      const driftRange = Math.max(0, (targetWidth - w) * .5);
+      const drawX = (w - targetWidth) * .5 + Math.sin(this.time * .045) * Math.min(42, driftRange);
+      const drawY = horizon + waterHeight - targetHeight;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, horizon, w, waterHeight);
+      ctx.clip();
+      ctx.globalAlpha = clamp(.58 - darkness * .22, .28, .58);
+      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      if (darkness > .05) {
+        ctx.globalAlpha = darkness * .34;
+        ctx.fillStyle = "#031525";
+        ctx.fillRect(0, horizon, w, waterHeight);
+      }
+      ctx.restore();
+      return true;
+    }
+
+    drawRegionIslandSprite(ctx, w, h, horizon, regionIndex) {
+      const sprite = getRegionIslandSprite(regionIndex);
+      const image = sprite?.image;
+      if (!image?.complete || !image.naturalWidth) return false;
+      const maxWidth = w * (w < 620 ? .82 : .66);
+      const maxHeight = h * (w < 620 ? .34 : .38);
+      const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+      const targetWidth = image.naturalWidth * scale;
+      const targetHeight = image.naturalHeight * scale;
+      const drawX = w * .5 - targetWidth * .5;
+      const drawY = horizon + h * .09 - targetHeight;
+      ctx.save();
+      ctx.globalAlpha = .9;
+      ctx.shadowColor = "rgba(0,0,0,.38)";
+      ctx.shadowBlur = 14;
+      ctx.shadowOffsetY = 8;
+      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      ctx.restore();
+      return true;
     }
 
     drawCloud(ctx, x, y, scale, darkness = 0) {
@@ -2368,25 +2454,119 @@
     });
   }
 
+  function formatStatDelta(value) {
+    const sign = value >= 0 ? "+" : "−";
+    return `${sign}${formatNumber(Math.abs(value))}`;
+  }
+
+  function formatSeconds(value) {
+    return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s`;
+  }
+
+  function getStatsPreview(levelOverrides = {}, shipId = state.shipId) {
+    const previousLevels = state.levels;
+    state.levels = { ...state.levels, ...levelOverrides };
+    try {
+      return getStats(shipId);
+    } finally {
+      state.levels = previousLevels;
+    }
+  }
+
+  function getHighestOwnedShipId() {
+    return state.ownedShips.reduce((highest, id) => SHIPS[id] ? Math.max(highest, Number(id)) : highest, 0);
+  }
+
+  function getNextFleetShip() {
+    return SHIPS[getHighestOwnedShipId() + 1] || null;
+  }
+
+  function statRowsHtml(rows) {
+    return `<div class="upgrade-row-stats">${rows.map(row => `<div><span>${row.label}</span><strong>${row.value}</strong>${row.delta ? `<small>${row.delta}</small>` : ""}</div>`).join("")}</div>`;
+  }
+
+  function getImprovementRows(type) {
+    const current = getStats();
+    const next = getStatsPreview({ [type]: state.levels[type] + 1 });
+    const row = (label, key) => ({ label, value: `${formatNumber(current[key])} → ${formatNumber(next[key])}`, delta: formatStatDelta(next[key] - current[key]) });
+    if (type === "ship") return [row("Dano", "damage"), row("Vida", "maxHp"), row("Veloc.", "speed"), row("Defesa", "armor")];
+    if (type === "cannons") return [row("Dano", "damage"), { label: "Crítico", value: `${Math.round(current.crit * 100)}% → ${Math.round(next.crit * 100)}%`, delta: `+${Math.max(0, Math.round((next.crit - current.crit) * 100))}%` }, { label: "DPS", value: `${formatNumber(current.shipDps)} → ${formatNumber(next.shipDps)}`, delta: formatStatDelta(next.shipDps - current.shipDps) }];
+    if (type === "sails") return [row("Veloc.", "speed"), { label: "Evasão", value: `${Math.round(current.evasion * 100)}% → ${Math.round(next.evasion * 100)}%`, delta: `+${Math.max(0, Math.round((next.evasion - current.evasion) * 100))}%` }, { label: "DPS", value: `${formatNumber(current.shipDps)} → ${formatNumber(next.shipDps)}`, delta: formatStatDelta(next.shipDps - current.shipDps) }];
+    return [row("Vida", "maxHp"), row("Defesa", "armor"), { label: "Poder", value: `${formatNumber(current.power)} → ${formatNumber(next.power)}`, delta: formatStatDelta(next.power - current.power) }];
+  }
+
+  function upgradeLineHtml(item) {
+    const cost = getUpgradeCost(item.key);
+    const affordable = canAfford(cost);
+    return `<article class="upgrade-row ${affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">NÍVEL ${state.levels[item.key]}</span><h3>${item.name}</h3><p>${item.desc}</p>${statRowsHtml(getImprovementRows(item.key))}<div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div></div><div class="upgrade-row-action"><button class="button primary" data-upgrade="${item.key}" ${affordable ? "" : "disabled"}>Upgrade</button><small>Próximo: nível ${state.levels[item.key] + 1}</small></div></article>`;
+  }
+
+  function fleetLineHtml() {
+    const currentShip = SHIPS[state.shipId];
+    const nextShip = getNextFleetShip();
+    if (!nextShip) {
+      return `<article class="upgrade-row completed"><div class="upgrade-row-icon">⛵</div><div class="upgrade-row-main"><span class="level-label">FROTA COMPLETA</span><h3>Frota: troque de barco!</h3><p>Todos os barcos da jornada já foram construídos.</p>${statRowsHtml([{ label: "Navio atual", value: currentShip.name }, { label: "Tier", value: currentShip.tier }, { label: "Poder", value: formatNumber(getStats().power) }])}</div><div class="upgrade-row-action"><button class="button" disabled>Completo</button></div></article>`;
+    }
+    const issues = getShipRequirements(nextShip);
+    const affordable = canAfford(nextShip.costs);
+    const currentStats = getStats();
+    const nextStats = getStats(nextShip.id);
+    const canBuy = issues.length === 0 && affordable;
+    const buttonText = issues.length ? issues[0] : affordable ? "Trocar para o próximo barco" : "Recursos insuficientes";
+    const rows = [
+      { label: "Novo barco", value: nextShip.name, delta: `Tier ${nextShip.tier}` },
+      { label: "Dano", value: `${formatNumber(currentStats.damage)} → ${formatNumber(nextStats.damage)}`, delta: formatStatDelta(nextStats.damage - currentStats.damage) },
+      { label: "Vida", value: `${formatNumber(currentStats.maxHp)} → ${formatNumber(nextStats.maxHp)}`, delta: formatStatDelta(nextStats.maxHp - currentStats.maxHp) },
+      { label: "Poder", value: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`, delta: formatStatDelta(nextStats.power - currentStats.power) }
+    ];
+    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${state.ownedShips.length}/${SHIPS.length}</span><h3>Frota: troque de barco!</h3><p>Construa os barcos em sequência. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${issues.length ? `Requisito: ${issues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div><div class="upgrade-row-action"><button class="button primary" data-buy-ship="${nextShip.id}" ${canBuy ? "" : "disabled"}>${buttonText}</button><small>Atual: ${currentShip.name}</small></div></article>`;
+  }
+
+  function equipmentLineHtml([key, item]) {
+    const equipped = state.equipment[key];
+    const affordable = canAfford(item.costs);
+    return `<article class="upgrade-row ${equipped ? "completed" : affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">${equipped ? "EQUIPAMENTO ATIVO" : "EQUIPAMENTO"}</span><h3>${item.name}</h3><p>${item.effect}</p>${statRowsHtml([{ label: "Bônus atual", value: equipped ? "Ativo" : "Não comprado" }, { label: "Ao comprar", value: item.effect }])}<div class="cost-list">${equipped ? "<span class=\"cost-chip\">Bônus ativo permanentemente</span>" : resourceCostHtml(item.costs)}</div>${equipped ? "" : `<div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(item.costs)}</div>`}</div><div class="upgrade-row-action"><button class="button ${equipped ? "" : "primary"}" data-craft-equipment="${key}" ${equipped || !affordable ? "disabled" : ""}>${equipped ? "Comprado" : "Comprar"}</button></div></article>`;
+  }
+
+  function skillLineHtml([key, meta]) {
+    const unlocked = isSkillUnlocked(key);
+    const skill = state.skills[key];
+    const current = getSkillValues(key, skill.level);
+    const next = getSkillValues(key, skill.level + 1);
+    const cost = getSkillCost(key);
+    const affordable = unlocked && canAfford(cost);
+    const effectLine = key === "fire" ? `Queimadura: ${formatNumber(current.extraDps)} → ${formatNumber(next.extraDps)} DPS • ${formatSeconds(current.duration)} → ${formatSeconds(next.duration)}` : key === "ice" ? `Lentidão: ${formatSeconds(current.duration)} → ${formatSeconds(next.duration)}` : meta.effect;
+    const rows = unlocked
+      ? [
+          { label: "Dano", value: `${formatNumber(current.damage)} → ${formatNumber(next.damage)}`, delta: formatStatDelta(next.damage - current.damage) },
+          { label: "Cooldown", value: `${formatSeconds(current.cooldown)} → ${formatSeconds(next.cooldown)}`, delta: `−${formatSeconds(current.cooldown - next.cooldown)}` },
+          { label: "DPS skill", value: `${formatNumber(current.dps)} → ${formatNumber(next.dps)}`, delta: formatStatDelta(next.dps - current.dps) }
+        ]
+      : [{ label: "Bloqueada", value: `Libera no nível ${meta.unlock}` }, { label: "Efeito", value: meta.effect }];
+    return `<article class="upgrade-row skill-upgrade ${affordable ? "available" : ""} ${unlocked ? "" : "locked"}"><div class="upgrade-row-icon">${meta.icon}</div><div class="upgrade-row-main"><span class="level-label">${unlocked ? `NÍVEL ${skill.level}` : `LIBERA NO NÍVEL ${meta.unlock}`}</span><h3>${meta.name}</h3><p>${effectLine}</p>${statRowsHtml(rows)}${unlocked ? `<div class="auto-switch compact"><span>Lançamento automático</span><button class="toggle ${skill.auto ? "on" : ""}" data-toggle-skill="${key}" aria-label="Alternar lançamento automático"></button></div><div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div>` : ""}</div><div class="upgrade-row-action"><button class="button primary" data-upgrade-skill="${key}" ${affordable ? "" : "disabled"}>${unlocked ? "Upgrade" : "Bloqueado"}</button>${unlocked ? `<small>Próximo: nível ${skill.level + 1}</small>` : ""}</div></article>`;
+  }
+
+  function renderUpgradeSection(title, rows) {
+    return `<section class="upgrade-feed-section"><h2>${title}</h2><div class="upgrade-feed-list">${rows.join("")}</div></section>`;
+  }
+
   function renderUpgrades() {
-    const ship = SHIPS[state.shipId];
     const stats = getStats();
     $("#naval-power").textContent = formatNumber(stats.power);
-    $("#yard-ship-name").textContent = ship.name;
-    $("#yard-ship-tier").textContent = `Tier ${ship.tier} • Embarcação ${ship.type.toLowerCase()}`;
-    $("#yard-ship-stats").innerHTML = `<div><span>VIDA</span><strong>${formatNumber(stats.maxHp)}</strong></div><div><span>DANO</span><strong>${formatNumber(stats.damage)}</strong></div><div><span>VELOCIDADE</span><strong>${formatNumber(stats.speed)}</strong></div><div><span>DEFESA</span><strong>${formatNumber(stats.armor)}</strong></div>`;
-    renderShipPreview($("#yard-ship-canvas"), ship, true);
-    const cards = [
-      { key: "ship", name: "Convés e Estrutura", icon: "⛵", desc: "Eleva o nível geral do navio e melhora todos os atributos.", bonus: "+6% atributos" },
-      { key: "cannons", name: "Canhões", icon: "☄", desc: "Mais dano, precisão e chance de acerto crítico.", bonus: "+13% dano" },
-      { key: "sails", name: "Velas", icon: "◒", desc: "Acelera ataques, skills e a chegada de novos inimigos.", bonus: "+7,5% velocidade" },
-      { key: "hull", name: "Casco", icon: "⬡", desc: "Aumenta a vida máxima, armadura e resistência do navio.", bonus: "+15% vida" }
-    ];
-    $("#upgrade-grid").innerHTML = cards.map(card => {
-      const cost = getUpgradeCost(card.key);
-      return `<article class="upgrade-card"><div class="upgrade-icon">${card.icon}</div><span class="level-label">NÍVEL ${state.levels[card.key]}</span><h3>${card.name}</h3><p>${card.desc}</p><div class="bonus-line"><span>Próximo nível</span><strong>${card.bonus}</strong></div><div class="cost-list">${resourceCostHtml(cost)}</div><button class="button primary" data-upgrade="${card.key}" ${canAfford(cost) ? "" : "disabled"}>Melhorar para nível ${state.levels[card.key] + 1}</button></article>`;
-    }).join("");
-    renderFleet(); renderEquipment(); renderSkills(); decorateMissingPurchasePanels($("#screen-upgrades"));
+    const improvements = [
+      { key: "ship", name: "Convés e Estrutura", icon: "⛵", desc: "Melhora o nível geral do navio e aumenta todos os atributos principais." },
+      { key: "cannons", name: "Canhões", icon: "☄", desc: "Aumenta dano, crítico e poder de artilharia." },
+      { key: "sails", name: "Velas", icon: "◒", desc: "Acelera ataques, deslocamento, precisão e evasão." },
+      { key: "hull", name: "Casco", icon: "⬡", desc: "Amplia vida, defesa e resistência em combate." }
+    ].map(upgradeLineHtml);
+    $("#upgrade-feed").innerHTML = [
+      renderUpgradeSection("Melhorias", improvements),
+      renderUpgradeSection("Frota", [fleetLineHtml()]),
+      renderUpgradeSection("Equipamentos", Object.entries(EQUIPMENT_META).map(equipmentLineHtml)),
+      renderUpgradeSection("Skills", Object.entries(SKILL_META).map(skillLineHtml))
+    ].join("");
+    $$("[data-next-ship-preview]", $("#upgrade-feed")).forEach(canvas => renderShipPreview(canvas, SHIPS[Number(canvas.dataset.nextShipPreview)], true));
+    decorateMissingPurchasePanels($("#screen-upgrades"));
   }
 
   function getShipRequirements(ship) {
@@ -2403,51 +2583,6 @@
     return issues;
   }
 
-  function renderFleet() {
-    $("#fleet-owned-count").textContent = state.ownedShips.length;
-    $("#fleet-total-count").textContent = SHIPS.length;
-    const nextTarget = SHIPS.find(ship => !state.ownedShips.includes(ship.id));
-    $("#fleet-next-goal").textContent = nextTarget ? `Próxima conquista: ${nextTarget.name} • nível ${nextTarget.levelReq}` : "Toda a frota foi conquistada. O Abismo reconhece seu almirante.";
-    $("#fleet-grid").innerHTML = SHIPS.map(ship => {
-      const owned = state.ownedShips.includes(ship.id);
-      const current = state.shipId === ship.id;
-      const issues = owned ? [] : getShipRequirements(ship);
-      const levelMet = state.pirateLevel >= ship.levelReq;
-      const prologueMet = ship.tier === 0 || state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
-      const prestigeReq = Math.max(0, ship.tier - 1);
-      const prestigeMet = state.prestiges >= prestigeReq;
-      const affordable = canAfford(ship.costs);
-      const available = prologueMet && prestigeMet && levelMet && affordable;
-      const status = current ? "EQUIPADO" : owned ? "COMPRADO" : !prologueMet ? "BLOQUEADO PELO PRÓLOGO" : !prestigeMet ? "BLOQUEADO POR PRESTÍGIO" : available ? "DISPONÍVEL" : "BLOQUEADO";
-      const statusKey = current ? "equipped" : owned ? "purchased" : available ? "available" : "blocked";
-      const button = current ? `<button class="button" disabled>Equipado</button>` : owned ? `<button class="button primary" data-equip-ship="${ship.id}">Equipar navio</button>` : `<button class="button ${available ? "primary" : ""}" data-buy-ship="${ship.id}" ${available ? "" : "disabled"}>${available ? "Comprar e equipar" : !prologueMet ? "Conclua o prólogo" : !prestigeMet ? `Requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}` : levelMet ? "Recursos insuficientes" : `Requer nível ${ship.levelReq}`}</button>`;
-      const issueHtml = issues.length ? `<ul class="ship-issues">${issues.slice(0, 4).map(issue => `<li>${issue}</li>`).join("")}${issues.length > 4 ? `<li>+${issues.length - 4} requisitos</li>` : ""}</ul>` : `<p class="ship-ready">${owned ? "Disponível durante esta jornada." : "Todos os requisitos foram atendidos."}</p>`;
-      const candidatePower = getStats(ship.id).power;
-      const powerDelta = candidatePower - getStats().power;
-      return `<article class="ship-card ${owned ? "owned" : statusKey === "blocked" ? "locked" : ""} ${current ? "current" : ""} ${statusKey}"><div class="ship-tier">TIER ${ship.tier}</div><div class="ship-status ${statusKey}">${status}</div><div class="ship-visual"><canvas data-ship-preview="${ship.id}" aria-label="Miniatura de ${ship.name}"></canvas></div><div class="ship-title-row"><div><h3>${ship.name}</h3><span>${ship.type}</span></div><span class="ship-level-req">NÍVEL ${ship.levelReq}</span></div><div class="ship-mini-stats"><span><small>VIDA</small>❤ ${formatNumber(ship.hp)}</span><span><small>DANO</small>☄ ${formatNumber(ship.damage)}</span><span><small>VELOC.</small>» ${formatNumber(ship.speed)}</span><span><small>DEFESA</small>⬡ ${formatNumber(ship.armor)}</span></div><div class="ship-power-comparison"><span>PODER NAVAL</span><strong>${formatNumber(candidatePower)}</strong><small class="${powerDelta >= 0 ? "positive" : "negative"}">${current ? "Navio atual" : `${powerDelta >= 0 ? "+" : "−"}${formatNumber(Math.abs(powerDelta))} vs. atual`}</small></div><div class="ship-costs"><span class="ship-section-label">CUSTO DE CONSTRUÇÃO</span><div class="cost-list">${resourceCostHtml(ship.costs)}</div></div>${issueHtml}${button}</article>`;
-    }).join("");
-    $$('[data-ship-preview]', $("#fleet-grid")).forEach(canvas => renderShipPreview(canvas, SHIPS[Number(canvas.dataset.shipPreview)]));
-  }
-
-  function renderEquipment() {
-    $("#equipment-grid").innerHTML = Object.entries(EQUIPMENT_META).map(([key, item]) => {
-      const equipped = state.equipment[key];
-      return `<article class="equipment-card ${equipped ? "equipped" : ""}"><div class="equipment-icon">${item.icon}</div><span class="level-label">${equipped ? "EQUIPADO" : "ARTEFATO"}</span><h3>${item.name}</h3><p>${item.effect}</p><div class="cost-list">${equipped ? "<span class=\"cost-chip\">Bônus ativo permanentemente</span>" : resourceCostHtml(item.costs)}</div><button class="button ${equipped ? "" : "primary"}" data-craft-equipment="${key}" ${equipped || !canAfford(item.costs) ? "disabled" : ""}>${equipped ? "Equipado" : "Forjar equipamento"}</button></article>`;
-    }).join("");
-  }
-
-  function renderSkills() {
-    $("#skills-grid").innerHTML = Object.entries(SKILL_META).map(([key, meta]) => {
-      const unlocked = isSkillUnlocked(key);
-      const skill = state.skills[key];
-      const cost = getSkillCost(key);
-      const current = getSkillValues(key, skill.level);
-      const next = getSkillValues(key, skill.level + 1);
-      const effectLine = key === "fire" ? `Queimadura: ${formatNumber(current.extraDps)} → ${formatNumber(next.extraDps)} DPS • ${current.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s → ${next.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s` : key === "ice" ? `Lentidão: ${current.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s → ${next.duration.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s` : meta.effect;
-      return `<article class="skill-card ${unlocked ? "" : "locked"}"><div class="skill-card-icon">${meta.icon}</div><div><span class="level-label">${unlocked ? `NÍVEL ${skill.level}` : `LIBERA NO NÍVEL ${meta.unlock}`}</span><h3>${meta.name}</h3><p>${meta.effect}</p></div><div class="skill-controls">${unlocked ? `<div class="skill-progression"><div><span>DANO</span><strong>${formatNumber(current.damage)} → ${formatNumber(next.damage)}</strong><small>+${formatNumber(next.damage - current.damage)}</small></div><div><span>COOLDOWN</span><strong>${current.cooldown.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s → ${next.cooldown.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s</strong><small>−${(current.cooldown - next.cooldown).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s</small></div><div><span>DPS DA SKILL</span><strong>${formatNumber(current.dps)} → ${formatNumber(next.dps)}</strong><small>+${formatNumber(next.dps - current.dps)} DPS total</small></div></div><div class="skill-effect-line">${effectLine}</div><div class="auto-switch"><span>Lançamento automático</span><button class="toggle ${skill.auto ? "on" : ""}" data-toggle-skill="${key}" aria-label="Alternar lançamento automático"></button></div><div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${canAfford(cost) ? "ready" : "missing"}">${missingResourcesText(cost)}</div><button class="button" data-upgrade-skill="${key}" ${canAfford(cost) ? "" : "disabled"}>Melhorar para nível ${skill.level + 1}</button>` : `<div class="auto-switch"><span>Continue derrotando inimigos para desbloquear.</span></div>`}</div></article>`;
-    }).join("");
-  }
-
   function renderMaps() {
     $("#maps-unlocked").textContent = state.unlockedRegions;
     $("#maps-total").textContent = `de ${REGIONS.length} regiões`;
@@ -2459,7 +2594,9 @@
       const enemyTags = [...new Set(REGION_ENCOUNTERS[index].map(enemy => ENEMY_CATEGORIES[enemy.category].label))].map(label => `<span class="enemy-tag">⚔ ${label}</span>`).join("");
       const endgameIssues = endgameRequirementIssues(index);
       const endgameNotice = ENDGAME_REQUIREMENTS[index] ? `<div class="endgame-warning ${endgameIssues.length ? "danger" : "ready"}"><strong>${ENDGAME_REQUIREMENTS[index].label}</strong><span>${endgameIssues.length ? `Recomendado antes de avançar: ${endgameIssues.slice(0, 3).join(" • ")}${endgameIssues.length > 3 ? " • ..." : ""}` : "Preparação recomendada atingida."}</span></div>` : "";
-      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land}"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
+      const islandUrl = getRegionIslandUrl(index);
+      const oceanUrl = `${OCEAN_SPRITE_PATH}${OCEAN_SPRITE.file}`;
+      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land};--map-island:url('${islandUrl}');--map-ocean:url('${oceanUrl}')"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
     }).join("");
   }
 
@@ -2809,6 +2946,8 @@
   function buyShip(id) {
     const ship = SHIPS[id];
     if (!ship || state.ownedShips.includes(id)) return;
+    const nextShip = getNextFleetShip();
+    if (!nextShip || ship.id !== nextShip.id) return toast("A frota evolui em sequência: compre o próximo barco da lista.", "danger-toast");
     if (ship.tier >= 1 && !state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) return toast("Conclua o prólogo da Era Primitiva para acessar navios piratas.", "danger-toast");
     const prestigeReq = Math.max(0, ship.tier - 1);
     if (state.prestiges < prestigeReq) return toast(`Tier ${ship.tier} requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}.`, "danger-toast");
@@ -2888,11 +3027,6 @@
     const target = event.target.closest("button");
     if (!target) return;
     if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);
-    if (target.dataset.upgradeTab) {
-      activeUpgradeTab = target.dataset.upgradeTab;
-      $$("[data-upgrade-tab]").forEach(node => node.classList.toggle("active", node.dataset.upgradeTab === activeUpgradeTab));
-      $$(".upgrade-section").forEach(node => node.classList.toggle("active", node.id === `upgrade-${activeUpgradeTab}`));
-    }
     if (target.dataset.upgrade) upgrade(target.dataset.upgrade);
     if (target.dataset.buyShip) buyShip(Number(target.dataset.buyShip));
     if (target.dataset.equipShip) equipShip(Number(target.dataset.equipShip));
