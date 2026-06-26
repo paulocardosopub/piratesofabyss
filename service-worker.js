@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v35-upgrade-missing-gold";
+const CACHE = "pirates-abyss-v36-captain-equipment";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -142,18 +142,41 @@ const PET_ASSET_FILES = [
   "megalodon.png",
   "kraken.png"
 ];
+const CAPTAIN_ASSET_FILES = [
+  "01 - Pirata Recruta Masculino.png",
+  "01 - Pirata Recruta Feminino.png",
+  "02 - Pirata Aventureiro Masculino.png",
+  "02 - Pirata Aventureira Feminina.png",
+  "03 - Pirata Corsário Masculino.png",
+  "03 - Pirata Corsária Feminina.png",
+  "04 - Pirata Saqueador Masculino.png",
+  "04 - Pirata Saqueadora Feminina.png",
+  "05 - Capitão Pirata Masculino.png",
+  "05 - Capitã Pirata Feminina.png",
+  "06 - Almirante Corsário Masculino.png",
+  "06 - Almirante Corsária Feminina.png",
+  "07 - Capitão do Abismo Masculino.png",
+  "07 - Capitã do Abismo Feminina.png",
+  "08 - Senhor dos Mares Sombrios Masculino.png",
+  "08 - Senhora dos Mares Sombrios Feminina.png",
+  "09 - Rei Pirata Abissal Masculino.png",
+  "09 - Rainha Pirata Abissal Feminina.png",
+  "10 - Pirata Lendário Masculino.png",
+  "10 - Pirata Lendário Feminino.png"
+];
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=30",
-  "game.js?v=47",
+  "styles.css?v=33",
+  "game.js?v=49",
   "icon.svg",
   "manifest.webmanifest",
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),
   ...SHIP_ASSET_FILES.map(file => `assets/ships/${file}`),
   ...ISLAND_ASSET_FILES.map(file => `assets/backgrounds/islands/${file}`),
   ...OCEAN_ASSET_FILES.map(file => `assets/backgrounds/ocean/${file}`),
-  ...PET_ASSET_FILES.map(file => `assets/pets/${file}`)
+  ...PET_ASSET_FILES.map(file => `assets/pets/${file}`),
+  ...CAPTAIN_ASSET_FILES.map(file => `assets/pirates/${file}`)
 ];
 
 self.addEventListener("install", event => {

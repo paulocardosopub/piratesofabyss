@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=30">
+  <link rel="stylesheet" href="styles.css?v=33">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -59,6 +59,7 @@
           <button data-screen-target="maps" aria-label="Mapas"><span>⌖</span><strong>Mapas</strong></button>
           <button data-screen-target="resources" aria-label="Recursos"><span>◆</span><strong>Recursos</strong></button>
           <button data-screen-target="missions" aria-label="Missões"><span>✦</span><strong>Missões</strong></button>
+          <button data-screen-target="captain" aria-label="Capitão"><span>★</span><strong>Capitão</strong></button>
           <button data-screen-target="pets" aria-label="Pets"><span>🐾</span><strong>Pets</strong></button>
           <button data-screen-target="prestige" aria-label="Prestígio"><span>☠</span><strong>Prestígio</strong></button>
           <button data-screen-target="stats" aria-label="Estatísticas"><span>▥</span><strong>Stats</strong></button>
@@ -93,6 +94,12 @@
             </div>
           </article>
 
+          <article class="card home-captain-card" id="home-captain-card">
+            <div class="home-captain-visual" id="home-captain-icon" aria-hidden="true">★</div>
+            <div class="home-captain-info"><span class="eyebrow">CAPITÃO</span><h2 id="home-captain-name">Capitão aguardando</h2><div id="home-captain-stats">Escolha seu visual</div></div>
+            <button class="button" data-screen-target="captain">Capitão</button>
+          </article>
+
           <article class="card home-pet-card" id="home-pet-card">
             <div class="home-pet-visual" id="home-pet-icon" aria-hidden="true">Pet</div>
             <div class="home-pet-info"><span class="eyebrow">PET EQUIPADO</span><h2 id="home-pet-name">Nenhum pet equipado</h2><div id="home-pet-stats">Automático</div></div>
@@ -112,6 +119,14 @@
           <div class="power-seal"><span>PODER NAVAL</span><strong id="naval-power">0</strong></div>
         </div>
         <div class="upgrade-feed" id="upgrade-feed"></div>
+      </section>
+
+      <section class="screen" id="screen-captain" aria-labelledby="captain-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">COMANDO PERMANENTE</span><h1 id="captain-title">Capitão</h1><p>Um líder permanente para acelerar a jornada e automatizar parte da coleta no mar.</p></div>
+          <div class="prestige-wallet"><span>MOEDAS PIRATA</span><strong id="captain-coins">0</strong></div>
+        </div>
+        <div class="captain-page" id="captain-content"></div>
       </section>
 
       <section class="screen" id="screen-pets" aria-labelledby="pets-title">
@@ -139,8 +154,8 @@
           <div class="prestige-summary-grid" id="prestige-summary"></div>
           <article class="card prestige-reward-card"><div><span class="eyebrow">RESETAR AGORA</span><h2>Você receberá</h2><strong class="prestige-reward" id="prestige-reward">0 Moedas Pirata</strong><p>Quanto mais longe e mais forte chegar, maior será a recompensa.</p></div><button class="button prestige-button" id="prestige-button">Realizar Prestígio</button></article>
           <div class="prestige-columns">
-            <article class="card"><span class="eyebrow">SERÁ MANTIDO</span><h2>Progresso permanente</h2><ul class="prestige-list keep"><li>Prestígios acumulados</li><li>Moedas Pirata</li><li>Pets comprados, níveis e pet equipado</li><li>Histórico e bônus derivados do Prestígio</li></ul></article>
-            <article class="card"><span class="eyebrow">SERÁ RESETADO</span><h2>Jornada atual</h2><ul class="prestige-list reset"><li>Ouro e todos os recursos</li><li>Mapas, inimigos e bosses</li><li>Navios, equipamentos e upgrades</li><li>Nível, XP, skills, comércio e recompensas offline</li></ul></article>
+            <article class="card"><span class="eyebrow">SERÁ MANTIDO</span><h2>Progresso permanente</h2><ul class="prestige-list keep"><li>Prestígios acumulados</li><li>Moedas Pirata</li><li>Capitão, nível, visual e bônus</li><li>Pets comprados, níveis e pet equipado</li><li>Histórico e bônus derivados do Prestígio</li></ul></article>
+            <article class="card"><span class="eyebrow">SERÁ RESETADO</span><h2>Jornada atual</h2><ul class="prestige-list reset"><li>Ouro e todos os recursos</li><li>Mapas, inimigos e bosses</li><li>Navios, Equipamentos do Capitão e upgrades</li><li>Nível, XP, skills, comércio e recompensas offline</li></ul></article>
           </div>
           <article class="card prestige-bonuses"><span class="eyebrow">BÔNUS PERMANENTES</span><h2>Força de todos os ciclos</h2><div id="prestige-bonuses"></div></article>
           <article class="card prestige-history-card"><span class="eyebrow">DIÁRIO DOS CICLOS</span><h2>Histórico de Prestígios</h2><div id="prestige-history"></div></article>
@@ -244,13 +259,22 @@
     <div class="modal prestige-confirm-modal">
       <div class="modal-icon">☠</div><span class="eyebrow" id="prestige-confirm-step">CONFIRMAÇÃO 1 DE 2</span>
       <h2 id="prestige-modal-title">Reiniciar esta jornada?</h2>
-      <p id="prestige-modal-message">Você manterá Prestígios, Moedas Pirata, pets e upgrades de pets. Todo o restante será reiniciado.</p>
+      <p id="prestige-modal-message">Você manterá Prestígios, Moedas Pirata, Capitão, pets e upgrades permanentes. Todo o restante será reiniciado.</p>
       <div class="prestige-modal-reward" id="prestige-modal-reward"></div>
-      <div class="prestige-modal-lists"><div><strong>MANTÉM</strong><span>Prestígios • Moedas Pirata • Pets • Upgrades dos pets</span></div><div><strong>RESETA</strong><span>Ouro • Recursos • Mapas • Navios • Upgrades • Skills • Missões</span></div></div>
+      <div class="prestige-modal-lists"><div><strong>MANTÉM</strong><span>Prestígios • Moedas Pirata • Capitão • Pets • Upgrades permanentes</span></div><div><strong>RESETA</strong><span>Ouro • Recursos • Mapas • Navios • Equipamentos do Capitão • Upgrades • Skills • Missões</span></div></div>
       <div class="modal-actions"><button class="button" id="prestige-cancel">Cancelar</button><button class="button prestige-button" id="prestige-confirm">Continuar</button></div>
     </div>
   </div>
 
-  <script src="game.js?v=47"></script>
+  <div class="modal-backdrop hidden" id="captain-mutiny-modal" role="dialog" aria-modal="true" aria-labelledby="captain-mutiny-title">
+    <div class="modal captain-mutiny-modal">
+      <div class="modal-icon">★</div><span class="eyebrow">CONFIRMAR MOTIM</span>
+      <h2 id="captain-mutiny-title">Iniciar um Motim?</h2>
+      <p>Essa ação não pode ser desfeita. O Capitão será resetado para você escolher outro sexo, e as Moedas Pirata gastas não serão reembolsadas.</p>
+      <div class="modal-actions"><button class="button" id="captain-mutiny-cancel">Cancelar</button><button class="button danger" id="captain-mutiny-confirm">Iniciar Motim</button></div>
+    </div>
+  </div>
+
+  <script src="game.js?v=49"></script>
 </body>
 </html>
