@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v36-captain-equipment";
+const CACHE = "pirates-abyss-v37-maps-list";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -167,8 +167,8 @@ const CAPTAIN_ASSET_FILES = [
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=33",
-  "game.js?v=49",
+  "styles.css?v=34",
+  "game.js?v=50",
   "icon.svg",
   "manifest.webmanifest",
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),

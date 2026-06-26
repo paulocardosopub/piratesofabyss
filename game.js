@@ -3303,17 +3303,30 @@
   function renderMaps() {
     $("#maps-unlocked").textContent = state.unlockedRegions;
     $("#maps-total").textContent = `de ${REGIONS.length} regiões`;
-    $("#maps-grid").innerHTML = REGIONS.map((region, index) => {
+    const mapCardHtml = (region, index) => {
       const unlocked = index < state.unlockedRegions;
       const current = state.regionIndex === index;
-      const eraLabel = index < PRIMITIVE_REGIONS.length ? "Prólogo Primitivo" : "Jornada Pirata";
-      const tags = Object.keys(region.drops).map(key => `<span>${RESOURCE_META[key].name} • ${Math.round(region.drops[key] * 100)}%</span>`).join("");
-      const enemyTags = [...new Set(REGION_ENCOUNTERS[index].map(enemy => ENEMY_CATEGORIES[enemy.category].label))].map(label => `<span class="enemy-tag">⚔ ${label}</span>`).join("");
+      const completed = state.bossesDefeated[index];
+      const statusKey = current ? "current" : !unlocked ? "locked" : completed ? "completed" : "available";
+      const statusLabel = current ? "Atual" : !unlocked ? "Bloqueado" : completed ? "Concluído" : "Disponível";
+      const requirement = !unlocked
+        ? "Requisito: conclua a região anterior"
+        : completed
+          ? `Boss: ${region.boss} derrotado`
+          : `Boss: ${region.boss} • ${Math.min(100, state.regionKills[index])}/100 inimigos`;
+      const drops = Object.entries(region.drops).map(([key, chance]) => {
+        const meta = RESOURCE_META[key] || { name: key, icon: "◆", rarityKey: "common" };
+        return `<span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS[meta.rarityKey] || "#bdd0cf"}"><span>${meta.icon}</span>${meta.name} <b>${Math.round(chance * 100)}%</b></span>`;
+      }).join("");
       const endgameIssues = endgameRequirementIssues(index);
       const endgameNotice = ENDGAME_REQUIREMENTS[index] ? `<div class="endgame-warning ${endgameIssues.length ? "danger" : "ready"}"><strong>${ENDGAME_REQUIREMENTS[index].label}</strong><span>${endgameIssues.length ? `Recomendado antes de avançar: ${endgameIssues.slice(0, 3).join(" • ")}${endgameIssues.length > 3 ? " • ..." : ""}` : "Preparação recomendada atingida."}</span></div>` : "";
-      const oceanUrl = `${OCEAN_SPRITE_PATH}${OCEAN_SPRITE.file}`;
-    return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land};--map-ocean:url('${oceanUrl}')"><div class="map-islands">${mapIslandLayersHtml(index)}</div><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
-    }).join("");
+      return `<article class="map-card ${statusKey}" style="--map-accent:${region.sea}"><div class="map-row-main"><div class="map-title-line"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span><span class="map-status ${statusKey}">${statusLabel}</span></div><h3>${region.name}</h3><p class="map-requirement">${requirement}</p></div><div class="map-yields"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div><div class="map-drops">${drops}</div><div class="map-action"><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${unlocked ? current ? "Atual" : "Viajar" : "Bloqueado"}</button></div>${endgameNotice}</article>`;
+    };
+    const mapSectionHtml = (title, subtitle, regions, offset) => `<section class="map-section"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="map-section-list">${regions.map((region, index) => mapCardHtml(region, index + offset)).join("")}</div></section>`;
+    $("#maps-grid").innerHTML = [
+      mapSectionHtml("Prólogo Pré-Histórico", "5 mapas iniciais", PRIMITIVE_REGIONS, 0),
+      mapSectionHtml("Jornada Pirata", "10 mapas principais", MAIN_REGIONS, PRIMITIVE_REGIONS.length)
+    ].join("");
   }
 
   function renderResources() {
