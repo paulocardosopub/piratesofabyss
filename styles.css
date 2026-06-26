@@ -14,6 +14,8 @@
   --green: #59d39d;
   --shadow: 0 18px 50px rgba(0, 0, 0, .28);
   --radius: 18px;
+  --combat-nav-gap: 8px;
+  --bottom-nav-height: 56px;
 }
 
 * { box-sizing: border-box; }
@@ -39,7 +41,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .hidden { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
-.app-shell { min-height: 100vh; padding-bottom: 82px; }
+.app-shell { min-height: 100vh; padding-bottom: 24px; }
 .topbar {
   position: sticky;
   top: 0;
@@ -142,6 +144,10 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 
 .battle-stage {
   position: relative;
+  --hud-gap: 14px;
+  --hud-top: 14px;
+  --region-hud-width: min(330px, 32%);
+  --side-hud-width: min(275px, calc((100% - var(--region-hud-width) - (var(--hud-gap) * 4)) / 2));
   height: clamp(390px, 53vh, 610px);
   min-height: 390px;
   overflow: hidden;
@@ -155,9 +161,10 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .eyebrow { display: block; color: var(--cyan-2); font-size: 10px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
 .region-badge {
   position: absolute;
-  top: 14px;
+  top: var(--hud-top);
   left: 50%;
-  min-width: 190px;
+  width: var(--region-hud-width);
+  min-width: 0;
   padding: 7px 13px;
   text-align: center;
   transform: translateX(-50%);
@@ -169,17 +176,17 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .region-badge strong { display: block; margin: 2px 0 1px; font: 700 15px Georgia, serif; }
 .region-badge > span:last-child { color: #c8dcdb; font-size: 10px; }
 
-.battle-hud { position: absolute; width: min(260px, 24%); padding: 9px 11px; border: 1px solid rgba(212, 239, 237, .16); border-radius: 10px; background: rgba(5, 24, 35, .68); backdrop-filter: blur(8px); }
-.enemy-panel { top: 16px; right: 16px; }
-.player-panel { bottom: 16px; left: 16px; }
-.hud-line { display: flex; justify-content: space-between; color: var(--cyan-2); font-size: 9px; font-weight: 900; letter-spacing: .14em; }
+.battle-hud { position: absolute; top: var(--hud-top); width: var(--side-hud-width); padding: 6px 9px; border: 1px solid rgba(212, 239, 237, .16); border-radius: 10px; background: rgba(5, 24, 35, .66); backdrop-filter: blur(8px); }
+.enemy-panel { right: var(--hud-gap); }
+.player-panel { left: var(--hud-gap); }
+.hud-line { display: flex; justify-content: space-between; color: var(--cyan-2); font-size: 8px; font-weight: 900; letter-spacing: .12em; }
 .enemy-panel .hud-line { color: #ffab86; }
-.battle-hud h2 { margin: 3px 0 5px; font: 700 clamp(13px, 1.35vw, 17px) Georgia, serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.battle-hud h2 { margin: 2px 0 4px; font: 700 clamp(12px, 1.1vw, 14px) Georgia, serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .health-bar { height: 6px; overflow: hidden; border-radius: 99px; background: rgba(0,0,0,.4); box-shadow: inset 0 1px 2px rgba(0,0,0,.45); }
 .health-bar i, .boss-progress i, .xp-bar i { display: block; width: 100%; height: 100%; border-radius: inherit; transition: width .25s ease-out; }
 .enemy-health i { background: linear-gradient(90deg, #d64242, #f27a58); }
 .player-health i { background: linear-gradient(90deg, #26a6a9, #59e2d4); }
-.health-numbers { margin-top: 3px; color: #d2e2e0; font-size: 9px; text-align: right; font-variant-numeric: tabular-nums; }
+.health-numbers { margin-top: 2px; color: #d2e2e0; font-size: 8px; text-align: right; font-variant-numeric: tabular-nums; }
 .combat-state { position: absolute; left: 50%; bottom: 23px; display: flex; align-items: center; gap: 7px; padding: 8px 12px; transform: translateX(-50%); border: 1px solid rgba(255,255,255,.17); border-radius: 99px; background: rgba(4, 21, 31, .72); font-size: 9px; letter-spacing: .12em; backdrop-filter: blur(8px); }
 .state-dot { width: 7px; height: 7px; border-radius: 50%; background: #8aa0a4; box-shadow: 0 0 0 4px rgba(138,160,164,.12); }
 .combat-state.running .state-dot { background: var(--green); box-shadow: 0 0 12px var(--green); animation: pulse 1s infinite; }
@@ -255,20 +262,18 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .battle-log .danger-text { color: #ff997b; }
 
 .bottom-nav {
-  position: fixed;
-  z-index: 40;
-  left: 50%;
-  bottom: 16px;
-  width: min(760px, calc(100% - 26px));
-  height: 56px;
+  position: relative;
+  z-index: 2;
+  width: min(760px, 100%);
+  height: var(--bottom-nav-height);
   display: grid;
   grid-template-columns: repeat(8, 1fr);
+  margin: var(--combat-nav-gap) auto 0;
   padding: 5px;
-  transform: translateX(-50%);
   border: 1px solid rgba(159, 205, 203, .2);
   border-radius: 16px;
   background: rgba(7, 25, 37, .94);
-  box-shadow: 0 12px 40px rgba(0,0,0,.4);
+  box-shadow: 0 10px 32px rgba(0,0,0,.32);
   backdrop-filter: blur(18px);
 }
 .bottom-nav button { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 0 6px; border: 0; border-radius: 11px; color: var(--muted); background: transparent; cursor: pointer; }
@@ -1123,7 +1128,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .map-visual { position: relative; height: 104px; padding: 14px; overflow: hidden; background: linear-gradient(160deg, var(--map-sky, #397e91) 0 45%, rgba(255,255,255,0) 46%), var(--map-ocean, none) center / cover no-repeat, linear-gradient(160deg, var(--map-sky, #397e91) 0 47%, var(--map-sea, #15536d) 48%); }
 .map-visual::after { content: "⛵"; position: absolute; z-index: 3; left: 29%; bottom: 15px; font-size: 28px; filter: drop-shadow(0 5px 3px rgba(0,0,0,.35)); }
 .map-islands { position: absolute; z-index: 1; inset: 0; pointer-events: none; }
-.map-island { position: absolute; z-index: calc(1 + var(--island-order, 0)); left: var(--island-left, 50%); bottom: var(--island-bottom, -8px); width: var(--island-width, 70%); height: var(--island-height, 90px); transform: translateX(-50%); opacity: var(--island-alpha, .78); background: var(--island-image) center bottom / contain no-repeat; filter: saturate(.96) contrast(.97) drop-shadow(0 7px 4px rgba(0,0,0,.25)); }
+.map-island { position: absolute; z-index: calc(1 + var(--island-order, 0)); left: var(--island-left, 50%); bottom: var(--island-bottom, 0); width: var(--island-width, 76%); height: var(--island-height, 100px); transform: translateX(-50%); opacity: 1; background: var(--island-image) center bottom / contain no-repeat; filter: saturate(.98) contrast(1) drop-shadow(0 7px 4px rgba(0,0,0,.25)); }
 .map-number { position: relative; z-index: 4; color: rgba(255,255,255,.72); font-size: 10px; font-weight: 900; letter-spacing: .13em; }
 .map-lock { position: absolute; z-index: 5; inset: 0; display: grid; place-items: center; background: rgba(3,14,22,.55); font-size: 28px; }
 .map-body { padding: 15px 17px 17px; }
@@ -1366,6 +1371,8 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
     --mobile-combat-top: 64px;
     --mobile-combat-height: clamp(150px, 24vh, 210px);
     --mobile-nav-height: 50px;
+    --combat-nav-gap: 7px;
+    --bottom-nav-height: var(--mobile-nav-height);
   }
   .app-shell { padding-bottom: 30px; }
   .topbar { height: 58px; }
@@ -1376,20 +1383,19 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .pirate-level span { display: none; }
   .pirate-level strong { width: 32px; height: 32px; }
   .main-content { padding: 8px 10px 30px; }
-  .persistent-combat { top: var(--mobile-combat-top); margin: 0 -2px calc(var(--mobile-nav-height) + 18px); }
+  .persistent-combat { top: var(--mobile-combat-top); margin: 0 -2px 13px; }
   .persistent-combat .battle-stage { height: var(--mobile-combat-height); min-height: 0; max-height: none; }
   .battle-stage { height: 58vh; min-height: 430px; max-height: 580px; border-radius: 16px; }
-  .region-badge { top: 6px; min-width: 136px; max-width: 48%; padding: 4px 7px; border-radius: 8px; }
+  .battle-stage { --hud-gap: 6px; --hud-top: 6px; --region-hud-width: min(122px, 34%); --side-hud-width: calc((100% - var(--region-hud-width) - (var(--hud-gap) * 4)) / 2); }
+  .region-badge { padding: 4px 7px; border-radius: 8px; }
   .region-badge .eyebrow { font-size: 7px; letter-spacing: .1em; }
   .region-badge strong { margin: 1px 0; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
   .region-badge > span:last-child { display: block; overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
-  .battle-hud { width: min(172px, 45%); padding: 5px 6px; border-radius: 8px; }
-  .enemy-panel { top: 44px; right: 7px; }
-  .player-panel { bottom: 42px; left: 7px; }
+  .battle-hud { padding: 5px 6px; border-radius: 8px; }
   .hud-line { font-size: 7px; letter-spacing: .08em; }
   .battle-hud h2 { margin: 1px 0 3px; font-size: 10px; }
   .health-bar { height: 4px; }
-  .health-numbers { margin-top: 2px; font-size: 7px; }
+  .health-numbers { display: none; }
   .combat-state { bottom: 7px; left: 7px; max-width: 132px; padding: 6px 8px; transform: none; font-size: 7px; letter-spacing: .07em; }
   .state-dot { width: 5px; height: 5px; }
   .skill-dock { right: 7px; bottom: 6px; gap: 3px; }
@@ -1407,7 +1413,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .control-row .button { min-width: 42%; }
   .quick-controls-card .button { min-height: 46px; }
   .battle-log { height: 104px; max-height: 104px; }
-  .bottom-nav { top: calc(var(--mobile-combat-top) + var(--mobile-combat-height) + 7px); bottom: auto; width: calc(100% - 14px); height: var(--mobile-nav-height); border-radius: 13px; }
+  .bottom-nav { width: 100%; height: var(--bottom-nav-height); border-radius: 13px; }
   .bottom-nav button { flex-direction: column; gap: 0; padding: 2px; }
   .bottom-nav button > span { font-size: 17px; }
   .bottom-nav button strong { display: none; }
@@ -1460,11 +1466,9 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .top-resource-amount { font-size: 10px; }
   .resource-symbol { width: auto; font-size: 14px; }
   .persistent-combat .battle-stage { height: var(--mobile-combat-height); min-height: 0; }
-  .battle-hud { width: min(150px, 44%); padding: 4px 5px; }
-  .enemy-panel { top: 38px; }
-  .player-panel { bottom: 38px; }
+  .battle-stage { --hud-gap: 5px; --hud-top: 5px; --region-hud-width: min(112px, 35%); }
+  .battle-hud { padding: 4px 5px; }
   .battle-hud h2 { font-size: 9px; }
-  .health-numbers { display: none; }
   .combat-state { max-width: 118px; padding: 5px 7px; }
   .skill-orb { width: 28px; height: 28px; }
   .page-heading { align-items: flex-start; }
@@ -1497,6 +1501,8 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
     --mobile-combat-top: 54px;
     --mobile-combat-height: clamp(112px, 34vh, 166px);
     --mobile-nav-height: 46px;
+    --combat-nav-gap: 6px;
+    --bottom-nav-height: var(--mobile-nav-height);
   }
   .app-shell { padding-bottom: 24px; }
   .topbar { height: 50px; padding-inline: 10px; }
@@ -1507,22 +1513,21 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   .top-resources > div { min-width: 88px; padding: 5px 7px; }
   .pirate-level { padding: 4px 6px; border: 0; }
   .main-content { padding-top: 6px; }
-  .persistent-combat { top: var(--mobile-combat-top); margin: 0 -2px calc(var(--mobile-nav-height) + 14px); }
+  .persistent-combat { top: var(--mobile-combat-top); margin: 0 -2px 10px; }
   .persistent-combat .battle-stage { height: var(--mobile-combat-height); min-height: 0; max-height: none; border-radius: 14px; }
-  .region-badge { top: 5px; min-width: 128px; max-width: 34%; padding: 3px 7px; }
+  .battle-stage { --hud-gap: 7px; --hud-top: 5px; --region-hud-width: min(150px, 30%); --side-hud-width: calc((100% - var(--region-hud-width) - (var(--hud-gap) * 4)) / 2); }
+  .region-badge { padding: 3px 7px; }
   .region-badge .eyebrow { font-size: 7px; }
-  .region-badge strong { font-size: 10px; }
-  .region-badge > span:last-child { font-size: 7px; }
-  .battle-hud { width: min(168px, 26%); padding: 4px 6px; }
-  .enemy-panel { top: 7px; right: 8px; }
-  .player-panel { bottom: 7px; left: 8px; }
+  .region-badge strong { margin: 1px 0 0; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .region-badge > span:last-child { display: none; }
+  .battle-hud { padding: 4px 6px; }
   .battle-hud h2 { font-size: 9px; }
   .health-numbers { display: none; }
   .combat-state { bottom: 7px; left: 50%; max-width: none; padding: 5px 8px; transform: translateX(-50%); font-size: 7px; }
   .skill-dock { right: 8px; bottom: 6px; }
   .skill-orb { width: 28px; height: 28px; }
   .skill-orb .icon { font-size: 13px; }
-  .bottom-nav { top: calc(var(--mobile-combat-top) + var(--mobile-combat-height) + 6px); bottom: auto; height: var(--mobile-nav-height); width: min(720px, calc(100% - 14px)); }
+  .bottom-nav { height: var(--bottom-nav-height); width: min(720px, 100%); }
   .bottom-nav button { flex-direction: column; }
   .bottom-nav button strong { display: none; }
 }

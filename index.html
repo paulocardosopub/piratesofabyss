@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=24">
+  <link rel="stylesheet" href="styles.css?v=28">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -56,6 +56,17 @@
 
           <div class="skill-dock" id="skill-dock" aria-label="Skills automáticas"></div>
         </div>
+
+        <nav class="bottom-nav" aria-label="Navegação principal">
+          <button class="active" data-screen-target="home" aria-label="Combate"><span>⚔</span><strong>Combate</strong></button>
+          <button data-screen-target="upgrades" aria-label="Navio"><span>⚒</span><strong>Navio</strong></button>
+          <button data-screen-target="maps" aria-label="Mapas"><span>⌖</span><strong>Mapas</strong></button>
+          <button data-screen-target="resources" aria-label="Recursos"><span>◆</span><strong>Recursos</strong></button>
+          <button data-screen-target="missions" aria-label="Missões"><span>✦</span><strong>Missões</strong></button>
+          <button data-screen-target="pets" aria-label="Pets"><span>🐾</span><strong>Pets</strong></button>
+          <button data-screen-target="prestige" aria-label="Prestígio"><span>☠</span><strong>Prestígio</strong></button>
+          <button data-screen-target="stats" aria-label="Estatísticas"><span>▥</span><strong>Stats</strong></button>
+        </nav>
       </section>
 
       <section class="screen active" id="screen-home" aria-labelledby="home-title">
@@ -199,16 +210,6 @@
       </section>
     </main>
 
-    <nav class="bottom-nav" aria-label="Navegação principal">
-      <button class="active" data-screen-target="home" aria-label="Combate"><span>⚔</span><strong>Combate</strong></button>
-      <button data-screen-target="upgrades" aria-label="Navio"><span>⚒</span><strong>Navio</strong></button>
-      <button data-screen-target="maps" aria-label="Mapas"><span>⌖</span><strong>Mapas</strong></button>
-      <button data-screen-target="resources" aria-label="Recursos"><span>◆</span><strong>Recursos</strong></button>
-      <button data-screen-target="missions" aria-label="Missões"><span>✦</span><strong>Missões</strong></button>
-      <button data-screen-target="pets" aria-label="Pets"><span>🐾</span><strong>Pets</strong></button>
-      <button data-screen-target="prestige" aria-label="Prestígio"><span>☠</span><strong>Prestígio</strong></button>
-      <button data-screen-target="stats" aria-label="Estatísticas"><span>▥</span><strong>Stats</strong></button>
-    </nav>
   </div>
 
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
@@ -254,6 +255,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=42"></script>
+  <script src="game.js?v=44"></script>
 </body>
 </html>

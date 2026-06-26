@@ -112,20 +112,28 @@
 
   function getIslandComposition(index) {
     const layout = ISLAND_COMPOSITIONS[index % ISLAND_COMPOSITIONS.length] || ISLAND_COMPOSITIONS[0];
-    return layout.map(layer => ({
-      ...layer,
-      spriteIndex: clamp(index + (layer.spriteOffset || 0), 0, ISLAND_ASSET_FILES.length - 1)
-    }));
+    const primary = layout.reduce((best, layer) => {
+      const score = (layer.width || 0) * (layer.height || .26) * (layer.spriteOffset ? .85 : 1);
+      const bestScore = (best.width || 0) * (best.height || .26) * (best.spriteOffset ? .85 : 1);
+      return score > bestScore ? layer : best;
+    }, layout[0]);
+    return [{
+      ...primary,
+      x: clamp(primary.x, .24, .76),
+      width: clamp(primary.width * 1.18, .36, .48),
+      height: clamp((primary.height || .26) * 1.08, .27, .34),
+      sea: clamp((primary.sea || .052) + .012, .055, .078),
+      alpha: 1,
+      spriteIndex: clamp(index + (primary.spriteOffset || 0), 0, ISLAND_ASSET_FILES.length - 1)
+    }];
   }
 
   function mapIslandLayersHtml(index) {
     return getIslandComposition(index).map((layer, order) => {
       const islandUrl = getRegionIslandUrl(layer.spriteIndex);
-      const width = `${Math.round(layer.width * 106)}%`;
-      const height = `${Math.round((layer.height || .26) * 320)}px`;
-      const bottom = `${Math.round((layer.sea || .04) * 100 - 13)}px`;
-      const alpha = Math.min(.82, layer.alpha + .05).toFixed(2);
-      return `<span class="map-island" style="--island-image:url('${islandUrl}');--island-left:${Math.round(layer.x * 100)}%;--island-width:${width};--island-height:${height};--island-bottom:${bottom};--island-alpha:${alpha};--island-order:${order};"></span>`;
+      const width = `${Math.round(layer.width * 112)}%`;
+      const height = `${Math.round((layer.height || .28) * 330)}px`;
+      return `<span class="map-island" style="--island-image:url('${islandUrl}');--island-left:${Math.round(layer.x * 100)}%;--island-width:${width};--island-height:${height};--island-bottom:0px;--island-order:${order};"></span>`;
     }).join("");
   }
 
@@ -1308,9 +1316,7 @@
       this.drawEnvironmentEvents(ctx, horizon, w, h);
 
       if (!this.drawRegionIslandSprite(ctx, w, h, horizon, state.regionIndex)) {
-        this.drawIsland(ctx, -w * .035, horizon + 8, w * .31, region.land, 1.18, 0);
-        this.drawIsland(ctx, w * .73, horizon + 3, w * .29, region.land, .94, 1);
-        this.drawIsland(ctx, w * .43, horizon - 3, w * .11, region.land, .48, 2);
+        this.drawIsland(ctx, w * .28, horizon + 10, w * .42, region.land, 1.08, 0);
       }
       if (state.regionIndex === 6) this.drawFort(ctx, w * .82, horizon - 22);
 
@@ -1320,14 +1326,19 @@
 
       const bobPlayer = Math.sin(this.time * 1.55) * 3;
       const bobEnemy = Math.sin(this.time * 1.35 + 1.4) * 3;
-      this.drawPlayerShip(ctx, w * .29, h * .66 + bobPlayer, Math.min(1.15, w / 950), SHIPS[state.shipId]);
+      const compactStage = w < 620 || h < 240;
+      const playerY = h * (compactStage ? .73 : .69);
+      const enemyY = h * (compactStage ? .64 : .60);
+      const playerScale = Math.min(1.15, w / 950, h / 300);
+      const enemyScale = Math.min(1.02, w / 1050, h / 300);
+      this.drawPlayerShip(ctx, w * .29, playerY + bobPlayer, playerScale, SHIPS[state.shipId]);
       const pet = getEquippedPet();
       if (pet) {
         const attackAdvance = Math.sin(this.petLunge * Math.PI) * w * .12;
-        this.drawPet(ctx, w * .43 + attackAdvance, h * .72 + Math.sin(this.time * 2 + pet.id) * 4, pet, Math.min(1.1, w / 850));
+        this.drawPet(ctx, w * .43 + attackAdvance, h * (compactStage ? .77 : .73) + Math.sin(this.time * 2 + pet.id) * 4, pet, Math.min(1.1, w / 850, h / 290));
       }
       const enemy = state.combat.enemy;
-      if (enemy) this.drawEnemy(ctx, w * .71, h * .52 + bobEnemy, Math.min(1.02, w / 1050), enemy);
+      if (enemy) this.drawEnemy(ctx, w * .71, enemyY + bobEnemy, enemyScale, enemy);
 
       this.projectiles.forEach(item => {
         const t = item.age / item.duration;
@@ -1426,7 +1437,7 @@
         const sprite = getRegionIslandSprite(layer.spriteIndex);
         const image = sprite?.image;
         if (!image?.complete || !image.naturalWidth) return;
-        const mobileScale = w < 620 ? .72 : 1;
+        const mobileScale = w < 620 ? .78 : 1;
         const maxWidth = w * layer.width * mobileScale;
         const maxHeight = h * layer.height;
         const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
@@ -1436,7 +1447,7 @@
         const drawX = w * layer.x - targetWidth * .5 + drift;
         const drawY = horizon + h * layer.sea - targetHeight;
         ctx.save();
-        ctx.globalAlpha = layer.alpha;
+        ctx.globalAlpha = 1;
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
         ctx.filter = "saturate(.96) contrast(.97)";
