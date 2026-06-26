@@ -723,6 +723,22 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (error) { console.warn("Não foi possível salvar.", error); }
   }
 
+  function commitGame(expensive = true) {
+    renderAll(expensive);
+    saveGame();
+  }
+
+  function clearCurrentEnemy() {
+    state.combat.enemy = null;
+    state.combat.spawnTimer = 0;
+  }
+
+  function setActiveShip(id) {
+    state.shipId = id;
+    state.combat.playerHp = getStats().maxHp;
+    clearCurrentEnemy();
+  }
+
   function addCollectedResource(key, amount) {
     if (!RESOURCE_META[key] || amount <= 0) return;
     state.progression.resourcesByKey[key] = (state.progression.resourcesByKey[key] || 0) + amount;
@@ -885,8 +901,7 @@
     toast(`Missão recompensada: ${item.name}`, "gold-toast");
     addLog(`Recompensa coletada: ${item.name} — ${rewardText(item.reward)}.`, "loot");
     checkProgressionUnlocks();
-    renderAll(true);
-    saveGame();
+    commitGame(true);
   }
 
   function normalizeText(value = "") {
@@ -1156,8 +1171,7 @@
       if (event.kind === "kraken") trackAction("kraken");
       addLog(`${reward.name} capturado: +${reward.food} Comida.`, "loot");
       toast(`+${reward.food} Comida • ${reward.name}`, "gold-toast");
-      renderAll(false);
-      saveGame();
+      commitGame(false);
     }
 
     update(dt) {
@@ -2400,8 +2414,7 @@
     if (shouldComplete) context.execute();
     else {
       toast(`Recursos comprados: ${result.bought}.`, "gold-toast");
-      renderAll(true);
-      saveGame();
+      commitGame(true);
     }
   }
 
@@ -2852,8 +2865,7 @@
       addLog(`Mercado: ${quantity} ${RESOURCE_META[key].name} vendidos por ${formatNumber(total)} Ouro.`, "loot");
     }
     closeTradeModal();
-    renderAll(true);
-    saveGame();
+    commitGame(true);
   }
 
   function closeTradeModal() {
@@ -3021,8 +3033,7 @@
     addLog(`Prestígio #${state.prestiges} concluído. A nova jornada começou com ${formatNumber(reward)} Moedas Pirata.`, "loot");
     closePrestigeConfirmation();
     navigate("prestige");
-    renderAll(true);
-    saveGame();
+    commitGame(true);
     toast(`Prestígio concluído! +${formatNumber(reward)} Moedas Pirata.`, "gold-toast");
   }
 
@@ -3041,15 +3052,39 @@
     $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
   }
 
+  const SCREEN_ALIASES = { trade: "resources" };
+  const SCREEN_RENDERERS = {
+    upgrades: renderUpgrades,
+    maps: renderMaps,
+    resources: renderResources,
+    missions: renderMissions,
+    pets: () => {
+      renderPets();
+      decorateMissingPurchasePanels($("#screen-pets"));
+    },
+    prestige: renderPrestige,
+    stats: renderStats
+  };
+
+  function normalizeScreen(screen) {
+    return SCREEN_ALIASES[screen] || screen;
+  }
+
+  function renderScreen(screen = currentScreen) {
+    SCREEN_RENDERERS[screen]?.();
+  }
+
+  function setActiveScreen(screen) {
+    $$(".screen").forEach(node => node.classList.toggle("active", node.id === `screen-${screen}`));
+    $$("[data-screen-target]").forEach(node => node.classList.toggle("active", node.dataset.screenTarget === screen));
+  }
+
   function renderAll(expensive = true) {
-    renderTopbar(); renderHome(); renderCombatHud();
-    if (expensive || currentScreen === "upgrades") renderUpgrades();
-    if (expensive || currentScreen === "maps") renderMaps();
-    if (expensive || currentScreen === "resources") renderResources();
-    if (expensive || currentScreen === "missions") renderMissions();
-    if (expensive || currentScreen === "pets") { renderPets(); decorateMissingPurchasePanels($("#screen-pets")); }
-    if (expensive || currentScreen === "prestige") renderPrestige();
-    if (expensive || currentScreen === "stats") renderStats();
+    renderTopbar();
+    renderHome();
+    renderCombatHud();
+    if (expensive) Object.values(SCREEN_RENDERERS).forEach(render => render());
+    else renderScreen();
   }
 
   function upgrade(type) {
@@ -3064,7 +3099,7 @@
     addLog(`${type === "ship" ? "Navio" : type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} melhorado para o nível ${state.levels[type]}.`, "loot");
     const powerGain = Math.max(0, newStats.power - oldStats.power);
     toast(`Melhoria concluída! Poder Naval: ${formatNumber(oldStats.power)} → ${formatNumber(newStats.power)} (+${formatNumber(powerGain)}).`);
-    renderAll(true); saveGame();
+    commitGame(true);
   }
 
   function buyShip(id) {
@@ -3077,16 +3112,16 @@
     if (state.prestiges < prestigeReq) return toast(`Tier ${ship.tier} requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}.`, "danger-toast");
     if (state.pirateLevel < ship.levelReq) return toast(`Requer nível ${ship.levelReq} para comprar ${ship.name}.`, "danger-toast");
     if (!canAfford(ship.costs)) return toast("Ainda faltam recursos para construir este navio.", "danger-toast");
-    spend(ship.costs); state.ownedShips.push(id); state.shipId = id; state.combat.playerHp = getStats().maxHp; state.combat.enemy = null; state.combat.spawnTimer = 0;
+    spend(ship.costs); state.ownedShips.push(id); setActiveShip(id);
     trackAction("shipSwitch");
-    toast(`${ship.name} foi construído e equipado!`, "gold-toast"); addLog(`${ship.name} agora lidera sua frota.`, "loot"); renderAll(true); saveGame();
+    toast(`${ship.name} foi construído e equipado!`, "gold-toast"); addLog(`${ship.name} agora lidera sua frota.`, "loot"); commitGame(true);
   }
 
   function equipShip(id) {
     if (!state.ownedShips.includes(id)) return;
-    state.shipId = id; state.combat.playerHp = getStats().maxHp; state.combat.enemy = null; state.combat.spawnTimer = 0;
+    setActiveShip(id);
     trackAction("shipSwitch");
-    toast(`${SHIPS[id].name} selecionado.`); renderAll(true); saveGame();
+    toast(`${SHIPS[id].name} selecionado.`); commitGame(true);
   }
 
   function buyPet(id) {
@@ -3098,7 +3133,7 @@
     if (state.pirateCoins < pirateCoinCost) return toast("Moedas Pirata insuficientes para este pet.", "danger-toast");
     if (!canAfford(pet.costs)) return toast("Ainda faltam recursos para adotar este pet.", "danger-toast");
     spend(pet.costs); state.pirateCoins -= pirateCoinCost; state.ownedPets.push(id); state.petLevels[id] = 1; state.equippedPetId = id; state.combat.petAttackTimer = 0; state.lifetime.petsBought += 1;
-    toast(`${pet.name} foi comprado e equipado!`, "gold-toast"); addLog(`${pet.name} agora acompanha seu navio.`, "loot"); renderAll(true); saveGame();
+    toast(`${pet.name} foi comprado e equipado!`, "gold-toast"); addLog(`${pet.name} agora acompanha seu navio.`, "loot"); commitGame(true);
   }
 
   function upgradePet(id) {
@@ -3115,20 +3150,20 @@
     const powerGain = Math.max(0, getStats().power - oldPower);
     toast(`${pet.name} evoluiu para o nível ${pet.level}! Poder Naval +${formatNumber(powerGain)}.`, "gold-toast");
     addLog(`${pet.name} evoluiu para o nível ${pet.level} usando Moedas Pirata.`, "loot");
-    renderAll(true); saveGame();
+    commitGame(true);
   }
 
   function equipPet(id) {
     if (!state.ownedPets.includes(id) || !PETS[id]) return;
     state.equippedPetId = id; state.combat.petAttackTimer = 0; state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
-    toast(`${PETS[id].name} equipado como companheiro.`); renderAll(true); saveGame();
+    toast(`${PETS[id].name} equipado como companheiro.`); commitGame(true);
   }
 
   function craftEquipment(key) {
     const item = EQUIPMENT_META[key];
     if (!item || state.equipment[key] || !canAfford(item.costs)) return;
     spend(item.costs); state.equipment[key] = true; state.combat.playerHp = Math.min(getStats().maxHp, state.combat.playerHp);
-    toast(`${item.name} forjado e equipado!`, "gold-toast"); addLog(`${item.name} agora fortalece o navio.`, "loot"); renderAll(true); saveGame();
+    toast(`${item.name} forjado e equipado!`, "gold-toast"); addLog(`${item.name} agora fortalece o navio.`, "loot"); commitGame(true);
   }
 
   function upgradeSkill(key) {
@@ -3138,32 +3173,50 @@
     spend(cost); state.skills[key].level += 1;
     trackAction("upgrade", { type: "skill" });
     const newPower = getStats().power;
-    toast(`${SKILL_META[key].name} nível ${state.skills[key].level}. Poder Naval +${formatNumber(newPower - oldPower)}.`); renderAll(true); saveGame();
+    toast(`${SKILL_META[key].name} nível ${state.skills[key].level}. Poder Naval +${formatNumber(newPower - oldPower)}.`); commitGame(true);
   }
 
   function toggleSkill(key) {
     if (!isSkillUnlocked(key)) return toast(`Essa skill libera no nível ${SKILL_META[key].unlock}.`);
     state.skills[key].auto = !state.skills[key].auto;
     if (state.skills[key].auto) state.skills[key].remaining = Math.min(state.skills[key].remaining, 1.2);
-    toast(`${SKILL_META[key].name}: automático ${state.skills[key].auto ? "ligado" : "desligado"}.`); renderAll(false); saveGame();
+    toast(`${SKILL_META[key].name}: automático ${state.skills[key].auto ? "ligado" : "desligado"}.`); commitGame(false);
   }
 
   function navigate(screen) {
-    if (screen === "trade") screen = "resources";
+    screen = normalizeScreen(screen);
     currentScreen = screen;
-    $$(".screen").forEach(node => node.classList.toggle("active", node.id === `screen-${screen}`));
-    $$('[data-screen-target]').forEach(node => node.classList.toggle("active", node.dataset.screenTarget === screen));
-    if (screen === "upgrades") renderUpgrades();
-    if (screen === "maps") renderMaps();
-    if (screen === "resources") renderResources();
-    if (screen === "missions") renderMissions();
-    if (screen === "pets") { renderPets(); decorateMissingPurchasePanels($("#screen-pets")); }
-    if (screen === "prestige") renderPrestige();
-    if (screen === "stats") renderStats();
+    setActiveScreen(screen);
+    renderScreen(screen);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  document.addEventListener("click", event => {
+  function handleTradeQuantityButton(target) {
+    if (!target.dataset.tradeQty || !target.dataset.tradeResource) return;
+    tradeQuantities[target.dataset.tradeResource] = target.dataset.tradeQty === "max" ? "max" : Number(target.dataset.tradeQty);
+    renderTrade();
+  }
+
+  function handleMissionFilterButton(target) {
+    if (target.dataset.progressionFilter !== "mission-filters") return;
+    activeMissionFilter = target.dataset.filterValue;
+    renderMissions();
+  }
+
+  function handleMapSelection(target) {
+    if (!target.dataset.selectMap) return;
+    const index = Number(target.dataset.selectMap);
+    if (!(index < state.unlockedRegions)) return;
+    const issues = endgameRequirementIssues(index);
+    state.regionIndex = index;
+    clearCurrentEnemy();
+    toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa região.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
+    if (issues.length) addLog(`Alerta de endgame: recomenda-se evoluir antes de avançar. ${issues.join(" • ")}.`, "danger-text");
+    commitGame(true);
+    navigate("home");
+  }
+
+  function handleGlobalButtonClick(event) {
     const target = event.target.closest("button");
     if (!target) return;
     if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);
@@ -3178,31 +3231,19 @@
     if (target.dataset.buyMissing) openMissingPurchaseConfirmation(target.dataset.buyMissing, target.dataset.buyMissingId, target.dataset.buyMissingThen === "1");
     if (target.dataset.toggleSkill) toggleSkill(target.dataset.toggleSkill);
     if (target.dataset.skillDock) toggleSkill(target.dataset.skillDock);
-    if (target.dataset.tradeQty && target.dataset.tradeResource) {
-      tradeQuantities[target.dataset.tradeResource] = target.dataset.tradeQty === "max" ? "max" : Number(target.dataset.tradeQty);
-      renderTrade();
-    }
+    handleTradeQuantityButton(target);
     if (target.dataset.tradeAction && target.dataset.tradeResource) openTradeConfirmation(target.dataset.tradeResource, target.dataset.tradeAction);
     if (target.dataset.tradeStep && target.dataset.tradeResource) stepTradeQuantity(target.dataset.tradeResource, Number(target.dataset.tradeStep));
-    if (target.dataset.progressionFilter === "mission-filters") { activeMissionFilter = target.dataset.filterValue; renderMissions(); }
+    handleMissionFilterButton(target);
     if (target.dataset.claimMission) claimProgressionReward("mission", target.dataset.claimMission);
-    if (target.dataset.selectMap) {
-      const index = Number(target.dataset.selectMap);
-      if (index < state.unlockedRegions) {
-        const issues = endgameRequirementIssues(index);
-        state.regionIndex = index; state.combat.enemy = null; state.combat.spawnTimer = 0;
-        toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa região.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
-        if (issues.length) addLog(`Alerta de endgame: recomenda-se evoluir antes de avançar. ${issues.join(" • ")}.`, "danger-text");
-        renderAll(true); saveGame(); navigate("home");
-      }
-    }
-  });
+    handleMapSelection(target);
+  }
 
-  document.addEventListener("keydown", event => {
+  function preventInvalidTradeInput(event) {
     if (event.target.matches("[data-trade-input]") && ["e", "E", "+", "-", ".", ","].includes(event.key)) event.preventDefault();
-  });
+  }
 
-  document.addEventListener("input", event => {
+  function handleTradeInput(event) {
     const input = event.target.closest("[data-trade-input]");
     if (!input) return;
     const key = input.dataset.tradeInput;
@@ -3210,19 +3251,20 @@
     input.value = String(value);
     tradeQuantities[key] = value;
     updateTradeCard(key);
-  });
+  }
 
-  document.addEventListener("pointerdown", event => {
+  function startTradeHold(event) {
     const button = event.target.closest("[data-trade-step]");
     if (!button) return;
     stopTradeHold();
     const key = button.dataset.tradeResource;
     const delta = Number(button.dataset.tradeStep);
-    tradeHoldTimeout = setTimeout(() => { tradeHoldInterval = setInterval(() => stepTradeQuantity(key, delta), 85); }, 350);
-  });
-  ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
+    tradeHoldTimeout = setTimeout(() => {
+      tradeHoldInterval = setInterval(() => stepTradeQuantity(key, delta), 85);
+    }, 350);
+  }
 
-  $("#start-button").addEventListener("click", () => {
+  function toggleAutoCombat() {
     state.combat.running = !state.combat.running;
     if (state.combat.running) {
       state.hasStarted = true;
@@ -3230,25 +3272,67 @@
       if (state.combat.playerHp <= 0) finishRepair(true);
       if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay();
     }
+    commitGame(false);
+  }
+
+  function repairShipFromButton() {
+    resetShip();
     renderAll(false);
-    saveGame();
-  });
-  $("#reset-button").addEventListener("click", () => { resetShip(); renderAll(false); });
-  $("#boss-button").addEventListener("click", () => { if (state.regionKills[state.regionIndex] >= 100 && !state.bossesDefeated[state.regionIndex]) { const issues = endgameRequirementIssues(state.regionIndex); if (issues.length) toast("Seu Poder Naval está baixo para esse boss. Recomenda-se evoluir antes de avançar.", "danger-toast"); state.combat.running = true; state.hasStarted = true; trackAction("firstCombat"); state.combat.repairing = false; spawnEnemy(true); renderAll(false); } });
+  }
+
+  function challengeBoss() {
+    if (state.regionKills[state.regionIndex] < 100 || state.bossesDefeated[state.regionIndex]) return;
+    const issues = endgameRequirementIssues(state.regionIndex);
+    if (issues.length) toast("Seu Poder Naval está baixo para esse boss. Recomenda-se evoluir antes de avançar.", "danger-toast");
+    state.combat.running = true;
+    state.hasStarted = true;
+    trackAction("firstCombat");
+    state.combat.repairing = false;
+    spawnEnemy(true);
+    renderAll(false);
+  }
+
+  function wipeProgress() {
+    localStorage.removeItem(SAVE_KEY);
+    state = createDefaultState();
+    $("#confirm-modal").classList.add("hidden");
+    toast("Progresso apagado. Uma nova jornada começou.");
+    commitGame(true);
+  }
+
+  function handleVisibilityChange() {
+    if (document.hidden) {
+      hiddenAt = Date.now();
+      saveGame();
+    } else if (hiddenAt) {
+      const seconds = (Date.now() - hiddenAt) / 1000;
+      hiddenAt = 0;
+      applyOfflineProgress(seconds, seconds >= 30);
+      renderAll(true);
+      lastFrame = performance.now();
+    }
+  }
+
+  document.addEventListener("click", handleGlobalButtonClick);
+  document.addEventListener("keydown", preventInvalidTradeInput);
+  document.addEventListener("input", handleTradeInput);
+  document.addEventListener("pointerdown", startTradeHold);
+  ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
+
+  $("#start-button").addEventListener("click", toggleAutoCombat);
+  $("#reset-button").addEventListener("click", repairShipFromButton);
+  $("#boss-button").addEventListener("click", challengeBoss);
   $("#offline-close").addEventListener("click", () => $("#offline-modal").classList.add("hidden"));
   $("#wipe-button").addEventListener("click", () => $("#confirm-modal").classList.remove("hidden"));
   $("#confirm-cancel").addEventListener("click", () => $("#confirm-modal").classList.add("hidden"));
-  $("#confirm-wipe").addEventListener("click", () => { localStorage.removeItem(SAVE_KEY); state = createDefaultState(); $("#confirm-modal").classList.add("hidden"); toast("Progresso apagado. Uma nova jornada começou."); renderAll(true); saveGame(); });
+  $("#confirm-wipe").addEventListener("click", wipeProgress);
   $("#trade-cancel").addEventListener("click", closeTradeModal);
   $("#trade-confirm").addEventListener("click", executeTrade);
   $("#prestige-button").addEventListener("click", openPrestigeConfirmation);
   $("#prestige-cancel").addEventListener("click", closePrestigeConfirmation);
   $("#prestige-confirm").addEventListener("click", confirmPrestige);
 
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { hiddenAt = Date.now(); saveGame(); }
-    else if (hiddenAt) { const seconds = (Date.now() - hiddenAt) / 1000; hiddenAt = 0; applyOfflineProgress(seconds, seconds >= 30); renderAll(true); lastFrame = performance.now(); }
-  });
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   window.addEventListener("beforeunload", saveGame);
 
   const offlineSeconds = (Date.now() - Number(state.lastSeen || Date.now())) / 1000;
