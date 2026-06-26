@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="styles.css?v=21">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -97,35 +97,47 @@
         </div>
       </section>
 
-      <section class="screen" id="screen-upgrades" aria-labelledby="upgrades-title">
-        <div class="page-heading">
-          <div><span class="eyebrow">ESTALEIRO DO ABISMO</span><h1 id="upgrades-title">Navios e Upgrades</h1><p>Evolua sua embarcação, equipe artefatos e domine águas mais perigosas.</p></div>
-          <div class="power-seal"><span>PODER NAVAL</span><strong id="naval-power">0</strong></div>
-        </div>
-        <div class="section-tabs" role="tablist" aria-label="Seções do estaleiro">
-          <button class="active" data-upgrade-tab="improvements">Melhorias</button>
-          <button data-upgrade-tab="fleet">Frota</button>
-          <button data-upgrade-tab="equipment">Equipamentos</button>
-          <button data-upgrade-tab="skills">Skills</button>
-        </div>
-        <div class="upgrade-section active" id="upgrade-improvements">
-          <div class="current-ship-banner">
-            <div class="mini-ship" aria-hidden="true"><canvas id="yard-ship-canvas" class="mini-ship-canvas"></canvas></div>
-            <div><span class="eyebrow">NAVIO ATUAL</span><h2 id="yard-ship-name">Bote de Tronco</h2><p id="yard-ship-tier">Tier 0 • Embarcação primitiva</p></div>
-            <div class="ship-stat-row" id="yard-ship-stats"></div>
+      <section class="screen talent-screen" id="screen-upgrades" aria-labelledby="upgrades-title">
+        <div class="talent-shell">
+          <header class="talent-header">
+            <button class="talent-back" data-screen-target="home" aria-label="Voltar ao combate">‹</button>
+            <div class="talent-title-block">
+              <span class="eyebrow">ESTALEIRO DO ABISMO</span>
+              <h1 id="upgrades-title">Árvore de Talentos</h1>
+              <p id="talent-header-copy">Evolua talentos, frota, artefatos e companheiros sem perder nenhum progresso já salvo.</p>
+            </div>
+            <div class="talent-ship-crest" aria-hidden="true"><canvas id="talent-ship-canvas"></canvas></div>
+            <div class="talent-header-stats">
+              <div><span>PODER</span><strong id="naval-power">0</strong></div>
+              <div><span>PIRATA</span><strong id="talent-pirate-level">1</strong></div>
+              <div><span>PROGRESSO</span><strong id="talent-total-progress">0/0</strong></div>
+            </div>
+          </header>
+
+          <div class="talent-resource-strip" id="talent-resource-strip" aria-label="Recursos disponíveis para upgrades"></div>
+
+          <div class="talent-toolbar">
+            <div class="talent-tabs" id="talent-tabs" role="tablist" aria-label="Categorias da árvore de talentos"></div>
+            <div class="talent-tools">
+              <button class="talent-filter-button" data-toggle-talent-filter="available" aria-pressed="false">Disponíveis</button>
+              <div class="talent-batch" id="talent-batch-controls" aria-label="Quantidade de melhorias">
+                <button class="active" data-upgrade-batch="1">1x</button>
+                <button data-upgrade-batch="10">10x</button>
+                <button data-upgrade-batch="max">Máx</button>
+              </div>
+            </div>
           </div>
-          <div class="upgrade-grid" id="upgrade-grid"></div>
-        </div>
-        <div class="upgrade-section" id="upgrade-fleet">
-          <div class="fleet-overview">
-            <div><span>NAVIOS COMPRADOS</span><strong><b id="fleet-owned-count">1</b> / <b id="fleet-total-count">21</b></strong></div>
-            <p id="fleet-next-goal">Suba de nível, acumule Ouro e Madeira e expanda sua frota.</p>
-            <span class="fleet-rule">Upgrades, equipamentos, recursos e XP são preservados ao trocar de navio.</span>
+
+          <div class="talent-progress-row">
+            <div id="talent-category-progress"></div>
+            <div id="talent-recommendation"></div>
           </div>
-          <div class="fleet-grid" id="fleet-grid"></div>
+
+          <div class="talent-tree-wrap">
+            <div class="talent-tree" id="talent-tree"></div>
+            <aside class="talent-detail-panel" id="talent-detail-panel" aria-live="polite"></aside>
+          </div>
         </div>
-        <div class="upgrade-section" id="upgrade-equipment"><div class="equipment-grid" id="equipment-grid"></div></div>
-        <div class="upgrade-section" id="upgrade-skills"><div class="skills-grid" id="skills-grid"></div></div>
       </section>
 
       <section class="screen" id="screen-pets" aria-labelledby="pets-title">
@@ -281,6 +293,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=29"></script>
+  <script src="game.js?v=36"></script>
 </body>
 </html>
