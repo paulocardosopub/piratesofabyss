@@ -6,6 +6,9 @@
   const PRESTIGE_REGION_NAME = "Oceano Profundo";
   const PRESTIGE_BOSS_NAME = "Megalodon Ancestral";
   const PET_PIRATE_COIN_COSTS = [10, 18, 30, 45, 65, 90, 120, 155, 200, 260];
+  const PET_MAX_LEVEL = 5;
+  const PET_BASE_STRENGTH_MULTIPLIER = 2;
+  const PET_UPGRADE_POWER_STEP = .32;
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -210,7 +213,6 @@
     return `${now.getFullYear()}-W${String(Math.ceil((day + first.getDay() + 1) / 7)).padStart(2, "0")}`;
   };
   const MISSION_FILTERS = ["Próximas de concluir", "Em andamento", "Concluídas", "Diárias", "Semanais", "História / Principal", "Todas"];
-  const ACHIEVEMENT_FILTERS = ["Próximas de conquistar", "Em andamento", "Concluídas", "Secretas", "Todas"];
   const ENDGAME_REQUIREMENTS = {
     11: { power: 25000, dps: 8000, maxHp: 20000, upgrades: 30, tier: 3, prestiges: 2, label: "Endgame imperial" },
     12: { power: 50000, dps: 18000, maxHp: 45000, upgrades: 50, tier: 4, prestiges: 3, label: "Endgame vulcânico" },
@@ -224,7 +226,6 @@
     14: { hp: 4.2, damage: 3.7, armor: 2.45, evasion: .04, attackSpeed: .68, skillResist: .4, bossHp: 5.4, bossDamage: 4.25, bossArmor: 2.6, special: "maldição abissal" }
   };
   let activeMissionFilter = "Próximas de concluir";
-  let activeAchievementFilter = "Próximas de conquistar";
 
   function rewardText(reward = {}) {
     const parts = Object.entries(reward.resources || {}).filter(([, value]) => value > 0).map(([key, value]) => `${formatNumber(value)} ${RESOURCE_META[key]?.name || key}`);
@@ -296,22 +297,9 @@
     return selected.map((item, index, all) => ({ ...item, reward: balanceReward(item.reward), prevId: all[index - 1]?.type === item.type ? all[index - 1].id : null, nextId: all[index + 1]?.type === item.type ? all[index + 1].id : null }));
   })();
 
-  const achievementDefinitions = (() => missionDefinitions.map((mission, index) => ({
-    id: `a${String(index + 1).padStart(3, "0")}`,
-    name: index === 99 ? "Lenda do Abismo" : index < 10 ? ["Primeiro Mar", "Primeiro Navio", "Primeira Batalha", "Primeiro Afundamento", "Capitão Iniciante", "Primeira Coleta", "Primeira Melhoria", "Primeira Skill", "Primeira Região", "Começo da Lenda"][index] : mission.name.replace(/ I$/, ""),
-    description: index === 99 ? "Complete todas as outras 99 conquistas." : mission.description,
-    category: mission.category === "Principal" ? "Primeiros Passos" : mission.category === "Boss" ? "Bosses" : mission.category,
-    objective: index === 99 ? { kind: "achievementsCompleted", target: 99 } : mission.objective,
-    reward: index === 99 ? { resources: { ouro: 1000000, fragmentos: 25 }, title: "Lenda do Abismo", cosmetic: "Skin lendária exclusiva" } : mission.reward,
-    rarity: index > 88 ? "Lendária" : index > 70 ? "Épica" : index > 35 ? "Rara" : index > 12 ? "Incomum" : "Comum",
-    icon: mission.icon || "★",
-    level: mission.recommendedLevel || 1,
-    secret: mission.category === "Secretas"
-  })))();
-
   function createDefaultState() {
     return {
-      version: 5,
+      version: 6,
       resources: { ouro: 1200, madeira: 90, ferro: 55, tecido: 45, comida: 22, polvora: 28, pedra: 0, cristal: 0, perola: 0, gema: 0, ambar: 0, fragmentos: 0 },
       pirateCoins: 0,
       prestiges: 0,
@@ -328,6 +316,7 @@
       ownedShips: [0],
       ownedPets: [],
       equippedPetId: null,
+      petLevels: {},
       levels: { ship: 1, cannons: 1, sails: 1, hull: 1 },
       equipment: { compass: false, spyglass: false, anchor: false, amulet: false },
       skills: {
@@ -339,7 +328,6 @@
       lifetime: { enemies: 0, bosses: 0, resources: 0, gold: 0, highestDamage: 0, playSeconds: 0, petsBought: 0, petAttacks: 0, petKills: 0, bossesWithPet: 0 },
       progression: makeProgressionDefaults(),
       quests: { completed: {}, claimed: {} },
-      achievements: { completed: {}, claimed: {} },
       titles: [],
       combat: { running: false, repairing: false, repairStarted: 0, playerHp: 140, enemy: null, attackTimer: 0, petAttackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
       logs: [],
@@ -361,7 +349,7 @@
       merged.lifetime = { ...defaults.lifetime, ...(saved.lifetime || {}) };
       merged.progression = mergeProgression(saved.progression, defaults.progression);
       merged.quests = { completed: { ...(saved.quests?.completed || {}) }, claimed: { ...(saved.quests?.claimed || {}) } };
-      merged.achievements = { completed: { ...(saved.achievements?.completed || {}) }, claimed: { ...(saved.achievements?.claimed || {}) } };
+      delete merged.achievements;
       merged.titles = Array.isArray(saved.titles) ? [...new Set(saved.titles)].slice(0, 80) : [];
       merged.combat = { ...defaults.combat, ...(saved.combat || {}), enemy: null, repairing: false, spawnTimer: 0 };
       const previousVersion = Number(saved.version || 1);
@@ -382,12 +370,17 @@
       merged.ownedPets = [...new Set((saved.ownedPets || []).map(Number))].filter(id => Number.isInteger(id) && PETS[id]);
       merged.equippedPetId = saved.equippedPetId === null || saved.equippedPetId === undefined ? null : Number(saved.equippedPetId);
       if (!merged.ownedPets.includes(merged.equippedPetId) || !PETS[merged.equippedPetId]) merged.equippedPetId = null;
+      const savedPetLevels = saved.petLevels || {};
+      merged.petLevels = {};
+      merged.ownedPets.forEach(id => {
+        merged.petLevels[id] = clamp(Math.floor(Number(savedPetLevels[id] || 1)), 1, PET_MAX_LEVEL);
+      });
       merged.pirateCoins = Math.max(0, Math.floor(Number(saved.pirateCoins || 0)));
       merged.prestiges = Math.max(0, Math.floor(Number(saved.prestiges || 0)));
       merged.prestigeHistory = Array.isArray(saved.prestigeHistory) ? saved.prestigeHistory.slice(0, 20) : [];
       merged.journeyStartedAt = Number(saved.journeyStartedAt || Date.now());
       merged.maxRegionReached = clamp(Math.max(Number(saved.maxRegionReached || 0), merged.regionIndex), 0, REGIONS.length - 1);
-      merged.version = 5;
+      merged.version = 6;
       return merged;
     } catch (error) {
       console.warn("Não foi possível carregar o save.", error);
@@ -421,7 +414,50 @@
   function xpNeeded(level = state.pirateLevel) { return Math.round(100 * Math.pow(level, 1.42)); }
   function bossesCount() { return state.bossesDefeated.filter(Boolean).length; }
   function isSkillUnlocked(key) { return state.pirateLevel >= SKILL_META[key].unlock; }
-  function getEquippedPet() { return state.equippedPetId === null ? null : PETS[state.equippedPetId] || null; }
+  function getPetLevel(id) {
+    return clamp(Math.floor(Number(state.petLevels?.[id] || 1)), 1, PET_MAX_LEVEL);
+  }
+  function getPetMultiplier(level = 1) {
+    return PET_BASE_STRENGTH_MULTIPLIER * (1 + (level - 1) * PET_UPGRADE_POWER_STEP);
+  }
+  function getPetUpgradeCost(id, level = getPetLevel(id)) {
+    if (level >= PET_MAX_LEVEL) return null;
+    return Math.round(PET_PIRATE_COIN_COSTS[id] * (1.8 + level * .7) * Math.pow(1.35, level - 1));
+  }
+  function percentText(value) { return `${Math.round(value * 100)}%`; }
+  function getPetWithLevel(pet, level = getPetLevel(pet.id)) {
+    const multiplier = getPetMultiplier(level);
+    const scaled = {
+      ...pet,
+      level,
+      maxLevel: PET_MAX_LEVEL,
+      multiplier,
+      damage: Math.round(pet.damage * multiplier),
+      power: Math.round(pet.power * multiplier)
+    };
+    scaled.dps = scaled.damage / scaled.interval;
+    if (pet.speedBonus) scaled.speedBonus = pet.speedBonus * multiplier;
+    if (pet.hpBonus) scaled.hpBonus = pet.hpBonus * multiplier;
+    if (pet.defenseBonus) scaled.defenseBonus = pet.defenseBonus * multiplier;
+    if (pet.dpsBonus) scaled.dpsBonus = pet.dpsBonus * multiplier;
+    if (pet.bossBonus) scaled.bossBonus = pet.bossBonus * multiplier;
+    if (pet.slowChance) scaled.slowChance = Math.min(.85, pet.slowChance * multiplier);
+    if (scaled.defenseBonus) scaled.bonus = `+${percentText(scaled.defenseBonus)} defesa do navio`;
+    if (scaled.speedBonus) scaled.bonus = `+${percentText(scaled.speedBonus)} velocidade do navio`;
+    if (scaled.hpBonus) scaled.bonus = `+${percentText(scaled.hpBonus)} vida máxima`;
+    if (scaled.dpsBonus) scaled.bonus = `+${percentText(scaled.dpsBonus)} DPS do navio`;
+    if (scaled.bossBonus) scaled.bonus = `+${percentText(scaled.bossBonus)} contra bosses`;
+    if (scaled.slowChance) scaled.bonus = `${percentText(scaled.slowChance)} de chance de lentidão`;
+    return scaled;
+  }
+  function getPetAuraStyle(pet) {
+    const level = pet?.level || 1;
+    return `--pet-color:${pet?.color || "#6eefe2"};--pet-aura-size:${76 + level * 14}px;--pet-aura-glow:${18 + level * 6}px;--pet-aura-alpha:${Math.min(.82, .25 + level * .1)};`;
+  }
+  function petLevelPips(level) {
+    return Array.from({ length: PET_MAX_LEVEL }, (_, index) => `<i class="${index < level ? "on" : ""}"></i>`).join("");
+  }
+  function getEquippedPet() { return state.equippedPetId === null ? null : PETS[state.equippedPetId] ? getPetWithLevel(PETS[state.equippedPetId]) : null; }
   function isPetUnlocked(pet) {
     return state.prestiges >= pet.id + 1 && state.pirateLevel >= pet.levelReq && (!pet.regionReq || state.unlockedRegions >= pet.regionReq) && (pet.bossReq === undefined || state.bossesDefeated[pet.bossReq]);
   }
@@ -625,7 +661,6 @@
       /Boss derrotado/i,
       /Novo mapa/i,
       /Miss/i,
-      /Conquista/i,
       /acompanha/i,
       /Prest/i
     ];
@@ -748,8 +783,7 @@
       multiResourceDrops: p.multiResourceDrops,
       onlyGoldBattles: p.onlyGoldBattles,
       survivorWins: p.survivorWins || 0,
-      missionsCompleted: completedCount(state.quests, missionDefinitions),
-      achievementsCompleted: completedCount(state.achievements, achievementDefinitions)
+      missionsCompleted: completedCount(state.quests, missionDefinitions)
     };
     if (objective.kind === "all") return Math.floor(Math.min(...objective.objectives.map(entry => objectiveProgress(entry) / Math.max(1, objectiveTarget(entry)))) * 100);
     if (objective.kind === "upgrade") return p.upgradesByType[objective.type] || Math.max(0, state.levels[objective.type] - 1);
@@ -787,26 +821,22 @@
   }
 
   function checkProgressionUnlocks() {
-    if (!state?.quests || !state?.achievements) return;
+    if (!state?.quests) return;
     resetPeriodicProgressIfNeeded();
-    [
-      [missionDefinitions, state.quests, "Missão concluída", "quests"],
-      [achievementDefinitions, state.achievements, "Conquista desbloqueada", "achievements"]
-    ].forEach(([definitions, store, label, storeName]) => {
-      definitions.forEach(item => {
-        if (store.completed[item.id] || store.claimed[item.id] || !isProgressionUnlocked(item, definitions, storeName)) return;
-        if (objectiveProgress(item.objective) >= objectiveTarget(item.objective)) {
-          store.completed[item.id] = Date.now();
-          toast(`${label}: ${item.name}`, "gold-toast");
-          addLog(`${label}: ${item.name}. Recompensa disponível: ${rewardText(item.reward)}.`, "loot");
-        }
-      });
+    missionDefinitions.forEach(item => {
+      if (state.quests.completed[item.id] || state.quests.claimed[item.id] || !isProgressionUnlocked(item, missionDefinitions, "quests")) return;
+      if (objectiveProgress(item.objective) >= objectiveTarget(item.objective)) {
+        state.quests.completed[item.id] = Date.now();
+        toast(`Missão concluída: ${item.name}`, "gold-toast");
+        addLog(`Missão concluída: ${item.name}. Recompensa disponível: ${rewardText(item.reward)}.`, "loot");
+      }
     });
   }
 
   function claimProgressionReward(kind, id) {
-    const definitions = kind === "mission" ? missionDefinitions : achievementDefinitions;
-    const store = kind === "mission" ? state.quests : state.achievements;
+    if (kind !== "mission") return;
+    const definitions = missionDefinitions;
+    const store = state.quests;
     const item = definitions.find(entry => entry.id === id);
     if (!item || !store.completed[id] || store.claimed[id]) return;
     Object.entries(item.reward.resources || {}).forEach(([key, amount]) => {
@@ -823,7 +853,7 @@
     if (item.reward.title && !state.titles.includes(item.reward.title)) state.titles.push(item.reward.title);
     store.claimed[id] = Date.now();
     delete store.completed[id];
-    toast(`${kind === "mission" ? "Missão" : "Conquista"} recompensada: ${item.name}`, "gold-toast");
+    toast(`Missão recompensada: ${item.name}`, "gold-toast");
     addLog(`Recompensa coletada: ${item.name} — ${rewardText(item.reward)}.`, "loot");
     checkProgressionUnlocks();
     renderAll(true);
@@ -1480,6 +1510,19 @@
       const size = [0.48, 0.55, 0.68, 0.7, 0.82, 0.9, 1, 1.18, 1.38, 1.55][pet.id] * baseScale;
       const jump = pet.visual === "dolphin" || pet.visual === "seal" ? Math.max(0, Math.sin(this.time * 1.25 + pet.id)) * 15 : 0;
       ctx.save(); ctx.translate(x, y - jump); ctx.scale(size, size);
+      if (pet.level) {
+        const pulse = 1 + Math.sin(this.time * 2.6 + pet.id) * .08;
+        ctx.save();
+        ctx.globalAlpha = Math.min(.62, .18 + pet.level * .08);
+        ctx.strokeStyle = pet.color;
+        ctx.lineWidth = 1.5 + pet.level * .45;
+        ctx.shadowColor = pet.color;
+        ctx.shadowBlur = 10 + pet.level * 5;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, (46 + pet.level * 6) * pulse, (34 + pet.level * 4) * pulse, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
       ctx.globalAlpha = .18; ctx.fillStyle = "#dffcff"; ctx.beginPath(); ctx.ellipse(0, 17 + jump, 44, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
       if (pet.visual === "kraken") {
         ctx.strokeStyle = "#713b91"; ctx.lineCap = "round";
@@ -2213,7 +2256,7 @@
     const blockedLines = info.blocked.filter(item => item.key !== "ouro").map(item => `<small>${RESOURCE_META[item.key].name} deve ser conquistado jogando.</small>`).join("");
     const goldWarning = info.total > 0 && state.resources.ouro < info.total ? `<small class="danger">Ouro insuficiente: precisa de ${formatNumber(info.total)} Ouro, possui ${formatNumber(state.resources.ouro)}. Faltam ${formatNumber(info.total - state.resources.ouro)} Ouro.</small>` : "";
     const afterBuyWarning = info.canBuyMissing && !info.canBuyAndExecute && (cost.ouro || 0) > state.resources.ouro - info.total ? `<small class="danger">Depois da compra ainda faltara Ouro para concluir esta melhoria.</small>` : "";
-    return `<div class="missing-purchase-panel"><strong>Voce nao possui recursos suficientes.</strong><div class="missing-lines">${missingLines}</div><div class="missing-buy-lines">${purchasableLines}</div>${blockedLines}${goldWarning}${afterBuyWarning}<div class="missing-actions"><button class="button primary" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" ${info.canBuyMissing ? "" : "disabled"}>Comprar recursos faltantes${info.total ? ` (${formatNumber(info.total)} Ouro)` : ""}</button><button class="button" data-screen-target="trade">Ir para Comercio</button><button class="button prestige-button" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" data-buy-missing-then="1" ${info.canBuyAndExecute ? "" : "disabled"}>Comprar e melhorar agora</button></div></div>`;
+    return `<div class="missing-purchase-panel"><strong>Voce nao possui recursos suficientes.</strong><div class="missing-lines">${missingLines}</div><div class="missing-buy-lines">${purchasableLines}</div>${blockedLines}${goldWarning}${afterBuyWarning}<div class="missing-actions"><button class="button primary" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" ${info.canBuyMissing ? "" : "disabled"}>Comprar recursos faltantes${info.total ? ` (${formatNumber(info.total)} Ouro)` : ""}</button><button class="button" data-screen-target="resources">Ir para Recursos</button><button class="button prestige-button" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" data-buy-missing-then="1" ${info.canBuyAndExecute ? "" : "disabled"}>Comprar e melhorar agora</button></div></div>`;
   }
 
   function insertMissingPurchasePanel(button, cost, context, allowed = true) {
@@ -2328,11 +2371,15 @@
 
   function renderTopbar() {
     const bar = $("#top-resources");
-    const entries = [["pirateCoins", { name: "Moedas Pirata", icon: "☠", rarityKey: "legendary", uses: "Pets e progresso permanente" }], ...Object.entries(RESOURCE_META)];
+    const entries = [
+      ["ouro", { name: "Gold", icon: RESOURCE_META.ouro.icon, rarityKey: "legendary", uses: "Moeda principal" }],
+      ["pirateCoins", { name: "Moedas Pirata", icon: "☠", rarityKey: "legendary", uses: "Pets e progresso permanente" }]
+    ];
+    const amountFor = key => key === "pirateCoins" ? state.pirateCoins : state.resources[key];
     if (bar.childElementCount !== entries.length) {
-      bar.innerHTML = entries.map(([key, meta]) => `<div class="top-resource-chip" data-top-resource="${key}" title="${meta.name}: ${meta.uses}" style="--resource-color:${RARITY_COLORS[meta.rarityKey]}"><span class="resource-symbol">${meta.icon}</span><span class="top-resource-copy"><span class="top-resource-name">${meta.name}</span><strong class="top-resource-amount">${formatNumber(key === "pirateCoins" ? state.pirateCoins : state.resources[key])}</strong></span></div>`).join("");
+      bar.innerHTML = entries.map(([key, meta]) => `<div class="top-resource-chip" data-top-resource="${key}" title="${meta.name}: ${meta.uses}" style="--resource-color:${RARITY_COLORS[meta.rarityKey]}"><span class="resource-symbol">${meta.icon}</span><span class="top-resource-copy"><span class="top-resource-name">${meta.name}</span><strong class="top-resource-amount">${formatNumber(amountFor(key))}</strong></span></div>`).join("");
     } else {
-      entries.forEach(([key]) => { const amount = $(`[data-top-resource="${key}"] .top-resource-amount`, bar); if (amount) amount.textContent = formatNumber(key === "pirateCoins" ? state.pirateCoins : state.resources[key]); });
+      entries.forEach(([key]) => { const amount = $(`[data-top-resource="${key}"] .top-resource-amount`, bar); if (amount) amount.textContent = formatNumber(amountFor(key)); });
     }
     $("#top-naval-power").textContent = formatNumber(getStats().power);
     $("#top-level").textContent = state.pirateLevel;
@@ -2392,10 +2439,12 @@
     const homeLogs = state.logs.slice(0, 5);
     $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
     const pet = getEquippedPet();
+    const petCard = $("#home-pet-card");
     $("#home-pet-icon").textContent = pet?.icon || "🐾";
     $("#home-pet-name").textContent = pet?.name || "Nenhum pet equipado";
-    $("#home-pet-card").classList.toggle("equipped", Boolean(pet));
-    $("#home-pet-stats").innerHTML = pet ? `<span>DPS <strong>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>AUTO</span>` : "Automático";
+    petCard.classList.toggle("equipped", Boolean(pet));
+    petCard.setAttribute("style", pet ? getPetAuraStyle(pet) : "");
+    $("#home-pet-stats").innerHTML = pet ? `<span>NV <strong>${pet.level}/${PET_MAX_LEVEL}</strong></span><span>DPS <strong>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>PODER <strong>+${formatNumber(pet.power)}</strong></span>` : "Automático";
     renderSkillDock();
   }
 
@@ -2411,21 +2460,34 @@
   function renderPets() {
     const current = getEquippedPet();
     $("#pets-owned-count").textContent = `${state.ownedPets.length} / ${PETS.length}`;
-    $("#pet-current-banner").innerHTML = current ? `<div class="pet-current-icon">${current.icon}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
-    $("#pets-grid").innerHTML = PETS.map(pet => {
-      const owned = state.ownedPets.includes(pet.id);
+    const banner = $("#pet-current-banner");
+    banner.className = `pet-current-banner${current ? " equipped" : ""}`;
+    banner.setAttribute("style", current ? getPetAuraStyle(current) : "");
+    banner.innerHTML = current ? `<div class="pet-current-icon">${current.icon}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
+    $("#pets-grid").innerHTML = PETS.map(basePet => {
+      const owned = state.ownedPets.includes(basePet.id);
+      const level = owned ? getPetLevel(basePet.id) : 1;
+      const pet = getPetWithLevel(basePet, level);
       const equipped = state.equippedPetId === pet.id;
-      const issues = getPetIssues(pet);
-      const unlocked = isPetUnlocked(pet);
+      const issues = getPetIssues(basePet);
+      const unlocked = isPetUnlocked(basePet);
       const pirateCoinCost = PET_PIRATE_COIN_COSTS[pet.id];
       const affordable = canAfford(pet.costs) && state.pirateCoins >= pirateCoinCost;
-      const status = equipped ? "EQUIPADO" : owned ? "COMPRADO" : unlocked ? "DISPONÍVEL" : "BLOQUEADO";
+      const status = equipped ? "EQUIPADO" : owned ? `NÍVEL ${level}` : unlocked ? "DISPONÍVEL" : "BLOQUEADO";
       const deltaDamage = current ? pet.damage - current.damage : pet.damage;
       const deltaDps = current ? pet.dps - current.dps : pet.dps;
       const comparison = equipped ? "Este é seu companheiro atual." : `<span class="${deltaDamage >= 0 ? "positive" : "negative"}">Dano ${deltaDamage >= 0 ? "+" : "-"}${formatNumber(Math.abs(deltaDamage))}</span><span class="${deltaDps >= 0 ? "positive" : "negative"}">DPS ${deltaDps >= 0 ? "+" : "-"}${Math.abs(deltaDps).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span>Ataque ${current && pet.interval > current.interval ? "mais lento" : current && pet.interval < current.interval ? "mais rápido" : "equivalente"}</span>`;
-      const button = owned ? `<button class="button ${equipped ? "" : "primary"}" data-equip-pet="${pet.id}" ${equipped ? "disabled" : ""}>${equipped ? "Equipado" : "Equipar"}</button>` : `<button class="button primary" data-buy-pet="${pet.id}" ${!unlocked || !affordable ? "disabled" : ""}>Comprar</button>`;
+      const upgradeCost = owned ? getPetUpgradeCost(pet.id, level) : null;
+      const nextPet = owned && level < PET_MAX_LEVEL ? getPetWithLevel(basePet, level + 1) : null;
+      const upgradePreview = nextPet ? `<span class="cost-chip">Próx. dano +${formatNumber(nextPet.damage - pet.damage)}</span><span class="cost-chip">Próx. poder +${formatNumber(nextPet.power - pet.power)}</span>` : `<span class="cost-chip">Nível máximo permanente</span>`;
+      const button = owned
+        ? `<div class="pet-actions"><button class="button ${equipped ? "" : "primary"}" data-equip-pet="${pet.id}" ${equipped ? "disabled" : ""}>${equipped ? "Equipado" : "Equipar"}</button><button class="button prestige-button" data-upgrade-pet="${pet.id}" ${upgradeCost && state.pirateCoins >= upgradeCost ? "" : "disabled"}>${upgradeCost ? `Upgrade ☠ ${formatNumber(upgradeCost)}` : "Nível máximo"}</button></div>`
+        : `<div class="pet-actions"><button class="button primary" data-buy-pet="${pet.id}" ${!unlocked || !affordable ? "disabled" : ""}>Comprar</button></div>`;
       const prestigeLine = `Prestígio necessário: ${state.prestiges} / ${pet.id + 1}`;
-      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="--pet-color:${pet.color}"><div class="pet-visual"><span>${pet.icon}</span><i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? "<span class=\"cost-chip\">Adoção permanente</span>" : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${issues.length ? `<div class="pet-requirements"><strong>${prestigeLine}</strong><br>Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready"><strong>${prestigeLine}</strong><br>${state.pirateCoins >= pirateCoinCost ? "Moedas e requisitos disponíveis" : `Faltam ${pirateCoinCost - state.pirateCoins} Moedas Pirata`}</div>`}${button}</article>`;
+      const requirement = owned
+        ? `<div class="pet-requirements ready"><strong>Upgrade permanente</strong><br>${upgradeCost ? state.pirateCoins >= upgradeCost ? "Moedas Pirata disponíveis para evoluir." : `Faltam ${formatNumber(upgradeCost - state.pirateCoins)} Moedas Pirata para evoluir.` : "Este pet já atingiu o nível máximo."}</div>`
+        : issues.length ? `<div class="pet-requirements"><strong>${prestigeLine}</strong><br>Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready"><strong>${prestigeLine}</strong><br>${state.pirateCoins >= pirateCoinCost ? "Moedas e requisitos disponíveis" : `Faltam ${pirateCoinCost - state.pirateCoins} Moedas Pirata`}</div>`;
+      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-visual"><span>${pet.icon}</span><i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
     }).join("");
   }
 
@@ -2603,9 +2665,11 @@
   function renderResources() {
     $("#cargo-total").textContent = formatNumber(Object.entries(state.resources).filter(([key]) => key !== "ouro").reduce((sum, [, value]) => sum + value, 0));
     $("#resources-grid").innerHTML = Object.entries(RESOURCE_META).map(([key, meta]) => `<article class="resource-card" style="--rarity-color:${RARITY_COLORS[meta.rarityKey]}"><div class="resource-header"><div class="resource-big-icon">${meta.icon}</div><div><h3>${meta.name}</h3><strong class="resource-amount">${formatNumber(state.resources[key])}</strong></div></div><span class="resource-rarity">${meta.rarity}</span><p class="resource-detail"><strong>Onde:</strong> ${meta.regions}</p><p class="resource-detail"><strong>Chance:</strong> ${meta.chance}</p><p class="resource-detail"><strong>Uso:</strong> ${meta.uses}</p></article>`).join("");
+    renderTrade();
   }
 
   function renderTrade() {
+    if (!$("#trade-gold") || !$("#trade-grid")) return;
     $("#trade-gold").textContent = `${formatNumber(state.resources.ouro)} Ouro`;
     $("#trade-grid").innerHTML = Object.entries(TRADE_PRICES).map(([key, price]) => {
       const meta = RESOURCE_META[key];
@@ -2732,15 +2796,10 @@
     $("#prestige-button").disabled = !unlocked;
     $("#prestige-bonuses").innerHTML = [["Ouro", bonuses.gold], ["XP", bonuses.xp], ["DPS", bonuses.dps], ["Velocidade", bonuses.speed], ["Chance de drop", bonuses.drop], ["Eficiência idle", bonuses.idle]].map(([label, value]) => `<div><span>${label}</span><strong>+${Math.round(value * 100)}%</strong></div>`).join("");
     $("#prestige-history").innerHTML = state.prestigeHistory.length ? state.prestigeHistory.map(item => `<div class="prestige-history-row"><strong>#${item.number}</strong><span>${item.date}</span><span>Mapa ${item.map} • ${item.boss}</span><span>${formatNumber(item.power)} poder</span><span>+${formatNumber(item.coins)} ☠</span><small>${item.ship} • ${item.pet || "Sem pet"} • ${formatDuration(item.duration || 0)}</small></div>`).join("") : `<p class="empty-state">Seu primeiro ciclo aparecerá aqui.</p>`;
-    const achievements = [
-      ["Primeiro Prestígio", state.prestiges >= 1], ["Pirata Renascido", state.prestiges >= 3], ["Ciclo Infinito", state.prestiges >= 5], ["Mestre dos Prestígios", state.prestiges >= 10], ["Colecionador de Moedas", state.pirateCoins >= 100], ["Companheiro Permanente", state.ownedPets.length >= 1]
-    ];
-    const missions = [["Missão: realizar 1 Prestígio", state.prestiges >= 1], ["Missão: comprar o primeiro pet", state.ownedPets.length >= 1], ["Missão: liberar navios Tier 3", state.prestiges >= 2], ["Missão: alcançar 10 Prestígios", state.prestiges >= 10]];
-    $("#prestige-achievements").innerHTML = [...achievements, ...missions].map(([name, earned]) => `<span class="prestige-achievement ${earned ? "earned" : ""}">${earned ? "✓" : "◇"} ${name}</span>`).join("");
   }
 
   function progressionStatus(item, store, storeName) {
-    const unlocked = isProgressionUnlocked(item, storeName === "quests" ? missionDefinitions : achievementDefinitions, storeName);
+    const unlocked = isProgressionUnlocked(item, missionDefinitions, storeName);
     if (store.claimed[item.id]) return "claimed";
     if (store.completed[item.id] || (unlocked && objectiveProgress(item.objective) >= objectiveTarget(item.objective))) return "ready";
     return unlocked ? "progress" : "locked";
@@ -2762,7 +2821,7 @@
     if (status === "ready") return 1000 + ratio * 100;
     if (status === "locked") return -1000;
     let score = ratio * 100;
-    if (ratio >= (kind === "achievement" ? .5 : .1)) score += 60;
+    if (ratio >= .1) score += 60;
     if (ratio >= .5) score += 80;
     if (isMain) score += 55;
     if (currentMapRelated || nearBoss) score += 35;
@@ -2779,7 +2838,7 @@
   function shouldShowProgression(entry, filter, kind) {
     const { item, status, ratio } = entry;
     if (filter === "Todas") return true;
-    if (filter === "Próximas de concluir" || filter === "Próximas de conquistar") return status === "ready" || (status === "progress" && ratio >= (kind === "achievement" ? .5 : .1));
+    if (filter === "Próximas de concluir") return status === "ready" || (status === "progress" && ratio >= .1);
     if (filter === "Concluídas") return status === "ready" || status === "claimed";
     if (filter === "Em andamento") return status === "progress";
     if (filter === "Diárias") return item.resets === "daily";
@@ -2793,7 +2852,7 @@
     if (filter === "Concluídas" || filter === "Todas" || filter === "Secretas") return Infinity;
     if (filter === "Diárias" || filter === "Semanais") return 3;
     if (filter === "História / Principal") return 9;
-    return kind === "achievement" ? 9 : 12;
+    return 12;
   }
 
   function progressionCardHtml(item, store, status, kind) {
@@ -2829,25 +2888,12 @@
     $("#missions-grid").innerHTML = cards.length ? cards.map(({ item, status }) => progressionCardHtml(item, state.quests, status, "mission")).join("") : `<p class="empty-state">Nenhuma missão relevante neste filtro por enquanto.</p>`;
   }
 
-  function renderAchievements() {
-    resetPeriodicProgressIfNeeded();
-    checkProgressionUnlocks();
-    renderProgressionFilters("achievement-filters", ACHIEVEMENT_FILTERS, activeAchievementFilter);
-    const complete = completedCount(state.achievements, achievementDefinitions);
-    $("#achievements-summary").textContent = `${complete} / ${achievementDefinitions.length}`;
-    const cards = progressionList(achievementDefinitions, state.achievements, "achievements", "achievement")
-      .filter(entry => shouldShowProgression(entry, activeAchievementFilter, "achievement"))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, progressionLimit(activeAchievementFilter, "achievement"));
-    $("#achievements-grid").innerHTML = cards.length ? cards.map(({ item, status }) => progressionCardHtml(item, state.achievements, status, "achievement")).join("") : `<p class="empty-state">Nenhuma conquista relevante neste filtro por enquanto.</p>`;
-  }
-
   function openPrestigeConfirmation() {
     if (!canPrestige()) return toast(`Derrote ${PRESTIGE_BOSS_NAME} em ${PRESTIGE_REGION_NAME} para liberar.`, "danger-toast");
     prestigeConfirmationStage = 1;
     $("#prestige-confirm-step").textContent = "CONFIRMAÇÃO 1 DE 2";
     $("#prestige-modal-title").textContent = "Reiniciar esta jornada?";
-    $("#prestige-modal-message").textContent = "Você manterá Prestígios, Moedas Pirata e pets. Todo o restante será reiniciado.";
+    $("#prestige-modal-message").textContent = "Você manterá Prestígios, Moedas Pirata, pets e upgrades de pets. Todo o restante será reiniciado.";
     $("#prestige-modal-reward").innerHTML = `Você receberá <strong>+${formatNumber(getPrestigeReward())} Moedas Pirata</strong>`;
     $("#prestige-confirm").textContent = "Continuar";
     $("#prestige-modal").classList.remove("hidden");
@@ -2882,11 +2928,8 @@
       pirateCoins: state.pirateCoins + reward,
       ownedPets: [...state.ownedPets],
       equippedPetId: state.equippedPetId,
+      petLevels: { ...state.petLevels },
       prestigeHistory: [entry, ...state.prestigeHistory].slice(0, 20),
-      achievements: {
-        completed: { ...state.achievements.completed },
-        claimed: { ...state.achievements.claimed }
-      },
       titles: [...state.titles]
     };
     state = createDefaultState();
@@ -2920,9 +2963,7 @@
     if (expensive || currentScreen === "upgrades") renderUpgrades();
     if (expensive || currentScreen === "maps") renderMaps();
     if (expensive || currentScreen === "resources") renderResources();
-    if (expensive || currentScreen === "trade") renderTrade();
     if (expensive || currentScreen === "missions") renderMissions();
-    if (expensive || currentScreen === "achievements") renderAchievements();
     if (expensive || currentScreen === "pets") { renderPets(); decorateMissingPurchasePanels($("#screen-pets")); }
     if (expensive || currentScreen === "prestige") renderPrestige();
     if (expensive || currentScreen === "stats") renderStats();
@@ -2973,8 +3014,25 @@
     const pirateCoinCost = PET_PIRATE_COIN_COSTS[id];
     if (state.pirateCoins < pirateCoinCost) return toast("Moedas Pirata insuficientes para este pet.", "danger-toast");
     if (!canAfford(pet.costs)) return toast("Ainda faltam recursos para adotar este pet.", "danger-toast");
-    spend(pet.costs); state.pirateCoins -= pirateCoinCost; state.ownedPets.push(id); state.equippedPetId = id; state.combat.petAttackTimer = 0; state.lifetime.petsBought += 1;
+    spend(pet.costs); state.pirateCoins -= pirateCoinCost; state.ownedPets.push(id); state.petLevels[id] = 1; state.equippedPetId = id; state.combat.petAttackTimer = 0; state.lifetime.petsBought += 1;
     toast(`${pet.name} foi comprado e equipado!`, "gold-toast"); addLog(`${pet.name} agora acompanha seu navio.`, "loot"); renderAll(true); saveGame();
+  }
+
+  function upgradePet(id) {
+    if (!state.ownedPets.includes(id) || !PETS[id]) return;
+    const level = getPetLevel(id);
+    if (level >= PET_MAX_LEVEL) return toast("Este pet já está no nível máximo.", "gold-toast");
+    const cost = getPetUpgradeCost(id, level);
+    if (state.pirateCoins < cost) return toast(`Faltam ${formatNumber(cost - state.pirateCoins)} Moedas Pirata para evoluir este pet.`, "danger-toast");
+    const oldPower = getStats().power;
+    state.pirateCoins -= cost;
+    state.petLevels[id] = level + 1;
+    state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
+    const pet = getPetWithLevel(PETS[id]);
+    const powerGain = Math.max(0, getStats().power - oldPower);
+    toast(`${pet.name} evoluiu para o nível ${pet.level}! Poder Naval +${formatNumber(powerGain)}.`, "gold-toast");
+    addLog(`${pet.name} evoluiu para o nível ${pet.level} usando Moedas Pirata.`, "loot");
+    renderAll(true); saveGame();
   }
 
   function equipPet(id) {
@@ -3008,15 +3066,14 @@
   }
 
   function navigate(screen) {
+    if (screen === "trade") screen = "resources";
     currentScreen = screen;
     $$(".screen").forEach(node => node.classList.toggle("active", node.id === `screen-${screen}`));
     $$('[data-screen-target]').forEach(node => node.classList.toggle("active", node.dataset.screenTarget === screen));
     if (screen === "upgrades") renderUpgrades();
     if (screen === "maps") renderMaps();
     if (screen === "resources") renderResources();
-    if (screen === "trade") renderTrade();
     if (screen === "missions") renderMissions();
-    if (screen === "achievements") renderAchievements();
     if (screen === "pets") { renderPets(); decorateMissingPurchasePanels($("#screen-pets")); }
     if (screen === "prestige") renderPrestige();
     if (screen === "stats") renderStats();
@@ -3031,6 +3088,7 @@
     if (target.dataset.buyShip) buyShip(Number(target.dataset.buyShip));
     if (target.dataset.equipShip) equipShip(Number(target.dataset.equipShip));
     if (target.dataset.buyPet) buyPet(Number(target.dataset.buyPet));
+    if (target.dataset.upgradePet) upgradePet(Number(target.dataset.upgradePet));
     if (target.dataset.equipPet) equipPet(Number(target.dataset.equipPet));
     if (target.dataset.craftEquipment) craftEquipment(target.dataset.craftEquipment);
     if (target.dataset.upgradeSkill) upgradeSkill(target.dataset.upgradeSkill);
@@ -3044,9 +3102,7 @@
     if (target.dataset.tradeAction && target.dataset.tradeResource) openTradeConfirmation(target.dataset.tradeResource, target.dataset.tradeAction);
     if (target.dataset.tradeStep && target.dataset.tradeResource) stepTradeQuantity(target.dataset.tradeResource, Number(target.dataset.tradeStep));
     if (target.dataset.progressionFilter === "mission-filters") { activeMissionFilter = target.dataset.filterValue; renderMissions(); }
-    if (target.dataset.progressionFilter === "achievement-filters") { activeAchievementFilter = target.dataset.filterValue; renderAchievements(); }
     if (target.dataset.claimMission) claimProgressionReward("mission", target.dataset.claimMission);
-    if (target.dataset.claimAchievement) claimProgressionReward("achievement", target.dataset.claimAchievement);
     if (target.dataset.selectMap) {
       const index = Number(target.dataset.selectMap);
       if (index < state.unlockedRegions) {

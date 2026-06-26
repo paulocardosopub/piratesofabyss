@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v23-fixed-combat-upgrades";
+const CACHE = "pirates-abyss-v24-clean-ui-pets";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -133,8 +133,8 @@ const OCEAN_ASSET_FILES = [
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=20",
-  "game.js?v=39",
+  "styles.css?v=21",
+  "game.js?v=40",
   "icon.svg",
   "manifest.webmanifest",
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),

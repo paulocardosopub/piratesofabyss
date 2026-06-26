@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="styles.css?v=21">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -18,7 +18,7 @@
         <span><strong>Pirates</strong><small>of the Abyss</small></span>
       </button>
       <div class="top-power" title="Poder Naval total"><span>PODER NAVAL</span><strong id="top-naval-power">0</strong></div>
-      <div class="top-resources" id="top-resources" aria-label="Todos os recursos disponíveis"></div>
+      <div class="top-resources" id="top-resources" aria-label="Gold e Moedas Pirata"></div>
       <div class="pirate-level" title="Nível do pirata">
         <span>NÍVEL</span><strong id="top-level">1</strong>
       </div>
@@ -132,12 +132,11 @@
           <div class="prestige-summary-grid" id="prestige-summary"></div>
           <article class="card prestige-reward-card"><div><span class="eyebrow">RESETAR AGORA</span><h2>Você receberá</h2><strong class="prestige-reward" id="prestige-reward">0 Moedas Pirata</strong><p>Quanto mais longe e mais forte chegar, maior será a recompensa.</p></div><button class="button prestige-button" id="prestige-button">Realizar Prestígio</button></article>
           <div class="prestige-columns">
-            <article class="card"><span class="eyebrow">SERÁ MANTIDO</span><h2>Progresso permanente</h2><ul class="prestige-list keep"><li>Prestígios acumulados</li><li>Moedas Pirata</li><li>Pets comprados e pet equipado</li><li>Histórico e bônus derivados do Prestígio</li></ul></article>
+            <article class="card"><span class="eyebrow">SERÁ MANTIDO</span><h2>Progresso permanente</h2><ul class="prestige-list keep"><li>Prestígios acumulados</li><li>Moedas Pirata</li><li>Pets comprados, níveis e pet equipado</li><li>Histórico e bônus derivados do Prestígio</li></ul></article>
             <article class="card"><span class="eyebrow">SERÁ RESETADO</span><h2>Jornada atual</h2><ul class="prestige-list reset"><li>Ouro e todos os recursos</li><li>Mapas, inimigos e bosses</li><li>Navios, equipamentos e upgrades</li><li>Nível, XP, skills, comércio e recompensas offline</li></ul></article>
           </div>
           <article class="card prestige-bonuses"><span class="eyebrow">BÔNUS PERMANENTES</span><h2>Força de todos os ciclos</h2><div id="prestige-bonuses"></div></article>
           <article class="card prestige-history-card"><span class="eyebrow">DIÁRIO DOS CICLOS</span><h2>Histórico de Prestígios</h2><div id="prestige-history"></div></article>
-          <article class="card prestige-achievements"><span class="eyebrow">CONQUISTAS DE PRESTÍGIO</span><h2>Marcos permanentes</h2><div id="prestige-achievements"></div></article>
         </div>
       </section>
 
@@ -155,17 +154,23 @@
           <div><span class="eyebrow">PORÃO DO NAVIO</span><h1 id="resources-title">Recursos</h1><p>Cada material tem uma função real na evolução da sua frota.</p></div>
           <div class="cargo-total"><span>CARGA TOTAL</span><strong id="cargo-total">0</strong></div>
         </div>
-        <div class="rarity-legend"><span class="common">Comum</span><span class="uncommon">Incomum</span><span class="rare">Raro</span><span class="epic">Épico</span><span class="legendary">Lendário</span></div>
-        <div class="resources-grid" id="resources-grid"></div>
-      </section>
-
-      <section class="screen" id="screen-trade" aria-labelledby="trade-title">
-        <div class="page-heading">
-          <div><span class="eyebrow">MERCADO DO PORTO</span><h1 id="trade-title">Comércio</h1><p>Compre o material que falta ou venda excedentes — o mar ainda oferece os melhores preços.</p></div>
-          <div class="trade-wallet"><span>SALDO DISPONÍVEL</span><strong id="trade-gold">0 Ouro</strong></div>
+        <div class="resources-page-layout">
+          <section class="resource-block" aria-labelledby="my-resources-title">
+            <div class="section-heading">
+              <div><span class="eyebrow">MEUS RECURSOS</span><h2 id="my-resources-title">Meus Recursos</h2></div>
+            </div>
+            <div class="rarity-legend"><span class="common">Comum</span><span class="uncommon">Incomum</span><span class="rare">Raro</span><span class="epic">Épico</span><span class="legendary">Lendário</span></div>
+            <div class="resources-grid" id="resources-grid"></div>
+          </section>
+          <section class="resource-block trade-block" aria-labelledby="resource-trade-title">
+            <div class="section-heading compact">
+              <div><span class="eyebrow">COMÉRCIO</span><h2 id="resource-trade-title">Comércio</h2></div>
+              <div class="trade-wallet"><span>SALDO DISPONÍVEL</span><strong id="trade-gold">0 Ouro</strong></div>
+            </div>
+            <div class="trade-notice"><span>⚖</span><p><strong>Mercado equilibrado</strong> • O preço de venda é sempre menor que o de compra. Use o comércio para emergências e continue explorando mapas para obter o melhor rendimento.</p></div>
+            <div class="trade-grid" id="trade-grid"></div>
+          </section>
         </div>
-        <div class="trade-notice"><span>⚖</span><p><strong>Mercado equilibrado</strong> • O preço de venda é sempre menor que o de compra. Use o comércio para emergências e continue explorando mapas para obter o melhor rendimento.</p></div>
-        <div class="trade-grid" id="trade-grid"></div>
       </section>
 
       <section class="screen" id="screen-missions" aria-labelledby="missions-title">
@@ -175,15 +180,6 @@
         </div>
         <div class="codex-tabs" id="mission-filters" aria-label="Filtros de missões"></div>
         <div class="codex-grid" id="missions-grid"></div>
-      </section>
-
-      <section class="screen" id="screen-achievements" aria-labelledby="achievements-title">
-        <div class="page-heading">
-          <div><span class="eyebrow">LENDAS DO ABISMO</span><h1 id="achievements-title">Conquistas</h1><p>Marcos permanentes conectados ao combate, mapas, navios, recursos, skills, comércio, idle e segredos do cenário.</p></div>
-          <div class="codex-counter"><span>CONQUISTAS</span><strong id="achievements-summary">0 / 100</strong></div>
-        </div>
-        <div class="codex-tabs" id="achievement-filters" aria-label="Filtros de conquistas"></div>
-        <div class="codex-grid" id="achievements-grid"></div>
       </section>
 
       <section class="screen" id="screen-stats" aria-labelledby="stats-title">
@@ -204,16 +200,14 @@
     </main>
 
     <nav class="bottom-nav" aria-label="Navegação principal">
-      <button class="active" data-screen-target="home"><span>⚔</span><strong>Combate</strong></button>
-      <button data-screen-target="upgrades"><span>⚒</span><strong>Navio</strong></button>
-      <button data-screen-target="maps"><span>⌖</span><strong>Mapas</strong></button>
-      <button data-screen-target="resources"><span>◆</span><strong>Recursos</strong></button>
-      <button data-screen-target="trade"><span>⚖</span><strong>Comércio</strong></button>
-      <button data-screen-target="missions"><span>✦</span><strong>Missões</strong></button>
-      <button data-screen-target="achievements"><span>★</span><strong>Conquistas</strong></button>
-      <button data-screen-target="pets"><span>🐾</span><strong>Pets</strong></button>
-      <button data-screen-target="prestige"><span>☠</span><strong>Prestígio</strong></button>
-      <button data-screen-target="stats"><span>▥</span><strong>Estatísticas</strong></button>
+      <button class="active" data-screen-target="home" aria-label="Combate"><span>⚔</span><strong>Combate</strong></button>
+      <button data-screen-target="upgrades" aria-label="Navio"><span>⚒</span><strong>Navio</strong></button>
+      <button data-screen-target="maps" aria-label="Mapas"><span>⌖</span><strong>Mapas</strong></button>
+      <button data-screen-target="resources" aria-label="Recursos"><span>◆</span><strong>Recursos</strong></button>
+      <button data-screen-target="missions" aria-label="Missões"><span>✦</span><strong>Missões</strong></button>
+      <button data-screen-target="pets" aria-label="Pets"><span>🐾</span><strong>Pets</strong></button>
+      <button data-screen-target="prestige" aria-label="Prestígio"><span>☠</span><strong>Prestígio</strong></button>
+      <button data-screen-target="stats" aria-label="Estatísticas"><span>▥</span><strong>Stats</strong></button>
     </nav>
   </div>
 
@@ -253,13 +247,13 @@
     <div class="modal prestige-confirm-modal">
       <div class="modal-icon">☠</div><span class="eyebrow" id="prestige-confirm-step">CONFIRMAÇÃO 1 DE 2</span>
       <h2 id="prestige-modal-title">Reiniciar esta jornada?</h2>
-      <p id="prestige-modal-message">Você manterá Prestígios, Moedas Pirata e pets. Todo o restante será reiniciado.</p>
+      <p id="prestige-modal-message">Você manterá Prestígios, Moedas Pirata, pets e upgrades de pets. Todo o restante será reiniciado.</p>
       <div class="prestige-modal-reward" id="prestige-modal-reward"></div>
-      <div class="prestige-modal-lists"><div><strong>MANTÉM</strong><span>Prestígios • Moedas Pirata • Pets</span></div><div><strong>RESETA</strong><span>Ouro • Recursos • Mapas • Navios • Upgrades • Skills • Missões</span></div></div>
+      <div class="prestige-modal-lists"><div><strong>MANTÉM</strong><span>Prestígios • Moedas Pirata • Pets • Upgrades dos pets</span></div><div><strong>RESETA</strong><span>Ouro • Recursos • Mapas • Navios • Upgrades • Skills • Missões</span></div></div>
       <div class="modal-actions"><button class="button" id="prestige-cancel">Cancelar</button><button class="button prestige-button" id="prestige-confirm">Continuar</button></div>
     </div>
   </div>
 
-  <script src="game.js?v=39"></script>
+  <script src="game.js?v=40"></script>
 </body>
 </html>
