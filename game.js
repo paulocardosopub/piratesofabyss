@@ -92,6 +92,43 @@
     return file ? `${ISLAND_SPRITE_PATH}${file}` : "";
   }
 
+  const ISLAND_COMPOSITIONS = [
+    [{ x: .42, width: .42, height: .30, sea: .055, alpha: .86 }, { x: .13, width: .22, height: .20, sea: .035, alpha: .54, spriteOffset: 1 }, { x: .80, width: .24, height: .22, sea: .04, alpha: .62, spriteOffset: 2 }],
+    [{ x: .22, width: .30, height: .27, sea: .048, alpha: .72 }, { x: .68, width: .34, height: .28, sea: .06, alpha: .82 }, { x: .91, width: .16, height: .18, sea: .028, alpha: .45, spriteOffset: -1 }],
+    [{ x: .50, width: .34, height: .32, sea: .045, alpha: .78 }, { x: .18, width: .20, height: .20, sea: .03, alpha: .5, spriteOffset: 1 }, { x: .83, width: .21, height: .22, sea: .038, alpha: .56, spriteOffset: 2 }],
+    [{ x: .28, width: .36, height: .31, sea: .062, alpha: .8 }, { x: .72, width: .28, height: .24, sea: .045, alpha: .6, spriteOffset: -1 }],
+    [{ x: .53, width: .40, height: .31, sea: .055, alpha: .84 }, { x: .84, width: .17, height: .18, sea: .032, alpha: .48, spriteOffset: 1 }],
+    [{ x: .24, width: .32, height: .27, sea: .045, alpha: .72 }, { x: .63, width: .36, height: .30, sea: .058, alpha: .84 }, { x: .91, width: .16, height: .18, sea: .032, alpha: .45, spriteOffset: 1 }],
+    [{ x: .17, width: .21, height: .19, sea: .032, alpha: .5, spriteOffset: -1 }, { x: .46, width: .34, height: .28, sea: .052, alpha: .78 }, { x: .78, width: .27, height: .24, sea: .045, alpha: .66, spriteOffset: 1 }],
+    [{ x: .34, width: .32, height: .27, sea: .047, alpha: .72 }, { x: .76, width: .30, height: .26, sea: .055, alpha: .78 }],
+    [{ x: .20, width: .24, height: .23, sea: .038, alpha: .5, spriteOffset: -1 }, { x: .58, width: .38, height: .31, sea: .055, alpha: .82 }, { x: .88, width: .16, height: .17, sea: .03, alpha: .42, spriteOffset: 1 }],
+    [{ x: .47, width: .36, height: .30, sea: .055, alpha: .8 }, { x: .81, width: .18, height: .19, sea: .033, alpha: .48, spriteOffset: -1 }],
+    [{ x: .25, width: .26, height: .24, sea: .04, alpha: .56 }, { x: .66, width: .34, height: .30, sea: .056, alpha: .76, spriteOffset: 1 }],
+    [{ x: .40, width: .38, height: .30, sea: .052, alpha: .82 }, { x: .82, width: .20, height: .20, sea: .035, alpha: .5, spriteOffset: -1 }],
+    [{ x: .26, width: .29, height: .25, sea: .046, alpha: .62 }, { x: .70, width: .35, height: .30, sea: .06, alpha: .82 }],
+    [{ x: .18, width: .21, height: .20, sea: .034, alpha: .5, spriteOffset: -1 }, { x: .55, width: .40, height: .31, sea: .055, alpha: .84 }, { x: .87, width: .17, height: .18, sea: .031, alpha: .45 }],
+    [{ x: .33, width: .32, height: .27, sea: .048, alpha: .64 }, { x: .72, width: .36, height: .31, sea: .06, alpha: .82 }]
+  ];
+
+  function getIslandComposition(index) {
+    const layout = ISLAND_COMPOSITIONS[index % ISLAND_COMPOSITIONS.length] || ISLAND_COMPOSITIONS[0];
+    return layout.map(layer => ({
+      ...layer,
+      spriteIndex: clamp(index + (layer.spriteOffset || 0), 0, ISLAND_ASSET_FILES.length - 1)
+    }));
+  }
+
+  function mapIslandLayersHtml(index) {
+    return getIslandComposition(index).map((layer, order) => {
+      const islandUrl = getRegionIslandUrl(layer.spriteIndex);
+      const width = `${Math.round(layer.width * 106)}%`;
+      const height = `${Math.round((layer.height || .26) * 320)}px`;
+      const bottom = `${Math.round((layer.sea || .04) * 100 - 13)}px`;
+      const alpha = Math.min(.82, layer.alpha + .05).toFixed(2);
+      return `<span class="map-island" style="--island-image:url('${islandUrl}');--island-left:${Math.round(layer.x * 100)}%;--island-width:${width};--island-height:${height};--island-bottom:${bottom};--island-alpha:${alpha};--island-order:${order};"></span>`;
+    }).join("");
+  }
+
   const PRIMITIVE_SHIPS = [
     { name: "Bote de Tronco", type: "Primitivo", tier: 0, levelReq: 1, hp: 62, damage: 7, speed: 86, armor: 0, costs: { ouro: 0, madeira: 0 } },
     { name: "Jangada de Cipó", type: "Primitivo", tier: 0, levelReq: 1, hp: 76, damage: 9, speed: 91, armor: 1, costs: { ouro: 45, madeira: 12 } },
@@ -481,7 +518,7 @@
   }
   function getPetAuraStyle(pet) {
     const level = pet?.level || 1;
-    return `--pet-color:${pet?.color || "#6eefe2"};--pet-aura-size:${76 + level * 14}px;--pet-aura-glow:${18 + level * 6}px;--pet-aura-alpha:${Math.min(.82, .25 + level * .1)};`;
+    return `--pet-color:${pet?.color || "#6eefe2"};--pet-aura-size:${48 + level * 8}px;--pet-aura-glow:${8 + level * 3}px;--pet-aura-alpha:${Math.min(.26, .1 + level * .03)};`;
   }
   function petLevelPips(level) {
     return Array.from({ length: PET_MAX_LEVEL }, (_, index) => `<i class="${index < level ? "on" : ""}"></i>`).join("");
@@ -1121,7 +1158,7 @@
       const rect = this.canvas.getBoundingClientRect();
       this.dpr = Math.min(2, window.devicePixelRatio || 1);
       this.width = Math.max(320, rect.width);
-      this.height = Math.max(300, rect.height);
+      this.height = Math.max(120, rect.height);
       this.canvas.width = this.width * this.dpr;
       this.canvas.height = this.height * this.dpr;
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -1384,24 +1421,33 @@
     }
 
     drawRegionIslandSprite(ctx, w, h, horizon, regionIndex) {
-      const sprite = getRegionIslandSprite(regionIndex);
-      const image = sprite?.image;
-      if (!image?.complete || !image.naturalWidth) return false;
-      const maxWidth = w * (w < 620 ? .82 : .66);
-      const maxHeight = h * (w < 620 ? .34 : .38);
-      const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
-      const targetWidth = image.naturalWidth * scale;
-      const targetHeight = image.naturalHeight * scale;
-      const drawX = w * .5 - targetWidth * .5;
-      const drawY = horizon + h * .09 - targetHeight;
-      ctx.save();
-      ctx.globalAlpha = .9;
-      ctx.shadowColor = "rgba(0,0,0,.38)";
-      ctx.shadowBlur = 14;
-      ctx.shadowOffsetY = 8;
-      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
-      ctx.restore();
-      return true;
+      let drew = false;
+      getIslandComposition(regionIndex).forEach((layer, order) => {
+        const sprite = getRegionIslandSprite(layer.spriteIndex);
+        const image = sprite?.image;
+        if (!image?.complete || !image.naturalWidth) return;
+        const mobileScale = w < 620 ? .72 : 1;
+        const maxWidth = w * layer.width * mobileScale;
+        const maxHeight = h * layer.height;
+        const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+        const targetWidth = image.naturalWidth * scale;
+        const targetHeight = image.naturalHeight * scale;
+        const drift = Math.sin(this.time * (.045 + order * .011) + regionIndex + order) * w * .006;
+        const drawX = w * layer.x - targetWidth * .5 + drift;
+        const drawY = horizon + h * layer.sea - targetHeight;
+        ctx.save();
+        ctx.globalAlpha = layer.alpha;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.filter = "saturate(.96) contrast(.97)";
+        ctx.shadowColor = "rgba(0,0,0,.34)";
+        ctx.shadowBlur = 10 + order * 2;
+        ctx.shadowOffsetY = 6;
+        ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+        ctx.restore();
+        drew = true;
+      });
+      return drew;
     }
 
     drawCloud(ctx, x, y, scale, darkness = 0) {
@@ -1555,16 +1601,25 @@
       const jump = pet.visual === "dolphin" || pet.visual === "seal" ? Math.max(0, Math.sin(this.time * 1.25 + pet.id)) * 15 : 0;
       ctx.save(); ctx.translate(x, y - jump); ctx.scale(size, size);
       if (pet.level) {
-        const pulse = 1 + Math.sin(this.time * 2.6 + pet.id) * .08;
+        const pulse = 1 + Math.sin(this.time * 2.1 + pet.id) * .05;
         ctx.save();
-        ctx.globalAlpha = Math.min(.62, .18 + pet.level * .08);
-        ctx.strokeStyle = pet.color;
-        ctx.lineWidth = 1.5 + pet.level * .45;
-        ctx.shadowColor = pet.color;
-        ctx.shadowBlur = 10 + pet.level * 5;
+        ctx.globalAlpha = Math.min(.24, .08 + pet.level * .025);
+        const glow = ctx.createRadialGradient(0, 12, 2, 0, 12, (48 + pet.level * 4) * pulse);
+        glow.addColorStop(0, pet.color);
+        glow.addColorStop(.45, `${pet.color}55`);
+        glow.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.ellipse(0, 0, (46 + pet.level * 6) * pulse, (34 + pet.level * 4) * pulse, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.ellipse(0, 15, (42 + pet.level * 3) * pulse, (11 + pet.level) * pulse, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = Math.min(.5, .14 + pet.level * .04);
+        ctx.fillStyle = pet.color;
+        for (let i = 0; i < Math.min(5, pet.level + 2); i++) {
+          const angle = this.time * 1.2 + pet.id + i * 1.7;
+          ctx.beginPath();
+          ctx.arc(Math.cos(angle) * (22 + i * 3), -10 + Math.sin(angle * .9) * 13, 1.2 + (i % 2) * .6, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.restore();
       }
       ctx.globalAlpha = .18; ctx.fillStyle = "#dffcff"; ctx.beginPath(); ctx.ellipse(0, 17 + jump, 44, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
@@ -1605,16 +1660,25 @@
       ctx.save();
       ctx.translate(x, y + (sprite.offsetY || 0) * baseScale + bob);
       if (pet.level) {
-        const pulse = 1 + Math.sin(this.time * 2.6 + pet.id) * .06;
+        const pulse = 1 + Math.sin(this.time * 2.1 + pet.id) * .04;
         ctx.save();
-        ctx.globalAlpha = Math.min(.5, .15 + pet.level * .06);
-        ctx.strokeStyle = pet.color;
-        ctx.lineWidth = Math.max(1, 1.2 + pet.level * .32) * baseScale;
-        ctx.shadowColor = pet.color;
-        ctx.shadowBlur = (8 + pet.level * 3) * baseScale;
+        ctx.globalAlpha = Math.min(.24, .08 + pet.level * .024);
+        const glow = ctx.createRadialGradient(targetWidth * .06, targetHeight * .28, 1, targetWidth * .06, targetHeight * .28, targetWidth * .44 * pulse);
+        glow.addColorStop(0, pet.color);
+        glow.addColorStop(.42, `${pet.color}55`);
+        glow.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.ellipse(0, 0, targetWidth * .52 * pulse, targetHeight * .42 * pulse, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.ellipse(targetWidth * .06, targetHeight * .28, targetWidth * .42 * pulse, Math.max(7, targetHeight * .13) * pulse, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = Math.min(.48, .12 + pet.level * .035);
+        ctx.fillStyle = pet.color;
+        for (let i = 0; i < Math.min(5, pet.level + 2); i++) {
+          const angle = this.time * 1.25 + pet.id + i * 1.65;
+          ctx.beginPath();
+          ctx.arc(Math.cos(angle) * targetWidth * (.19 + i * .025), -targetHeight * .18 + Math.sin(angle * .9) * targetHeight * .22, Math.max(1, targetWidth * .012), 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.restore();
       }
       ctx.globalAlpha = .16;
@@ -1664,11 +1728,34 @@
       this.drawShip(ctx, x, y, scale, false, ship.tier, false, ship.id, ship.type);
     }
 
+    enemySizeFactor(enemy) {
+      if (enemy.isBoss) return 1.06;
+      const text = normalizeText(`${enemy.name} ${enemy.category || ""}`);
+      if (/canoa|jangada|remador|pescador|bote|tribal|cacador|saqueador|contrabandista pequeno|pequeno contrabandista/.test(text)) return .62;
+      if (/jacare|reptil|pterodactilo|ictiossauro|plesiossauro|serpente|carapaca|dragao|leviata|baleeiro/.test(text)) return .68;
+      if (enemy.category === "PESCADOR") return .64;
+      if (enemy.category === "CRIATURA") return .68;
+      if (enemy.category === "MERCANTE" || enemy.category === "CONTRABANDISTA") return .72;
+      if (enemy.category === "MARINHA" || enemy.category === "FANTASMA") return .76;
+      return .72;
+    }
+
+    enemySceneScale(baseScale, enemy, sourceWidth = 280) {
+      const sizedScale = baseScale * this.enemySizeFactor(enemy);
+      if (enemy.isBoss) return sizedScale;
+      const playerSprite = getShipSprite(SHIPS[state.shipId].name);
+      const playerSceneScale = Math.min(1.15, this.width / 950);
+      const playerWidth = (playerSprite?.width || 250) * playerSceneScale;
+      const maxEnemyWidth = playerWidth * .82;
+      const projectedWidth = sourceWidth * sizedScale;
+      return projectedWidth > maxEnemyWidth ? sizedScale * (maxEnemyWidth / projectedWidth) : sizedScale;
+    }
+
     drawEnemy(ctx, x, y, scale, enemy) {
       const sprite = getEnemySprite(enemy.name);
-      if (sprite && this.drawEnemySprite(ctx, x, y, scale, sprite)) return;
+      if (sprite && this.drawEnemySprite(ctx, x, y, this.enemySceneScale(scale, enemy, sprite.width), sprite)) return;
       const visual = enemy.visual || inferEnemyVisual(enemy.name, REGIONS[state.regionIndex], enemy.category, enemy.visualTier, enemy.isBoss);
-      const finalScale = scale * (visual.scale || 1);
+      const finalScale = this.enemySceneScale(scale * (visual.scale || 1), enemy, 250 * (visual.scale || 1));
       const type = visual.type;
       if (["pirate-ship", "imperial-ship", "merchant-ship", "smuggler-ship", "ghost-ship"].includes(type)) {
         const faction = type === "imperial-ship" ? "MARINHA" : type === "merchant-ship" ? "MERCANTE" : type === "smuggler-ship" ? "CONTRABANDISTA" : type === "ghost-ship" ? "FANTASMA" : visual.theme === "volcanic" ? "VULCÂNICO" : enemy.visualKind || enemy.kind;
@@ -2752,9 +2839,8 @@
       const enemyTags = [...new Set(REGION_ENCOUNTERS[index].map(enemy => ENEMY_CATEGORIES[enemy.category].label))].map(label => `<span class="enemy-tag">⚔ ${label}</span>`).join("");
       const endgameIssues = endgameRequirementIssues(index);
       const endgameNotice = ENDGAME_REQUIREMENTS[index] ? `<div class="endgame-warning ${endgameIssues.length ? "danger" : "ready"}"><strong>${ENDGAME_REQUIREMENTS[index].label}</strong><span>${endgameIssues.length ? `Recomendado antes de avançar: ${endgameIssues.slice(0, 3).join(" • ")}${endgameIssues.length > 3 ? " • ..." : ""}` : "Preparação recomendada atingida."}</span></div>` : "";
-      const islandUrl = getRegionIslandUrl(index);
       const oceanUrl = `${OCEAN_SPRITE_PATH}${OCEAN_SPRITE.file}`;
-      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land};--map-island:url('${islandUrl}');--map-ocean:url('${oceanUrl}')"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
+      return `<article class="map-card ${unlocked ? "" : "locked"} ${current ? "current" : ""}"><div class="map-visual" style="--map-sky:${region.sky};--map-sea:${region.sea};--map-land:${region.land};--map-ocean:url('${oceanUrl}')"><div class="map-islands">${mapIslandLayersHtml(index)}</div><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span>${unlocked ? "" : "<div class=\"map-lock\">▣</div>"}</div><div class="map-body"><span class="map-era-badge">${eraLabel}</span><h3>${region.name}</h3><p>${region.description}</p><div class="map-tags">${enemyTags}${tags}</div>${endgameNotice}<div class="map-footer"><small>Boss: ${region.boss}<br>${state.bossesDefeated[index] ? "Derrotado" : `${Math.min(100, state.regionKills[index])}/100 inimigos`}</small><button class="button ${current ? "primary" : ""}" data-select-map="${index}" ${!unlocked || current ? "disabled" : ""}>${current ? "Navegando" : unlocked ? "Viajar" : "Bloqueado"}</button></div></div></article>`;
     }).join("");
   }
 
@@ -3213,7 +3299,6 @@
     toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa região.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
     if (issues.length) addLog(`Alerta de endgame: recomenda-se evoluir antes de avançar. ${issues.join(" • ")}.`, "danger-text");
     commitGame(true);
-    navigate("home");
   }
 
   function handleGlobalButtonClick(event) {
