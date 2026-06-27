@@ -1656,7 +1656,7 @@
   }
 
   function normalizeSpriteKey(value = "") {
-    return normalizeText(value).replace(/_/g, " ").replace(/\s+/g, " ").trim();
+    return normalizeText(value).replace(/[_\-.:"']/g, " ").replace(/\s+/g, " ").trim();
   }
 
   const SHIP_SPRITE_PATH = "assets/ships/";
@@ -1881,16 +1881,21 @@
   ].reduce((sprites, [name, file, options]) => {
     const image = new Image();
     image.decoding = "async";
-    image.src = `${ENEMY_SPRITE_PATH}${file}`;
-    sprites[normalizeText(name)] = {
+    const sprite = {
       image,
+      canvas: null,
       file,
       width: options.width,
       anchorX: options.anchorX ?? .5,
       anchorY: options.anchorY ?? .64,
       offsetX: options.offsetX || 0,
-      offsetY: options.offsetY || 0
+      offsetY: options.offsetY || 0,
+      ready: false,
+      processing: false
     };
+    image.onload = () => prepareEnemyImage(sprite);
+    image.src = `${ENEMY_SPRITE_PATH}${file}`;
+    sprites[normalizeText(name)] = sprite;
     return sprites;
   }, {});
 
@@ -1900,23 +1905,127 @@
 
   const ENEMY_SPRITESHEET_PATH = "assets/spritesenemies/";
   const ENEMY_SPRITESHEET_FILES = [
+    "01_Canoa_de_Couro_sprite_9frames.png",
     "01_Remador_Rival_sprite_9frames.png",
     "02_Pescador_Primitivo_sprite_9frames.png",
-    "03_Jacare_da_Lagoa_sprite_9frames.png",
-    "04_Boss_Crocomar_Anciao_sprite_9frames.png",
-    "05_Canoa_Tribal_sprite_9frames.png",
-    "06_Cacador_do_Mangue_sprite_9frames.png",
-    "07_Reptil_das_Raizes_sprite_9frames.png",
-    "08_Boss_Deinosuchus_do_Mangue_sprite_9frames.png",
-    "01_Canoa_de_Couro_sprite_9frames.png",
     "02_Pterodactilo_Cacador_sprite_9frames.png",
+    "03_Jacare_da_Lagoa_sprite_9frames.png",
     "03_Remador_das_Ilhas_sprite_9frames.png",
+    "04_Boss_Crocomar_Anciao_sprite_9frames.png",
     "04_Boss_Rei_Pteranodonte_sprite_9frames.png",
+    "05_Canoa_Tribal_sprite_9frames.png",
     "05_Jangada_de_Caca_sprite_9frames.png",
+    "06_Cacador_do_Mangue_sprite_9frames.png",
     "06_Ictiossauro_sprite_9frames.png",
+    "07_Reptil_das_Raizes_sprite_9frames.png",
     "07_Saqueador_da_Selva_sprite_9frames.png",
-    "08_Boss_Mosasaurus_Jovem_sprite_9frames.png"
+    "08_Boss_Deinosuchus_do_Mangue_sprite_9frames.png",
+    "08_Boss_Mosasaurus_Jovem_sprite_9frames.png",
+    "MAP-03_01_Canoa_de_Guerra_sprite_9frames.png",
+    "MAP-03_02_Plesiossauro_sprite_9frames.png",
+    "MAP-03_03_Guardiao_do_Canal_sprite_9frames.png",
+    "MAP-03_04_Boss_Leviata_Jurassico_sprite_9frames.png",
+    "MAP-03_05_Jangada_de_Pescador_sprite_9frames.png",
+    "MAP-03_06_Barco_Costeiro_sprite_9frames.png",
+    "MAP-03_07_Bote_Pirata_sprite_9frames.png",
+    "MAP-03_08_Pequeno_Contrabandista_sprite_9frames.png",
+    "MAP-03_09_Escuna_Pirata_sprite_9frames.png",
+    "MAP-03_10_Boss_Capitao_Barba_de_Ferro_sprite_9frames.png",
+    "MAP-04_01_Bote_de_Pesca_Hostil_sprite_9frames.png",
+    "MAP-04_02_Traineira_Saqueadora_sprite_9frames.png",
+    "MAP-04_03_Barco_Mercante_Pequeno_sprite_9frames.png",
+    "MAP-04_04_Navio_de_Carga_sprite_9frames.png",
+    "MAP-04_05_Escuna_Rapida_sprite_9frames.png",
+    "MAP-04_06_Patrulha_Naval_sprite_9frames.png",
+    "MAP-04_07_Transporte_de_Ouro_sprite_9frames.png",
+    "MAP-04_08_Boss_Rainha_Corsaria_Scarlet_sprite_9frames.png",
+    "MAP-05_01_Canoinha_Saqueadora_sprite_9frames.png",
+    "MAP-05_02_Jangada_de_Ferro_sprite_9frames.png",
+    "MAP-05_03_Canoa_dos_Saqueadores_sprite_9frames.png",
+    "MAP-05_04_Jangada_Espinhosa_sprite_9frames.png",
+    "MAP-05_05_Canoa_do_Carnical_sprite_9frames.png",
+    "MAP-05_06_Bote_de_Guerra_sprite_9frames.png",
+    "MAP-05_07_Jangada_Blindada_sprite_9frames.png",
+    "MAP-05_08_Barco_de_Assalto_sprite_9frames.png",
+    "MAP-05_09_Galeao_Sombrio_sprite_9frames.png",
+    "MAP-06_01_Canoa_Corrompida_sprite_9frames.png",
+    "MAP-06_02_Jangada_Abissal_sprite_9frames.png",
+    "MAP-06_03_Canoa_dos_Devoradores_sprite_9frames.png",
+    "MAP-06_04_Jangada_Fantasma_sprite_9frames.png",
+    "MAP-06_05_Canoa_das_Almas_Perdidas_sprite_9frames.png",
+    "MAP-06_06_Bote_do_Executor_sprite_9frames.png",
+    "MAP-06_07_Jangada_Necromante_sprite_9frames.png",
+    "MAP-06_08_Barco_do_Leviata_sprite_9frames.png",
+    "MAP-06_09_Galeao_Profano_sprite_9frames.png",
+    "MAP-07_01_Baleeiro_Sombrio_sprite_9frames.png",
+    "MAP-07_02_Navio_de_Suprimentos_sprite_9frames.png",
+    "MAP-07_03_Contrabandista_Abissal_sprite_9frames.png",
+    "MAP-07_04_Serpente_Marinha_sprite_9frames.png",
+    "MAP-07_05_Galeao_Pirata_sprite_9frames.png",
+    "MAP-07_06_Bote_de_Caca_Abissal_sprite_9frames.png",
+    "MAP-07_07_Carcaca_Flutuante_sprite_9frames.png",
+    "MAP-07_08_Corveta_do_Abismo_sprite_9frames.png",
+    "MAP-07_09_Boss_Megalodon_Ancestral_sprite_9frames.png",
+    "MAP-08_01_Escuna_Fantasma_sprite_9frames.png",
+    "MAP-08_02_Nau_Espectral_sprite_9frames.png",
+    "MAP-08_03_Navio_Amaldicoado_sprite_9frames.png",
+    "MAP-08_04_Corsario_Perdido_sprite_9frames.png",
+    "MAP-08_05_Vulto_do_Triangulo_sprite_9frames.png",
+    "MAP-08_06_Barca_Condenada_sprite_9frames.png",
+    "MAP-08_07_Fragata_Nebulosa_sprite_9frames.png",
+    "MAP-08_08_Ceifador_das_Brumas_sprite_9frames.png",
+    "MAP-08_09_Boss_Holandes_Voador_sprite_9frames.png",
+    "MAP-09_01_Bote_da_Marinha_sprite_9frames.png",
+    "MAP-09_02_Cutter_Real_sprite_9frames.png",
+    "MAP-09_03_Corveta_Real_sprite_9frames.png",
+    "MAP-09_04_Fragata_Imperial_sprite_9frames.png",
+    "MAP-09_05_Galeao_Real_sprite_9frames.png",
+    "MAP-09_06_Navio_de_Linha_sprite_9frames.png",
+    "MAP-09_07_Navio_Almirante_sprite_9frames.png",
+    "MAP-09_08_Patrulha_Imperial_sprite_9frames.png",
+    "MAP-09_09_Boss_Grande_Armada_Imperial_sprite_9frames.png",
+    "MAP-10_01_Saqueador_de_Cinzas_sprite_9frames.png",
+    "MAP-10_02_Transporte_de_Obsidiana_sprite_9frames.png",
+    "MAP-10_03_Corveta_Vulcanica_sprite_9frames.png",
+    "MAP-10_04_Carapaca_Vulcanica_sprite_9frames.png",
+    "MAP-10_05_Dragao_Marinho_Jovem_sprite_9frames.png",
+    "MAP-10_06_Barca_de_Lava_sprite_9frames.png",
+    "MAP-10_07_Monitor_de_Basalto_sprite_9frames.png",
+    "MAP-10_08_Fragata_das_Cinzas_sprite_9frames.png",
+    "MAP-10_09_Boss_Dragao_Marinho_Vulcanico_sprite_9frames.png",
+    "MAP-11_01_Barco_Costeiro_Congelado_sprite_9frames.png",
+    "MAP-11_02_Corsario_Boreal_sprite_9frames.png",
+    "MAP-11_03_Fragata_Congelada_sprite_9frames.png",
+    "MAP-11_04_Navio_Fantasma_do_Gelo_sprite_9frames.png",
+    "MAP-11_05_Serpente_de_Gelo_sprite_9frames.png",
+    "MAP-11_06_Drakkar_Boreal_sprite_9frames.png",
+    "MAP-11_07_Baleeiro_Glacial_sprite_9frames.png",
+    "MAP-11_08_Patrulha_Polar_sprite_9frames.png",
+    "MAP-11_09_Boss_Jormungandr_de_Gelo_sprite_9frames.png",
+    "MAP-12_01_Cultista_do_Kraken_sprite_9frames.png",
+    "MAP-12_02_Dreadnought_Afundado_sprite_9frames.png",
+    "MAP-12_03_Frota_Imperial_Perdida_sprite_9frames.png",
+    "MAP-12_04_Leviata_Menor_sprite_9frames.png",
+    "MAP-12_05_Navio_Fantasma_Lendario_sprite_9frames.png",
+    "MAP-12_06_Barca_Ritualista_sprite_9frames.png",
+    "MAP-12_07_Nau_dos_Condenados_sprite_9frames.png",
+    "MAP-12_08_Tentaculo_Guardiao_sprite_9frames.png",
+    "MAP-12_09_Boss_Kraken_Primordial_sprite_9frames.png"
   ];
+  const ENEMY_SPRITESHEET_FILE_ALIASES = {
+    "MAP-05_01_Canoinha_Saqueadora_sprite_9frames.png": { name: "Brigantina_Pirata", regionIndex: 7 },
+    "MAP-05_02_Jangada_de_Ferro_sprite_9frames.png": { name: "Corveta_da_Marinha", regionIndex: 7 },
+    "MAP-05_03_Canoa_dos_Saqueadores_sprite_9frames.png": { name: "Navio_Quebra-Bloqueio", regionIndex: 7 },
+    "MAP-05_04_Jangada_Espinhosa_sprite_9frames.png": { name: "Navio_Danificado", regionIndex: 7 },
+    "MAP-05_05_Canoa_do_Carnical_sprite_9frames.png": { name: "Cacador_da_Tormenta", regionIndex: 7 },
+    "MAP-05_06_Bote_de_Guerra_sprite_9frames.png": { name: "Tempestade_Viva", regionIndex: 7 },
+    "MAP-06_01_Canoa_Corrompida_sprite_9frames.png": { name: "Escuna_Pirata", regionIndex: 8 },
+    "MAP-06_02_Jangada_Abissal_sprite_9frames.png": { name: "Corsario_Disfarcado", regionIndex: 8 },
+    "MAP-06_03_Canoa_dos_Devoradores_sprite_9frames.png": { name: "Brigantina_Pirata", regionIndex: 8 },
+    "MAP-06_04_Jangada_Fantasma_sprite_9frames.png": { name: "Transporte_Ilegal", regionIndex: 8 },
+    "MAP-06_05_Canoa_das_Almas_Perdidas_sprite_9frames.png": { name: "Fragata_Pirata", regionIndex: 8 },
+    "MAP-06_06_Bote_do_Executor_sprite_9frames.png": { name: "Almirante_Negro", regionIndex: 8 }
+  };
   const ENEMY_SPRITESHEET_OPTIONS = {
     Remador_Rival: { width: 250, anchorY: .68 },
     Pescador_Primitivo: { width: 265, anchorY: .7 },
@@ -1928,6 +2037,7 @@
       animations: {
         idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
         walking: { frames: [0, 1, 2, 1], fps: 5.5, loop: true, blend: true },
+        attack: { frames: [3, 4, 5, 4], fps: 8.5, loop: false, blend: true },
         hit: { frames: [0], fps: 1, loop: false, blend: false },
         death: { frames: [9, 10, 11], fps: 4.5, loop: false, blend: true }
       }
@@ -1943,6 +2053,7 @@
       animations: {
         idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
         walking: { frames: [0, 1, 2, 1], fps: 5.2, loop: true, blend: true },
+        attack: { frames: [3, 4, 5, 4], fps: 8.2, loop: false, blend: true },
         hit: { frames: [7], fps: 7.5, loop: false, blend: false },
         death: { frames: [9, 10, 11], fps: 4.3, loop: false, blend: true }
       }
@@ -1955,6 +2066,7 @@
       animations: {
         idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
         walking: { frames: [0, 1, 2, 1], fps: 5, loop: true, blend: true },
+        attack: { frames: [3, 4, 5, 4], fps: 8, loop: false, blend: true },
         hit: { frames: [8], fps: 7.5, loop: false, blend: false },
         death: { frames: [9, 10, 11], fps: 4.3, loop: false, blend: true }
       }
@@ -1968,46 +2080,60 @@
     Saqueador_da_Selva: { width: 285, anchorY: .66 },
     Boss_Mosasaurus_Jovem: { width: 380, anchorY: .56 }
   };
-  const ENEMY_SPRITESHEET_NAME_BY_ENEMY = [
-    ["remador_rival", "Remador_Rival"],
-    ["pescador_primitivo", "Pescador_Primitivo"],
-    ["jacare_da_lagoa", "Jacare_da_Lagoa"],
-    ["boss_crocomar_anciao", "Boss_Crocomar_Anciao"],
-    ["crocomar_anciao", "Boss_Crocomar_Anciao"],
-    ["canoa_tribal", "Canoa_Tribal"],
-    ["cacador_do_mangue", "Cacador_do_Mangue"],
-    ["reptil_das_raizes", "Reptil_das_Raizes"],
-    ["boss_deinosuchus_do_mangue", "Boss_Deinosuchus_do_Mangue"],
-    ["deinosuchus_do_mangue", "Boss_Deinosuchus_do_Mangue"],
-    ["canoa_de_couro", "Canoa_de_Couro"],
-    ["pterodactilo_cacador", "Pterodactilo_Cacador"],
-    ["remador_das_ilhas", "Remador_das_Ilhas"],
-    ["boss_rei_pteranodonte", "Boss_Rei_Pteranodonte"],
-    ["rei_pteranodonte", "Boss_Rei_Pteranodonte"],
-    ["jangada_de_caca", "Jangada_de_Caca"],
-    ["ictiossauro", "Ictiossauro"],
-    ["saqueador_da_selva", "Saqueador_da_Selva"],
-    ["boss_mosasaurus_jovem", "Boss_Mosasaurus_Jovem"],
-    ["mosasaurus_jovem", "Boss_Mosasaurus_Jovem"]
-  ].reduce((map, [internalName, spriteName]) => {
-    map[normalizeEnemySpriteKey(internalName)] = spriteName;
+  const ENEMY_SPRITESHEET_OPTIONS_BY_KEY = Object.entries(ENEMY_SPRITESHEET_OPTIONS).reduce((map, [name, options]) => {
+    map[normalizeEnemySpriteKey(name)] = options;
     return map;
   }, {});
   const ENEMY_SPRITESHEET_ANIMATIONS = {
     idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
     walking: { frames: [0, 1, 2, 1], fps: 4.8, loop: true, blend: true },
+    attack: { frames: [3, 4, 5, 4], fps: 8.5, loop: false, blend: true },
     hit: { frames: [6, 7], fps: 9, loop: false, blend: true },
     death: { frames: [6, 7, 8], fps: 4.8, loop: false, blend: true }
   };
   const ENEMY_HIT_ANIMATION_SECONDS = .34;
+  const ENEMY_ATTACK_ANIMATION_SECONDS = .46;
   const ENEMY_DEATH_ANIMATION_SECONDS = .95;
 
   function normalizeEnemySpriteKey(value = "") {
-    return normalizeSpriteKey(value);
+    return normalizeSpriteKey(value)
+      .replace(/^map\s+\d+\s+\d+\s+/, "")
+      .replace(/^\d+\s+/, "")
+      .replace(/\b(?:boss|sprite|final|pack|bloco|png)\b/g, " ")
+      .replace(/\b\d+\s*frames?\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function getEnemyRegionalSpritesheetKey(key, regionIndex) {
+    return `${Math.floor(Number(regionIndex) || 0)}::${key}`;
+  }
+
+  function getEnemySpritesheetAlias(file) {
+    return ENEMY_SPRITESHEET_FILE_ALIASES[file] || null;
   }
 
   function getEnemySpritesheetNameFromFile(file) {
-    return file.replace(/^\d+_/, "").replace(/_sprite_9frames\.png$/i, "");
+    return getEnemySpritesheetAlias(file)?.name || file
+      .replace(/\.png$/i, "")
+      .replace(/^MAP-\d+_\d+_/i, "")
+      .replace(/^\d+_/, "")
+      .replace(/_sprite_\d+frames$/i, "");
+  }
+
+  function getEnemySpritesheetOptions(name) {
+    const key = normalizeEnemySpriteKey(name);
+    const legacyKey = normalizeText(name).replace(/_/g, " ").replace(/\s+/g, " ").trim();
+    const base = ENEMY_SPRITES[key] || ENEMY_SPRITES[legacyKey] || {};
+    const override = ENEMY_SPRITESHEET_OPTIONS_BY_KEY[key] || {};
+    return {
+      width: base.width,
+      anchorX: base.anchorX,
+      anchorY: base.anchorY,
+      offsetX: base.offsetX,
+      offsetY: base.offsetY,
+      ...override
+    };
   }
 
   function measureEnemyFrameBounds(sprite, data, width, height) {
@@ -2038,6 +2164,125 @@
     sprite.referenceBounds = { centerX: average("centerX"), bottomY: average("bottomY") };
   }
 
+  function cleanupSpritesheetLightArtifacts(data, width, height) {
+    const total = width * height;
+    const visited = new Uint8Array(total);
+    const maxArtifactSize = 72;
+    const isCandidate = pixel => {
+      const index = pixel * 4;
+      if (data[index + 3] <= 8) return false;
+      const r = data[index], g = data[index + 1], b = data[index + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const average = (r + g + b) / 3;
+      return max - min <= 18 && average >= 226;
+    };
+    const touchesTransparent = (x, y) => {
+      if (x <= 0 || y <= 0 || x >= width - 1 || y >= height - 1) return true;
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          if (!ox && !oy) continue;
+          if (data[((y + oy) * width + x + ox) * 4 + 3] <= 8) return true;
+        }
+      }
+      return false;
+    };
+    for (let start = 0; start < total; start++) {
+      if (visited[start] || !isCandidate(start)) continue;
+      const queue = [start];
+      const component = [];
+      let head = 0;
+      let tooLarge = false;
+      let nearTransparent = false;
+      visited[start] = 1;
+      while (head < queue.length) {
+        const pixel = queue[head++];
+        const x = pixel % width;
+        const y = Math.floor(pixel / width);
+        if (component.length <= maxArtifactSize) component.push(pixel);
+        if (component.length > maxArtifactSize) tooLarge = true;
+        if (touchesTransparent(x, y)) nearTransparent = true;
+        for (let oy = -1; oy <= 1; oy++) {
+          const ny = y + oy;
+          if (ny < 0 || ny >= height) continue;
+          for (let ox = -1; ox <= 1; ox++) {
+            if (!ox && !oy) continue;
+            const nx = x + ox;
+            if (nx < 0 || nx >= width) continue;
+            const next = ny * width + nx;
+            if (visited[next] || !isCandidate(next)) continue;
+            visited[next] = 1;
+            queue.push(next);
+          }
+        }
+      }
+      if (tooLarge || !nearTransparent) continue;
+      component.forEach(pixel => { data[pixel * 4 + 3] = 0; });
+    }
+  }
+
+  function cleanSpriteTransparency(data, width, height) {
+    const samplePoints = [
+      0,
+      (width - 1) * 4,
+      ((height - 1) * width) * 4,
+      ((height - 1) * width + width - 1) * 4
+    ];
+    const opaqueSamples = samplePoints.filter(index => data[index + 3] > 8);
+    const bgSamples = opaqueSamples.length ? opaqueSamples : samplePoints;
+    const bg = bgSamples.reduce((color, index) => {
+      color.r += data[index];
+      color.g += data[index + 1];
+      color.b += data[index + 2];
+      return color;
+    }, { r: 0, g: 0, b: 0 });
+    bg.r /= bgSamples.length;
+    bg.g /= bgSamples.length;
+    bg.b /= bgSamples.length;
+    const hasOpaqueBackground = opaqueSamples.length > 0;
+    const bgMax = Math.max(bg.r, bg.g, bg.b);
+    const bgMin = Math.min(bg.r, bg.g, bg.b);
+    const bgAverage = (bg.r + bg.g + bg.b) / 3;
+    const bgIsLightNeutral = bgMax - bgMin < 36 && bgAverage > 196;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const saturation = max - min;
+      const average = (r + g + b) / 3;
+      const distance = Math.hypot(r - bg.r, g - bg.g, b - bg.b);
+      if (
+        (hasOpaqueBackground && distance < 44) ||
+        (hasOpaqueBackground && saturation < 9 && average > 88 && average < 190) ||
+        (bgIsLightNeutral && saturation < 16 && average > 176 && distance < 92)
+      ) data[i + 3] = 0;
+    }
+    cleanupSpritesheetLightArtifacts(data, width, height);
+  }
+
+  function prepareEnemyImage(sprite) {
+    const image = sprite.image;
+    if (!image?.complete || !image.naturalWidth || sprite.ready || sprite.processing) return;
+    sprite.processing = true;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+      cleanSpriteTransparency(pixels.data, canvas.width, canvas.height);
+      context.putImageData(pixels, 0, 0);
+      sprite.canvas = canvas;
+      sprite.ready = true;
+    } catch (error) {
+      sprite.canvas = null;
+      sprite.ready = true;
+    } finally {
+      sprite.processing = false;
+    }
+  }
+
   function prepareEnemySpritesheet(sprite) {
     const image = sprite.image;
     if (!image?.complete || !image.naturalWidth || sprite.ready || sprite.processing) return;
@@ -2050,30 +2295,7 @@
       context.drawImage(image, 0, 0);
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
       const data = pixels.data;
-      const samplePoints = [
-        0,
-        (canvas.width - 1) * 4,
-        ((canvas.height - 1) * canvas.width) * 4,
-        ((canvas.height - 1) * canvas.width + canvas.width - 1) * 4
-      ];
-      const bg = samplePoints.reduce((color, index) => {
-        color.r += data[index];
-        color.g += data[index + 1];
-        color.b += data[index + 2];
-        return color;
-      }, { r: 0, g: 0, b: 0 });
-      bg.r /= samplePoints.length;
-      bg.g /= samplePoints.length;
-      bg.b /= samplePoints.length;
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i], g = data[i + 1], b = data[i + 2];
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        const saturation = max - min;
-        const average = (r + g + b) / 3;
-        const distance = Math.hypot(r - bg.r, g - bg.g, b - bg.b);
-        if (distance < 36 || (saturation < 9 && average > 88 && average < 180)) data[i + 3] = 0;
-      }
+      cleanSpriteTransparency(data, canvas.width, canvas.height);
       measureEnemyFrameBounds(sprite, data, canvas.width, canvas.height);
       context.putImageData(pixels, 0, 0);
       sprite.canvas = canvas;
@@ -2087,14 +2309,19 @@
   }
 
   const ENEMY_ANIMATED_SPRITESHEETS = ENEMY_SPRITESHEET_FILES.reduce((sprites, file) => {
+    const alias = getEnemySpritesheetAlias(file);
     const name = getEnemySpritesheetNameFromFile(file);
-    const options = ENEMY_SPRITESHEET_OPTIONS[name] || {};
+    const options = getEnemySpritesheetOptions(name);
+    const key = normalizeEnemySpriteKey(name);
+    const regionalKey = alias?.regionIndex != null ? getEnemyRegionalSpritesheetKey(key, alias.regionIndex) : key;
     const image = new Image();
     const sprite = {
       key: name,
+      sheetKey: regionalKey,
       image,
       canvas: null,
       file,
+      regionIndex: alias?.regionIndex ?? null,
       frames: options.frames || 9,
       columns: options.columns || 3,
       rows: options.rows || 3,
@@ -2104,32 +2331,72 @@
       anchorY: options.anchorY ?? .64,
       offsetX: options.offsetX || 0,
       offsetY: options.offsetY || 0,
+      frameBounds: null,
+      referenceBounds: null,
       ready: false,
       processing: false
     };
     image.decoding = "async";
     image.onload = () => prepareEnemySpritesheet(sprite);
     image.src = `${ENEMY_SPRITESHEET_PATH}${file}`;
-    sprites[normalizeEnemySpriteKey(name)] = sprite;
+    if (!sprites[key]) sprites[key] = sprite;
+    sprites[regionalKey] = sprite;
     return sprites;
   }, {});
+  const ENEMY_SPRITESHEET_KEYS = Object.keys(ENEMY_ANIMATED_SPRITESHEETS).filter(key => !key.includes("::"));
+  const ENEMY_MISSING_SPRITESHEET_WARNINGS = new Set();
 
-  function getEnemyAnimatedSpritesheet(name) {
-    const key = normalizeEnemySpriteKey(name);
-    const mapped = ENEMY_SPRITESHEET_NAME_BY_ENEMY[key] || name;
-    return ENEMY_ANIMATED_SPRITESHEETS[normalizeEnemySpriteKey(mapped)];
+  function getEnemySpritesheetMatchScore(key, candidate) {
+    if (!key || !candidate) return 0;
+    if (key === candidate) return 1;
+    if (key.includes(candidate) || candidate.includes(key)) {
+      return Math.min(key.length, candidate.length) / Math.max(key.length, candidate.length);
+    }
+    const sourceTokens = key.split(" ").filter(Boolean);
+    const targetTokens = candidate.split(" ").filter(Boolean);
+    const targetSet = new Set(targetTokens);
+    const shared = sourceTokens.filter(token => targetSet.has(token)).length;
+    return shared / Math.max(sourceTokens.length, targetTokens.length, 1);
   }
 
-  function createEnemySpriteAnimation(name) {
-    const sprite = getEnemyAnimatedSpritesheet(name);
+  function findClosestEnemySpritesheet(key) {
+    let bestKey = "";
+    let bestScore = 0;
+    ENEMY_SPRITESHEET_KEYS.forEach(candidate => {
+      const score = getEnemySpritesheetMatchScore(key, candidate);
+      if (score > bestScore) {
+        bestKey = candidate;
+        bestScore = score;
+      }
+    });
+    return bestScore >= .78 ? ENEMY_ANIMATED_SPRITESHEETS[bestKey] : null;
+  }
+
+  function getEnemyAnimatedSpritesheet(enemyOrName, regionIndex = state.regionIndex) {
+    const animationKey = typeof enemyOrName === "object" ? enemyOrName?.animation?.sheetKey : null;
+    if (animationKey && ENEMY_ANIMATED_SPRITESHEETS[animationKey]) return ENEMY_ANIMATED_SPRITESHEETS[animationKey];
+    const name = typeof enemyOrName === "object" ? enemyOrName?.name : enemyOrName;
+    const key = normalizeEnemySpriteKey(name);
+    const regionalKey = getEnemyRegionalSpritesheetKey(key, regionIndex);
+    const sprite = ENEMY_ANIMATED_SPRITESHEETS[regionalKey] || ENEMY_ANIMATED_SPRITESHEETS[key] || findClosestEnemySpritesheet(key);
+    if (sprite) return sprite;
+    if (key && !ENEMY_MISSING_SPRITESHEET_WARNINGS.has(key)) {
+      ENEMY_MISSING_SPRITESHEET_WARNINGS.add(key);
+      console.warn(`[Pirates of Abyss] Sprite sheet de inimigo nao encontrada para: ${name}`);
+    }
+    return null;
+  }
+
+  function createEnemySpriteAnimation(name, regionIndex = state.regionIndex) {
+    const sprite = getEnemyAnimatedSpritesheet(name, regionIndex);
     if (!sprite) return null;
-    return { sheetKey: sprite.key, frameSeed: randomBetween(0, 5), hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 };
+    return { sheetKey: sprite.sheetKey || normalizeEnemySpriteKey(sprite.key), frameSeed: randomBetween(0, 5), attackStartedAt: -999, attackUntil: 0, hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 };
   }
 
   function ensureEnemySpriteAnimation(enemy) {
-    const sprite = getEnemyAnimatedSpritesheet(enemy?.name);
+    const sprite = getEnemyAnimatedSpritesheet(enemy);
     if (!sprite) return null;
-    if (!enemy.animation || enemy.animation.sheetKey !== sprite.key) enemy.animation = createEnemySpriteAnimation(enemy.name);
+    if (!enemy.animation || enemy.animation.sheetKey !== (sprite.sheetKey || normalizeEnemySpriteKey(sprite.key))) enemy.animation = createEnemySpriteAnimation(enemy.name, state.regionIndex);
     return enemy.animation;
   }
 
@@ -2230,6 +2497,13 @@
       animation.hitUntil = this.time + ENEMY_HIT_ANIMATION_SECONDS;
     }
 
+    markEnemyAttack(enemy) {
+      const animation = ensureEnemySpriteAnimation(enemy);
+      if (!animation || enemy.defeated || animation.deathStartedAt) return;
+      animation.attackStartedAt = this.time;
+      animation.attackUntil = this.time + ENEMY_ATTACK_ANIMATION_SECONDS;
+    }
+
     ensurePlayerShipAnimation(ship) {
       const sprite = getPlayerShipSpritesheet(ship?.name);
       if (!sprite) return null;
@@ -2290,7 +2564,7 @@
           visualTier: enemy.visualTier,
           isBoss: enemy.isBoss,
           defeated: true,
-          animation: { ...animation, hitUntil: 0, deathStartedAt: this.time + delay }
+          animation: { ...animation, attackUntil: 0, hitUntil: 0, deathStartedAt: this.time + delay }
         }
       });
       this.enemyDeathAnimations = this.enemyDeathAnimations.slice(-3);
@@ -2902,6 +3176,9 @@
       } else if (animation.hitUntil && this.time < animation.hitUntil) {
         stateName = "hit";
         elapsed = Math.max(0, this.time - animation.hitStartedAt);
+      } else if (animation.attackUntil && this.time < animation.attackUntil) {
+        stateName = "attack";
+        elapsed = Math.max(0, this.time - animation.attackStartedAt);
       } else if (state.combat.running && !state.combat.repairing) {
         stateName = "walking";
       }
@@ -2934,14 +3211,15 @@
       ctx.save();
       ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
       if (pose.stateName === "hit") ctx.filter = "brightness(1.2) saturate(1.12)";
+      else if (pose.stateName === "attack") ctx.filter = "saturate(1.08) contrast(1.04)";
       let baseAlpha = 1;
       if (pose.stateName === "death") {
         const fadeStart = ENEMY_DEATH_ANIMATION_SECONDS * .72;
         if (pose.elapsed > fadeStart) baseAlpha = clamp(1 - (pose.elapsed - fadeStart) / Math.max(.001, ENEMY_DEATH_ANIMATION_SECONDS - fadeStart), 0, 1);
       }
       ctx.imageSmoothingEnabled = false;
-      ctx.shadowColor = pose.stateName === "hit" ? "rgba(255,230,180,.58)" : "rgba(0,0,0,.34)";
-      ctx.shadowBlur = pose.stateName === "hit" ? 14 * scale : 7 * scale;
+      ctx.shadowColor = pose.stateName === "hit" ? "rgba(255,230,180,.58)" : pose.stateName === "attack" ? "rgba(255,190,120,.36)" : "rgba(0,0,0,.34)";
+      ctx.shadowBlur = pose.stateName === "hit" ? 14 * scale : pose.stateName === "attack" ? 10 * scale : 7 * scale;
       const drawFrame = (frame, alpha) => {
         const frameX = (frame % sprite.columns) * frameWidth;
         const frameY = Math.floor(frame / sprite.columns) * frameHeight;
@@ -3078,13 +3356,15 @@
     drawEnemySprite(ctx, x, y, scale, sprite) {
       const image = sprite.image;
       if (!image?.complete || !image.naturalWidth) return false;
+      if (!sprite.ready && !sprite.processing) prepareEnemyImage(sprite);
+      const source = sprite.canvas || image;
       const targetWidth = sprite.width * scale;
-      const targetHeight = targetWidth * (image.naturalHeight / image.naturalWidth);
+      const targetHeight = targetWidth * ((source.height || image.naturalHeight) / (source.width || image.naturalWidth));
       const drawX = -targetWidth * sprite.anchorX;
       const drawY = -targetHeight * sprite.anchorY;
       ctx.save();
       ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
-      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      ctx.drawImage(source, drawX, drawY, targetWidth, targetHeight);
       ctx.restore();
       return true;
     }
@@ -3135,7 +3415,7 @@
     }
 
     drawEnemy(ctx, x, y, scale, enemy) {
-      const animatedSprite = getEnemyAnimatedSpritesheet(enemy.name);
+      const animatedSprite = getEnemyAnimatedSpritesheet(enemy);
       if (animatedSprite && this.drawEnemySpritesheet(ctx, x, y, this.enemySceneScale(scale, enemy, animatedSprite.width), enemy, animatedSprite)) return;
       const sprite = getEnemySprite(enemy.name);
       if (sprite && this.drawEnemySprite(ctx, x, y, this.enemySceneScale(scale, enemy, sprite.width), sprite)) return;
@@ -3566,6 +3846,7 @@
   function enemyAttack() {
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
+    scene.markEnemyAttack(enemy);
     const stats = getStats();
     if (Math.random() < stats.evasion) {
       scene.floatDamage("Esquivou!", false, "#9ff4e9");
