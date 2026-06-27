@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v66-enemy-sprite-aliases";
+const CACHE = "pirates-abyss-v67-player-ship-sprites";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -235,7 +235,16 @@ const PLAYER_SHIP_SPRITESHEET_ASSET_FILES = [
   "PLAYER-02_05_Brigantina_Pirata_sprite_9frames.png",
   "PLAYER-02_06_Corveta_Armada_sprite_9frames.png",
   "PLAYER-02_07_Galeota_sprite_9frames.png",
-  "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png"
+  "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png",
+  "PLAYER-03_01_Galeao_Mercante_sprite_9frames.png",
+  "PLAYER-03_02_Galeao_Pirata_sprite_9frames.png",
+  "PLAYER-03_03_Fragata_Real_sprite_9frames.png",
+  "PLAYER-03_04_Fragata_Corsaria_sprite_9frames.png",
+  "PLAYER-03_05_Galeao_de_Guerra_sprite_9frames.png",
+  "PLAYER-03_06_Encouracado_Imperial_sprite_9frames.png",
+  "PLAYER-03_07_Fragata_Fantasma_sprite_9frames.png",
+  "PLAYER-03_08_Kraken_Hunter_sprite_9frames.png",
+  "PLAYER-03_09_Black_Abyss_sprite_9frames.png"
 ];
 const ISLAND_ASSET_FILES = [];
 const FIXED_BACKGROUND_ASSET_FILES = [

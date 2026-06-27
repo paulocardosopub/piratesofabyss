@@ -14,7 +14,7 @@
   --green: #59d39d;
   --shadow: 0 18px 50px rgba(0, 0, 0, .28);
   --radius: 18px;
-  --combat-nav-gap: 8px;
+  --combat-nav-gap: 0px;
   --bottom-nav-height: 56px;
 }
 
@@ -281,7 +281,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
   margin: var(--combat-nav-gap) auto 0;
   padding: 5px;
   border: 1px solid rgba(159, 205, 203, .2);
-  border-radius: 16px;
+  border-radius: 0 0 16px 16px;
   background: rgba(7, 25, 37, .94);
   box-shadow: 0 10px 32px rgba(0,0,0,.32);
   backdrop-filter: blur(18px);
@@ -1493,22 +1493,35 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 @media (max-width: 720px) {
   body { font-size: 14px; }
   :root {
-    --mobile-combat-top: 64px;
+    --mobile-combat-top: 92px;
     --mobile-combat-height: clamp(150px, 24vh, 210px);
     --mobile-nav-height: 50px;
-    --combat-nav-gap: 7px;
+    --combat-nav-gap: 0px;
     --bottom-nav-height: var(--mobile-nav-height);
   }
   .app-shell { padding-bottom: 30px; }
-  .topbar { height: 58px; }
+  .topbar {
+    height: 88px;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "brand power resources"
+      "captain captain captain";
+    align-content: center;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 6px 10px;
+  }
+  .brand { grid-area: brand; }
   .brand-mark { width: 35px; height: 35px; }
-  .top-resources { max-width: 176px; justify-content: flex-start; gap: 5px; overflow: hidden; scrollbar-width: none; }
-  .top-resources > div { min-width: 84px; padding: 5px 7px; }
-  .captain-topbar { flex-basis: 178px; min-width: 150px; gap: 7px; padding: 4px 0 4px 8px; border-left-color: rgba(255,255,255,.08); }
+  .top-power { grid-area: power; min-width: 84px; padding: 5px 8px; }
+  .top-resources { grid-area: resources; width: 100%; max-width: none; justify-content: flex-start; gap: 5px; overflow-x: auto; scrollbar-width: none; }
+  .top-resources > div { min-width: 88px; padding: 5px 7px; }
+  .captain-topbar { grid-area: captain; width: 100%; max-width: none; min-width: 0; flex-basis: auto; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; padding: 5px 8px; border-left: 0; border-top: 1px solid rgba(255,255,255,.08); border-radius: 10px; background: rgba(247,189,74,.045); }
   .captain-topbar-avatar { width: 34px; height: 34px; font-size: 18px; }
-  .captain-topbar-copy > strong { font-size: 12px; }
-  .captain-topbar-meta { gap: 5px; font-size: 8px; }
-  .captain-topbar-meta small { display: none; }
+  .captain-topbar-copy > strong { font-size: 13px; }
+  .captain-topbar-meta { gap: 7px; font-size: 9px; }
+  .captain-topbar-meta small { display: block; font-size: 8px; }
   .main-content { padding: 8px 10px 30px; }
   .persistent-combat { top: var(--mobile-combat-top); margin: 0 -2px 13px; }
   .persistent-combat .battle-stage { height: var(--mobile-combat-height); min-height: 0; max-height: none; }
@@ -1615,21 +1628,22 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 }
 
 @media (max-width: 430px) {
-  :root { --mobile-combat-height: clamp(132px, 23vh, 178px); --mobile-nav-height: 48px; }
-  .topbar { gap: 6px; padding: 0 8px; }
+  :root { --mobile-combat-top: 96px; --mobile-combat-height: clamp(132px, 23vh, 178px); --mobile-nav-height: 48px; }
+  .topbar { height: 90px; grid-template-columns: auto minmax(68px, auto) minmax(0, 1fr); gap: 5px 6px; padding: 5px 8px; }
   .top-power { min-width: 70px; padding: 5px 7px; }
   .top-power span { font-size: 6px; }
   .top-power strong { font-size: 11px; }
-  .top-resources { max-width: 92px; gap: 4px; }
-  .top-resources > div { min-width: 44px; justify-content: center; gap: 4px; padding: 4px; }
+  .top-resources { max-width: none; gap: 4px; }
+  .top-resources > div { min-width: 62px; justify-content: flex-start; gap: 4px; padding: 4px 5px; }
   .top-resource-name { display: none; }
   .top-resource-amount { font-size: 10px; }
   .resource-symbol { width: auto; font-size: 14px; }
-  .captain-topbar { flex-basis: 112px; min-width: 106px; grid-template-columns: 30px minmax(0, 1fr); gap: 5px; padding-left: 6px; }
+  .captain-topbar { min-width: 0; grid-template-columns: 30px minmax(0, 1fr); gap: 6px; padding: 5px 7px; }
   .captain-topbar-avatar { width: 30px; height: 30px; font-size: 16px; }
-  .captain-topbar-copy > strong { font-size: 10px; }
-  .captain-topbar-meta { font-size: 7px; }
-  .captain-topbar-xp { height: 4px; }
+  .captain-topbar-copy > strong { font-size: 12px; }
+  .captain-topbar-meta { gap: 6px; font-size: 8px; }
+  .captain-topbar-meta small { display: block; font-size: 8px; }
+  .captain-topbar-xp { height: 5px; }
   .persistent-combat .battle-stage { height: var(--mobile-combat-height); min-height: 0; }
   .battle-stage { --hud-gap: 5px; --hud-top: 5px; --region-hud-width: min(112px, 35%); }
   .battle-hud { padding: 4px 5px; }
@@ -1676,11 +1690,11 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
     --mobile-combat-top: 54px;
     --mobile-combat-height: clamp(112px, 34vh, 166px);
     --mobile-nav-height: 46px;
-    --combat-nav-gap: 6px;
+    --combat-nav-gap: 0px;
     --bottom-nav-height: var(--mobile-nav-height);
   }
   .app-shell { padding-bottom: 24px; }
-  .topbar { height: 50px; padding-inline: 10px; }
+  .topbar { height: 50px; display: flex; align-items: center; gap: 10px; padding-inline: 10px; }
   .brand-mark { width: 32px; height: 32px; font-size: 18px; }
   .brand > span:last-child { display: none; }
   .top-power { min-width: 78px; padding: 5px 8px; }

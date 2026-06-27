@@ -1725,13 +1725,24 @@
     "PLAYER-02_05_Brigantina_Pirata_sprite_9frames.png",
     "PLAYER-02_06_Corveta_Armada_sprite_9frames.png",
     "PLAYER-02_07_Galeota_sprite_9frames.png",
-    "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png"
+    "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png",
+    "PLAYER-03_01_Galeao_Mercante_sprite_9frames.png",
+    "PLAYER-03_02_Galeao_Pirata_sprite_9frames.png",
+    "PLAYER-03_03_Fragata_Real_sprite_9frames.png",
+    "PLAYER-03_04_Fragata_Corsaria_sprite_9frames.png",
+    "PLAYER-03_05_Galeao_de_Guerra_sprite_9frames.png",
+    "PLAYER-03_06_Encouracado_Imperial_sprite_9frames.png",
+    "PLAYER-03_07_Fragata_Fantasma_sprite_9frames.png",
+    "PLAYER-03_08_Kraken_Hunter_sprite_9frames.png",
+    "PLAYER-03_09_Black_Abyss_sprite_9frames.png"
   ];
+  const PLAYER_SHIP_ATTACK_ANIMATION_SECONDS = .42;
   const PLAYER_SHIP_DEFAULT_ANIMATIONS = {
-    idle: { frames: [0], fps: 1, loop: true, blend: false },
-    moving: { frames: [0], fps: 1, loop: true, blend: false },
-    hit: { frames: [6], fps: 7, loop: false, blend: false },
-    death: { frames: [6, 7, 8], fps: 4.2, loop: false, blend: true }
+    idle: { frames: [0, 1, 0, 1], fps: 2.2, loop: true, blend: true },
+    moving: { frames: [2, 1], fps: 3.2, loop: true, blend: true },
+    attack: { frames: [3, 4, 5, 4], fps: 9, loop: false, blend: true },
+    hit: { frames: [6, 7, 6], fps: 8, loop: false, blend: true },
+    death: { frames: [8], fps: 1, loop: false, blend: false }
   };
   const PLAYER_SHIP_TALL_ANIMATIONS = {
     idle: { frames: [0], fps: 1, loop: true, blend: false },
@@ -1756,29 +1767,50 @@
     Brigantina_Pirata: { width: 320, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
     Corveta_Armada: { width: 320, anchorY: .64 },
     Galeota: { width: 310, anchorY: .61 },
-    Navio_Mercante_Armado: { width: 330, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS }
+    Navio_Mercante_Armado: { width: 330, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Galeao_Mercante: { width: 335, anchorY: .64, captainAnchorX: .47, captainAnchorY: .68 },
+    Galeao_Pirata: { width: 335, anchorY: .63, captainAnchorX: .46, captainAnchorY: .67 },
+    Fragata_Real: { width: 340, anchorY: .63, captainAnchorX: .48, captainAnchorY: .66 },
+    Fragata_Corsaria: { width: 345, anchorY: .66, captainAnchorX: .47, captainAnchorY: .68 },
+    Galeao_de_Guerra: { width: 350, anchorY: .66, captainAnchorX: .47, captainAnchorY: .68 },
+    Encouracado_Imperial: { width: 355, anchorY: .63, captainAnchorX: .49, captainAnchorY: .66 },
+    Fragata_Fantasma: { width: 355, anchorY: .63, captainAnchorX: .48, captainAnchorY: .66 },
+    Kraken_Hunter: { width: 365, anchorY: .64, captainAnchorX: .49, captainAnchorY: .66 },
+    Black_Abyss: { width: 370, anchorY: .64, captainAnchorX: .49, captainAnchorY: .66 }
   };
 
   function getPlayerShipSpritesheetNameFromFile(file) {
-    return file.replace(/^PLAYER-\d+_\d+_/, "").replace(/_sprite_9frames\.png$/i, "");
+    return file
+      .replace(/\.png$/i, "")
+      .replace(/^PLAYER-\d+_\d+_/i, "")
+      .replace(/_sprite_\d+frames?$/i, "");
+  }
+
+  function getPlayerShipSpritesheetFrameCountFromFile(file) {
+    const match = String(file).match(/_sprite_(\d+)frames?\.png$/i);
+    return match ? Math.max(1, Number(match[1]) || 0) : 0;
   }
 
   const PLAYER_SHIP_SPRITESHEETS = PLAYER_SHIP_SPRITESHEET_FILES.reduce((sprites, file) => {
     const name = getPlayerShipSpritesheetNameFromFile(file);
     const options = PLAYER_SHIP_SPRITESHEET_OPTIONS[name] || {};
+    const fileFrameCount = getPlayerShipSpritesheetFrameCountFromFile(file);
+    const usesNineFrameLayout = fileFrameCount === 9;
     const image = new Image();
     const sprite = {
       key: name,
       image,
       canvas: null,
       file,
-      frames: options.frames || 9,
+      frames: fileFrameCount || options.frames || 9,
       columns: options.columns || 3,
-      rows: options.rows || 3,
-      animations: options.animations || PLAYER_SHIP_DEFAULT_ANIMATIONS,
+      rows: usesNineFrameLayout ? 3 : options.rows || 3,
+      animations: usesNineFrameLayout ? PLAYER_SHIP_DEFAULT_ANIMATIONS : options.animations || PLAYER_SHIP_DEFAULT_ANIMATIONS,
       width: options.width || 280,
       anchorX: options.anchorX ?? .5,
       anchorY: options.anchorY ?? .64,
+      captainAnchorX: options.captainAnchorX ?? .48,
+      captainAnchorY: options.captainAnchorY ?? .67,
       offsetX: options.offsetX || 0,
       offsetY: options.offsetY || 0,
       ready: false,
@@ -1790,9 +1822,44 @@
     sprites[normalizeSpriteKey(name)] = sprite;
     return sprites;
   }, {});
+  const PLAYER_SHIP_SPRITESHEET_KEYS = Object.keys(PLAYER_SHIP_SPRITESHEETS);
+  const PLAYER_SHIP_MISSING_SPRITESHEET_WARNINGS = new Set();
+
+  function getPlayerShipSpritesheetMatchScore(key, candidate) {
+    if (!key || !candidate) return 0;
+    if (key === candidate) return 1;
+    if (key.includes(candidate) || candidate.includes(key)) {
+      return Math.min(key.length, candidate.length) / Math.max(key.length, candidate.length);
+    }
+    const sourceTokens = key.split(" ").filter(Boolean);
+    const targetTokens = candidate.split(" ").filter(Boolean);
+    const targetSet = new Set(targetTokens);
+    const shared = sourceTokens.filter(token => targetSet.has(token)).length;
+    return shared / Math.max(sourceTokens.length, targetTokens.length, 1);
+  }
+
+  function findClosestPlayerShipSpritesheet(key) {
+    let bestKey = "";
+    let bestScore = 0;
+    PLAYER_SHIP_SPRITESHEET_KEYS.forEach(candidate => {
+      const score = getPlayerShipSpritesheetMatchScore(key, candidate);
+      if (score > bestScore) {
+        bestKey = candidate;
+        bestScore = score;
+      }
+    });
+    return bestScore >= .78 ? PLAYER_SHIP_SPRITESHEETS[bestKey] : null;
+  }
 
   function getPlayerShipSpritesheet(name) {
-    return PLAYER_SHIP_SPRITESHEETS[normalizeSpriteKey(name)];
+    const key = normalizeSpriteKey(name);
+    const sprite = PLAYER_SHIP_SPRITESHEETS[key] || findClosestPlayerShipSpritesheet(key);
+    if (sprite) return sprite;
+    if (key && !PLAYER_SHIP_MISSING_SPRITESHEET_WARNINGS.has(key)) {
+      PLAYER_SHIP_MISSING_SPRITESHEET_WARNINGS.add(key);
+      console.warn(`[Pirates of Abyss] Sprite sheet de barco do jogador nao encontrada para: ${name}`);
+    }
+    return null;
   }
 
   const ENEMY_SPRITE_PATH = "assets/enemies/";
@@ -2508,9 +2575,16 @@
       const sprite = getPlayerShipSpritesheet(ship?.name);
       if (!sprite) return null;
       if (!this.playerShipAnimation || this.playerShipAnimation.sheetKey !== sprite.key) {
-        this.playerShipAnimation = { sheetKey: sprite.key, frameSeed: randomBetween(0, 5), hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 };
+        this.playerShipAnimation = { sheetKey: sprite.key, frameSeed: randomBetween(0, 5), attackStartedAt: -999, attackUntil: 0, hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 };
       }
       return this.playerShipAnimation;
+    }
+
+    markPlayerShipAttack() {
+      const animation = this.ensurePlayerShipAnimation(SHIPS[state.shipId]);
+      if (!animation || animation.deathStartedAt) return;
+      animation.attackStartedAt = this.time;
+      animation.attackUntil = this.time + PLAYER_SHIP_ATTACK_ANIMATION_SECONDS;
     }
 
     markPlayerShipHit() {
@@ -2531,6 +2605,7 @@
 
     resetPlayerShipAnimation() {
       if (this.playerShipAnimation) {
+        this.playerShipAnimation.attackUntil = 0;
         this.playerShipAnimation.hitUntil = 0;
         this.playerShipAnimation.deathStartedAt = 0;
       }
@@ -3248,6 +3323,9 @@
       } else if (!options.preview && animation.hitUntil && this.time < animation.hitUntil) {
         stateName = "hit";
         elapsed = Math.max(0, this.time - animation.hitStartedAt);
+      } else if (!options.preview && animation.attackUntil && this.time < animation.attackUntil) {
+        stateName = "attack";
+        elapsed = Math.max(0, this.time - animation.attackStartedAt);
       } else if (!options.preview && state.combat.running && !state.combat.repairing) {
         stateName = "moving";
       }
@@ -3263,8 +3341,15 @@
 
     drawCaptainCharacter(ctx, ship, shipSprite, targetWidth, targetHeight, scale, options = {}) {
       if (options.preview) return false;
-      const config = getPirateCharacterBoatConfig(ship?.id);
-      if (!config) return false;
+      if (!isCaptainSelected()) return false;
+      const config = getPirateCharacterBoatConfig(ship?.id) || {
+        scale: .3,
+        offsetX: (shipSprite.captainAnchorX ?? .48) - (shipSprite.anchorX ?? .5),
+        offsetY: 4,
+        deckY: shipSprite.captainAnchorY ?? .67,
+        anchor: "deck",
+        maxHeight: 98
+      };
       const sprite = getActiveCaptainCharacterSpritesheet();
       const image = sprite?.image;
       if (!image?.complete || !image.naturalWidth) return false;
@@ -3795,6 +3880,7 @@
   function basicAttack(options = {}) {
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
+    scene.markPlayerShipAttack();
     const stats = getStats();
     const hitChance = stats.precision * (1 - (enemy.evasion || 0));
     if (Math.random() > hitChance) { scene.fire(true, "#cbd6d0"); addLog(enemy.evasion > .08 ? `${enemy.name} escapou com uma manobra veloz.` : "O disparo passou longe do alvo."); return; }
@@ -3815,6 +3901,7 @@
   function castSkill(key) {
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
+    scene.markPlayerShipAttack();
     const meta = SKILL_META[key];
     const level = state.skills[key].level;
     const base = getStats().damage * (meta.factor + (level - 1) * .24) * (1 + (getEquippedPet()?.dpsBonus || 0));
