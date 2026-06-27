@@ -731,32 +731,32 @@
   const CAPTAIN_CHARACTER_REACTION_SECONDS = { celebrate: 2.35, hit: .42 };
   const CAPTAIN_CHARACTER_GENDER_FILE_KEYS = { male: "masculino", female: "feminino" };
   const PIRATE_CHARACTER_CONFIG = {
-    boat_01: { scale: .445, offsetX: -.04, offsetY: 13, deckY: .84, anchor: "deck", maxHeight: 112, embed: .18 },
-    boat_02: { scale: .430, offsetX: .17, offsetY: 13, deckY: .83, anchor: "deck", maxHeight: 110, embed: .18 },
-    boat_03: { scale: .440, offsetX: -.09, offsetY: 12, deckY: .80, anchor: "deck", maxHeight: 112, embed: .17 },
-    boat_04: { scale: .430, offsetX: -.10, offsetY: 13, deckY: .82, anchor: "deck", maxHeight: 112, embed: .18 },
-    boat_05: { scale: .430, offsetX: -.16, offsetY: 12, deckY: .79, anchor: "deck", maxHeight: 114, embed: .18 },
-    boat_06: { scale: .425, offsetX: -.14, offsetY: 13, deckY: .78, anchor: "deck", maxHeight: 114, embed: .19 },
-    boat_07: { scale: .410, offsetX: .05, offsetY: 12, deckY: .72, anchor: "deck", maxHeight: 112, embed: .18 },
-    boat_08: { scale: .414, offsetX: -.08, offsetY: 12, deckY: .74, anchor: "deck", maxHeight: 116, embed: .18 },
-    boat_09: { scale: .405, offsetX: .18, offsetY: 11, deckY: .73, anchor: "deck", maxHeight: 118, embed: .19 },
-    boat_10: { scale: .398, offsetX: -.27, offsetY: 12, deckY: .74, anchor: "deck", maxHeight: 118, embed: .20 },
-    boat_11: { scale: .405, offsetX: -.10, offsetY: 11, deckY: .71, anchor: "deck", maxHeight: 120, embed: .20 },
-    boat_12: { scale: .396, offsetX: .03, offsetY: 11, deckY: .71, anchor: "deck", maxHeight: 120, embed: .19 },
-    boat_13: { scale: .398, offsetX: -.16, offsetY: 11, deckY: .70, anchor: "deck", maxHeight: 122, embed: .20 },
-    boat_14: { scale: .388, offsetX: -.29, offsetY: 11, deckY: .71, anchor: "deck", maxHeight: 122, embed: .21 },
-    boat_15: { scale: .388, offsetX: -.12, offsetY: 10, deckY: .69, anchor: "deck", maxHeight: 124, embed: .21 },
-    boat_16: { scale: .392, offsetX: -.04, offsetY: 10, deckY: .69, anchor: "deck", maxHeight: 126, embed: .21 },
-    boat_17: { scale: .382, offsetX: .10, offsetY: 10, deckY: .68, anchor: "deck", maxHeight: 128, embed: .22 },
-    boat_18: { scale: .382, offsetX: -.03, offsetY: 10, deckY: .68, anchor: "deck", maxHeight: 128, embed: .21 },
-    boat_19: { scale: .380, offsetX: -.04, offsetY: 10, deckY: .67, anchor: "deck", maxHeight: 128, embed: .21 },
-    boat_20: { scale: .378, offsetX: -.02, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 130, embed: .21 },
-    boat_21: { scale: .376, offsetX: -.03, offsetY: 10, deckY: .68, anchor: "deck", maxHeight: 132, embed: .22 },
-    boat_22: { scale: .374, offsetX: -.03, offsetY: 10, deckY: .68, anchor: "deck", maxHeight: 134, embed: .22 },
-    boat_23: { scale: .370, offsetX: -.01, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 136, embed: .22 },
-    boat_24: { scale: .370, offsetX: -.02, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 136, embed: .22 },
-    boat_25: { scale: .366, offsetX: -.01, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 138, embed: .23 },
-    boat_26: { scale: .365, offsetX: -.01, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 140, embed: .23 }
+    boat_01: { scale: .445, offsetX: -.04, offsetY: 16, deckY: .86, anchor: "deck", maxHeight: 112, embed: .32, railOverlap: .05 },
+    boat_02: { scale: .430, offsetX: .17, offsetY: 16, deckY: .85, anchor: "deck", maxHeight: 110, embed: .33, railOverlap: .05 },
+    boat_03: { scale: .440, offsetX: -.09, offsetY: 15, deckY: .82, anchor: "deck", maxHeight: 112, embed: .32, railOverlap: .048 },
+    boat_04: { scale: .430, offsetX: -.10, offsetY: 16, deckY: .84, anchor: "deck", maxHeight: 112, embed: .33, railOverlap: .05 },
+    boat_05: { scale: .430, offsetX: -.16, offsetY: 15, deckY: .81, anchor: "deck", maxHeight: 114, embed: .32, railOverlap: .05 },
+    boat_06: { scale: .425, offsetX: -.14, offsetY: 16, deckY: .80, anchor: "deck", maxHeight: 114, embed: .34, railOverlap: .052 },
+    boat_07: { scale: .410, offsetX: .05, offsetY: 15, deckY: .74, anchor: "deck", maxHeight: 112, embed: .33, railOverlap: .05 },
+    boat_08: { scale: .414, offsetX: -.08, offsetY: 15, deckY: .76, anchor: "deck", maxHeight: 116, embed: .33, railOverlap: .05 },
+    boat_09: { scale: .405, offsetX: .16, offsetY: 16, deckY: .78, anchor: "deck", maxHeight: 118, embed: .36, railOverlap: .058 },
+    boat_10: { scale: .398, offsetX: -.23, offsetY: 17, deckY: .80, anchor: "deck", maxHeight: 118, embed: .37, railOverlap: .06 },
+    boat_11: { scale: .405, offsetX: -.07, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 120, embed: .37, railOverlap: .06 },
+    boat_12: { scale: .396, offsetX: .06, offsetY: 16, deckY: .78, anchor: "deck", maxHeight: 120, embed: .37, railOverlap: .06 },
+    boat_13: { scale: .398, offsetX: -.11, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 122, embed: .38, railOverlap: .062 },
+    boat_14: { scale: .388, offsetX: -.22, offsetY: 17, deckY: .79, anchor: "deck", maxHeight: 122, embed: .39, railOverlap: .064 },
+    boat_15: { scale: .388, offsetX: -.07, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 124, embed: .39, railOverlap: .064 },
+    boat_16: { scale: .392, offsetX: .02, offsetY: 16, deckY: .78, anchor: "deck", maxHeight: 126, embed: .39, railOverlap: .064 },
+    boat_17: { scale: .382, offsetX: .12, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 128, embed: .40, railOverlap: .066 },
+    boat_18: { scale: .382, offsetX: .05, offsetY: 18, deckY: .80, anchor: "deck", maxHeight: 128, embed: .43, railOverlap: .07 },
+    boat_19: { scale: .380, offsetX: .06, offsetY: 18, deckY: .80, anchor: "deck", maxHeight: 128, embed: .43, railOverlap: .07 },
+    boat_20: { scale: .378, offsetX: .07, offsetY: 18, deckY: .80, anchor: "deck", maxHeight: 130, embed: .43, railOverlap: .07 },
+    boat_21: { scale: .376, offsetX: .06, offsetY: 18, deckY: .81, anchor: "deck", maxHeight: 132, embed: .44, railOverlap: .074 },
+    boat_22: { scale: .374, offsetX: .05, offsetY: 19, deckY: .82, anchor: "deck", maxHeight: 134, embed: .45, railOverlap: .076 },
+    boat_23: { scale: .370, offsetX: .07, offsetY: 18, deckY: .81, anchor: "deck", maxHeight: 136, embed: .45, railOverlap: .076 },
+    boat_24: { scale: .370, offsetX: .06, offsetY: 18, deckY: .81, anchor: "deck", maxHeight: 136, embed: .45, railOverlap: .076 },
+    boat_25: { scale: .366, offsetX: .08, offsetY: 18, deckY: .82, anchor: "deck", maxHeight: 138, embed: .46, railOverlap: .08 },
+    boat_26: { scale: .365, offsetX: .08, offsetY: 19, deckY: .82, anchor: "deck", maxHeight: 140, embed: .47, railOverlap: .082 }
   };
 
   function getPirateCharacterBoatConfig(shipId) {
@@ -1361,7 +1361,33 @@
     }
   }
 
-  let state = loadState();
+  function getCaptainVisualAuditConfig() {
+    if (typeof location === "undefined") return null;
+    const localHost = ["localhost", "127.0.0.1", ""].includes(location.hostname);
+    if (!localHost) return null;
+    const params = new URLSearchParams(location.search);
+    if (params.get("visualAudit") !== "captain") return null;
+    const shipId = clamp(Math.floor(Number(params.get("ship") || 0)), 0, SHIPS.length - 1);
+    const level = clamp(Math.floor(Number(params.get("level") || 1)), 1, CAPTAIN_MAX_LEVEL);
+    const gender = normalizeCaptainGender(params.get("gender")) || "male";
+    const pose = ["idle", "celebrate", "hit"].includes(params.get("pose")) ? params.get("pose") : "idle";
+    return { shipId, level, gender, pose };
+  }
+
+  const VISUAL_AUDIT_CONFIG = getCaptainVisualAuditConfig();
+
+  function applyCaptainVisualAuditState(target) {
+    if (!VISUAL_AUDIT_CONFIG) return target;
+    const { shipId, level, gender } = VISUAL_AUDIT_CONFIG;
+    target.shipId = shipId;
+    target.ownedShips = [...new Set([...(target.ownedShips || []), shipId])].filter(id => SHIPS[id]);
+    target.captainSelectedGender = gender;
+    target.captainLevel = level;
+    target.combat = { ...target.combat, running: false, repairing: false, enemy: null, spawnTimer: 0, playerHp: Number.MAX_SAFE_INTEGER };
+    return syncCaptainState(target);
+  }
+
+  let state = applyCaptainVisualAuditState(loadState());
   let currentScreen = "home";
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
@@ -1725,6 +1751,7 @@
   }
 
   function saveGame() {
+    if (VISUAL_AUDIT_CONFIG) return;
     state.lastSeen = Date.now();
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (error) { console.warn("Não foi possível salvar.", error); }
   }
@@ -3266,6 +3293,7 @@
     }
 
     getPlayerCaptainPose() {
+      if (VISUAL_AUDIT_CONFIG?.pose) return VISUAL_AUDIT_CONFIG.pose;
       return this.playerCaptainReaction.until > this.time ? this.playerCaptainReaction.state : "idle";
     }
 
@@ -4002,17 +4030,19 @@
       const targetFrameWidth = frameWidth * frameScale;
       const footX = targetWidth * (config.offsetX || 0);
       const footY = -targetHeight * (shipSprite.anchorY ?? .64) + targetHeight * (config.deckY ?? .55) + (config.offsetY || 0) * scale;
-      const drawX = footX - bodyBounds.centerX * frameScale;
-      const drawY = footY - bodyBounds.bottomY * frameScale;
+      const drawX = footX - referenceBody.centerX * frameScale;
+      const drawY = footY - referenceBody.bottomY * frameScale;
       const frameX = frame * frameWidth;
-      const embed = clamp(Number(config.embed ?? .15) || .15, .08, .24);
-      const clipBottom = footY - visualHeight * embed;
+      const embed = clamp(Number(config.embed ?? .3) || .3, .12, .48);
+      const clipBottom = footY - Math.max(7 * scale, visualHeight * embed);
       const shadowY = clipBottom - Math.max(1, 1.5 * scale);
+      const railOverlap = Math.max(2 * scale, visualHeight * clamp(Number(config.railOverlap ?? .045) || .045, .02, .09));
 
       ctx.save();
       ctx.beginPath();
       ctx.rect(-targetWidth, -targetHeight * 1.4, targetWidth * 2, clipBottom + targetHeight * 1.4);
       ctx.clip();
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = .24;
       ctx.fillStyle = "rgba(0,0,0,.72)";
       ctx.beginPath();
@@ -4025,7 +4055,14 @@
       ctx.shadowBlur = 3.5 * scale;
       ctx.drawImage(source, frameX, 0, frameWidth, frameHeight, drawX, drawY, targetFrameWidth, targetFrameHeight);
       ctx.restore();
-      return true;
+      return {
+        deckOverlay: {
+          x: -targetWidth,
+          y: clipBottom - railOverlap,
+          width: targetWidth * 2,
+          height: targetHeight * 2
+        }
+      };
     }
 
     drawPlayerShipSpritesheet(ctx, x, y, scale, ship, sprite, options = {}) {
@@ -4057,17 +4094,28 @@
       ctx.imageSmoothingEnabled = false;
       ctx.shadowColor = "rgba(0,0,0,.34)";
       ctx.shadowBlur = 8 * scale;
-      const drawFrame = (frame, alpha) => {
+      const drawFrame = (frame, alpha, clip = null) => {
         const frameX = (frame % sprite.columns) * frameWidth;
         const frameY = Math.floor(frame / sprite.columns) * frameHeight;
         const frameBounds = sprite.frameBounds?.[frame];
         const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
         const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
+        ctx.save();
+        if (clip) {
+          ctx.beginPath();
+          ctx.rect(clip.x, clip.y, clip.width, clip.height);
+          ctx.clip();
+          ctx.shadowBlur = 0;
+        }
         ctx.globalAlpha = baseAlpha * alpha;
         ctx.drawImage(source, frameX, frameY, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
+        ctx.restore();
       };
-      if (pose.stateName !== SPRITE_HP_STATES.defeated) this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
       drawFrame(pose.frame, 1);
+      const captainDeck = pose.stateName !== SPRITE_HP_STATES.defeated
+        ? this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options)
+        : null;
+      if (captainDeck?.deckOverlay) drawFrame(pose.frame, 1, captainDeck.deckOverlay);
       ctx.restore();
       return true;
     }
@@ -6398,7 +6446,7 @@
   window.addEventListener("beforeunload", saveGame);
 
   const offlineSeconds = (Date.now() - Number(state.lastSeen || Date.now())) / 1000;
-  if (offlineSeconds >= 30) applyOfflineProgress(offlineSeconds, true);
+  if (!VISUAL_AUDIT_CONFIG && offlineSeconds >= 30) applyOfflineProgress(offlineSeconds, true);
   state.combat.playerHp = clamp(state.combat.playerHp || getStats().maxHp, 1, getStats().maxHp);
   if (!state.logs.length) addLog(`${SHIPS[state.shipId].name} está pronto para sua primeira patrulha.`);
   renderAll(true);
