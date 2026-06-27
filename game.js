@@ -7,6 +7,8 @@
   const OFFLINE_MODAL_AUTO_HIDE_MS = 5000;
   const COMMON_MONSTER_BALANCE_LAST_REGION = 10;
   const COMMON_MONSTER_BALANCE_MULTIPLIER = 4;
+  const PRIMITIVE_COMMON_MONSTER_BALANCE_LAST_REGION = 4;
+  const PRIMITIVE_COMMON_MONSTER_BALANCE_MULTIPLIER = 3;
   const PRESTIGE_REGION_NAME = "Oceano Profundo";
   const PRESTIGE_BOSS_NAME = "Megalodon Ancestral";
   const PET_PIRATE_COIN_COSTS = [10, 18, 30, 45, 65, 90, 120, 155, 200, 260];
@@ -5104,7 +5106,9 @@
 
   function getCommonMonsterBalanceMultiplier(regionIndex) {
     const index = Math.floor(Number(regionIndex) || 0);
-    return index >= 0 && index <= COMMON_MONSTER_BALANCE_LAST_REGION ? COMMON_MONSTER_BALANCE_MULTIPLIER : 1;
+    let multiplier = index >= 0 && index <= COMMON_MONSTER_BALANCE_LAST_REGION ? COMMON_MONSTER_BALANCE_MULTIPLIER : 1;
+    if (index >= 0 && index <= PRIMITIVE_COMMON_MONSTER_BALANCE_LAST_REGION) multiplier *= PRIMITIVE_COMMON_MONSTER_BALANCE_MULTIPLIER;
+    return multiplier;
   }
 
   function endgameRequirementIssues(index) {
