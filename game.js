@@ -20,6 +20,7 @@
   const CAPTAIN_MANUAL_SKILL_KEY = "sabotage";
   const CAPTAIN_MANUAL_SKILL_BASE_COOLDOWN = 10;
   const CAPTAIN_MANUAL_SKILL_MAX_LEVEL = 20;
+  const CAPTAIN_HP_REGEN_INTERVAL_SECONDS = 5;
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -560,6 +561,7 @@
 
   const CAPTAIN_EQUIPMENT_MAX_TIER = 10;
   const CAPTAIN_SWORD_BONUS_PROGRESS = [.03, .10, .20, .35, .55, .80, 1.15, 1.60, 2.20, 3.00];
+  const CAPTAIN_LIGHT_HANDS_BONUS_PROGRESS = CAPTAIN_SWORD_BONUS_PROGRESS.map(value => value * .5);
   function buildCaptainEquipmentTiers(names, bonusRows) {
     return names.map((name, index) => {
       const level = index + 1;
@@ -620,7 +622,7 @@
       description: "Aumenta ouro e XP ganhos ao saquear inimigos e recompensas.",
       tiers: buildCaptainEquipmentTiers(
         ["Dedos Ágeis", "Bolsos Rápidos", "Saque de Convés", "Furto Corsário", "Mãos de Capitão", "Roubo Dourado", "Saque do Kraken", "Furto Fantasma", "Mãos Abissais", "Mãos Lendárias do Abismo"],
-        CAPTAIN_SWORD_BONUS_PROGRESS.map(value => ({ goldGainBonus: value, xpGainBonus: value }))
+        CAPTAIN_LIGHT_HANDS_BONUS_PROGRESS.map(value => ({ goldGainBonus: value, xpGainBonus: value }))
       )
     }
   };
@@ -5966,7 +5968,8 @@
     const captainBonuses = getCaptainBonuses();
     if (captainBonuses.hpRegenPercentPerSecond > 0 && state.combat.playerHp > 0) {
       const maxHp = getStats().maxHp;
-      if (state.combat.playerHp < maxHp) state.combat.playerHp = Math.min(maxHp, state.combat.playerHp + maxHp * captainBonuses.hpRegenPercentPerSecond * dt);
+      const hpRegenPerSecond = captainBonuses.hpRegenPercentPerSecond / CAPTAIN_HP_REGEN_INTERVAL_SECONDS;
+      if (state.combat.playerHp < maxHp) state.combat.playerHp = Math.min(maxHp, state.combat.playerHp + maxHp * hpRegenPerSecond * dt);
     }
     if (!state.combat.enemy) {
       state.combat.spawnTimer += dt * 1000;
@@ -6360,7 +6363,7 @@
       ["Spawn dos inimigos", `+${formatCaptainPercent(bonuses.spawnBonus)}`],
       ["Auto pássaros", formatCaptainPercent(bonuses.birdAutoCollect)],
       ["Auto tubarão", formatCaptainPercent(bonuses.sharkAutoCollect)],
-      ["Regen. HP", `${formatCaptainPercent(bonuses.hpRegenPercentPerSecond)}/s`],
+      ["Regen. HP", `${formatCaptainPercent(bonuses.hpRegenPercentPerSecond)}/${CAPTAIN_HP_REGEN_INTERVAL_SECONDS}s`],
       ["Bônus auto Gold", `+${formatCaptainPercent(bonuses.autoFoodBonus)}`]
     ];
     return rows.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
@@ -6373,7 +6376,7 @@
     if (b.birdAutoCollect) parts.push(`+${formatCaptainPercent(b.birdAutoCollect)} auto pássaros`);
     if (b.sharkAutoCollect) parts.push(`+${formatCaptainPercent(b.sharkAutoCollect)} auto tubarão`);
     if (b.autoFoodBonus) parts.push(`+${formatCaptainPercent(b.autoFoodBonus)} Gold auto`);
-    if (b.hpRegenPercentPerSecond) parts.push(`+${formatCaptainPercent(b.hpRegenPercentPerSecond)}/s HP`);
+    if (b.hpRegenPercentPerSecond) parts.push(`+${formatCaptainPercent(b.hpRegenPercentPerSecond)}/${CAPTAIN_HP_REGEN_INTERVAL_SECONDS}s HP`);
     return parts.join(" • ");
   }
 
@@ -6802,7 +6805,7 @@
       { label: "Poder", value: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`, delta: formatStatDelta(nextStats.power - currentStats.power) }
     ];
     const mapHint = getShipMapLockIssue(nextShip);
-    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${state.ownedShips.length}/${SHIPS.length}</span><h3>Frota: troque de barco!</h3><p>Avance nos mapas para liberar embarcações mais fortes. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${upgradeActionHtml("ship", nextShip.id, nextShip.costs, canBuy, { blocked: progressionIssues.length > 0, hint: mapHint || `Atual: ${currentShip.name}` })}</article>`;
+    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${state.ownedShips.length}/${SHIPS.length}</span><h3>Frota: troque de barco!</h3><p>Compre o próximo barco da sequência: ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${upgradeActionHtml("ship", nextShip.id, nextShip.costs, canBuy, { blocked: progressionIssues.length > 0, hint: mapHint || `Atual: ${currentShip.name}` })}</article>`;
   }
 
   function fleetLineCompactHtml() {
@@ -6841,42 +6844,7 @@
       { label: "Poder", value: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`, delta: formatStatDelta(nextStats.power - currentStats.power) }
     ];
     const mapHint = getShipMapLockIssue(nextShip);
-    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${getOwnedShipIds().length}/${SHIPS.length}</span><h3>Frota: ${currentShip.name}</h3><p>Avance nos mapas para liberar embarcações mais fortes. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${fleetPurchaseActionHtml(nextShip, progressionIssues.length > 0, mapHint || `Atual: ${currentShip.name}`)}</article>`;
-  }
-
-  function fleetRoadmapHtml() {
-    const currentMap = getJourneyMaxUnlockedMap();
-    const shipLimit = getCurrentJourneyShipLimit();
-    const highestOwnedId = getHighestOwnedShipId();
-    const nextLockedShip = SHIPS.find(ship => getShipNumber(ship) > shipLimit);
-    const summary = [
-      ["Mapa atual", `${currentMap}/${REGIONS.length}`],
-      ["Compra liberada", `Barco ${shipLimit}`],
-      ["Próxima liberação", nextLockedShip ? `Mapa ${getRequiredMapForShip(nextLockedShip)}` : "Frota completa"]
-    ].map(([label, value]) => `<span><small>${label}</small><strong>${value}</strong></span>`).join("");
-    const cards = SHIPS.map(ship => {
-      const shipNumber = getShipNumber(ship);
-      const owned = state.ownedShips.includes(ship.id);
-      const current = state.shipId === ship.id;
-      const next = ship.id === highestOwnedId + 1;
-      const mapLocked = !isShipUnlockedInCurrentJourney(ship);
-      const requiredMap = getRequiredMapForShip(ship);
-      const issues = getShipProgressionIssues(ship);
-      const affordable = canAfford(ship.costs);
-      const canBuy = next && !owned && !mapLocked && issues.length === 0 && affordable;
-      const stats = getStats(ship.id);
-      const status = current ? "Equipado" : owned ? "Comprado" : mapLocked ? `Mapa ${requiredMap}` : next && issues.length === 0 ? "Liberado" : "Em sequência";
-      const button = current
-        ? `<button class="button" disabled>Equipado</button>`
-        : owned
-          ? `<button class="button" data-equip-ship="${ship.id}">Equipar</button>`
-          : canBuy
-            ? `<button class="button primary" data-buy-ship="${ship.id}">Comprar</button>`
-            : `<button class="button" disabled>${mapLocked ? `Desbloqueia no Mapa ${requiredMap}` : next && !affordable ? "Falta Gold" : next ? "Bloqueado" : "Em sequência"}</button>`;
-      const issueText = mapLocked ? `Desbloqueia no Mapa ${requiredMap}` : owned ? "Disponível na frota" : next ? (issues.join(" • ") || missingResourcesText(ship.costs)) : "Compre os barcos anteriores primeiro";
-      return `<article class="fleet-roadmap-card ${current ? "current" : owned ? "owned" : mapLocked ? "locked" : next ? "available" : "future"}"><span class="fleet-roadmap-number">Barco ${shipNumber}</span><div class="fleet-roadmap-preview"><canvas data-next-ship-preview="${ship.id}" aria-label="${ship.name}"></canvas></div><h3>${ship.name}</h3><small>Tier ${ship.tier} • Poder ${formatNumber(stats.power)}</small><strong class="fleet-roadmap-status">${status}</strong><p>${issueText}</p>${button}</article>`;
-    }).join("");
-    return `<section class="upgrade-feed-section fleet-roadmap-section"><h2>Evolução por mapas</h2><div class="fleet-unlock-panel"><div class="fleet-unlock-summary">${summary}<p>Avance nos mapas para liberar embarcações mais fortes nesta jornada. Ao prestigiar, esse limite volta ao Mapa 1.</p></div><div class="fleet-roadmap">${cards}</div></div></section>`;
+    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${getOwnedShipIds().length}/${SHIPS.length}</span><h3>Frota: ${currentShip.name}</h3><p>Compre o próximo barco da sequência: ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${fleetPurchaseActionHtml(nextShip, progressionIssues.length > 0, mapHint || `Atual: ${currentShip.name}`)}</article>`;
   }
 
   function equipmentLineHtml([key, item]) {
@@ -6933,7 +6901,6 @@
     if (!categories[activeShipUpgradeCategory]) activeShipUpgradeCategory = "improvements";
     $("#upgrade-feed").innerHTML = [
       renderUpgradeSection("Frota", [fleetLineCompactHtml()]),
-      fleetRoadmapHtml(),
       shipUpgradeCategoryTabsHtml(),
       `<div class="ship-upgrade-category-panel">${categories[activeShipUpgradeCategory]}</div>`
     ].join("");
