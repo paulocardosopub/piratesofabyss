@@ -910,37 +910,114 @@
   const CAPTAIN_CHARACTER_REACTION_SECONDS = { celebrate: 2.35, hit: .42 };
   const CAPTAIN_CHARACTER_GENDER_FILE_KEYS = { male: "masculino", female: "feminino" };
   const PIRATE_CHARACTER_CONFIG = {
-    boat_01: { scale: .445, offsetX: -.04, offsetY: 16, deckY: .86, anchor: "deck", maxHeight: 112, embed: .32, railOverlap: .05 },
-    boat_02: { scale: .430, offsetX: .17, offsetY: 16, deckY: .85, anchor: "deck", maxHeight: 110, embed: .33, railOverlap: .05 },
-    boat_03: { scale: .440, offsetX: -.05, offsetY: 13, deckY: .80, anchor: "deck", maxHeight: 112, embed: .38, railOverlap: .072 },
-    boat_04: { scale: .430, offsetX: -.10, offsetY: 16, deckY: .84, anchor: "deck", maxHeight: 112, embed: .33, railOverlap: .05 },
-    boat_05: { scale: .430, offsetX: -.16, offsetY: 15, deckY: .81, anchor: "deck", maxHeight: 114, embed: .32, railOverlap: .05 },
-    boat_06: { scale: .425, offsetX: -.07, offsetY: 14, deckY: .78, anchor: "deck", maxHeight: 114, embed: .40, railOverlap: .076 },
-    boat_07: { scale: .410, offsetX: .05, offsetY: 15, deckY: .74, anchor: "deck", maxHeight: 112, embed: .33, railOverlap: .05 },
-    boat_08: { scale: .414, offsetX: -.08, offsetY: 15, deckY: .76, anchor: "deck", maxHeight: 116, embed: .33, railOverlap: .05 },
-    boat_09: { scale: .405, offsetX: .16, offsetY: 16, deckY: .78, anchor: "deck", maxHeight: 118, embed: .36, railOverlap: .058 },
-    boat_10: { scale: .398, offsetX: -.17, offsetY: 17, deckY: .80, anchor: "deck", maxHeight: 118, embed: .41, railOverlap: .074 },
-    boat_11: { scale: .405, offsetX: -.07, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 120, embed: .37, railOverlap: .06 },
-    boat_12: { scale: .396, offsetX: .06, offsetY: 16, deckY: .78, anchor: "deck", maxHeight: 120, embed: .37, railOverlap: .06 },
-    boat_13: { scale: .398, offsetX: .02, offsetY: 18, deckY: .80, anchor: "deck", maxHeight: 122, embed: .46, railOverlap: .084 },
-    boat_14: { scale: .388, offsetX: -.15, offsetY: 15, deckY: .77, anchor: "deck", maxHeight: 122, embed: .43, railOverlap: .08 },
-    boat_15: { scale: .388, offsetX: -.07, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 124, embed: .39, railOverlap: .064 },
-    boat_16: { scale: .392, offsetX: .02, offsetY: 16, deckY: .78, anchor: "deck", maxHeight: 126, embed: .39, railOverlap: .064 },
-    boat_17: { scale: .382, offsetX: .12, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 128, embed: .40, railOverlap: .066 },
-    boat_18: { scale: .382, offsetX: .05, offsetY: 18, deckY: .80, anchor: "deck", maxHeight: 128, embed: .43, railOverlap: .07 },
-    boat_19: { scale: .380, offsetX: .06, offsetY: 18, deckY: .80, anchor: "deck", maxHeight: 128, embed: .43, railOverlap: .07 },
-    boat_20: { scale: .378, offsetX: .07, offsetY: 18, deckY: .80, anchor: "deck", maxHeight: 130, embed: .43, railOverlap: .07 },
-    boat_21: { scale: .376, offsetX: .06, offsetY: 18, deckY: .81, anchor: "deck", maxHeight: 132, embed: .44, railOverlap: .074 },
-    boat_22: { scale: .374, offsetX: .05, offsetY: 19, deckY: .82, anchor: "deck", maxHeight: 134, embed: .45, railOverlap: .076 },
-    boat_23: { scale: .370, offsetX: .07, offsetY: 18, deckY: .81, anchor: "deck", maxHeight: 136, embed: .45, railOverlap: .076 },
-    boat_24: { scale: .370, offsetX: .06, offsetY: 18, deckY: .81, anchor: "deck", maxHeight: 136, embed: .45, railOverlap: .076 },
-    boat_25: { scale: .366, offsetX: .08, offsetY: 18, deckY: .82, anchor: "deck", maxHeight: 138, embed: .46, railOverlap: .08 },
-    boat_26: { scale: .365, offsetX: .08, offsetY: 19, deckY: .82, anchor: "deck", maxHeight: 140, embed: .47, railOverlap: .082 }
+    boat_01: { scale: .445, offsetX: .01, offsetY: .949, deckY: .86, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .05 },
+    boat_02: { scale: .43, offsetX: -.029, offsetY: -2.593, deckY: .85, anchor: "deck", maxHeight: 110, embed: .08, railOverlap: .01 },
+    boat_03: { scale: .44, offsetX: -.017, offsetY: -25.956, deckY: .8, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01 },
+    boat_04: { scale: .43, offsetX: -.062, offsetY: -3.478, deckY: .84, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01 },
+    boat_05: { scale: .43, offsetX: -.006, offsetY: -5.363, deckY: .81, anchor: "deck", maxHeight: 114, embed: .08, railOverlap: .01 },
+    boat_06: { scale: .425, offsetX: -.022, offsetY: -24.956, deckY: .78, anchor: "deck", maxHeight: 114, embed: .08, railOverlap: .01 },
+    boat_07: { scale: .41, offsetX: -.029, offsetY: -2.707, deckY: .74, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01 },
+    boat_08: { scale: .414, offsetX: -.07, offsetY: 15, deckY: .76, anchor: "deck", maxHeight: 116, embed: .08, railOverlap: .01 },
+    boat_09: { scale: .405, offsetX: -.12, offsetY: 14.229, deckY: .78, anchor: "deck", maxHeight: 118, embed: .08, railOverlap: .01 },
+    boat_10: { scale: .398, offsetX: -.119, offsetY: -23.727, deckY: .8, anchor: "deck", maxHeight: 118, embed: .08, railOverlap: .01 },
+    boat_11: { scale: .405, offsetX: .01, offsetY: -10.561, deckY: .78, anchor: "deck", maxHeight: 120, embed: .08, railOverlap: .01 },
+    boat_12: { scale: .396, offsetX: .005, offsetY: -.822, deckY: .78, anchor: "deck", maxHeight: 120, embed: .08, railOverlap: .01 },
+    boat_13: { scale: .398, offsetX: .009, offsetY: 5.605, deckY: .8, anchor: "deck", maxHeight: 122, embed: .08, railOverlap: .01 },
+    boat_14: { scale: .388, offsetX: .005, offsetY: -33.695, deckY: .77, anchor: "deck", maxHeight: 122, embed: .08, railOverlap: .01 },
+    boat_15: { scale: .388, offsetX: -.012, offsetY: .949, deckY: .77, anchor: "deck", maxHeight: 124, embed: .08, railOverlap: .01 },
+    boat_16: { scale: .392, offsetX: .034, offsetY: 16.885, deckY: .78, anchor: "deck", maxHeight: 126, embed: .08, railOverlap: .01 },
+    boat_17: { scale: .356, offsetX: -.009, offsetY: 12.459, deckY: .77, anchor: "deck", maxHeight: 128, embed: .4, railOverlap: .066 },
+    boat_18: { scale: .309, offsetX: -.011, offsetY: 36.593, deckY: .8, anchor: "deck", maxHeight: 128, embed: .35, railOverlap: .07 },
+    boat_19: { scale: .309, offsetX: -.054, offsetY: 41.905, deckY: .8, anchor: "deck", maxHeight: 128, embed: .43, railOverlap: .07 },
+    boat_20: { scale: .309, offsetX: .086, offsetY: 56.071, deckY: .8, anchor: "deck", maxHeight: 130, embed: .43, railOverlap: .07 },
+    boat_21: { scale: .309, offsetX: .027, offsetY: 28.624, deckY: .81, anchor: "deck", maxHeight: 132, embed: .08, railOverlap: .01 },
+    boat_22: { scale: .309, offsetX: .265, offsetY: -42.976, deckY: .82, anchor: "deck", maxHeight: 134, embed: .08, railOverlap: .01 },
+    boat_23: { scale: .37, offsetX: -.035, offsetY: 2.949, deckY: .81, anchor: "deck", maxHeight: 136, embed: .2, railOverlap: .076 },
+    boat_24: { scale: .309, offsetX: -.022, offsetY: 18.885, deckY: .81, anchor: "deck", maxHeight: 136, embed: .08, railOverlap: .01 },
+    boat_25: { scale: .309, offsetX: .005, offsetY: 32.166, deckY: .82, anchor: "deck", maxHeight: 138, embed: .35, railOverlap: .08 },
+    boat_26: { scale: .309, offsetX: .006, offsetY: 17.229, deckY: .82, anchor: "deck", maxHeight: 140, embed: .08, railOverlap: .01 }
   };
 
-  function getPirateCharacterBoatConfig(shipId) {
+  const CAPTAIN_EDITOR_STORAGE_KEY = "piratesCaptainPositionDrafts";
+
+  function isCaptainEditorEnabled() {
+    return Boolean(VISUAL_AUDIT_CONFIG?.editCaptain);
+  }
+
+  function getCaptainEditorBoatKey(shipId) {
     const index = Math.floor(Number(shipId) || 0) + 1;
-    return PIRATE_CHARACTER_CONFIG[`boat_${String(index).padStart(2, "0")}`] || null;
+    return `boat_${String(index).padStart(2, "0")}`;
+  }
+
+  function loadCaptainEditorDrafts() {
+    if (typeof localStorage === "undefined") return {};
+    try {
+      const saved = JSON.parse(localStorage.getItem(CAPTAIN_EDITOR_STORAGE_KEY) || "{}");
+      return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function saveCaptainEditorDrafts() {
+    if (typeof localStorage === "undefined") return;
+    try {
+      localStorage.setItem(CAPTAIN_EDITOR_STORAGE_KEY, JSON.stringify(captainEditorDrafts));
+      window.__captainEditorDrafts = captainEditorDrafts;
+    } catch (error) {}
+  }
+
+  function sanitizeCaptainEditorConfig(config) {
+    return {
+      scale: clamp(Number(config.scale ?? .4), .22, .7),
+      offsetX: clamp(Number(config.offsetX ?? 0), -.5, .5),
+      offsetY: clamp(Number(config.offsetY ?? 0), -80, 80),
+      deckY: clamp(Number(config.deckY ?? .78), .52, .96),
+      anchor: "deck",
+      maxHeight: clamp(Number(config.maxHeight ?? 120), 64, 180),
+      embed: clamp(Number(config.embed ?? .38), .08, .58),
+      railOverlap: clamp(Number(config.railOverlap ?? .06), .01, .14)
+    };
+  }
+
+  function setCaptainEditorDraft(shipId, patch = {}) {
+    const key = getCaptainEditorBoatKey(shipId);
+    const base = PIRATE_CHARACTER_CONFIG[key];
+    if (!base) return null;
+    const current = captainEditorDrafts[key] || base;
+    const next = sanitizeCaptainEditorConfig({ ...current, ...patch });
+    captainEditorDrafts[key] = next;
+    saveCaptainEditorDrafts();
+    return next;
+  }
+
+  function clearCaptainEditorDraft(shipId) {
+    const key = getCaptainEditorBoatKey(shipId);
+    delete captainEditorDrafts[key];
+    saveCaptainEditorDrafts();
+    return PIRATE_CHARACTER_CONFIG[key] || null;
+  }
+
+  function formatCaptainEditorNumber(value) {
+    const number = Number(value) || 0;
+    let text = number.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+    if (text === "-0") text = "0";
+    if (text.startsWith("0.")) text = text.slice(1);
+    if (text.startsWith("-0.")) text = `-.${text.slice(3)}`;
+    return text;
+  }
+
+  function formatCaptainEditorConfigEntry(shipId, config = null) {
+    const key = getCaptainEditorBoatKey(shipId);
+    const current = sanitizeCaptainEditorConfig(config || getPirateCharacterBoatConfig(shipId) || PIRATE_CHARACTER_CONFIG[key] || {});
+    return `${key}: { scale: ${formatCaptainEditorNumber(current.scale)}, offsetX: ${formatCaptainEditorNumber(current.offsetX)}, offsetY: ${formatCaptainEditorNumber(current.offsetY)}, deckY: ${formatCaptainEditorNumber(current.deckY)}, anchor: "deck", maxHeight: ${Math.round(current.maxHeight)}, embed: ${formatCaptainEditorNumber(current.embed)}, railOverlap: ${formatCaptainEditorNumber(current.railOverlap)} }`;
+  }
+
+  function getPirateCharacterBoatConfig(shipId) {
+    const key = getCaptainEditorBoatKey(shipId);
+    const base = PIRATE_CHARACTER_CONFIG[key] || null;
+    if (!base || !isCaptainEditorEnabled() || !captainEditorDrafts[key]) return base;
+    return sanitizeCaptainEditorConfig({ ...base, ...captainEditorDrafts[key] });
   }
 
   function getCaptainCharacterFile(level, gender) {
@@ -1808,10 +1885,13 @@
     const level = clamp(Math.floor(Number(params.get("level") || 1)), 1, CAPTAIN_MAX_LEVEL);
     const gender = normalizeCaptainGender(params.get("gender")) || "male";
     const pose = ["idle", "celebrate", "hit"].includes(params.get("pose")) ? params.get("pose") : "idle";
-    return { shipId, level, gender, pose };
+    const editCaptain = ["1", "true", "yes", "on"].includes(String(params.get("editCaptain") || params.get("captainEdit") || "").toLowerCase());
+    return { shipId, level, gender, pose, editCaptain };
   }
 
   const VISUAL_AUDIT_CONFIG = getCaptainVisualAuditConfig();
+  const captainEditorDrafts = VISUAL_AUDIT_CONFIG?.editCaptain ? loadCaptainEditorDrafts() : {};
+  if (VISUAL_AUDIT_CONFIG?.editCaptain && typeof window !== "undefined") window.__captainEditorDrafts = captainEditorDrafts;
 
   function applyCaptainVisualAuditState(target) {
     if (!VISUAL_AUDIT_CONFIG) return target;
@@ -3883,12 +3963,21 @@
       this.enemyDeathAnimations = [];
       this.playerShipAnimation = null;
       this.playerCaptainReaction = { state: "idle", until: 0 };
+      this.captainEditorDrag = null;
+      this.captainEditorInfo = null;
       this.environmentEvents = [];
       this.environmentTimers = { bird: 2.5, fish: 3.5, shark: 19, kraken: 72 };
       this.resize = this.resize.bind(this);
       this.handleEnvironmentPointer = this.handleEnvironmentPointer.bind(this);
+      this.handleCaptainEditorPointerMove = this.handleCaptainEditorPointerMove.bind(this);
+      this.handleCaptainEditorPointerUp = this.handleCaptainEditorPointerUp.bind(this);
       new ResizeObserver(this.resize).observe(canvas);
       canvas.addEventListener("pointerdown", this.handleEnvironmentPointer);
+      if (isCaptainEditorEnabled()) {
+        canvas.addEventListener("pointermove", this.handleCaptainEditorPointerMove);
+        canvas.addEventListener("pointerup", this.handleCaptainEditorPointerUp);
+        canvas.addEventListener("pointercancel", this.handleCaptainEditorPointerUp);
+      }
       this.resize();
     }
 
@@ -4135,6 +4224,56 @@
       return true;
     }
 
+    getPointerScenePosition(pointer) {
+      const rect = this.canvas.getBoundingClientRect();
+      return {
+        x: (pointer.clientX - rect.left) * (this.width / Math.max(1, rect.width)),
+        y: (pointer.clientY - rect.top) * (this.height / Math.max(1, rect.height))
+      };
+    }
+
+    handleCaptainEditorPointerDown(pointer, x, y) {
+      if (!isCaptainEditorEnabled() || !this.captainEditorInfo) return false;
+      const box = this.captainEditorInfo.dragBox;
+      const margin = pointer.pointerType === "touch" ? 22 : 12;
+      if (!box || x < box.x - margin || x > box.x + box.width + margin || y < box.y - margin || y > box.y + box.height + margin) return false;
+      this.captainEditorDrag = {
+        pointerId: pointer.pointerId,
+        startX: x,
+        startY: y,
+        startConfig: { ...this.captainEditorInfo.config },
+        targetWidth: Math.max(1, this.captainEditorInfo.targetWidth),
+        renderScale: Math.max(.1, this.captainEditorInfo.renderScale)
+      };
+      if (this.canvas.setPointerCapture) {
+        try { this.canvas.setPointerCapture(pointer.pointerId); } catch (error) {}
+      }
+      if (pointer.cancelable) pointer.preventDefault();
+      return true;
+    }
+
+    handleCaptainEditorPointerMove(pointer) {
+      if (!isCaptainEditorEnabled() || !this.captainEditorDrag || pointer.pointerId !== this.captainEditorDrag.pointerId) return;
+      const point = this.getPointerScenePosition(pointer);
+      const drag = this.captainEditorDrag;
+      const config = setCaptainEditorDraft(state.shipId, {
+        offsetX: drag.startConfig.offsetX + (point.x - drag.startX) / drag.targetWidth,
+        offsetY: drag.startConfig.offsetY + (point.y - drag.startY) / drag.renderScale
+      });
+      updateCaptainEditorPanel(this.captainEditorInfo, config);
+      if (pointer.cancelable) pointer.preventDefault();
+    }
+
+    handleCaptainEditorPointerUp(pointer) {
+      if (!isCaptainEditorEnabled() || !this.captainEditorDrag || pointer.pointerId !== this.captainEditorDrag.pointerId) return;
+      if (this.canvas.releasePointerCapture) {
+        try { this.canvas.releasePointerCapture(pointer.pointerId); } catch (error) {}
+      }
+      this.captainEditorDrag = null;
+      updateCaptainEditorPanel(this.captainEditorInfo);
+      if (pointer.cancelable) pointer.preventDefault();
+    }
+
     handleChestPointer(pointer, x, y) {
       const chest = [...this.chests].reverse().find(item => {
         if (item.opened) return false;
@@ -4183,9 +4322,8 @@
     }
 
     handleEnvironmentPointer(pointer) {
-      const rect = this.canvas.getBoundingClientRect();
-      const x = (pointer.clientX - rect.left) * (this.width / Math.max(1, rect.width));
-      const y = (pointer.clientY - rect.top) * (this.height / Math.max(1, rect.height));
+      const { x, y } = this.getPointerScenePosition(pointer);
+      if (this.handleCaptainEditorPointerDown(pointer, x, y)) return;
       if (this.handleChestPointer(pointer, x, y)) return;
       const event = [...this.environmentEvents].reverse().find(item => {
         if (item.collected || !item.hitbox) return false;
@@ -4410,6 +4548,7 @@
       const region = REGIONS[state.regionIndex];
       const horizon = h * .42;
       const day = this.getDayState(region);
+      if (isCaptainEditorEnabled()) this.captainEditorInfo = null;
       ctx.clearRect(0, 0, w, h);
 
       if (this.drawFixedBackground(ctx, w, h, region)) {
@@ -4573,7 +4712,42 @@
         ctx.fillText(item.text, item.x, item.y - 18 - item.age * 34);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       });
+      this.drawCaptainEditorOverlay(ctx);
       this.drawBossSurpriseAlerts(ctx, w, h);
+    }
+
+    drawCaptainEditorOverlay(ctx) {
+      if (!isCaptainEditorEnabled() || !this.captainEditorInfo) return;
+      const info = this.captainEditorInfo;
+      const box = info.dragBox;
+      const foot = info.foot;
+      ctx.save();
+      ctx.shadowBlur = 0;
+      ctx.setLineDash([6, 5]);
+      ctx.strokeStyle = "rgba(111,239,226,.92)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
+      ctx.setLineDash([]);
+      ctx.strokeStyle = "rgba(255,210,111,.95)";
+      ctx.beginPath();
+      ctx.moveTo(foot.x - 8, foot.y);
+      ctx.lineTo(foot.x + 8, foot.y);
+      ctx.moveTo(foot.x, foot.y - 8);
+      ctx.lineTo(foot.x, foot.y + 8);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(5,18,25,.82)";
+      ctx.strokeStyle = "rgba(111,239,226,.38)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(Math.max(8, box.x), Math.max(8, box.y - 24), 92, 19, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#dffefa";
+      ctx.font = "900 10px ui-sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("ARRASTE", Math.max(8, box.x) + 46, Math.max(8, box.y - 24) + 9.5);
+      ctx.restore();
     }
 
     drawBossSurpriseAlerts(ctx, w, h) {
@@ -5139,6 +5313,41 @@
       const clipBottom = footY - Math.max(7 * scale, visualHeight * embed);
       const shadowY = clipBottom - Math.max(1, 1.5 * scale);
       const railOverlap = Math.max(2 * scale, visualHeight * clamp((Number(config.railOverlap ?? .045) || .045) + .008, .02, .13));
+      if (isCaptainEditorEnabled()) {
+        const matrix = ctx.getTransform();
+        const dpr = this.dpr || 1;
+        const toScene = (px, py) => ({
+          x: (matrix.a * px + matrix.c * py + matrix.e) / dpr,
+          y: (matrix.b * px + matrix.d * py + matrix.f) / dpr
+        });
+        const corners = [
+          toScene(drawX + bodyBounds.left * frameScale, drawY + bodyBounds.top * frameScale),
+          toScene(drawX + bodyBounds.right * frameScale, drawY + bodyBounds.top * frameScale),
+          toScene(drawX + bodyBounds.right * frameScale, drawY + bodyBounds.bottom * frameScale),
+          toScene(drawX + bodyBounds.left * frameScale, drawY + bodyBounds.bottom * frameScale)
+        ];
+        const minX = Math.min(...corners.map(point => point.x));
+        const maxX = Math.max(...corners.map(point => point.x));
+        const minY = Math.min(...corners.map(point => point.y));
+        const maxY = Math.max(...corners.map(point => point.y));
+        this.captainEditorInfo = {
+          shipId: ship?.id ?? state.shipId,
+          key: getCaptainEditorBoatKey(ship?.id ?? state.shipId),
+          shipName: ship?.name || SHIPS[state.shipId]?.name || "",
+          config: sanitizeCaptainEditorConfig(config),
+          targetWidth,
+          targetHeight,
+          renderScale: scale,
+          foot: toScene(footX, footY),
+          dragBox: {
+            x: minX,
+            y: minY,
+            width: Math.max(16, maxX - minX),
+            height: Math.max(24, maxY - minY)
+          }
+        };
+        updateCaptainEditorPanel(this.captainEditorInfo);
+      }
 
       ctx.save();
       ctx.beginPath();
@@ -5526,6 +5735,153 @@
   }
 
   const scene = new SeaScene($("#sea-canvas"));
+
+  let captainEditorPanel = null;
+  let captainEditorPanelSnapshot = "";
+
+  function setCaptainEditorUrlParam(key, value) {
+    const params = new URLSearchParams(location.search);
+    params.set("visualAudit", "captain");
+    params.set("editCaptain", "1");
+    params.set(key, String(value));
+    location.search = params.toString();
+  }
+
+  function setCaptainEditorInputValue(input, value) {
+    if (!input || input === document.activeElement) return;
+    input.value = value;
+  }
+
+  function getCaptainEditorCurrentConfig() {
+    return sanitizeCaptainEditorConfig(getPirateCharacterBoatConfig(state.shipId) || PIRATE_CHARACTER_CONFIG[getCaptainEditorBoatKey(state.shipId)] || {});
+  }
+
+  function updateCaptainEditorPanel(info = null, configOverride = null) {
+    if (!isCaptainEditorEnabled() || !captainEditorPanel) return;
+    const config = sanitizeCaptainEditorConfig(configOverride || getCaptainEditorCurrentConfig());
+    const ship = SHIPS[state.shipId];
+    const entry = formatCaptainEditorConfigEntry(state.shipId, config);
+    const snapshot = JSON.stringify({
+      shipId: state.shipId,
+      level: state.captainLevel,
+      gender: state.captainSelectedGender,
+      pose: VISUAL_AUDIT_CONFIG?.pose,
+      config,
+      foot: info?.foot ? [Math.round(info.foot.x), Math.round(info.foot.y)] : null
+    });
+    if (snapshot === captainEditorPanelSnapshot) return;
+    captainEditorPanelSnapshot = snapshot;
+    captainEditorPanel.querySelector("[data-captain-editor-boat]").textContent = `${getCaptainEditorBoatKey(state.shipId)} - ${ship?.name || ""}`;
+    captainEditorPanel.querySelector("[data-captain-editor-foot]").textContent = info?.foot ? `${Math.round(info.foot.x)}, ${Math.round(info.foot.y)}` : "-";
+    captainEditorPanel.querySelector("[data-captain-editor-code]").value = `${entry},`;
+    setCaptainEditorInputValue(captainEditorPanel.querySelector("[data-captain-editor-ship]"), state.shipId);
+    setCaptainEditorInputValue(captainEditorPanel.querySelector("[data-captain-editor-level]"), state.captainLevel || 1);
+    setCaptainEditorInputValue(captainEditorPanel.querySelector("[data-captain-editor-gender]"), state.captainSelectedGender || "male");
+    setCaptainEditorInputValue(captainEditorPanel.querySelector("[data-captain-editor-pose]"), VISUAL_AUDIT_CONFIG?.pose || "idle");
+    captainEditorPanel.querySelectorAll("[data-captain-editor-field]").forEach(input => {
+      const field = input.dataset.captainEditorField;
+      const value = field === "maxHeight" ? Math.round(config[field]) : Number(config[field]).toFixed(field === "offsetY" ? 1 : 3);
+      setCaptainEditorInputValue(input, value);
+    });
+  }
+
+  function setupCaptainPositionEditor() {
+    if (!isCaptainEditorEnabled()) return;
+    document.body.classList.add("captain-editor-active");
+    captainEditorPanel = document.createElement("aside");
+    captainEditorPanel.className = "captain-editor-panel";
+    captainEditorPanel.innerHTML = `
+      <div class="captain-editor-head">
+        <strong>Editor Capitao</strong>
+        <span data-captain-editor-boat></span>
+      </div>
+      <div class="captain-editor-row captain-editor-row-tight">
+        <button type="button" data-captain-editor-prev>Anterior</button>
+        <button type="button" data-captain-editor-next>Proximo</button>
+      </div>
+      <label>Barco
+        <select data-captain-editor-ship>
+          ${SHIPS.map((ship, index) => `<option value="${index}">${getCaptainEditorBoatKey(index)} - ${ship.name}</option>`).join("")}
+        </select>
+      </label>
+      <div class="captain-editor-grid">
+        <label>Nivel<input type="number" min="1" max="${CAPTAIN_MAX_LEVEL}" step="1" data-captain-editor-level></label>
+        <label>Genero<select data-captain-editor-gender><option value="male">Masc.</option><option value="female">Fem.</option></select></label>
+        <label>Pose<select data-captain-editor-pose><option value="idle">Idle</option><option value="celebrate">Vitoria</option><option value="hit">Dano</option></select></label>
+      </div>
+      <div class="captain-editor-grid">
+        <label>X<input type="number" step="0.001" data-captain-editor-field="offsetX"></label>
+        <label>Y<input type="number" step="0.1" data-captain-editor-field="offsetY"></label>
+        <label>Conves<input type="number" step="0.001" data-captain-editor-field="deckY"></label>
+        <label>Escala<input type="number" step="0.001" data-captain-editor-field="scale"></label>
+        <label>Altura<input type="number" step="1" data-captain-editor-field="maxHeight"></label>
+        <label>Dentro<input type="number" step="0.001" data-captain-editor-field="embed"></label>
+        <label>Borda<input type="number" step="0.001" data-captain-editor-field="railOverlap"></label>
+      </div>
+      <p class="captain-editor-foot">Pe: <span data-captain-editor-foot>-</span></p>
+      <textarea data-captain-editor-code readonly rows="3"></textarea>
+      <div class="captain-editor-row">
+        <button type="button" data-captain-editor-copy>Copiar config</button>
+        <button type="button" data-captain-editor-reset>Reset barco</button>
+      </div>
+    `;
+    document.body.appendChild(captainEditorPanel);
+    captainEditorPanel.addEventListener("input", event => {
+      const field = event.target?.dataset?.captainEditorField;
+      if (!field) return;
+      setCaptainEditorDraft(state.shipId, { [field]: Number(event.target.value) });
+      updateCaptainEditorPanel(scene.captainEditorInfo);
+    });
+    captainEditorPanel.addEventListener("change", event => {
+      const target = event.target;
+      if (target.matches("[data-captain-editor-ship]")) setCaptainEditorUrlParam("ship", clamp(Math.floor(Number(target.value) || 0), 0, SHIPS.length - 1));
+      if (target.matches("[data-captain-editor-level]")) setCaptainEditorUrlParam("level", clamp(Math.floor(Number(target.value) || 1), 1, CAPTAIN_MAX_LEVEL));
+      if (target.matches("[data-captain-editor-gender]")) setCaptainEditorUrlParam("gender", normalizeCaptainGender(target.value) || "male");
+      if (target.matches("[data-captain-editor-pose]")) setCaptainEditorUrlParam("pose", target.value || "idle");
+    });
+    captainEditorPanel.addEventListener("click", async event => {
+      const target = event.target;
+      if (target.matches("[data-captain-editor-prev]")) setCaptainEditorUrlParam("ship", Math.max(0, state.shipId - 1));
+      if (target.matches("[data-captain-editor-next]")) setCaptainEditorUrlParam("ship", Math.min(SHIPS.length - 1, state.shipId + 1));
+      if (target.matches("[data-captain-editor-reset]")) {
+        clearCaptainEditorDraft(state.shipId);
+        captainEditorPanelSnapshot = "";
+        updateCaptainEditorPanel(scene.captainEditorInfo);
+      }
+      if (target.matches("[data-captain-editor-copy]")) {
+        const text = `${formatCaptainEditorConfigEntry(state.shipId, getCaptainEditorCurrentConfig())},`;
+        captainEditorPanel.querySelector("[data-captain-editor-code]").value = text;
+        try { await navigator.clipboard?.writeText(text); } catch (error) {}
+        target.textContent = "Copiado";
+        window.setTimeout(() => { target.textContent = "Copiar config"; }, 900);
+      }
+    });
+    window.__captainEditor = {
+      getCurrent: () => ({
+        shipId: state.shipId,
+        key: getCaptainEditorBoatKey(state.shipId),
+        shipName: SHIPS[state.shipId]?.name || "",
+        config: getCaptainEditorCurrentConfig(),
+        entry: `${formatCaptainEditorConfigEntry(state.shipId, getCaptainEditorCurrentConfig())},`
+      }),
+      getDrafts: () => ({ ...captainEditorDrafts }),
+      setCurrent: patch => {
+        const config = setCaptainEditorDraft(state.shipId, patch);
+        captainEditorPanelSnapshot = "";
+        updateCaptainEditorPanel(scene.captainEditorInfo, config);
+        return config;
+      },
+      clearCurrent: () => {
+        const config = clearCaptainEditorDraft(state.shipId);
+        captainEditorPanelSnapshot = "";
+        updateCaptainEditorPanel(scene.captainEditorInfo, config);
+        return config;
+      }
+    };
+    updateCaptainEditorPanel();
+  }
+
+  setupCaptainPositionEditor();
 
   function pickEncounter(roster) {
     const totalWeight = roster.reduce((sum, encounter) => sum + (encounter.weight || 1), 0);

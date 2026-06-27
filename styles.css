@@ -204,6 +204,99 @@ canvas,
   -webkit-touch-callout: none;
 }
 #sea-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+body.captain-editor-active #sea-canvas { cursor: grab; }
+body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
+.captain-editor-panel {
+  position: fixed;
+  z-index: 120;
+  right: 12px;
+  bottom: 12px;
+  width: min(348px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(111, 239, 226, .34);
+  border-radius: 8px;
+  color: #eafffb;
+  background: rgba(4, 18, 27, .92);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .45);
+  backdrop-filter: blur(10px);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.captain-editor-head {
+  display: grid;
+  gap: 2px;
+}
+.captain-editor-head strong {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+.captain-editor-head span,
+.captain-editor-foot {
+  color: #a9d7d3;
+  font-size: 11px;
+  font-weight: 700;
+}
+.captain-editor-panel label {
+  display: grid;
+  gap: 4px;
+  color: #a9d7d3;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.captain-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.captain-editor-panel input,
+.captain-editor-panel select,
+.captain-editor-panel textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(169, 210, 209, .25);
+  border-radius: 6px;
+  color: #f4fffd;
+  background: rgba(255, 255, 255, .07);
+  font: 800 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+}
+.captain-editor-panel input,
+.captain-editor-panel select {
+  height: 30px;
+  padding: 0 7px;
+}
+.captain-editor-panel textarea {
+  resize: vertical;
+  min-height: 64px;
+  padding: 7px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+}
+.captain-editor-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.captain-editor-row-tight button {
+  min-height: 29px;
+}
+.captain-editor-panel button {
+  min-height: 34px;
+  border: 1px solid rgba(111, 239, 226, .28);
+  border-radius: 7px;
+  color: #eafffb;
+  background: rgba(111, 239, 226, .12);
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.captain-editor-panel button:hover {
+  border-color: rgba(111, 239, 226, .52);
+  background: rgba(111, 239, 226, .18);
+}
 .scene-vignette { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(3, 16, 25, .42), transparent 35%, transparent 68%, rgba(3,16,25,.28)), linear-gradient(0deg, rgba(3, 16, 25, .45), transparent 26%); }
 .combat-collapse-toggle {
   position: absolute;
