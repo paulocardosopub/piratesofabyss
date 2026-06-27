@@ -60,14 +60,22 @@
     "02 - Manguezal dos Ancestrais.png",
     "03 - Ilha dos Pterodactilos.png",
     "04 - Selva dos Repteis Marinhos.png",
-    "05 - Canal Ancestral.png"
+    "05 - Canal Ancestral.png",
+    "06 - Costa dos Náufragos.png",
+    "07 - Ilhas Comerciais (fortes da marinha).png",
+    "08 - Mar das Tempestades.png",
+    "09 - Baía dos Corsários.png",
+    "10 - Oceano Profundo.png",
+    "11 - Triangulo Maldito.png"
   ];
-  PRIMITIVE_REGIONS.forEach((region, index) => {
+  const REGIONS = [...PRIMITIVE_REGIONS, ...MAIN_REGIONS];
+  FIXED_BACKGROUND_ASSET_FILES.forEach((file, index) => {
+    const region = REGIONS[index];
+    if (!region) return;
     region.dayNightCycle = false;
     region.fixedBackground = true;
-    region.fixedBackgroundFile = FIXED_BACKGROUND_ASSET_FILES[index];
+    region.fixedBackgroundFile = file;
   });
-  const REGIONS = [...PRIMITIVE_REGIONS, ...MAIN_REGIONS];
   const PROLOGUE_MAP_ASSET = "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif";
   const PROLOGUE_MAP_POINTS = [
     {
@@ -121,6 +129,36 @@
       description: "O clímax do prólogo. Um canal antigo, redemoinhos, ruínas primitivas e criaturas sombrias guardando a passagem."
     }
   ];
+  const JOURNEY_MAP_PARTS = [
+    {
+      id: "jornada-pirata-parte-1",
+      title: "Jornada Pirata - Parte 1",
+      subtitle: "Mapas 6 a 10",
+      asset: "assets/maps/jornada_pirata_parte1_animado.gif",
+      alt: "Mapa animado da Jornada Pirata parte 1",
+      points: [
+        { id: "costa-naufragos", mapIndex: 6, x: 0, y: 7, width: 36, height: 35, shape: "polygon(0 0, 77% 0, 100% 64%, 68% 100%, 12% 89%, 0 58%)" },
+        { id: "ilhas-comerciais", mapIndex: 7, x: 35, y: 13, width: 39, height: 33, shape: "polygon(14% 0, 79% 0, 100% 55%, 75% 100%, 13% 88%, 0 34%)" },
+        { id: "mar-tempestades", mapIndex: 8, x: 73, y: 8, width: 25, height: 40, shape: "polygon(18% 0, 100% 0, 96% 100%, 22% 88%, 0 45%)" },
+        { id: "baia-corsarios", mapIndex: 9, x: 0, y: 47, width: 39, height: 42, shape: "polygon(0 12%, 83% 0, 100% 50%, 76% 100%, 6% 95%, 0 62%)" },
+        { id: "oceano-profundo", mapIndex: 10, x: 44, y: 48, width: 52, height: 43, shape: "polygon(12% 0, 76% 0, 100% 58%, 86% 100%, 33% 94%, 0 56%)" }
+      ]
+    },
+    {
+      id: "jornada-pirata-parte-2",
+      title: "Jornada Pirata - Parte 2",
+      subtitle: "Mapas 11 a 15",
+      asset: "assets/maps/jornada_pirata_parte2_animado.gif",
+      alt: "Mapa animado da Jornada Pirata parte 2",
+      points: [
+        { id: "triangulo-maldito", mapIndex: 11, x: 0, y: 4, width: 38, height: 38, shape: "polygon(0 0, 76% 0, 100% 57%, 78% 100%, 8% 86%, 0 48%)" },
+        { id: "mar-imperial", mapIndex: 12, x: 40, y: 6, width: 58, height: 35, shape: "polygon(11% 0, 100% 0, 96% 89%, 56% 100%, 0 67%, 0 21%)" },
+        { id: "arquipelago-vulcanico", mapIndex: 13, x: 29, y: 31, width: 42, height: 35, shape: "polygon(22% 0, 86% 0, 100% 57%, 77% 100%, 17% 91%, 0 45%)" },
+        { id: "reino-congelado", mapIndex: 14, x: 0, y: 47, width: 43, height: 44, shape: "polygon(0 23%, 62% 0, 100% 43%, 86% 100%, 10% 93%, 0 62%)" },
+        { id: "abismo-kraken", mapIndex: 15, x: 55, y: 48, width: 43, height: 43, shape: "polygon(16% 0, 100% 0, 100% 91%, 44% 100%, 0 76%, 0 25%)" }
+      ]
+    }
+  ];
 
   const ISLAND_SPRITE_PATH = "assets/backgrounds/islands/";
   const ISLAND_ASSET_FILES = [
@@ -129,12 +167,12 @@
     null,
     null,
     null,
-    "06_costa_dos_naufragos.png",
-    "07_ilhas_comerciais.png",
-    "08_mar_das_tempestades.png",
-    "09_baia_dos_corsarios.png",
-    "10_oceano_profundo.png",
-    "11_triangulo_maldito.png",
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
     "12_mar_imperial.png",
     "13_arquipelago_vulcanico.png",
     "14_reino_congelado.png",
@@ -799,7 +837,7 @@
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
   let lastCaptainEquipmentUpgrade = null;
-  let activePrologueMapIndex = null;
+  let activeMapInfoIndex = null;
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   function formatNumber(value) {
@@ -2224,24 +2262,23 @@
         ctx.fillRect(0, 0, w, h);
         return true;
       }
-      const scale = Math.min(w / image.naturalWidth, h / image.naturalHeight);
-      const targetWidth = image.naturalWidth * scale;
-      const targetHeight = image.naturalHeight * scale;
-      const drawX = (w - targetWidth) * .5;
-      const drawY = (h - targetHeight) * .5;
+      const imageRatio = image.naturalWidth / image.naturalHeight;
+      const canvasRatio = w / Math.max(1, h);
+      let sourceX = 0;
+      let sourceY = 0;
+      let sourceWidth = image.naturalWidth;
+      let sourceHeight = image.naturalHeight;
+      if (canvasRatio < imageRatio) {
+        sourceWidth = image.naturalHeight * canvasRatio;
+        sourceX = clamp(image.naturalWidth * .5 - sourceWidth * .5, 0, image.naturalWidth - sourceWidth);
+      } else if (canvasRatio > imageRatio) {
+        sourceHeight = image.naturalWidth / canvasRatio;
+        sourceY = clamp(image.naturalHeight * .5 - sourceHeight * .5, 0, image.naturalHeight - sourceHeight);
+      }
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      const strip = Math.min(64, image.naturalWidth, image.naturalHeight);
-      if (drawX > .5) {
-        ctx.drawImage(image, 0, 0, strip, image.naturalHeight, 0, drawY, drawX, targetHeight);
-        ctx.drawImage(image, image.naturalWidth - strip, 0, strip, image.naturalHeight, drawX + targetWidth, drawY, w - drawX - targetWidth, targetHeight);
-      }
-      if (drawY > .5) {
-        ctx.drawImage(image, 0, 0, image.naturalWidth, strip, 0, 0, w, drawY);
-        ctx.drawImage(image, 0, image.naturalHeight - strip, image.naturalWidth, strip, 0, drawY + targetHeight, w, h - drawY - targetHeight);
-      }
-      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, w, h);
       ctx.restore();
       return true;
     }
@@ -4019,39 +4056,39 @@
       const label = current ? "Atual" : !unlocked ? "Bloqueado" : completed ? "Concluído" : "Disponível";
       return { unlocked, current, completed, key, label };
     };
-    const mapCardHtml = (region, index) => {
-      const status = mapStatus(index);
-      const requirement = !status.unlocked
-        ? "Requisito: conclua a região anterior"
-        : status.completed
-          ? `Boss: ${region.boss} derrotado`
-          : `Boss: ${region.boss} • ${Math.min(100, state.regionKills[index])}/100 inimigos`;
-      const drops = Object.entries(region.drops).map(([key, chance]) => {
-        const meta = RESOURCE_META[key] || { name: key, icon: "◆", rarityKey: "common" };
-        return `<span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS[meta.rarityKey] || "#bdd0cf"}"><span>${meta.icon}</span>${meta.name} <b>${Math.round(chance * 100)}%</b></span>`;
-      }).join("");
-      const endgameIssues = endgameRequirementIssues(index);
-      const endgameNotice = ENDGAME_REQUIREMENTS[index] ? `<div class="endgame-warning ${endgameIssues.length ? "danger" : "ready"}"><strong>${ENDGAME_REQUIREMENTS[index].label}</strong><span>${endgameIssues.length ? `Recomendado antes de avançar: ${endgameIssues.slice(0, 3).join(" • ")}${endgameIssues.length > 3 ? " • ..." : ""}` : "Preparação recomendada atingida."}</span></div>` : "";
-      return `<article class="map-card ${status.key}" style="--map-accent:${region.sea}"><div class="map-row-main"><div class="map-title-line"><span class="map-number">REGIÃO ${String(index + 1).padStart(2, "0")}</span><span class="map-status ${status.key}">${status.label}</span></div><h3>${region.name}</h3><p class="map-requirement">${requirement}</p></div><div class="map-yields"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div><div class="map-drops">${drops}</div><div class="map-action"><button class="button ${status.current ? "primary" : ""}" data-select-map="${index}" ${!status.unlocked || status.current ? "disabled" : ""}>${status.unlocked ? status.current ? "Atual" : "Viajar" : "Bloqueado"}</button></div>${endgameNotice}</article>`;
-    };
-    const prologueMapPointHtml = point => {
+    const mapDropsHtml = region => Object.entries(region.drops).map(([key, chance]) => {
+      const meta = RESOURCE_META[key] || { name: key, icon: "◆", rarityKey: "common" };
+      return `<span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS[meta.rarityKey] || "#bdd0cf"}"><span>${meta.icon}</span>${meta.name} <b>${Math.round(chance * 100)}%</b></span>`;
+    }).join("");
+    const allMapPoints = [...PROLOGUE_MAP_POINTS, ...JOURNEY_MAP_PARTS.flatMap(part => part.points)];
+    const mapPointByIndex = index => allMapPoints.find(point => point.mapIndex - 1 === index);
+    const mapStepLabel = point => point.mapIndex <= PRIMITIVE_REGIONS.length
+      ? `PRÓLOGO • MAPA ${point.mapIndex}/5`
+      : `JORNADA PIRATA • MAPA ${point.mapIndex}/${REGIONS.length}`;
+    const mapHotspotHtml = point => {
       const index = point.mapIndex - 1;
+      const region = REGIONS[index];
       const status = mapStatus(index);
-      return `<button class="prologue-map-marker ${status.key}" style="--point-x:${point.x}%;--point-y:${point.y}%;--point-w:${point.width}%;--point-h:${point.height}%;" data-prologue-map="${index}" aria-label="${point.title} - ${status.label}" title="${point.title}"><span class="sr-only">${point.title}</span></button>`;
+      const title = point.title || region.name;
+      const shape = point.shape ? `--point-shape:${point.shape};` : "";
+      return `<button class="prologue-map-marker ${status.key}" style="--point-x:${point.x}%;--point-y:${point.y}%;--point-w:${point.width}%;--point-h:${point.height}%;${shape}" data-map-hotspot="${index}" aria-label="${title} - ${status.label}" title="${title}"><span class="sr-only">${title}</span></button>`;
     };
-    const prologueModalHtml = () => {
-      if (activePrologueMapIndex === null) return "";
-      const point = PROLOGUE_MAP_POINTS.find(entry => entry.mapIndex - 1 === activePrologueMapIndex);
-      if (!point) return "";
-      const region = REGIONS[activePrologueMapIndex];
-      const status = mapStatus(activePrologueMapIndex);
-      return `<div class="prologue-map-modal-layer" data-close-prologue-map><article class="prologue-map-modal-card" role="dialog" aria-modal="true" aria-labelledby="prologue-map-title"><button class="prologue-map-close" data-close-prologue-map aria-label="Fechar">×</button><span class="map-number">PRÓLOGO • MAPA ${point.mapIndex}/5</span><h3 id="prologue-map-title">${point.title}</h3><span class="map-status ${status.key}">${status.label}</span><p>${point.description}</p><div class="prologue-map-modal-meta"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div><div class="prologue-map-modal-actions"><button class="button primary" data-select-map="${activePrologueMapIndex}" ${!status.unlocked || status.current ? "disabled" : ""}>${status.unlocked ? status.current ? "Atual" : "Viajar" : "Bloqueado"}</button><button class="button" data-close-prologue-map>Fechar</button></div></article></div>`;
+    const mapInfoModalHtml = () => {
+      if (activeMapInfoIndex === null) return "";
+      const point = mapPointByIndex(activeMapInfoIndex);
+      const region = REGIONS[activeMapInfoIndex];
+      if (!point || !region) return "";
+      const status = mapStatus(activeMapInfoIndex);
+      const description = point.description || region.description;
+      const drops = point.mapIndex > PRIMITIVE_REGIONS.length ? `<div class="map-drops prologue-map-modal-drops">${mapDropsHtml(region)}</div>` : "";
+      return `<div class="prologue-map-modal-layer" data-close-map-info><article class="prologue-map-modal-card" role="dialog" aria-modal="true" aria-labelledby="map-info-title"><button class="prologue-map-close" data-close-map-info aria-label="Fechar">×</button><span class="map-number">${mapStepLabel(point)}</span><h3 id="map-info-title">${point.title || region.name}</h3><span class="map-status ${status.key}">${status.label}</span><p>${description}</p><div class="prologue-map-modal-meta"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div>${drops}<div class="prologue-map-modal-actions"><button class="button primary" data-select-map="${activeMapInfoIndex}" ${!status.unlocked || status.current ? "disabled" : ""}>${status.unlocked ? status.current ? "Atual" : "Viajar" : "Bloqueado"}</button><button class="button" data-close-map-info>Fechar</button></div></article></div>`;
     };
-    const prologueMapHtml = () => `<section class="map-section prologue-map-section"><div class="map-section-heading"><h2>Prólogo Pré-Histórico</h2><span>5 mapas iniciais</span></div><div class="prologue-map-board"><img src="${PROLOGUE_MAP_ASSET}" alt="Mapa animado do prólogo" class="prologue-map-image"><div class="prologue-map-points">${PROLOGUE_MAP_POINTS.map(prologueMapPointHtml).join("")}</div>${prologueModalHtml()}</div></section>`;
-    const mapSectionHtml = (title, subtitle, regions, offset) => `<section class="map-section"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="map-section-list">${regions.map((region, index) => mapCardHtml(region, index + offset)).join("")}</div></section>`;
+    const mapBoardHtml = ({ title, subtitle, asset, alt, points }, sectionClass = "") => `<section class="map-section ${sectionClass}"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="prologue-map-board"><img src="${asset}" alt="${alt}" class="prologue-map-image"><div class="prologue-map-points">${points.map(mapHotspotHtml).join("")}</div></div></section>`;
+    const prologueMapHtml = () => mapBoardHtml({ title: "Prólogo Pré-Histórico", subtitle: "5 mapas iniciais", asset: PROLOGUE_MAP_ASSET, alt: "Mapa animado do prólogo", points: PROLOGUE_MAP_POINTS }, "prologue-map-section");
     $("#maps-grid").innerHTML = [
       prologueMapHtml(),
-      mapSectionHtml("Jornada Pirata", "10 mapas principais", MAIN_REGIONS, PRIMITIVE_REGIONS.length)
+      ...JOURNEY_MAP_PARTS.map(part => mapBoardHtml(part, "journey-map-section")),
+      mapInfoModalHtml()
     ].join("");
   }
 
@@ -4582,7 +4619,7 @@
 
   function navigate(screen) {
     screen = normalizeScreen(screen);
-    if (screen !== "maps") activePrologueMapIndex = null;
+    if (screen !== "maps") activeMapInfoIndex = null;
     currentScreen = screen;
     setActiveScreen(screen);
     renderScreen(screen);
@@ -4601,14 +4638,14 @@
     renderMissions();
   }
 
-  function openPrologueMapInfo(index) {
-    if (index < 0 || index >= PRIMITIVE_REGIONS.length) return;
-    activePrologueMapIndex = index;
+  function openMapInfo(index) {
+    if (index < 0 || index >= REGIONS.length) return;
+    activeMapInfoIndex = index;
     renderMaps();
   }
 
-  function closePrologueMapInfo() {
-    activePrologueMapIndex = null;
+  function closeMapInfo() {
+    activeMapInfoIndex = null;
     renderMaps();
   }
 
@@ -4618,7 +4655,7 @@
     if (!(index < state.unlockedRegions)) return;
     const issues = endgameRequirementIssues(index);
     state.regionIndex = index;
-    activePrologueMapIndex = null;
+    activeMapInfoIndex = null;
     syncCaptainEquipmentState(state);
     clearCurrentEnemy();
     toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa região.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
@@ -4627,19 +4664,19 @@
   }
 
   function handleGlobalButtonClick(event) {
-    const prologueCloseTarget = event.target.closest("[data-close-prologue-map]");
-    if (prologueCloseTarget && !event.target.closest(".prologue-map-modal-card")) {
-      closePrologueMapInfo();
+    const mapCloseTarget = event.target.closest("[data-close-map-info]");
+    if (mapCloseTarget && !event.target.closest(".prologue-map-modal-card")) {
+      closeMapInfo();
       return;
     }
     const target = event.target.closest("button");
     if (!target) return;
-    if (target.dataset.closePrologueMap !== undefined) {
-      closePrologueMapInfo();
+    if (target.dataset.closeMapInfo !== undefined) {
+      closeMapInfo();
       return;
     }
-    if (target.dataset.prologueMap !== undefined) {
-      openPrologueMapInfo(Number(target.dataset.prologueMap));
+    if (target.dataset.mapHotspot !== undefined) {
+      openMapInfo(Number(target.dataset.mapHotspot));
       return;
     }
     if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);

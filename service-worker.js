@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v51-fixed-prologue-backgrounds";
+const CACHE = "pirates-abyss-v55-journey-map-hotspots";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -148,12 +148,6 @@ const PLAYER_SHIP_SPRITESHEET_ASSET_FILES = [
   "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png"
 ];
 const ISLAND_ASSET_FILES = [
-  "06_costa_dos_naufragos.png",
-  "07_ilhas_comerciais.png",
-  "08_mar_das_tempestades.png",
-  "09_baia_dos_corsarios.png",
-  "10_oceano_profundo.png",
-  "11_triangulo_maldito.png",
   "12_mar_imperial.png",
   "13_arquipelago_vulcanico.png",
   "14_reino_congelado.png",
@@ -164,7 +158,13 @@ const FIXED_BACKGROUND_ASSET_FILES = [
   "02 - Manguezal dos Ancestrais.png",
   "03 - Ilha dos Pterodactilos.png",
   "04 - Selva dos Repteis Marinhos.png",
-  "05 - Canal Ancestral.png"
+  "05 - Canal Ancestral.png",
+  "06 - Costa dos Náufragos.png",
+  "07 - Ilhas Comerciais (fortes da marinha).png",
+  "08 - Mar das Tempestades.png",
+  "09 - Baía dos Corsários.png",
+  "10 - Oceano Profundo.png",
+  "11 - Triangulo Maldito.png"
 ];
 const OCEAN_ASSET_FILES = [
   "16_fundo_do_mar_oceano.png"
@@ -206,11 +206,13 @@ const CAPTAIN_ASSET_FILES = [
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=39",
-  "game.js?v=63",
+  "styles.css?v=41",
+  "game.js?v=66",
   "icon.svg",
   "manifest.webmanifest",
   "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif",
+  "assets/maps/jornada_pirata_parte1_animado.gif",
+  "assets/maps/jornada_pirata_parte2_animado.gif",
   ...FIXED_BACKGROUND_ASSET_FILES.map(file => `assets/newbackgrounds/${file}`),
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),
   ...ENEMY_SPRITESHEET_ASSET_FILES.map(file => `assets/spritesenemies/${file}`),
