@@ -753,6 +753,31 @@ canvas,
   font-size: 11px;
   font-weight: 900;
 }
+.fleet-ship-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 8px; margin-top: 10px; }
+.fleet-ship-option {
+  min-height: 46px;
+  padding: 8px 10px;
+  border: 1px solid rgba(53,212,207,.2);
+  border-radius: 8px;
+  color: #e7f5f2;
+  background: rgba(6,24,36,.72);
+  text-align: left;
+  cursor: pointer;
+}
+.fleet-ship-option span,
+.fleet-ship-option small,
+.fleet-ship-option strong { display: block; overflow-wrap: anywhere; line-height: 1.2; }
+.fleet-ship-option span { font-size: 11px; font-weight: 900; }
+.fleet-ship-option small { margin-top: 3px; color: var(--muted); font-size: 8px; font-weight: 800; }
+.fleet-ship-option strong { margin-top: 6px; color: var(--gold); font-size: 9px; font-weight: 900; text-transform: uppercase; }
+.fleet-ship-option.current {
+  border-color: rgba(53,212,207,.7);
+  color: #061e25;
+  background: var(--cyan-2);
+  cursor: default;
+}
+.fleet-ship-option.current small { color: rgba(6,30,37,.78); }
+.fleet-ship-option.current strong { color: rgba(6,30,37,.86); }
 .upgrade-row .auto-switch.compact {
   max-width: 290px;
   margin: 5px 0 0;

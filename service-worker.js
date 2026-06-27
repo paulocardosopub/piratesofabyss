@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v71-captain-transparency";
+const CACHE = "pirates-abyss-v73-fleet-selector";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=46",
-  "game.js?v=81",
+  "styles.css?v=48",
+  "game.js?v=83",
   "icon.svg",
   "manifest.webmanifest"
 ];

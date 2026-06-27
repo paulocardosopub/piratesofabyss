@@ -2541,6 +2541,48 @@
     return requestSpriteImage(sprite, `${ENEMY_SPRITESHEET_PATH}${sprite.file}`, prepareEnemySpritesheet);
   }
 
+  const PRELOAD_REGION_LOOKAHEAD = 1;
+  const preloadedRegionAssets = new Set();
+  const pendingRegionPreloads = new Set();
+  let regionPreloadScheduled = false;
+
+  function preloadRegionAssets(regionIndex) {
+    const index = Math.floor(Number(regionIndex));
+    if (index < 0 || index >= REGIONS.length || preloadedRegionAssets.has(index)) return;
+    preloadedRegionAssets.add(index);
+
+    getFixedBackgroundSprite(REGIONS[index]);
+
+    const names = new Set((REGION_ENCOUNTERS[index] || []).map(enemy => enemy.name));
+    if (REGIONS[index]?.boss) names.add(REGIONS[index].boss);
+    names.forEach(name => {
+      const sprite = getEnemyAnimatedSpritesheet(name, index);
+      if (sprite) requestEnemySpritesheet(sprite);
+    });
+  }
+
+  function flushRegionPreloads() {
+    regionPreloadScheduled = false;
+    const indices = [...pendingRegionPreloads].sort((a, b) => a - b);
+    pendingRegionPreloads.clear();
+    indices.forEach(preloadRegionAssets);
+  }
+
+  function queueRegionPreload(regionIndex) {
+    const index = Math.floor(Number(regionIndex));
+    if (index < 0 || index >= REGIONS.length || preloadedRegionAssets.has(index)) return;
+    pendingRegionPreloads.add(index);
+    if (regionPreloadScheduled) return;
+    regionPreloadScheduled = true;
+    if ("requestIdleCallback" in window) window.requestIdleCallback(flushRegionPreloads, { timeout: 1600 });
+    else window.setTimeout(flushRegionPreloads, 350);
+  }
+
+  function scheduleNearbyRegionPreload() {
+    const current = clamp(Math.floor(Number(state.regionIndex) || 0), 0, REGIONS.length - 1);
+    for (let offset = 0; offset <= PRELOAD_REGION_LOOKAHEAD; offset += 1) queueRegionPreload(current + offset);
+  }
+
   function createEnemySpriteAnimation(name, regionIndex = state.regionIndex) {
     const sprite = getEnemyAnimatedSpritesheet(name, regionIndex);
     if (!sprite) return null;
@@ -4049,6 +4091,7 @@
         state.unlockedRegions = Math.max(state.unlockedRegions, state.regionIndex + 2);
         state.regionIndex += 1;
         state.maxRegionReached = Math.max(state.maxRegionReached, state.regionIndex);
+        scheduleNearbyRegionPreload();
         state.combat.enemy = null;
         state.combat.spawnTimer = -700;
         toast(`${REGIONS[state.regionIndex].name} foi desbloqueada.`, "gold-toast");
@@ -4707,6 +4750,17 @@
     return `<article class="upgrade-row ${affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">NÍVEL ${state.levels[item.key]}</span><h3>${item.name}</h3><p>${item.desc}</p>${statRowsHtml(getImprovementRows(item.key))}<div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div></div>${upgradeActionHtml("upgrade", item.key, cost, affordable, { hint: `Próximo: nível ${state.levels[item.key] + 1}` })}</article>`;
   }
 
+  function fleetSelectionLineHtml() {
+    const ownedIds = [...new Set(state.ownedShips)].filter(id => SHIPS[id]).sort((a, b) => a - b);
+    const buttons = ownedIds.map(id => {
+      const ship = SHIPS[id];
+      const current = id === state.shipId;
+      const stats = getStats(id);
+      return `<button class="fleet-ship-option ${current ? "current" : ""}" data-equip-ship="${id}" aria-label="${current ? `${ship.name} equipado` : `Selecionar ${ship.name}`}" ${current ? "disabled" : ""}><span>${ship.name}</span><small>Tier ${ship.tier} • Poder ${formatNumber(stats.power)}</small><strong>${current ? "Atual" : "Selecionar"}</strong></button>`;
+    }).join("");
+    return `<article class="upgrade-row fleet-select-row completed"><div class="upgrade-row-icon">⛵</div><div class="upgrade-row-main"><span class="level-label">NAVIOS CONSTRUÍDOS</span><h3>Selecionar barco da frota</h3><p>Troque para qualquer barco já comprado sem gastar recursos.</p><div class="fleet-ship-selector">${buttons}</div></div><div class="upgrade-row-action"><span class="upgrade-row-status">Atual: ${SHIPS[state.shipId].name}</span><small>${ownedIds.length}/${SHIPS.length} construídos</small></div></article>`;
+  }
+
   function fleetLineHtml() {
     const currentShip = SHIPS[state.shipId];
     const nextShip = getNextFleetShip();
@@ -4765,7 +4819,7 @@
       { key: "hull", name: "Casco", icon: "⬡", desc: "Amplia vida, defesa e resistência em combate." }
     ].map(upgradeLineHtml);
     $("#upgrade-feed").innerHTML = [
-      renderUpgradeSection("Frota", [fleetLineHtml()]),
+      renderUpgradeSection("Frota", [fleetLineHtml(), fleetSelectionLineHtml()]),
       renderUpgradeSection("Melhorias", improvements),
       renderUpgradeSection("Equipamentos", Object.entries(EQUIPMENT_META).map(equipmentLineHtml)),
       renderUpgradeSection("Skills", Object.entries(SKILL_META).map(skillLineHtml))
@@ -5408,6 +5462,7 @@
     state.regionIndex = index;
     activeMapInfoIndex = null;
     syncCaptainEquipmentState(state);
+    scheduleNearbyRegionPreload();
     clearCurrentEnemy();
     toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa região.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
     if (issues.length) addLog(`Alerta de endgame: recomenda-se evoluir antes de avançar. ${issues.join(" • ")}.`, "danger-text");
@@ -5579,6 +5634,7 @@
   state.combat.playerHp = clamp(state.combat.playerHp || getStats().maxHp, 1, getStats().maxHp);
   if (!state.logs.length) addLog(`${SHIPS[state.shipId].name} está pronto para sua primeira patrulha.`);
   renderAll(true);
+  scheduleNearbyRegionPreload();
   requestAnimationFrame(gameLoop);
 
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("service-worker.js").catch(() => {});
