@@ -3472,7 +3472,10 @@
       if (pet) {
         const attackAdvance = Math.sin(this.petLunge * Math.PI) * w * .12;
         const petScale = Math.min(1.1, w / 850, h / 290);
-        const petWaterlineY = playerY + Math.max(78, playerScale * (compactStage ? 108 : 124));
+        const desiredWaterline = playerY + Math.max(58, playerScale * (compactStage ? 78 : 92));
+        const minimumWaterline = playerY + Math.max(24, playerScale * (compactStage ? 34 : 42));
+        const maximumWaterline = h - Math.max(18, petScale * 18);
+        const petWaterlineY = maximumWaterline > minimumWaterline ? clamp(desiredWaterline, minimumWaterline, maximumWaterline) : maximumWaterline;
         this.drawPet(ctx, w * .43 + attackAdvance, petWaterlineY, pet, petScale);
       }
       this.enemyDeathAnimations.forEach(item => {
