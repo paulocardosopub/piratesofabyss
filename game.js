@@ -2241,7 +2241,8 @@
     Jangada_de_Caca: { width: 285, anchorY: .65 },
     Ictiossauro: { width: 315, anchorY: .56 },
     Saqueador_da_Selva: { width: 285, anchorY: .66 },
-    Boss_Mosasaurus_Jovem: { width: 380, anchorY: .56 }
+    Boss_Mosasaurus_Jovem: { width: 380, anchorY: .56 },
+    Boss_Megalodon_Ancestral: { preserveNeutralDetails: true }
   };
   const ENEMY_SPRITESHEET_OPTIONS_BY_KEY = Object.entries(ENEMY_SPRITESHEET_OPTIONS).reduce((map, [name, options]) => {
     map[normalizeEnemySpriteKey(name)] = options;
@@ -2477,7 +2478,7 @@
     }
   }
 
-  function cleanSpriteTransparency(data, width, height) {
+  function cleanSpriteTransparency(sprite, data, width, height) {
     const samplePoints = [
       0,
       (width - 1) * 4,
@@ -2500,6 +2501,55 @@
     const bgMin = Math.min(bg.r, bg.g, bg.b);
     const bgAverage = (bg.r + bg.g + bg.b) / 3;
     const bgIsLightNeutral = bgMax - bgMin < 36 && bgAverage > 196;
+    const preserveNeutralDetails = Boolean(sprite?.preserveNeutralDetails);
+    if (preserveNeutralDetails && hasOpaqueBackground) {
+      const visited = new Uint8Array(width * height);
+      const queue = [];
+      let head = 0;
+      const isConnectedBackground = index => {
+        if (data[index + 3] <= 8) return true;
+        const r = data[index], g = data[index + 1], b = data[index + 2];
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const saturation = max - min;
+        const average = (r + g + b) / 3;
+        const distance = Math.hypot(r - bg.r, g - bg.g, b - bg.b);
+        return distance < 58 ||
+          (saturation < 9 && average > 88 && average < 190 && distance < 96) ||
+          (bgIsLightNeutral && saturation < 16 && average > 176 && distance < 92);
+      };
+      const push = (x, y) => {
+        if (x < 0 || y < 0 || x >= width || y >= height) return;
+        const point = y * width + x;
+        if (visited[point]) return;
+        const index = point * 4;
+        if (!isConnectedBackground(index)) return;
+        visited[point] = 1;
+        data[index + 3] = 0;
+        queue.push(point);
+      };
+      for (let x = 0; x < width; x++) {
+        push(x, 0);
+        push(x, height - 1);
+      }
+      for (let y = 1; y < height - 1; y++) {
+        push(0, y);
+        push(width - 1, y);
+      }
+      while (head < queue.length) {
+        const point = queue[head++];
+        const x = point % width;
+        const y = Math.floor(point / width);
+        for (let oy = -1; oy <= 1; oy++) {
+          for (let ox = -1; ox <= 1; ox++) {
+            if (!ox && !oy) continue;
+            push(x + ox, y + oy);
+          }
+        }
+      }
+      cleanupSpritesheetLightArtifacts(data, width, height);
+      return;
+    }
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i], g = data[i + 1], b = data[i + 2];
       const max = Math.max(r, g, b);
@@ -2509,7 +2559,7 @@
       const distance = Math.hypot(r - bg.r, g - bg.g, b - bg.b);
       if (
         (hasOpaqueBackground && distance < 44) ||
-        (hasOpaqueBackground && saturation < 9 && average > 88 && average < 190) ||
+        (hasOpaqueBackground && !preserveNeutralDetails && saturation < 9 && average > 88 && average < 190) ||
         (bgIsLightNeutral && saturation < 16 && average > 176 && distance < 92)
       ) data[i + 3] = 0;
     }
@@ -2529,7 +2579,7 @@
       context.drawImage(image, 0, 0);
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
       const data = pixels.data;
-      cleanSpriteTransparency(data, canvas.width, canvas.height);
+      cleanSpriteTransparency(sprite, data, canvas.width, canvas.height);
       cleanupSpritesheetDetachedFrameArtifacts(sprite, data, canvas.width, canvas.height);
       measureEnemyFrameBounds(sprite, data, canvas.width, canvas.height);
       context.putImageData(pixels, 0, 0);
@@ -3356,6 +3406,13 @@
       return ratio <= .5 ? SPRITE_HP_STATES.damaged : SPRITE_HP_STATES.normal;
     }
 
+    getPlayerShipHpState(currentHp, maxHp, defeated = false) {
+      const hp = Math.max(0, Number(currentHp) || 0);
+      if (defeated || hp <= 0) return SPRITE_HP_STATES.defeated;
+      const ratio = hp / Math.max(1, Number(maxHp) || hp || 1);
+      return ratio <= .01 ? SPRITE_HP_STATES.defeated : SPRITE_HP_STATES.normal;
+    }
+
     getStateSpriteFrame(sprite, stateName, role = "enemy") {
       const frames = SPRITE_STATE_SPRITES[role] || ENEMY_STATE_SPRITES;
       const selected = frames[stateName] ?? frames.normal ?? 0;
@@ -3497,7 +3554,8 @@
       if (!options.preview && state.combat.repairing && state.combat.playerHp <= 0 && !animation.deathStartedAt) animation.deathStartedAt = this.time;
       const maxHp = Math.max(1, getStats().maxHp || 1);
       const hp = options.preview ? maxHp : Math.max(0, Number(state.combat.playerHp) || 0);
-      const stateName = this.getSpriteHpState(hp, maxHp, !options.preview && Boolean(animation.deathStartedAt));
+      const stateName = this.getPlayerShipHpState(hp, maxHp, !options.preview && Boolean(animation.deathStartedAt) && hp <= maxHp * .01);
+      if (!options.preview && animation.deathStartedAt && stateName !== SPRITE_HP_STATES.defeated) animation.deathStartedAt = 0;
       return {
         stateName,
         frame: this.getStateSpriteFrame(sprite, stateName, "playerShip"),

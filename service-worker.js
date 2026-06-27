@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v74-sprite-frame-prune";
+const CACHE = "pirates-abyss-v76-megalodon-transparency";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=48",
-  "game.js?v=84",
+  "game.js?v=86",
   "icon.svg",
   "manifest.webmanifest"
 ];
