@@ -398,6 +398,7 @@
   ].map((entry, index) => ({ level: index + 1, ...entry }));
 
   const CAPTAIN_EQUIPMENT_MAX_TIER = 10;
+  const CAPTAIN_SWORD_BONUS_PROGRESS = [.03, .10, .20, .35, .55, .80, 1.15, 1.60, 2.20, 3.00];
   function buildCaptainEquipmentTiers(names, bonusRows) {
     return names.map((name, index) => {
       const level = index + 1;
@@ -409,16 +410,18 @@
     sword: {
       tierKey: "swordTier",
       category: "Estilos de Espada",
+      shortName: "Espada",
       icon: "⚔",
       description: "Aumenta o dano dos ataques do barco.",
       tiers: buildCaptainEquipmentTiers(
         ["Faca de Marujo", "Lâmina de Convés", "Sabre de Saqueador", "Cutelo Corsário", "Espada do Capitão", "Sabre Dourado", "Lâmina do Kraken", "Espada Fantasma", "Sabre Abissal", "Espada Lendária do Abismo"],
-        [.03, .10, .20, .35, .55, .80, 1.15, 1.60, 2.20, 3.00].map(shipDamageBonus => ({ shipDamageBonus }))
+        CAPTAIN_SWORD_BONUS_PROGRESS.map(shipDamageBonus => ({ shipDamageBonus }))
       )
     },
     firearm: {
       tierKey: "firearmTier",
       category: "Estilos de Arma de Fogo",
+      shortName: "Arma",
       icon: "✹",
       description: "Aumenta a velocidade de ataque do barco.",
       tiers: buildCaptainEquipmentTiers(
@@ -429,6 +432,7 @@
     armor: {
       tierKey: "armorTier",
       category: "Armaduras/Vestes Piratas",
+      shortName: "Armadura",
       icon: "◆",
       description: "Aumenta a vida máxima e a resistência do barco.",
       tiers: buildCaptainEquipmentTiers(
@@ -439,11 +443,23 @@
     trick: {
       tierKey: "trickTier",
       category: "Habilidade de Trapacear",
+      shortName: "Trapaça",
       icon: "♣",
       description: "Aumenta esquiva, crítico e chance de ataque duplo.",
       tiers: buildCaptainEquipmentTiers(
         ["Truque de Marujo", "Dado Viciado", "Carta na Manga", "Golpe Baixo", "Blefe de Capitão", "Tiro Escondido", "Trapaça Corsária", "Sorte Fantasma", "Pacto Abissal", "Trapaça Lendária"],
         [[.01, .02, .01], [.02, .04, .02], [.03, .07, .03], [.05, .10, .05], [.07, .14, .07], [.09, .18, .10], [.12, .23, .13], [.15, .29, .17], [.19, .36, .22], [.25, .45, .30]].map(([dodgeChance, critChance, doubleAttackChance]) => ({ dodgeChance, critChance, doubleAttackChance }))
+      )
+    },
+    lightHands: {
+      tierKey: "lightHandsTier",
+      category: "Mãos Leves",
+      shortName: "Mãos Leves",
+      icon: "✋",
+      description: "Aumenta ouro e XP ganhos ao saquear inimigos e recompensas.",
+      tiers: buildCaptainEquipmentTiers(
+        ["Dedos Ágeis", "Bolsos Rápidos", "Saque de Convés", "Furto Corsário", "Mãos de Capitão", "Roubo Dourado", "Saque do Kraken", "Furto Fantasma", "Mãos Abissais", "Mãos Lendárias do Abismo"],
+        CAPTAIN_SWORD_BONUS_PROGRESS.map(value => ({ goldGainBonus: value, xpGainBonus: value }))
       )
     }
   };
@@ -580,7 +596,7 @@
   }
 
   function createCaptainEquipmentBonuses() {
-    return { shipDamageBonus: 0, shipAttackSpeedBonus: 0, shipHpBonus: 0, shipArmorBonus: 0, dodgeChance: 0, critChance: 0, doubleAttackChance: 0 };
+    return { shipDamageBonus: 0, shipAttackSpeedBonus: 0, shipHpBonus: 0, shipArmorBonus: 0, dodgeChance: 0, critChance: 0, doubleAttackChance: 0, goldGainBonus: 0, xpGainBonus: 0 };
   }
 
   function getCaptainEquipmentTier(key, source = state) {
@@ -1180,8 +1196,8 @@
   let activeMissionFilter = "Próximas de concluir";
 
   function rewardText(reward = {}) {
-    const parts = Object.entries(reward.resources || {}).filter(([, value]) => value > 0).map(([key, value]) => `${formatNumber(value)} ${RESOURCE_META[key]?.name || key}`);
-    if (reward.xp) parts.push(`${formatNumber(reward.xp)} XP`);
+    const parts = Object.entries(reward.resources || {}).filter(([, value]) => value > 0).map(([key, value]) => `${formatNumber(key === "ouro" ? calculateGoldReward(value) : value)} ${RESOURCE_META[key]?.name || key}`);
+    if (reward.xp) parts.push(`${formatNumber(calculateXpReward(reward.xp))} XP`);
     if (reward.title) parts.push(`Título "${reward.title}"`);
     if (reward.cosmetic) parts.push(reward.cosmetic);
     return parts.join(" + ") || "Glória pirata";
@@ -1402,6 +1418,7 @@
   let tradeHoldInterval = 0;
   let lastCaptainEquipmentUpgrade = null;
   let lastCaptainManualSkillUpgrade = null;
+  let activeCaptainEquipmentKey = "sword";
   let activeMapInfoIndex = null;
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
@@ -1448,6 +1465,9 @@
   function getCaptainUpgradeCost() {
     const next = getNextCaptain();
     return next ? next.cost : null;
+  }
+  function getCaptainInvestedPirateCoins(level = state.captainLevel) {
+    return CAPTAIN_LEVELS.slice(1, clamp(Math.floor(Number(level) || 0), 0, CAPTAIN_MAX_LEVEL)).reduce((sum, entry) => sum + entry.cost, 0);
   }
   function captainLevelPips(level) {
     return Array.from({ length: CAPTAIN_MAX_LEVEL }, (_, index) => `<i class="${index < level ? "on" : ""}"></i>`).join("");
@@ -1514,7 +1534,27 @@
     return index >= 0 && state.unlockedRegions > index && state.bossesDefeated[index] && REGIONS[index].boss === PRESTIGE_BOSS_NAME;
   }
   function getPrestigeBonuses() {
-    return { gold: state.prestiges * .02, xp: state.prestiges * .02, dps: state.prestiges * .01, speed: state.prestiges * .01, drop: state.prestiges * .01, idle: state.prestiges * .01 };
+    return { gold: state.prestiges * .04, xp: state.prestiges * .04, dps: state.prestiges * .02, speed: state.prestiges * .02, drop: state.prestiges * .02, idle: state.prestiges * .02 };
+  }
+  function getCaptainEquipmentRewardBonuses(source = state) {
+    const bonuses = getCaptainEquipmentBonuses(source);
+    return { gold: bonuses.goldGainBonus || 0, xp: bonuses.xpGainBonus || 0 };
+  }
+  function getGoldGainMultiplier() {
+    const prestige = getPrestigeBonuses();
+    const equipment = getCaptainEquipmentRewardBonuses();
+    return (1 + prestige.gold) * (1 + equipment.gold);
+  }
+  function getXpGainMultiplier() {
+    const prestige = getPrestigeBonuses();
+    const equipment = getCaptainEquipmentRewardBonuses();
+    return (1 + prestige.xp) * (1 + equipment.xp);
+  }
+  function calculateGoldReward(amount) {
+    return Math.round(Math.max(0, Number(amount) || 0) * getGoldGainMultiplier());
+  }
+  function calculateXpReward(amount) {
+    return Math.max(0, Number(amount) || 0) * getXpGainMultiplier();
   }
   function getPrestigeReward() {
     if (!canPrestige()) return 0;
@@ -1737,7 +1777,7 @@
   }
 
   function gainXp(amount) {
-    const earnedXp = amount * (1 + getPrestigeBonuses().xp);
+    const earnedXp = calculateXpReward(amount);
     state.xp += earnedXp;
     addCaptainRuntimeXp(earnedXp);
     while (state.xp >= xpNeeded()) {
@@ -1939,12 +1979,13 @@
     if (!store.completed[item.id]) store.completed[item.id] = Date.now();
     Object.entries(item.reward.resources || {}).forEach(([key, amount]) => {
       if (!amount) return;
-      state.resources[key] = (state.resources[key] || 0) + amount;
+      const finalAmount = key === "ouro" ? calculateGoldReward(amount) : amount;
+      state.resources[key] = (state.resources[key] || 0) + finalAmount;
       if (key !== "ouro") {
-        state.lifetime.resources += amount;
-        addCollectedResource(key, amount);
+        state.lifetime.resources += finalAmount;
+        addCollectedResource(key, finalAmount);
       } else {
-        state.lifetime.gold += amount;
+        state.lifetime.gold += finalAmount;
       }
     });
     if (item.reward.xp) gainXp(item.reward.xp);
@@ -2003,7 +2044,7 @@
   const ENEMY_STATE_SPRITES = { normal: 0, damaged: 6, defeated: 8 };
   const PLAYER_SHIP_STATE_SPRITES = { normal: 0, damaged: 0, defeated: 8 };
   const PET_STATE_SPRITES = { normal: 0, damaged: 1, defeated: 2 };
-  const PRESTIGE_PIRATE_COIN_REWARD_MULTIPLIER = 1.5;
+  const PRESTIGE_PIRATE_COIN_REWARD_MULTIPLIER = 3;
   const SPRITE_STATE_SPRITES = {
     enemy: ENEMY_STATE_SPRITES,
     playerShip: PLAYER_SHIP_STATE_SPRITES,
@@ -4525,7 +4566,7 @@
       scene.fire(true, options.color || "#ffd37a");
       setTimeout(() => { markHit(); scene.burst(true, options.color || "#f4a34c"); scene.floatDamage(damage, true, options.color || "#fff0bc"); }, 340);
     }
-    if (enemy.hp <= 0) defeatEnemy({ visualDelay: options.pet ? .18 : options.sabotage ? .2 : .34 });
+    if (enemy.hp <= 0) defeatEnemy();
   }
 
   function basicAttack(options = {}) {
@@ -4689,12 +4730,12 @@
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
     enemy.defeated = true;
-    scene.queueEnemyDeath(enemy, options.visualDelay || 0);
+    scene.queueEnemyDeath(enemy);
     scene.celebrateCaptain(enemy.isBoss ? 2.8 : 1.65);
     const region = REGIONS[state.regionIndex];
     if (getEquippedPet()) state.lifetime.petKills += 1;
     if (enemy.isBoss) {
-      const reward = Math.round(integerBetween(region.bossGold[0], region.bossGold[1]) * (1 + getPrestigeBonuses().gold));
+      const reward = calculateGoldReward(integerBetween(region.bossGold[0], region.bossGold[1]));
       state.resources.ouro += reward;
       state.lifetime.gold += reward;
       state.lifetime.bosses += 1;
@@ -4724,7 +4765,7 @@
       if (materials.length) addLog(`Drop do boss: ${materials.join(", ")}.`, "loot");
     } else {
       const weightedGold = region.gold * (enemy.goldMultiplier || 1) * randomBetween(.88, 1.15);
-      const gold = Math.round(clamp(weightedGold, region.goldRange[0], region.goldRange[1]) * (1 + getPrestigeBonuses().gold));
+      const gold = calculateGoldReward(clamp(weightedGold, region.goldRange[0], region.goldRange[1]));
       state.resources.ouro += gold;
       state.lifetime.gold += gold;
       state.lifetime.enemies += 1;
@@ -4826,7 +4867,7 @@
     const efficiency = (.55 + Math.min(.25, (state.resources.comida || 0) / 5000)) * (1 + prestigeIdle);
     const cycle = region.baseHp / Math.max(1, stats.dps) + getSpawnDelay() / 1000;
     const kills = Math.max(1, Math.floor(capped / cycle * efficiency * OFFLINE_REWARD_RATE));
-    const gold = Math.round(kills * region.gold * .94 * (1 + getPrestigeBonuses().gold));
+    const gold = calculateGoldReward(kills * region.gold * .94);
     const xp = Math.round(kills * region.xp * .94);
     state.resources.ouro += gold;
     state.lifetime.gold += gold;
@@ -4836,7 +4877,7 @@
     trackAction("enemy", { count: kills });
     trackAction("offline", { seconds: capped });
     gainXp(xp);
-    const rewards = [{ name: "Ouro", amount: gold }, { name: "XP", amount: xp }, { name: "Vitórias", amount: kills }];
+    const rewards = [{ name: "Ouro", amount: gold }, { name: "XP", amount: calculateXpReward(xp) }, { name: "Vitórias", amount: kills }];
     Object.entries(region.drops).forEach(([key, chance]) => {
       const amount = Math.floor(kills * chance * (1 + getPrestigeBonuses().drop) * randomBetween(.75, 1.15));
       if (amount > 0) {
@@ -5102,7 +5143,7 @@
     const banner = $("#pet-current-banner");
     banner.className = `pet-current-banner${current ? " equipped" : ""}`;
     banner.setAttribute("style", current ? getPetAuraStyle(current) : "");
-    banner.innerHTML = current ? `<div class="pet-current-icon">${petSpriteHtml(current.visual)}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
+    banner.innerHTML = current ? `<div class="pet-current-icon">${petSpriteHtml(current.visual)}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Nenhum pet equipado</h2><p>Você pode navegar sem pet ou escolher um companheiro quando quiser.</p></div>`;
     $("#pets-grid").innerHTML = PETS.map(basePet => {
       const owned = state.ownedPets.includes(basePet.id);
       const level = owned ? getPetLevel(basePet.id) : 1;
@@ -5120,7 +5161,7 @@
       const nextPet = owned && level < PET_MAX_LEVEL ? getPetWithLevel(basePet, level + 1) : null;
       const upgradePreview = nextPet ? `<span class="cost-chip">Próx. dano +${formatNumber(nextPet.damage - pet.damage)}</span><span class="cost-chip">Próx. poder +${formatNumber(nextPet.power - pet.power)}</span>` : `<span class="cost-chip">Nível máximo permanente</span>`;
       const button = owned
-        ? `<div class="pet-actions"><button class="button ${equipped ? "" : "primary"}" data-equip-pet="${pet.id}" ${equipped ? "disabled" : ""}>${equipped ? "Equipado" : "Equipar"}</button><button class="button prestige-button" data-upgrade-pet="${pet.id}" ${upgradeCost && state.pirateCoins >= upgradeCost ? "" : "disabled"}>${upgradeCost ? `Upgrade ☠ ${formatNumber(upgradeCost)}` : "Nível máximo"}</button></div>`
+        ? `<div class="pet-actions"><button class="button ${equipped ? "" : "primary"}" data-equip-pet="${pet.id}">${equipped ? "Desequipar" : "Equipar"}</button><button class="button prestige-button" data-upgrade-pet="${pet.id}" ${upgradeCost && state.pirateCoins >= upgradeCost ? "" : "disabled"}>${upgradeCost ? `Upgrade ☠ ${formatNumber(upgradeCost)}` : "Nível máximo"}</button></div>`
         : `<div class="pet-actions"><button class="button primary" data-buy-pet="${pet.id}" ${!unlocked || !affordable ? "disabled" : ""}>Comprar</button></div>`;
       const prestigeLine = `Prestígio necessário: ${state.prestiges} / ${pet.id + 1}`;
       const requirement = owned
@@ -5159,6 +5200,7 @@
     if (key === "firearm") return `+${formatCaptainPercent(bonuses.shipAttackSpeedBonus)} velocidade de ataque`;
     if (key === "armor") return `+${formatCaptainPercent(bonuses.shipHpBonus)} vida, +${formatCaptainPercent(bonuses.shipArmorBonus)} armadura`;
     if (key === "trick") return `+${formatCaptainPercent(bonuses.dodgeChance)} esquiva, +${formatCaptainPercent(bonuses.critChance)} crítico, +${formatCaptainPercent(bonuses.doubleAttackChance)} ataque duplo`;
+    if (key === "lightHands") return `+${formatCaptainPercent(bonuses.goldGainBonus)} ouro ganho, +${formatCaptainPercent(bonuses.xpGainBonus)} XP ganho`;
     return "Bônus ativo";
   }
 
@@ -5174,12 +5216,27 @@
       <div class="upgrade-balance${canUpgrade ? "" : " danger"}">
         <span>Custo: <strong>${cost} Ponto${cost === 1 ? "" : "s"}</strong></span>
         <span>Disponíveis: <strong>${available}</strong></span>
-        <span>Após upgrade: <strong>${canUpgrade ? after : `Faltam ${missing}`}</strong></span>
+        <span>Após evolução: <strong>${canUpgrade ? after : `Faltam ${missing}`}</strong></span>
       </div>
     </div>`;
   }
 
-  function captainEquipmentCardHtml([key, meta]) {
+  function captainEquipmentTabHtml([key, meta]) {
+    const tier = getCaptainEquipmentTier(key);
+    const next = getNextCaptainEquipmentTierData(key);
+    const available = getAvailableLevelPoints();
+    const affordable = Boolean(next && available >= next.pointCost);
+    const selected = key === activeCaptainEquipmentKey;
+    return `<button class="captain-equipment-tab ${selected ? "selected" : ""} ${affordable ? "available" : ""} ${next ? "" : "completed"}" type="button" data-select-captain-equipment="${key}" aria-pressed="${selected ? "true" : "false"}">
+      <span class="captain-equipment-tab-icon">${meta.icon}</span>
+      <span class="captain-equipment-tab-copy"><strong>${meta.shortName || meta.category}</strong><small>Nv. ${tier}</small></span>
+      ${next ? affordable ? `<span class="captain-equipment-tab-badge">UP</span>` : "" : `<span class="captain-equipment-tab-badge done">OK</span>`}
+    </button>`;
+  }
+
+  function captainEquipmentDetailHtml(key) {
+    const meta = CAPTAIN_EQUIPMENT_META[key];
+    if (!meta) return "";
     const tier = getCaptainEquipmentTier(key);
     const current = getCaptainEquipmentTierData(key, tier);
     const next = getNextCaptainEquipmentTierData(key);
@@ -5189,19 +5246,17 @@
     const currentName = current?.name || "Ainda não comprado";
     const currentBonus = current ? captainEquipmentBonusText(key, current.bonuses) : "Sem bônus ativo";
     const nextBonus = next ? captainEquipmentBonusText(key, next.bonuses) : "Tier máximo alcançado";
-    return `<article class="upgrade-row captain-equipment-row ${upgraded ? "recent-upgrade" : ""} ${next ? affordable ? "available" : "" : "completed"}">
+    return `<article class="upgrade-row captain-equipment-row captain-equipment-detail ${upgraded ? "recent-upgrade" : ""} ${next ? affordable ? "available" : "" : "completed"}">
       <div class="upgrade-row-icon">${meta.icon}</div>
       <div class="upgrade-row-main">
-        <span class="level-label">${meta.category}</span>
+        <span class="level-label">Categoria: ${meta.category}</span>
         <h3>${currentName}</h3>
-        <p>${meta.description}</p>
         <div class="captain-equipment-summary">
-          <div><span>Nível atual</span><strong>${tier} / ${CAPTAIN_EQUIPMENT_MAX_TIER}</strong></div>
+          <div><span>Tier atual</span><strong>${currentName} • Nível ${tier} / ${CAPTAIN_EQUIPMENT_MAX_TIER}</strong></div>
           <div><span>Bônus atual</span><strong>${currentBonus}</strong></div>
-          <div><span>Próximo tier</span><strong>${next ? `${next.name} • ${next.level}/${CAPTAIN_EQUIPMENT_MAX_TIER}` : "Completo"}</strong></div>
+          <div><span>Próximo tier</span><strong>${next ? `${next.name} • Nível ${next.level} / ${CAPTAIN_EQUIPMENT_MAX_TIER}` : "Completo"}</strong></div>
           <div><span>Próximo bônus</span><strong>${nextBonus}</strong></div>
         </div>
-        <div class="cost-list">${next ? `<span class="cost-chip">Custo: ${next.pointCost} Ponto${next.pointCost === 1 ? "" : "s"} de Nível</span><span class="cost-chip">Pontos disponíveis: ${available}</span>` : `<span class="cost-chip">Equipamento completo</span>`}</div>
         ${next ? `<div class="resource-readiness ${affordable ? "ready" : "missing"}">${affordable ? "Pontos suficientes para evoluir" : `Faltam ${next.pointCost - available} Ponto${next.pointCost - available === 1 ? "" : "s"} de Nível`}</div>` : `<div class="resource-readiness ready">Todos os tiers foram comprados.</div>`}
         ${upgraded ? `<div class="captain-equipment-feedback">Upgrade realizado!</div>` : ""}
       </div>
@@ -5260,6 +5315,7 @@
       return `<section class="captain-equipment-section locked"><div class="section-heading compact"><div><span class="eyebrow">EQUIPAMENTOS DO CAPITÃO</span><h2>Escolha um Capitão para liberar</h2></div></div></section>`;
     }
     syncCaptainRuntimeState(state);
+    if (!CAPTAIN_EQUIPMENT_META[activeCaptainEquipmentKey]) activeCaptainEquipmentKey = Object.keys(CAPTAIN_EQUIPMENT_META)[0];
     const runtimeNeeded = captainRuntimeXpNeeded(state.captainRuntimeLevel);
     const runtimeRatio = clamp(state.captainCurrentXp / runtimeNeeded, 0, 1);
     return `<section class="captain-equipment-section">
@@ -5270,7 +5326,8 @@
         <div><span>Pontos ganhos</span><strong>${state.totalLevelPointsEarned}</strong></div>
         <div><span>Pontos gastos</span><strong>${state.spentLevelPoints}</strong></div>
       </div>
-      <div class="captain-equipment-grid">${Object.entries(CAPTAIN_EQUIPMENT_META).map(captainEquipmentCardHtml).join("")}</div>
+      <div class="captain-equipment-tabs" role="tablist" aria-label="Equipamentos do Capitão">${Object.entries(CAPTAIN_EQUIPMENT_META).map(captainEquipmentTabHtml).join("")}</div>
+      ${captainEquipmentDetailHtml(activeCaptainEquipmentKey)}
     </section>`;
   }
 
@@ -5308,7 +5365,7 @@
         ${nextPreview}
         <button class="button prestige-button captain-upgrade-button" data-upgrade-captain ${!canUpgrade ? "disabled" : ""}>${next ? "Evoluir Capitão" : "Nível máximo"}</button>
         ${next && !canUpgrade ? `<p class="captain-upgrade-hint">Faltam ${formatNumber(cost - state.pirateCoins)} Moedas Pirata.</p>` : ""}
-        <div class="captain-mutiny-panel"><div><span class="eyebrow">MOTIM</span><strong>Trocar escolha visual</strong><p>Reseta Capitão, Pontos de Nível e equipamentos. Moedas gastas não voltam.</p></div><button class="button danger" data-open-captain-mutiny>Iniciar um Motim</button></div>
+        <div class="captain-mutiny-panel"><div><span class="eyebrow">MOTIM</span><strong>Trocar escolha visual</strong><p>Reseta Capitão, Pontos de Nível e equipamentos. Moedas Pirata investidas no Capitão voltam.</p></div><button class="button danger" data-open-captain-mutiny>Iniciar um Motim</button></div>
       </section>
     </div>${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
     renderCaptainPreviewCanvases(content);
@@ -5961,6 +6018,7 @@
   function renderStats() {
     syncCaptainRuntimeState(state);
     const stats = getStats();
+    const rewardBonuses = getCaptainEquipmentRewardBonuses();
     const captain = getCurrentCaptain();
     const skillLevels = Object.values(state.skills).reduce((sum, item) => sum + item.level, 0);
     const rank = state.pirateLevel >= 50 ? "Lenda Abissal" : state.pirateLevel >= 30 ? "Almirante" : state.pirateLevel >= 15 ? "Capitão" : state.pirateLevel >= 5 ? "Corsário" : "Marujo";
@@ -5970,7 +6028,7 @@
       ["Vida atual / máxima", `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`], ["Dano do navio", formatNumber(stats.damage)], ["DPS do navio", formatNumber(stats.shipDps)], ["DPS das skills", formatNumber(stats.skillDps)], ["DPS do pet", formatNumber(stats.petDps)], ["DPS total", formatNumber(stats.dps)], ["Poder Naval", formatNumber(stats.power)], ["Velocidade", formatNumber(stats.speed)], ["Intervalo ataque", `${Math.round(stats.attackInterval)}ms`], ["Bônus vel. ataque", `+${Math.round(stats.attackSpeedBonus * 100)}%`], ["Armadura", formatNumber(stats.armor)], ["Redução de dano", `${Math.round(stats.armorReduction * 100)}%`], ["Precisão", `${Math.round(stats.precision * 100)}%`], ["Crítico", `${Math.round(stats.crit * 100)}%`], ["Evasão", `${Math.round(stats.evasion * 100)}%`], ["Ataque duplo", `${Math.round(stats.doubleAttackChance * 100)}%`]
     ]);
     $("#progression-stats").innerHTML = list([
-      ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
+      ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
     $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
   }
@@ -6086,6 +6144,14 @@
 
   function equipPet(id) {
     if (!state.ownedPets.includes(id) || !PETS[id]) return;
+    if (state.equippedPetId === id) {
+      state.equippedPetId = null;
+      state.combat.petAttackTimer = 0;
+      state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
+      toast("Pet desequipado. Seu navio seguirá sem companheiro.");
+      commitGame(true);
+      return;
+    }
     state.equippedPetId = id; state.combat.petAttackTimer = 0; state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
     toast(`${PETS[id].name} equipado como companheiro.`); commitGame(true);
   }
@@ -6131,6 +6197,8 @@
   function confirmCaptainMutiny() {
     if (!isCaptainSelected()) return closeCaptainMutinyConfirmation();
     const oldName = getCurrentCaptain()?.name || "Capitão";
+    const refundedPirateCoins = getCaptainInvestedPirateCoins(state.captainLevel);
+    state.pirateCoins += refundedPirateCoins;
     state.captainSelectedGender = null;
     state.captainLevel = 0;
     state.captainRuntimeLevel = 1;
@@ -6147,8 +6215,8 @@
     syncCaptainEquipmentState(state);
     state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
     closeCaptainMutinyConfirmation();
-    addLog(`Motim iniciado: ${oldName} foi resetado.`, "loot");
-    toast("Motim concluído. Escolha o novo visual do Capitão.", "gold-toast");
+    addLog(`Motim iniciado: ${oldName} foi resetado.${refundedPirateCoins ? ` Reembolso: ${formatNumber(refundedPirateCoins)} Moedas Pirata.` : ""}`, "loot");
+    toast(refundedPirateCoins ? `Motim concluído. ${formatNumber(refundedPirateCoins)} Moedas Pirata devolvidas.` : "Motim concluído. Escolha o novo visual do Capitão.", "gold-toast");
     navigate("captain");
     commitGame(true);
   }
@@ -6181,6 +6249,12 @@
     commitGame(true);
   }
 
+  function selectCaptainEquipment(key) {
+    if (!CAPTAIN_EQUIPMENT_META[key]) return;
+    activeCaptainEquipmentKey = key;
+    if (currentScreen === "captain") renderCaptain();
+  }
+
   function upgradeCaptainEquipment(key) {
     const meta = CAPTAIN_EQUIPMENT_META[key];
     const next = getNextCaptainEquipmentTierData(key);
@@ -6193,6 +6267,7 @@
     const oldRatio = oldStats.maxHp ? state.combat.playerHp / oldStats.maxHp : 1;
     state.spentLevelPoints += next.pointCost;
     state.captainEquipment[meta.tierKey] = next.level;
+    activeCaptainEquipmentKey = key;
     syncCaptainRuntimeState(state);
     syncCaptainEquipmentState(state);
     trackAction("upgrade", { type: `captain-${key}` });
@@ -6206,7 +6281,9 @@
         if (currentScreen === "captain") renderCaptain();
       }
     }, 900);
-    toast(`${next.name} comprado! Poder Naval +${formatNumber(Math.max(0, newStats.power - oldStats.power))}.`, "gold-toast");
+    const powerGain = Math.max(0, newStats.power - oldStats.power);
+    const gainText = powerGain > 0 ? `Poder Naval +${formatNumber(powerGain)}.` : key === "lightHands" ? "Ouro e XP ganhos aumentados." : "Bônus recalculados.";
+    toast(`${next.name} comprado! ${gainText}`, "gold-toast");
     addLog(`${meta.category}: ${next.name} evoluiu para o nível ${next.level}.`, "loot");
     commitGame(true);
   }
@@ -6310,6 +6387,10 @@
     if (target.dataset.upgradeCaptain !== undefined) upgradeCaptain();
     if (target.dataset.openCaptainMutiny !== undefined) openCaptainMutinyConfirmation();
     if (target.dataset.upgradeCaptainManualSkill) upgradeCaptainManualSkill(target.dataset.upgradeCaptainManualSkill);
+    if (target.dataset.selectCaptainEquipment) {
+      selectCaptainEquipment(target.dataset.selectCaptainEquipment);
+      return;
+    }
     if (target.dataset.upgradeCaptainEquipment) upgradeCaptainEquipment(target.dataset.upgradeCaptainEquipment);
     if (target.dataset.craftEquipment) craftEquipment(target.dataset.craftEquipment);
     if (target.dataset.upgradeSkill) upgradeSkill(target.dataset.upgradeSkill);

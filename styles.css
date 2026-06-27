@@ -555,7 +555,7 @@ canvas,
 .section-tabs { display: flex; gap: 7px; margin: 7px 0 16px; padding-bottom: 12px; overflow-x: auto; border-bottom: 1px solid var(--line); }
 .section-tabs button { min-height: 38px; padding: 8px 15px; white-space: nowrap; border: 1px solid transparent; border-radius: 9px; color: var(--muted); background: transparent; font-weight: 750; cursor: pointer; }
 .section-tabs button.active { color: var(--cyan-2); border-color: rgba(53,212,207,.22); background: rgba(53,212,207,.08); }
-.captain-page { display: grid; gap: 14px; }
+.captain-page { display: grid; gap: 14px; padding-bottom: calc(var(--bottom-nav-height) + 48px); }
 .captain-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .captain-choice { display: grid; grid-template-columns: minmax(150px, .8fr) 1fr; gap: 18px; align-items: center; padding: 18px; border: 1px solid rgba(247,189,74,.24); border-radius: var(--radius); background: linear-gradient(145deg, rgba(63,63,61,.24), rgba(7,27,40,.96)); }
 .captain-choice .button { grid-column: 1 / -1; }
@@ -605,15 +605,30 @@ canvas,
 .captain-runtime-panel strong { margin-top: 3px; color: #f2f6f4; font-size: 13px; }
 .captain-runtime-panel i { display: block; height: 5px; margin-top: 5px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.1); }
 .captain-runtime-panel b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--gold), var(--cyan-2)); }
-.captain-equipment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.captain-equipment-row { grid-template-columns: 44px minmax(0, 1fr); align-items: start; min-height: 176px; }
-.captain-equipment-row .upgrade-row-action { grid-column: 1 / -1; grid-template-columns: minmax(132px, 1fr) minmax(170px, auto); align-items: center; }
+.captain-equipment-tabs { display: flex; gap: 5px; padding: 0 1px 5px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
+.captain-equipment-tabs::-webkit-scrollbar { display: none; }
+.captain-equipment-tab { position: relative; flex: 0 0 108px; max-width: 108px; min-height: 36px; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 4px; padding: 5px 6px; border: 1px solid rgba(110,239,226,.16); border-radius: 6px; color: #eefbf8; background: rgba(255,255,255,.045); cursor: pointer; scroll-snap-align: start; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+.captain-equipment-tab:hover, .captain-equipment-tab.selected { border-color: rgba(247,189,74,.6); background: rgba(247,189,74,.11); transform: translateY(-1px); }
+.captain-equipment-tab.available { box-shadow: inset 0 0 0 1px rgba(103,217,151,.18); }
+.captain-equipment-tab.completed { opacity: .86; }
+.captain-equipment-tab-icon { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 5px; color: var(--gold); background: rgba(0,0,0,.18); font-size: 14px; }
+.captain-equipment-tab-copy { min-width: 0; display: grid; gap: 2px; text-align: left; }
+.captain-equipment-tab-copy strong, .captain-equipment-tab-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.captain-equipment-tab-copy strong { font-size: 8px; line-height: 1.05; }
+.captain-equipment-tab-copy small { color: var(--muted); font-size: 7px; font-weight: 900; line-height: 1; text-transform: uppercase; }
+.captain-equipment-tab-badge { min-width: 18px; padding: 2px 3px; border-radius: 999px; color: #052016; background: var(--green); font-size: 7px; font-weight: 1000; line-height: 1; text-align: center; }
+.captain-equipment-tab-badge.done { color: #132028; background: rgba(255,255,255,.58); }
+.captain-equipment-row { grid-template-columns: 46px minmax(0, 1fr) minmax(188px, 220px); align-items: center; min-height: 76px; }
+.captain-equipment-row .upgrade-row-action { grid-column: auto; align-items: center; }
+.captain-equipment-row .upgrade-balance { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px 4px; }
+.captain-equipment-row .upgrade-balance span { min-width: 0; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.captain-equipment-row .upgrade-balance strong { margin-left: 2px; }
 .captain-equipment-row .upgrade-row-main p { white-space: normal; }
-.captain-equipment-summary { display: grid; grid-template-columns: 1fr; gap: 4px; margin-top: 6px; }
-.captain-equipment-summary div { min-width: 0; padding: 5px 6px; border-radius: 5px; background: rgba(0,0,0,.2); }
+.captain-equipment-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; margin-top: 4px; }
+.captain-equipment-summary div { min-width: 0; padding: 2px 4px; border-radius: 4px; background: rgba(0,0,0,.2); }
 .captain-equipment-summary span, .captain-equipment-summary strong { display: block; }
 .captain-equipment-summary span { color: var(--muted); font-size: 6px; font-weight: 900; line-height: 1; text-transform: uppercase; }
-.captain-equipment-summary strong { margin-top: 3px; color: #f2f6f4; font-size: 8px; line-height: 1.2; }
+.captain-equipment-summary strong { margin-top: 1px; overflow: hidden; color: #f2f6f4; font-size: 8px; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
 .captain-equipment-feedback { margin-top: 5px; color: var(--green); font-size: 9px; font-weight: 900; }
 .captain-equipment-row.recent-upgrade { animation: captainEquipmentGlow .85s ease-out; }
 .captain-manual-skill-section { margin-top: 2px; }
@@ -1624,7 +1639,10 @@ canvas,
   .pets-grid { grid-template-columns: repeat(2, 1fr); }
   .captain-bonus-grid { grid-template-columns: repeat(3, 1fr); }
   .captain-runtime-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .captain-equipment-grid { grid-template-columns: 1fr; }
+  .captain-equipment-tab { flex: 0 0 104px; }
+  .captain-equipment-row { grid-template-columns: 44px minmax(0, 1fr) minmax(156px, 190px); }
+  .captain-equipment-row .upgrade-row-action { grid-column: auto; grid-template-columns: 1fr; }
+  .captain-equipment-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .prestige-summary-grid { grid-template-columns: repeat(2, 1fr); }
   .map-card { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
   .map-yields { grid-column: 1; max-width: 320px; }
@@ -1747,6 +1765,12 @@ canvas,
   .captain-bonus-grid { grid-template-columns: repeat(2, 1fr); }
   .captain-level-row { grid-template-columns: 1fr; }
   .captain-points-wallet { width: 100%; }
+  .captain-equipment-tabs { margin-inline: -2px; padding-bottom: 6px; }
+  .captain-equipment-tab { flex-basis: 98px; grid-template-columns: 20px minmax(0, 1fr); min-height: 34px; padding: 5px; }
+  .captain-equipment-tab-icon { width: 20px; height: 20px; font-size: 13px; }
+  .captain-equipment-tab-badge { position: absolute; top: 3px; right: 3px; min-width: 18px; padding: 2px 3px; font-size: 7px; }
+  .captain-equipment-row { grid-template-columns: 42px minmax(0, 1fr); }
+  .captain-equipment-row .upgrade-row-action { grid-column: 1 / -1; }
   .captain-equipment-row .upgrade-row-action { grid-template-columns: 1fr; }
   .captain-equipment-summary { grid-template-columns: 1fr; }
   .captain-mutiny-panel { align-items: stretch; flex-direction: column; }
