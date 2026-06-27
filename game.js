@@ -1809,7 +1809,7 @@
     defeated: "defeated"
   });
   const ENEMY_STATE_SPRITES = { normal: 0, damaged: 6, defeated: 8 };
-  const PLAYER_SHIP_STATE_SPRITES = { normal: 0, damaged: 6, defeated: 8 };
+  const PLAYER_SHIP_STATE_SPRITES = { normal: 0, damaged: 0, defeated: 8 };
   const PET_STATE_SPRITES = { normal: 0, damaged: 1, defeated: 2 };
   const SPRITE_STATE_SPRITES = {
     enemy: ENEMY_STATE_SPRITES,
@@ -2393,6 +2393,90 @@
     }
   }
 
+  function cleanupSpritesheetDetachedFrameArtifacts(sprite, data, width, height) {
+    const columns = sprite.columns || 1;
+    const rows = sprite.rows || 1;
+    const frames = sprite.frames || columns * rows;
+    if (frames <= 1 || columns <= 1 || rows <= 1) return;
+    const frameWidth = Math.floor(width / columns);
+    const frameHeight = Math.floor(height / rows);
+    const significantArea = Math.max(72, Math.floor(frameWidth * frameHeight * .00035));
+    const componentScore = component => {
+      let score = component.area;
+      if (component.top <= 1) score *= .35;
+      if (component.left <= 1 || component.right >= frameWidth - 2) score *= .72;
+      if (component.bottom >= frameHeight - 2 && component.visibleHeight < frameHeight * .35) score *= .78;
+      return score * (1 + component.bottom / Math.max(1, frameHeight) * .18);
+    };
+    for (let frame = 0; frame < frames; frame++) {
+      const frameX = (frame % columns) * frameWidth;
+      const frameY = Math.floor(frame / columns) * frameHeight;
+      const visited = new Uint8Array(frameWidth * frameHeight);
+      const components = [];
+      const isOpaque = (x, y) => data[((frameY + y) * width + frameX + x) * 4 + 3] > 8;
+      for (let y = 0; y < frameHeight; y++) {
+        for (let x = 0; x < frameWidth; x++) {
+          const start = y * frameWidth + x;
+          if (visited[start] || !isOpaque(x, y)) continue;
+          const queue = [start];
+          const pixels = [];
+          let head = 0;
+          let left = x, right = x, top = y, bottom = y;
+          visited[start] = 1;
+          while (head < queue.length) {
+            const point = queue[head++];
+            const px = point % frameWidth;
+            const py = Math.floor(point / frameWidth);
+            pixels.push(point);
+            if (px < left) left = px;
+            if (px > right) right = px;
+            if (py < top) top = py;
+            if (py > bottom) bottom = py;
+            for (let oy = -1; oy <= 1; oy++) {
+              const ny = py + oy;
+              if (ny < 0 || ny >= frameHeight) continue;
+              for (let ox = -1; ox <= 1; ox++) {
+                if (!ox && !oy) continue;
+                const nx = px + ox;
+                if (nx < 0 || nx >= frameWidth) continue;
+                const next = ny * frameWidth + nx;
+                if (visited[next] || !isOpaque(nx, ny)) continue;
+                visited[next] = 1;
+                queue.push(next);
+              }
+            }
+          }
+          components.push({
+            pixels,
+            area: pixels.length,
+            left,
+            right,
+            top,
+            bottom,
+            centerX: (left + right) / 2,
+            centerY: (top + bottom) / 2,
+            visibleHeight: bottom - top + 1
+          });
+        }
+      }
+      if (components.length <= 1) continue;
+      const primary = components.reduce((best, component) => componentScore(component) > componentScore(best) ? component : best, components[0]);
+      components.forEach(component => {
+        if (component === primary) return;
+        const clipped = component.top <= 1 || component.bottom >= frameHeight - 2 || component.left <= 1 || component.right >= frameWidth - 2;
+        const separatedY = component.bottom < primary.top - frameHeight * .035 || component.top > primary.bottom + frameHeight * .035;
+        const separatedX = component.right < primary.left - frameWidth * .035 || component.left > primary.right + frameWidth * .035;
+        const largeEnough = component.area >= significantArea || component.area >= primary.area * .018;
+        if (!clipped && !separatedY && !separatedX && !largeEnough) return;
+        component.pixels.forEach(point => {
+          const px = point % frameWidth;
+          const py = Math.floor(point / frameWidth);
+          data[((frameY + py) * width + frameX + px) * 4 + 3] = 0;
+        });
+      });
+    }
+  }
+
   function cleanSpriteTransparency(data, width, height) {
     const samplePoints = [
       0,
@@ -2446,6 +2530,7 @@
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
       const data = pixels.data;
       cleanSpriteTransparency(data, canvas.width, canvas.height);
+      cleanupSpritesheetDetachedFrameArtifacts(sprite, data, canvas.width, canvas.height);
       measureEnemyFrameBounds(sprite, data, canvas.width, canvas.height);
       context.putImageData(pixels, 0, 0);
       sprite.canvas = canvas;

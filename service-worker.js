@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v73-fleet-selector";
+const CACHE = "pirates-abyss-v74-sprite-frame-prune";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=48",
-  "game.js?v=83",
+  "game.js?v=84",
   "icon.svg",
   "manifest.webmanifest"
 ];
