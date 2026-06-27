@@ -1763,27 +1763,27 @@
   const PLAYER_SHIP_TALL_ANIMATIONS = {
     idle: { frames: [0], fps: 1, loop: true, blend: false },
     moving: { frames: [0], fps: 1, loop: true, blend: false },
-    hit: { frames: [9], fps: 7, loop: false, blend: false },
-    death: { frames: [9, 10, 11], fps: 4.2, loop: false, blend: true }
+    hit: { frames: [6], fps: 7, loop: false, blend: false },
+    death: { frames: [8], fps: 1, loop: false, blend: false }
   };
   const PLAYER_SHIP_SPRITESHEET_OPTIONS = {
     Bote_de_Tronco: { width: 230, anchorY: .63 },
     Jangada_de_Cipó: { width: 245, anchorY: .66 },
-    Canoa_de_Caça: { width: 240, anchorY: .58, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
-    Jangada_Reforçada_Primitiva: { width: 255, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Canoa_de_Caça: { width: 240, anchorY: .58, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Jangada_Reforçada_Primitiva: { width: 255, anchorY: .64, animations: PLAYER_SHIP_TALL_ANIMATIONS },
     Canoa_do_Titã: { width: 265, anchorY: .63 },
-    Bote_Armado: { width: 260, anchorY: .66, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
-    Jangada_Reforçada: { width: 270, anchorY: .66, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Bote_Armado: { width: 260, anchorY: .66, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Jangada_Reforçada: { width: 270, anchorY: .66, animations: PLAYER_SHIP_TALL_ANIMATIONS },
     Barco_de_Pesca_Adaptado: { width: 275, anchorY: .64 },
     Escuna_Leve: { width: 285, anchorY: .66 },
-    Escuna_Mercante: { width: 295, anchorY: .66, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
-    Cutter_Real: { width: 300, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
-    Brigantina_Pequena: { width: 305, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Escuna_Mercante: { width: 295, anchorY: .66, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Cutter_Real: { width: 300, anchorY: .64, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Brigantina_Pequena: { width: 305, anchorY: .64, animations: PLAYER_SHIP_TALL_ANIMATIONS },
     Corveta_Simples: { width: 310, anchorY: .66 },
-    Brigantina_Pirata: { width: 320, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Brigantina_Pirata: { width: 320, anchorY: .64, animations: PLAYER_SHIP_TALL_ANIMATIONS },
     Corveta_Armada: { width: 320, anchorY: .64 },
     Galeota: { width: 310, anchorY: .61 },
-    Navio_Mercante_Armado: { width: 330, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Navio_Mercante_Armado: { width: 330, anchorY: .64, animations: PLAYER_SHIP_TALL_ANIMATIONS },
     Galeao_Mercante: { width: 335, anchorY: .64, captainAnchorX: .47, captainAnchorY: .68 },
     Galeao_Pirata: { width: 335, anchorY: .63, captainAnchorX: .46, captainAnchorY: .67 },
     Fragata_Real: { width: 340, anchorY: .63, captainAnchorX: .48, captainAnchorY: .66 },
@@ -1802,7 +1802,7 @@
       .replace(/_sprite_\d+frames?$/i, "");
   }
 
-  function getPlayerShipSpritesheetFrameCountFromFile(file) {
+  function getSpritesheetFrameCountFromFile(file) {
     const match = String(file).match(/_sprite_(\d+)frames?\.png$/i);
     return match ? Math.max(1, Number(match[1]) || 0) : 0;
   }
@@ -1810,7 +1810,7 @@
   const PLAYER_SHIP_SPRITESHEETS = PLAYER_SHIP_SPRITESHEET_FILES.reduce((sprites, file) => {
     const name = getPlayerShipSpritesheetNameFromFile(file);
     const options = PLAYER_SHIP_SPRITESHEET_OPTIONS[name] || {};
-    const fileFrameCount = getPlayerShipSpritesheetFrameCountFromFile(file);
+    const fileFrameCount = getSpritesheetFrameCountFromFile(file);
     const usesNineFrameLayout = fileFrameCount === 9;
     const sprite = {
       key: name,
@@ -2097,14 +2097,12 @@
     Jacare_da_Lagoa: {
       width: 270,
       anchorY: .58,
-      rows: 4,
-      frames: 12,
       animations: {
         idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
         walking: { frames: [0, 1, 2, 1], fps: 5.5, loop: true, blend: true },
         attack: { frames: [3, 4, 5, 4], fps: 8.5, loop: false, blend: true },
         hit: { frames: [0], fps: 1, loop: false, blend: false },
-        death: { frames: [9, 10, 11], fps: 4.5, loop: false, blend: true }
+        death: { frames: [8], fps: 1, loop: false, blend: false }
       }
     },
     Boss_Crocomar_Anciao: { width: 380, anchorY: .58 },
@@ -2113,27 +2111,23 @@
     Reptil_das_Raizes: {
       width: 315,
       anchorY: .6,
-      rows: 4,
-      frames: 12,
       animations: {
         idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
         walking: { frames: [0, 1, 2, 1], fps: 5.2, loop: true, blend: true },
         attack: { frames: [3, 4, 5, 4], fps: 8.2, loop: false, blend: true },
-        hit: { frames: [7], fps: 7.5, loop: false, blend: false },
-        death: { frames: [9, 10, 11], fps: 4.3, loop: false, blend: true }
+        hit: { frames: [6, 7], fps: 7.5, loop: false, blend: true },
+        death: { frames: [8], fps: 1, loop: false, blend: false }
       }
     },
     Boss_Deinosuchus_do_Mangue: {
       width: 390,
       anchorY: .59,
-      rows: 4,
-      frames: 12,
       animations: {
         idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
         walking: { frames: [0, 1, 2, 1], fps: 5, loop: true, blend: true },
         attack: { frames: [3, 4, 5, 4], fps: 8, loop: false, blend: true },
-        hit: { frames: [8], fps: 7.5, loop: false, blend: false },
-        death: { frames: [9, 10, 11], fps: 4.3, loop: false, blend: true }
+        hit: { frames: [6, 7], fps: 7.5, loop: false, blend: true },
+        death: { frames: [8], fps: 1, loop: false, blend: false }
       }
     },
     Canoa_de_Couro: { width: 260, anchorY: .58 },
@@ -2227,6 +2221,15 @@
     const average = key => referenceFrames.reduce((sum, item) => sum + item[key], 0) / Math.max(1, referenceFrames.length);
     sprite.frameBounds = bounds;
     sprite.referenceBounds = { centerX: average("centerX"), bottomY: average("bottomY") };
+  }
+
+  function normalizeSpritesheetGrid(sprite, width, height) {
+    const fileFrameCount = getSpritesheetFrameCountFromFile(sprite.file);
+    if (fileFrameCount === 9 && width === height && width % 3 === 0 && height % 3 === 0) {
+      sprite.columns = 3;
+      sprite.rows = 3;
+      sprite.frames = 9;
+    }
   }
 
   function cleanupSpritesheetLightArtifacts(data, width, height) {
@@ -2333,6 +2336,7 @@
       const canvas = document.createElement("canvas");
       canvas.width = image.naturalWidth;
       canvas.height = image.naturalHeight;
+      normalizeSpritesheetGrid(sprite, canvas.width, canvas.height);
       const context = canvas.getContext("2d", { willReadFrequently: true });
       context.drawImage(image, 0, 0);
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
@@ -2354,6 +2358,8 @@
     const alias = getEnemySpritesheetAlias(file);
     const name = getEnemySpritesheetNameFromFile(file);
     const options = getEnemySpritesheetOptions(name);
+    const fileFrameCount = getSpritesheetFrameCountFromFile(file);
+    const usesNineFrameLayout = fileFrameCount === 9;
     const key = normalizeEnemySpriteKey(name);
     const regionalKey = alias?.regionIndex != null ? getEnemyRegionalSpritesheetKey(key, alias.regionIndex) : key;
     const sprite = {
@@ -2363,9 +2369,9 @@
       canvas: null,
       file,
       regionIndex: alias?.regionIndex ?? null,
-      frames: options.frames || 9,
+      frames: fileFrameCount || options.frames || 9,
       columns: options.columns || 3,
-      rows: options.rows || 3,
+      rows: usesNineFrameLayout ? 3 : options.rows || 3,
       animations: options.animations || null,
       width: options.width || 285,
       anchorX: options.anchorX ?? .5,
@@ -3188,13 +3194,15 @@
         stateName = "walking";
       }
       const sequence = sprite.animations?.[stateName] || ENEMY_SPRITESHEET_ANIMATIONS[stateName] || ENEMY_SPRITESHEET_ANIMATIONS.idle;
+      const maxFrame = Math.max(0, (sprite.frames || 1) - 1);
+      const frames = (sequence.frames || [0]).map(frame => clamp(Math.floor(Number(frame) || 0), 0, maxFrame));
       const progress = elapsed * sequence.fps;
       const rawFrame = Math.floor(progress);
-      const sequenceIndex = sequence.loop ? rawFrame % sequence.frames.length : Math.min(sequence.frames.length - 1, rawFrame);
-      const canBlendNext = sequence.blend && (sequence.loop || rawFrame < sequence.frames.length - 1);
-      const nextIndex = sequence.loop ? (sequenceIndex + 1) % sequence.frames.length : Math.min(sequence.frames.length - 1, sequenceIndex + 1);
+      const sequenceIndex = sequence.loop ? rawFrame % frames.length : Math.min(frames.length - 1, rawFrame);
+      const canBlendNext = sequence.blend && (sequence.loop || rawFrame < frames.length - 1);
+      const nextIndex = sequence.loop ? (sequenceIndex + 1) % frames.length : Math.min(frames.length - 1, sequenceIndex + 1);
       const blend = canBlendNext ? clamp((progress - rawFrame - .18) / .64, 0, 1) : 0;
-      return { stateName, frame: sequence.frames[sequenceIndex], nextFrame: sequence.frames[nextIndex], blend, elapsed };
+      return { stateName, frame: frames[sequenceIndex], nextFrame: frames[nextIndex], blend, elapsed };
     }
 
     drawEnemySpritesheet(ctx, x, y, scale, enemy, sprite) {
@@ -3261,13 +3269,15 @@
         stateName = "moving";
       }
       const sequence = sprite.animations?.[stateName] || PLAYER_SHIP_DEFAULT_ANIMATIONS[stateName] || PLAYER_SHIP_DEFAULT_ANIMATIONS.idle;
+      const maxFrame = Math.max(0, (sprite.frames || 1) - 1);
+      const frames = (sequence.frames || [0]).map(frame => clamp(Math.floor(Number(frame) || 0), 0, maxFrame));
       const progress = elapsed * sequence.fps;
       const rawFrame = Math.floor(progress);
-      const sequenceIndex = sequence.loop ? rawFrame % sequence.frames.length : Math.min(sequence.frames.length - 1, rawFrame);
-      const canBlendNext = sequence.blend && (sequence.loop || rawFrame < sequence.frames.length - 1);
-      const nextIndex = sequence.loop ? (sequenceIndex + 1) % sequence.frames.length : Math.min(sequence.frames.length - 1, sequenceIndex + 1);
+      const sequenceIndex = sequence.loop ? rawFrame % frames.length : Math.min(frames.length - 1, rawFrame);
+      const canBlendNext = sequence.blend && (sequence.loop || rawFrame < frames.length - 1);
+      const nextIndex = sequence.loop ? (sequenceIndex + 1) % frames.length : Math.min(frames.length - 1, sequenceIndex + 1);
       const blend = canBlendNext ? clamp((progress - rawFrame - .18) / .64, 0, 1) : 0;
-      return { stateName, frame: sequence.frames[sequenceIndex], nextFrame: sequence.frames[nextIndex], blend, elapsed };
+      return { stateName, frame: frames[sequenceIndex], nextFrame: frames[nextIndex], blend, elapsed };
     }
 
     drawCaptainCharacter(ctx, ship, shipSprite, targetWidth, targetHeight, scale, options = {}) {

@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v68-mobile-lean";
+const CACHE = "pirates-abyss-v69-sprite-crop-grid";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=46",
-  "game.js?v=78",
+  "game.js?v=79",
   "icon.svg",
   "manifest.webmanifest"
 ];
