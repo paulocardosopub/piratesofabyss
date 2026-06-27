@@ -7,8 +7,6 @@
   const OFFLINE_MODAL_AUTO_HIDE_MS = 5000;
   const COMMON_MONSTER_BALANCE_LAST_REGION = 10;
   const COMMON_MONSTER_BALANCE_MULTIPLIER = 4;
-  const PRIMITIVE_COMMON_MONSTER_BALANCE_LAST_REGION = 4;
-  const PRIMITIVE_COMMON_MONSTER_BALANCE_MULTIPLIER = 3;
   const PRESTIGE_REGION_NAME = "Oceano Profundo";
   const PRESTIGE_BOSS_NAME = "Megalodon Ancestral";
   const PET_PIRATE_COIN_COSTS = [10, 18, 30, 45, 65, 90, 120, 155, 200, 260];
@@ -85,6 +83,7 @@
 
   const RARITY_COLORS = { common: "#b5c5c4", uncommon: "#67d997", rare: "#64aef4", epic: "#c38af1", legendary: "#ffb349" };
   const CHEST_SPRITE_PATH = "assets/chests/";
+  const CHEST_SPRITE_VERSION = "3";
   const CHEST_DROP_CHANCES = { monster: .05, boss: .30 };
   const CHEST_PIRATE_COIN_CHANCE = .10;
   const CHEST_OPEN_DURATION = .85;
@@ -111,11 +110,62 @@
 
   function requestChestSprite(sprite) {
     if (!sprite) return null;
-    return requestSpriteImage(sprite, `${CHEST_SPRITE_PATH}${sprite.file}`);
+    return requestSpriteImage(sprite, `${CHEST_SPRITE_PATH}${sprite.file}?v=${CHEST_SPRITE_VERSION}`);
   }
 
   function getChestSprite(id) {
     return CHEST_SPRITES[id];
+  }
+
+  function measureChestSpriteFrameBounds(sprite, source) {
+    if (!sprite || !source) return;
+    const sourceWidth = source.width || source.naturalWidth || 0;
+    const sourceHeight = source.height || source.naturalHeight || 0;
+    const frames = sprite.frames || 3;
+    if (!sourceWidth || !sourceHeight || frames <= 0) return;
+    const cacheKey = `${sourceWidth}x${sourceHeight}:${frames}`;
+    if (sprite.frameBoundsKey === cacheKey && sprite.frameBounds?.length) return;
+
+    const frameWidth = Math.floor(sourceWidth / frames);
+    const frameHeight = sourceHeight;
+    const canvas = document.createElement("canvas");
+    canvas.width = sourceWidth;
+    canvas.height = sourceHeight;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return;
+    context.drawImage(source, 0, 0);
+
+    let data;
+    try {
+      data = context.getImageData(0, 0, sourceWidth, sourceHeight).data;
+    } catch {
+      return;
+    }
+
+    const bounds = [];
+    for (let frame = 0; frame < frames; frame++) {
+      const frameX = frame * frameWidth;
+      let left = frameWidth;
+      let top = frameHeight;
+      let right = -1;
+      let bottom = -1;
+      for (let y = 0; y < frameHeight; y++) {
+        for (let x = 0; x < frameWidth; x++) {
+          const index = (y * sourceWidth + frameX + x) * 4;
+          if (data[index + 3] <= 8) continue;
+          if (x < left) left = x;
+          if (x > right) right = x;
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+        }
+      }
+      bounds[frame] = right >= left && bottom >= top
+        ? { left, top, right, bottom, centerX: (left + right) / 2, bottomY: bottom }
+        : { left: 0, top: 0, right: frameWidth, bottom: frameHeight, centerX: frameWidth / 2, bottomY: frameHeight * .72 };
+    }
+    sprite.frameBounds = bounds;
+    sprite.referenceBounds = bounds[0] || bounds.find(Boolean);
+    sprite.frameBoundsKey = cacheKey;
   }
 
   const PRIMITIVE_REGIONS = [
@@ -3952,8 +4002,14 @@
         const sourceHeight = source.height || image.naturalHeight;
         const frameWidth = Math.floor(sourceWidth / 3);
         const frameHeight = sourceHeight;
+        const frameScale = targetWidth / frameWidth;
+        measureChestSpriteFrameBounds(sprite, source);
+        const frameBounds = sprite.frameBounds?.[frame];
+        const referenceBounds = sprite.referenceBounds;
+        const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
+        const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, -targetWidth * .5, -targetHeight * .72, targetWidth, targetHeight);
+        ctx.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, -targetWidth * .5 + anchorOffsetX, -targetHeight * .72 + anchorOffsetY, targetWidth, targetHeight);
       } else {
         this.drawChestFallback(ctx, targetWidth, frame, definition);
       }
@@ -5106,9 +5162,7 @@
 
   function getCommonMonsterBalanceMultiplier(regionIndex) {
     const index = Math.floor(Number(regionIndex) || 0);
-    let multiplier = index >= 0 && index <= COMMON_MONSTER_BALANCE_LAST_REGION ? COMMON_MONSTER_BALANCE_MULTIPLIER : 1;
-    if (index >= 0 && index <= PRIMITIVE_COMMON_MONSTER_BALANCE_LAST_REGION) multiplier *= PRIMITIVE_COMMON_MONSTER_BALANCE_MULTIPLIER;
-    return multiplier;
+    return index >= 0 && index <= COMMON_MONSTER_BALANCE_LAST_REGION ? COMMON_MONSTER_BALANCE_MULTIPLIER : 1;
   }
 
   function endgameRequirementIssues(index) {
