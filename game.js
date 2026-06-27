@@ -2730,6 +2730,88 @@
     }
   }
 
+  function removeInternalSpritesheetBackgroundPockets(sprite, data, width, height, bg) {
+    const columns = Math.max(1, sprite?.columns || 1);
+    const rows = Math.max(1, sprite?.rows || 1);
+    const frameWidth = Math.floor(width / columns);
+    const frameHeight = Math.floor(height / rows);
+    const bgAverage = (bg.r + bg.g + bg.b) / 3;
+    const preserveNeutralDetails = Boolean(sprite?.preserveNeutralDetails);
+    const frameArea = Math.max(1, frameWidth * frameHeight);
+    const distanceLimit = preserveNeutralDetails ? 26 : 34;
+    const averageDeltaLimit = preserveNeutralDetails ? 18 : 24;
+    const maxComponentRatio = preserveNeutralDetails ? .085 : .16;
+    const isPocketPixel = index => {
+      if (data[index + 3] <= 8) return false;
+      const r = data[index], g = data[index + 1], b = data[index + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const average = (r + g + b) / 3;
+      if (average > 205 && bgAverage < 190) return false;
+      if (average < 70) return false;
+      const saturation = max - min;
+      const distance = Math.hypot(r - bg.r, g - bg.g, b - bg.b);
+      return distance <= distanceLimit ||
+        (saturation <= 7 && Math.abs(average - bgAverage) <= averageDeltaLimit && distance <= distanceLimit + 12);
+    };
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < columns; column++) {
+        const frameX = column * frameWidth;
+        const frameY = row * frameHeight;
+        const visited = new Uint8Array(frameWidth * frameHeight);
+        for (let y = 0; y < frameHeight; y++) {
+          for (let x = 0; x < frameWidth; x++) {
+            const start = y * frameWidth + x;
+            const startIndex = ((frameY + y) * width + frameX + x) * 4;
+            if (visited[start] || !isPocketPixel(startIndex)) continue;
+            const queue = [start];
+            const component = [];
+            let head = 0;
+            let distanceSum = 0;
+            let distanceMax = 0;
+            let touchesTransparent = false;
+            visited[start] = 1;
+            while (head < queue.length) {
+              const point = queue[head++];
+              const px = point % frameWidth;
+              const py = Math.floor(point / frameWidth);
+              const index = ((frameY + py) * width + frameX + px) * 4;
+              const distance = Math.hypot(data[index] - bg.r, data[index + 1] - bg.g, data[index + 2] - bg.b);
+              distanceSum += distance;
+              distanceMax = Math.max(distanceMax, distance);
+              component.push(point);
+              for (let oy = -1; oy <= 1; oy++) {
+                const ny = py + oy;
+                if (ny < 0 || ny >= frameHeight) continue;
+                for (let ox = -1; ox <= 1; ox++) {
+                  if (!ox && !oy) continue;
+                  const nx = px + ox;
+                  if (nx < 0 || nx >= frameWidth) continue;
+                  const nextIndex = ((frameY + ny) * width + frameX + nx) * 4;
+                  if (data[nextIndex + 3] <= 8) touchesTransparent = true;
+                  const next = ny * frameWidth + nx;
+                  if (visited[next] || !isPocketPixel(nextIndex)) continue;
+                  visited[next] = 1;
+                  queue.push(next);
+                }
+              }
+            }
+            const averageDistance = distanceSum / Math.max(1, component.length);
+            const smallEnough = component.length <= frameArea * maxComponentRatio;
+            const exactBackground = averageDistance <= (preserveNeutralDetails ? 14 : 18) && distanceMax <= distanceLimit + 8;
+            const edgePocket = touchesTransparent && averageDistance <= distanceLimit;
+            if (!smallEnough || (!exactBackground && !edgePocket)) continue;
+            component.forEach(point => {
+              const px = point % frameWidth;
+              const py = Math.floor(point / frameWidth);
+              data[((frameY + py) * width + frameX + px) * 4 + 3] = 0;
+            });
+          }
+        }
+      }
+    }
+  }
+
   function cleanSpriteTransparency(sprite, data, width, height) {
     const samplePoints = [
       0,
@@ -2755,6 +2837,7 @@
     const bgIsLightNeutral = bgMax - bgMin < 36 && bgAverage > 196;
     if (hasOpaqueBackground) {
       removeConnectedSpritesheetBackground(sprite, data, width, height, bg, bgIsLightNeutral);
+      removeInternalSpritesheetBackgroundPockets(sprite, data, width, height, bg);
       cleanupSpritesheetLightArtifacts(data, width, height);
       return;
     }

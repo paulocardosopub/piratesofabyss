@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v78-safe-damaged-sprites";
+const CACHE = "pirates-abyss-v79-clean-sprite-pockets";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=49",
-  "game.js?v=88",
+  "game.js?v=89",
   "icon.svg",
   "manifest.webmanifest"
 ];
