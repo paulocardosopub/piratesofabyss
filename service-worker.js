@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v76-megalodon-transparency";
+const CACHE = "pirates-abyss-v77-sabotage-skill";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=48",
-  "game.js?v=86",
+  "styles.css?v=49",
+  "game.js?v=87",
   "icon.svg",
   "manifest.webmanifest"
 ];

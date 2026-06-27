@@ -12,6 +12,9 @@
   const PET_UPGRADE_POWER_STEP = .32;
   const CAPTAIN_MAX_LEVEL = 10;
   const CAPTAIN_CHARACTER_ASSET_PATH = "assets/newpirates/";
+  const CAPTAIN_MANUAL_SKILL_KEY = "sabotage";
+  const CAPTAIN_MANUAL_SKILL_BASE_COOLDOWN = 10;
+  const CAPTAIN_MANUAL_SKILL_MAX_LEVEL = 20;
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -336,6 +339,18 @@
     chain: { name: "Bolas de Corrente", icon: "⛓", unlock: 30, cooldown: 10, factor: 4.4, attackDelay: 2500, effect: "8,8× de dano e atrasa o próximo ataque em 2,5s.", materials: ["ferro", "perola"] }
   };
 
+  const CAPTAIN_MANUAL_SKILL_META = {
+    sabotage: {
+      name: "Sabotar Inimigo",
+      icon: "\u2739",
+      cooldown: CAPTAIN_MANUAL_SKILL_BASE_COOLDOWN,
+      baseMultiplier: 10,
+      multiplierStep: 1.5,
+      maxLevel: CAPTAIN_MANUAL_SKILL_MAX_LEVEL,
+      description: "Golpe manual do pirata. Causa dano direto no inimigo atual e nunca dispara automaticamente."
+    }
+  };
+
   const EQUIPMENT_META = {
     compass: { name: "Bússola Naval", icon: "✥", effect: "+12% velocidade e +8% chance de loot", costs: { cristal: 200, perola: 50, ouro: 50000 } },
     spyglass: { name: "Luneta Imperial", icon: "⌕", effect: "+8% precisão e +7% crítico", costs: { cristal: 300, gema: 100, ouro: 75000 } },
@@ -492,6 +507,70 @@
     return `<canvas class="pet-sprite-canvas" data-pet-preview="${visual || ""}" aria-hidden="true"></canvas>`;
   }
 
+  function createCaptainManualSkillState() {
+    return { [CAPTAIN_MANUAL_SKILL_KEY]: { level: 1, nextReadyAt: 0 } };
+  }
+
+  function getCaptainManualSkillState(key = CAPTAIN_MANUAL_SKILL_KEY, source = state) {
+    if (!CAPTAIN_MANUAL_SKILL_META[key]) return null;
+    if (!source.captainManualSkills) source.captainManualSkills = createCaptainManualSkillState();
+    if (!source.captainManualSkills[key]) source.captainManualSkills[key] = { level: 1, nextReadyAt: 0 };
+    return source.captainManualSkills[key];
+  }
+
+  function syncCaptainManualSkillState(target) {
+    const saved = target.captainManualSkills || {};
+    target.captainManualSkills = createCaptainManualSkillState();
+    Object.entries(CAPTAIN_MANUAL_SKILL_META).forEach(([key, meta]) => {
+      const skill = saved[key] || {};
+      target.captainManualSkills[key] = {
+        level: clamp(Math.floor(Number(skill.level || 1)), 1, meta.maxLevel),
+        nextReadyAt: Math.max(0, Number(skill.nextReadyAt || 0))
+      };
+    });
+    return target;
+  }
+
+  function getCaptainManualSkillLevel(key = CAPTAIN_MANUAL_SKILL_KEY, source = state) {
+    const meta = CAPTAIN_MANUAL_SKILL_META[key];
+    const skill = getCaptainManualSkillState(key, source);
+    return meta && skill ? clamp(Math.floor(Number(skill.level || 1)), 1, meta.maxLevel) : 1;
+  }
+
+  function getCaptainManualSkillMultiplier(key = CAPTAIN_MANUAL_SKILL_KEY, level = getCaptainManualSkillLevel(key)) {
+    const meta = CAPTAIN_MANUAL_SKILL_META[key];
+    if (!meta) return 1;
+    return Number((meta.baseMultiplier + (Math.max(1, level) - 1) * meta.multiplierStep).toFixed(1));
+  }
+
+  function getCaptainManualSkillCost(key = CAPTAIN_MANUAL_SKILL_KEY, level = getCaptainManualSkillLevel(key)) {
+    const meta = CAPTAIN_MANUAL_SKILL_META[key];
+    if (!meta || level >= meta.maxLevel) return null;
+    return Math.ceil(level / 2);
+  }
+
+  function getCaptainManualSkillSpentPoints(source = state) {
+    return Object.keys(CAPTAIN_MANUAL_SKILL_META).reduce((sum, key) => {
+      const level = getCaptainManualSkillLevel(key, source);
+      let spent = 0;
+      for (let step = 1; step < level; step += 1) spent += getCaptainManualSkillCost(key, step) || 0;
+      return sum + spent;
+    }, 0);
+  }
+
+  function formatCaptainManualMultiplier(value) {
+    return `${Number(value || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x`;
+  }
+
+  function getCaptainManualSkillCooldownRemaining(key = CAPTAIN_MANUAL_SKILL_KEY, now = Date.now()) {
+    const skill = getCaptainManualSkillState(key);
+    return Math.max(0, ((skill?.nextReadyAt || 0) - now) / 1000);
+  }
+
+  function getCaptainManualSkillDamage(key = CAPTAIN_MANUAL_SKILL_KEY, stats = getStats()) {
+    return Math.round(stats.damage * getCaptainManualSkillMultiplier(key));
+  }
+
   function createCaptainBonuses() {
     return { spawnBonus: 0, birdAutoCollect: 0, sharkAutoCollect: 0, hpRegenPercentPerSecond: 0, autoFoodBonus: 0 };
   }
@@ -572,8 +651,8 @@
     const fallbackLevel = hasRuntimeSave ? 1 : Math.max(1, Math.floor(Number(target.pirateLevel || 1)));
     target.captainRuntimeLevel = Math.max(1, Math.floor(Number(saved.captainRuntimeLevel || fallbackLevel)));
     target.captainCurrentXp = Math.max(0, Number(saved.captainCurrentXp ?? (hasRuntimeSave ? 0 : target.xp || 0)) || 0);
-    const legacyEquipmentSpend = saved.spentLevelPoints === undefined ? getCaptainEquipmentSpentPoints(target) : 0;
-    target.spentLevelPoints = Math.max(legacyEquipmentSpend, Math.floor(Number(saved.spentLevelPoints || 0)));
+    const legacyPointSpend = saved.spentLevelPoints === undefined ? getCaptainEquipmentSpentPoints(target) + getCaptainManualSkillSpentPoints(target) : 0;
+    target.spentLevelPoints = Math.max(legacyPointSpend, Math.floor(Number(saved.spentLevelPoints || 0)));
     target.totalLevelPointsEarned = Math.max(target.spentLevelPoints, Math.floor(Number(saved.totalLevelPointsEarned ?? Math.max(0, target.captainRuntimeLevel - 1)) || 0));
     const needed = captainRuntimeXpNeeded(target.captainRuntimeLevel);
     while (target.captainCurrentXp >= needed) target.captainCurrentXp = needed - 1;
@@ -1126,7 +1205,7 @@
 
   function createDefaultState() {
     return {
-      version: 9,
+      version: 10,
       resources: { ouro: 1200, madeira: 90, ferro: 55, tecido: 45, comida: 22, polvora: 28, pedra: 0, cristal: 0, perola: 0, gema: 0, ambar: 0, fragmentos: 0 },
       pirateCoins: 0,
       prestiges: 0,
@@ -1143,6 +1222,7 @@
       totalLevelPointsEarned: 0,
       spentLevelPoints: 0,
       availableLevelPoints: 0,
+      captainManualSkills: createCaptainManualSkillState(),
       captainEquipment: createCaptainEquipmentState(),
       captainEquipmentBonuses: createCaptainEquipmentBonuses(),
       journeyStartedAt: Date.now(),
@@ -1187,6 +1267,7 @@
       merged.levels = { ...defaults.levels, ...(saved.levels || {}) };
       merged.equipment = { ...defaults.equipment, ...(saved.equipment || {}) };
       merged.captainEquipment = { ...defaults.captainEquipment, ...(saved.captainEquipment || {}) };
+      merged.captainManualSkills = { ...defaults.captainManualSkills, ...(saved.captainManualSkills || {}) };
       merged.skills = Object.fromEntries(Object.keys(SKILL_META).map(key => [key, { ...defaults.skills[key], ...((saved.skills || {})[key] || {}) }]));
       merged.lifetime = { ...defaults.lifetime, ...(saved.lifetime || {}) };
       merged.progression = mergeProgression(saved.progression, defaults.progression);
@@ -1221,11 +1302,12 @@
       merged.prestiges = Math.max(0, Math.floor(Number(saved.prestiges || 0)));
       merged.prestigeHistory = Array.isArray(saved.prestigeHistory) ? saved.prestigeHistory.slice(0, 20) : [];
       syncCaptainState(merged);
+      syncCaptainManualSkillState(merged);
       syncCaptainRuntimeState(merged, saved);
       syncCaptainEquipmentState(merged);
       merged.journeyStartedAt = Number(saved.journeyStartedAt || Date.now());
       merged.maxRegionReached = clamp(Math.max(Number(saved.maxRegionReached || 0), merged.regionIndex), 0, REGIONS.length - 1);
-      merged.version = 9;
+      merged.version = 10;
       return merged;
     } catch (error) {
       console.warn("Não foi possível carregar o save.", error);
@@ -1247,6 +1329,7 @@
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
   let lastCaptainEquipmentUpgrade = null;
+  let lastCaptainManualSkillUpgrade = null;
   let activeMapInfoIndex = null;
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
@@ -2776,6 +2859,7 @@
       this.time = 0;
       this.projectiles = [];
       this.bursts = [];
+      this.sabotageEffects = [];
       this.aquaticBursts = [];
       this.petLunge = 0;
       this.floaters = [];
@@ -2810,6 +2894,11 @@
 
     burst(atEnemy = true, color = "#f4a34c") {
       this.bursts.push({ x: this.width * (atEnemy ? .70 : .30), y: this.height * (atEnemy ? .52 : .65), age: 0, color });
+    }
+
+    sabotageEnemy(color = "#b68cff") {
+      this.sabotageEffects.push({ x: this.width * .70, y: this.height * .52, age: 0, color });
+      this.sabotageEffects = this.sabotageEffects.slice(-4);
     }
 
     petStrike(pet) {
@@ -2969,6 +3058,7 @@
       this.petLunge = Math.max(0, this.petLunge - dt * 1.8);
       this.projectiles.forEach(item => item.age += dt);
       this.bursts.forEach(item => item.age += dt);
+      this.sabotageEffects.forEach(item => item.age += dt);
       this.aquaticBursts.forEach(item => item.age += dt);
       this.floaters.forEach(item => item.age += dt);
       this.lootFloaters.forEach(item => item.age += dt);
@@ -2977,6 +3067,7 @@
       this.autoCollectEnvironmentEvents();
       this.projectiles = this.projectiles.filter(item => item.age < item.duration);
       this.bursts = this.bursts.filter(item => item.age < .75);
+      this.sabotageEffects = this.sabotageEffects.filter(item => item.age < .85);
       this.aquaticBursts = this.aquaticBursts.filter(item => item.age < .9);
       this.floaters = this.floaters.filter(item => item.age < 1.05);
       this.lootFloaters = this.lootFloaters.filter(item => item.age < 1.35);
@@ -3109,6 +3200,37 @@
         ctx.lineTo(x, y); ctx.stroke();
         ctx.fillStyle = item.color; ctx.shadowColor = item.color; ctx.shadowBlur = 12;
         ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+      });
+
+      this.sabotageEffects.forEach(item => {
+        const t = item.age / .85;
+        const pulse = Math.sin(t * Math.PI);
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.globalAlpha = 1 - t;
+        ctx.shadowColor = item.color;
+        ctx.shadowBlur = 18 * pulse;
+        const radius = 18 + pulse * 42;
+        const sabotageGlow = ctx.createRadialGradient(0, 0, 2, 0, 0, radius);
+        sabotageGlow.addColorStop(0, `${item.color}99`);
+        sabotageGlow.addColorStop(.48, "rgba(18,12,36,.58)");
+        sabotageGlow.addColorStop(1, "rgba(18,12,36,0)");
+        ctx.fillStyle = sabotageGlow;
+        ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = 2.4 + pulse * 2;
+        ctx.lineCap = "round";
+        for (let i = 0; i < 3; i++) {
+          const offset = (i - 1) * 10;
+          ctx.beginPath();
+          ctx.moveTo(-34 - pulse * 16, -20 + offset);
+          ctx.lineTo(32 + pulse * 18, 18 + offset);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = "rgba(255,241,199,.86)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.ellipse(0, 4, 36 + pulse * 22, 10 + pulse * 6, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
       });
 
       this.bursts.forEach(item => {
@@ -4064,11 +4186,14 @@
     if (options.pet) {
       scene.petStrike(options.pet);
       setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#bff7ff"); }, 180);
+    } else if (options.sabotage) {
+      scene.sabotageEnemy(options.color || "#b68cff");
+      setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#f1c7ff"); }, 120);
     } else {
       scene.fire(true, options.color || "#ffd37a");
       setTimeout(() => { markHit(); scene.burst(true, options.color || "#f4a34c"); scene.floatDamage(damage, true, options.color || "#fff0bc"); }, 340);
     }
-    if (enemy.hp <= 0) defeatEnemy({ visualDelay: options.pet ? .18 : .34 });
+    if (enemy.hp <= 0) defeatEnemy({ visualDelay: options.pet ? .18 : options.sabotage ? .2 : .34 });
   }
 
   function basicAttack(options = {}) {
@@ -4105,6 +4230,26 @@
     if (key === "chain") { dealToEnemy(base, { color: "#d9e4df", skill: true }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
     trackAction("skill", { key });
     addLog(`${meta.name} disparado automaticamente.`, "loot");
+  }
+
+  function castCaptainManualSkill(key = CAPTAIN_MANUAL_SKILL_KEY) {
+    const meta = CAPTAIN_MANUAL_SKILL_META[key];
+    if (!meta) return;
+    if (!isCaptainSelected()) return toast("Selecione um pirata inicial para liberar Sabotar Inimigo.", "danger-toast");
+    const enemy = state.combat.enemy;
+    if (!enemy || enemy.defeated) return toast("Sabotar Inimigo precisa de um alvo vivo.", "danger-toast");
+    const remaining = getCaptainManualSkillCooldownRemaining(key);
+    if (remaining > 0) return toast(`Sabotar Inimigo recarrega em ${formatSeconds(remaining)}.`, "danger-toast");
+    const skill = getCaptainManualSkillState(key);
+    skill.nextReadyAt = Date.now() + meta.cooldown * 1000;
+    const stats = getStats();
+    const damage = getCaptainManualSkillDamage(key, stats);
+    scene.celebrateCaptain(.9);
+    dealToEnemy(damage, { sabotage: true, ignoreArmor: true, color: "#b68cff" });
+    trackAction("skill", { key });
+    addLog(`Sabotar Inimigo causou ${formatNumber(damage)} de dano direto.`, "loot");
+    renderAll(false);
+    saveGame();
   }
 
   function petAttack() {
@@ -4732,6 +4877,52 @@
     </article>`;
   }
 
+  function renderCaptainManualSkillSection(locked = false) {
+    const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_MANUAL_SKILL_KEY];
+    if (locked) {
+      return `<section class="captain-equipment-section captain-manual-skill-section locked"><div class="section-heading compact"><div><span class="eyebrow">HABILIDADE MANUAL DO PIRATA</span><h2>Sabotar Inimigo bloqueado</h2><p>Selecione um pirata inicial para liberar esta habilidade manual no combate.</p></div></div></section>`;
+    }
+    syncCaptainRuntimeState(state);
+    const level = getCaptainManualSkillLevel();
+    const nextLevel = Math.min(meta.maxLevel, level + 1);
+    const currentMultiplier = getCaptainManualSkillMultiplier(CAPTAIN_MANUAL_SKILL_KEY, level);
+    const nextMultiplier = level < meta.maxLevel ? getCaptainManualSkillMultiplier(CAPTAIN_MANUAL_SKILL_KEY, nextLevel) : currentMultiplier;
+    const currentDamage = getCaptainManualSkillDamage();
+    const nextDamage = Math.round(getStats().damage * nextMultiplier);
+    const cost = getCaptainManualSkillCost();
+    const available = getAvailableLevelPoints();
+    const canUpgrade = cost !== null && available >= cost;
+    const upgraded = lastCaptainManualSkillUpgrade === CAPTAIN_MANUAL_SKILL_KEY;
+    return `<section class="captain-equipment-section captain-manual-skill-section">
+      <div class="section-heading compact"><div><span class="eyebrow">HABILIDADE MANUAL DO PIRATA</span><h2>${meta.name}</h2></div><div class="captain-points-wallet"><span>PONTOS DE NÍVEL</span><strong>${available}</strong></div></div>
+      <article class="upgrade-row captain-manual-skill-row ${upgraded ? "recent-upgrade" : ""} ${cost === null ? "completed" : canUpgrade ? "available" : ""}">
+        <div class="upgrade-row-icon">${meta.icon}</div>
+        <div class="upgrade-row-main">
+          <span class="level-label">NÍVEL ${level} / ${meta.maxLevel}</span>
+          <h3>${meta.name}</h3>
+          <p>${meta.description}</p>
+          <div class="captain-equipment-summary">
+            <div><span>Nível atual</span><strong>${level}</strong></div>
+            <div><span>Multiplicador atual</span><strong>${formatCaptainManualMultiplier(currentMultiplier)}</strong></div>
+            <div><span>Próximo multiplicador</span><strong>${cost === null ? "Máximo" : formatCaptainManualMultiplier(nextMultiplier)}</strong></div>
+            <div><span>Dano estimado</span><strong>${formatNumber(currentDamage)}${cost === null ? "" : ` → ${formatNumber(nextDamage)}`}</strong></div>
+          </div>
+          <div class="cost-list">${cost === null ? `<span class="cost-chip">Habilidade no nível máximo</span>` : `<span class="cost-chip">Custo: ${cost} Ponto${cost === 1 ? "" : "s"} de Nível</span><span class="cost-chip">Cooldown: ${formatSeconds(meta.cooldown)}</span>`}</div>
+          ${cost === null ? `<div class="resource-readiness ready">Sabotar Inimigo está totalmente promovida.</div>` : `<div class="resource-readiness ${canUpgrade ? "ready" : "missing"}">${canUpgrade ? "Pontos suficientes para promover" : `Faltam ${cost - available} Ponto${cost - available === 1 ? "" : "s"} de Nível`}</div>`}
+          ${upgraded ? `<div class="captain-equipment-feedback">Habilidade promovida!</div>` : ""}
+        </div>
+        <div class="upgrade-row-action">
+          <button class="button primary" data-upgrade-captain-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}" ${canUpgrade ? "" : "disabled"}>${cost === null ? "Nível máximo" : canUpgrade ? "Promover" : "Pontos insuficientes"}</button>
+          <div class="upgrade-balance${canUpgrade || cost === null ? "" : " danger"}">
+            <span>Custo: <strong>${cost === null ? "Completo" : `${cost} Ponto${cost === 1 ? "" : "s"}`}</strong></span>
+            <span>Disponíveis: <strong>${available}</strong></span>
+            <span>Após upgrade: <strong>${cost === null ? "Máximo" : canUpgrade ? available - cost : `Faltam ${cost - available}`}</strong></span>
+          </div>
+        </div>
+      </article>
+    </section>`;
+  }
+
   function renderCaptainEquipmentSection(locked = false) {
     if (locked) {
       return `<section class="captain-equipment-section locked"><div class="section-heading compact"><div><span class="eyebrow">EQUIPAMENTOS DO CAPITÃO</span><h2>Escolha um Capitão para liberar</h2></div></div></section>`;
@@ -4759,7 +4950,7 @@
       content.innerHTML = `<div class="captain-choice-grid">${Object.entries(CAPTAIN_GENDERS).map(([gender, meta]) => {
         const level = getCaptainLevelData(1);
         return `<article class="captain-choice"><div class="captain-choice-image">${captainSpriteCanvasHtml(1, gender, "choice")}</div><div><span class="eyebrow">VISUAL INICIAL</span><h2>${meta.choice}</h2><p>${getCaptainName(1, gender)}</p><div class="captain-choice-bonuses">${captainLevelBonusText(level)}</div></div><button class="button primary" data-select-captain-gender="${gender}">Escolher</button></article>`;
-      }).join("")}</div>${renderCaptainEquipmentSection(true)}`;
+      }).join("")}</div>${renderCaptainManualSkillSection(true)}${renderCaptainEquipmentSection(true)}`;
       renderCaptainPreviewCanvases(content);
       return;
     }
@@ -4787,23 +4978,53 @@
         ${next && !canUpgrade ? `<p class="captain-upgrade-hint">Faltam ${formatNumber(cost - state.pirateCoins)} Moedas Pirata.</p>` : ""}
         <div class="captain-mutiny-panel"><div><span class="eyebrow">MOTIM</span><strong>Trocar escolha visual</strong><p>Reseta Capitão, Pontos de Nível e equipamentos. Moedas gastas não voltam.</p></div><button class="button danger" data-open-captain-mutiny>Iniciar um Motim</button></div>
       </section>
-    </div>${renderCaptainEquipmentSection()}`;
+    </div>${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
     renderCaptainPreviewCanvases(content);
+  }
+
+  function captainManualSkillDockHtml() {
+    const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_MANUAL_SKILL_KEY];
+    return `<button class="skill-orb manual-skill-orb" data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}" title="${meta.name}"><span class="cooldown"></span><span class="icon">${meta.icon}</span><small>MAN</small></button>`;
+  }
+
+  function updateCaptainManualSkillDock() {
+    const node = $(`[data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}"]`);
+    if (!node) return;
+    const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_MANUAL_SKILL_KEY];
+    const unlocked = isCaptainSelected();
+    const hasTarget = Boolean(state.combat.enemy && !state.combat.enemy.defeated);
+    const remaining = unlocked ? getCaptainManualSkillCooldownRemaining(CAPTAIN_MANUAL_SKILL_KEY) : meta.cooldown;
+    const ready = unlocked && hasTarget && remaining <= 0;
+    node.classList.toggle("locked", !unlocked);
+    node.classList.toggle("off", unlocked && !ready);
+    node.disabled = !ready;
+    node.querySelector(".cooldown").style.transform = `scaleY(${unlocked ? clamp(remaining / meta.cooldown, 0, 1) : 1})`;
+    node.querySelector("small").textContent = !unlocked ? "PIR" : remaining > 0 ? `${Math.ceil(remaining)}s` : hasTarget ? "MAN" : "ALVO";
+    node.title = !unlocked
+      ? "Selecione um pirata inicial para desbloquear Sabotar Inimigo"
+      : remaining > 0
+        ? `Sabotar Inimigo recarrega em ${formatSeconds(remaining)}`
+        : hasTarget
+          ? `${meta.name} - manual - ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier())} do dano atual`
+          : "Sabotar Inimigo precisa de um alvo vivo";
   }
 
   function renderSkillDock() {
     const dock = $("#skill-dock");
-    if (dock.childElementCount === Object.keys(SKILL_META).length) {
-      Object.keys(SKILL_META).forEach(key => {
+    const skillKeys = Object.keys(SKILL_META);
+    if (dock.childElementCount === skillKeys.length + 1 && $(`[data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}"]`, dock)) {
+      skillKeys.forEach(key => {
         const node = $(`[data-skill-dock="${key}"]`, dock);
         node.classList.toggle("off", !state.skills[key].auto);
         node.classList.toggle("locked", !isSkillUnlocked(key));
         node.querySelector("small").textContent = isSkillUnlocked(key) ? (state.skills[key].auto ? "AUTO" : "OFF") : `N${SKILL_META[key].unlock}`;
         node.title = isSkillUnlocked(key) ? `${SKILL_META[key].name} • auto ${state.skills[key].auto ? "ligado" : "desligado"}` : `Desbloqueia no nível ${SKILL_META[key].unlock}`;
       });
+      updateCaptainManualSkillDock();
       return;
     }
-    dock.innerHTML = Object.entries(SKILL_META).map(([key, meta]) => `<button class="skill-orb ${isSkillUnlocked(key) ? "" : "locked"}" data-skill-dock="${key}" title="${meta.name}"><span class="cooldown"></span><span class="icon">${meta.icon}</span><small>${isSkillUnlocked(key) ? (state.skills[key].auto ? "AUTO" : "OFF") : `N${meta.unlock}`}</small></button>`).join("");
+    dock.innerHTML = `${Object.entries(SKILL_META).map(([key, meta]) => `<button class="skill-orb ${isSkillUnlocked(key) ? "" : "locked"}" data-skill-dock="${key}" title="${meta.name}"><span class="cooldown"></span><span class="icon">${meta.icon}</span><small>${isSkillUnlocked(key) ? (state.skills[key].auto ? "AUTO" : "OFF") : `N${meta.unlock}`}</small></button>`).join("")}${captainManualSkillDockHtml()}`;
+    updateCaptainManualSkillDock();
   }
 
   function updateSkillCooldowns() {
@@ -4814,6 +5035,7 @@
       const ratio = isSkillUnlocked(key) && state.skills[key].auto ? clamp(state.skills[key].remaining / cooldown, 0, 1) : 1;
       node.querySelector(".cooldown").style.transform = `scaleY(${ratio})`;
     });
+    updateCaptainManualSkillDock();
   }
 
   function formatStatDelta(value) {
@@ -4841,6 +5063,48 @@
 
   function getNextFleetShip() {
     return SHIPS[getHighestOwnedShipId() + 1] || null;
+  }
+
+  function getOwnedShipIds() {
+    return [...new Set(state.ownedShips)].filter(id => SHIPS[id]).sort((a, b) => a - b);
+  }
+
+  function getAdjacentOwnedShipId(direction, shipId = state.shipId) {
+    const ownedIds = getOwnedShipIds();
+    const currentIndex = ownedIds.indexOf(shipId);
+    if (currentIndex < 0) return null;
+    const nextIndex = currentIndex + direction;
+    return ownedIds[nextIndex] === undefined ? null : ownedIds[nextIndex];
+  }
+
+  function fleetPreviousButtonHtml(previousOwnedId = getAdjacentOwnedShipId(-1)) {
+    return previousOwnedId === null
+      ? `<button class="button fleet-nav-button" disabled>Anterior</button>`
+      : `<button class="button fleet-nav-button" data-equip-ship="${previousOwnedId}">Anterior</button>`;
+  }
+
+  function fleetActionHtml({ mainLabel, mainAttrs = "", disabled = false, balance = "", hint = "", previousOwnedId = getAdjacentOwnedShipId(-1), primary = true }) {
+    return `<div class="upgrade-row-action fleet-action-row">${fleetPreviousButtonHtml(previousOwnedId)}<button class="button ${primary ? "primary" : ""}" ${mainAttrs} ${disabled ? "disabled" : ""}>${mainLabel}</button>${balance}${hint ? `<small>${hint}</small>` : ""}</div>`;
+  }
+
+  function fleetPurchaseActionHtml(nextShip, blocked = false, hint = "") {
+    const previousOwnedId = getAdjacentOwnedShipId(-1);
+    const cost = nextShip.costs;
+    const affordable = canAfford(cost);
+    const info = cost && !affordable && !blocked ? getMissingPurchaseInfo(cost) : null;
+    const goldCost = cost?.ouro || 0;
+    const requiredGold = affordable ? goldCost : info ? info.total + goldCost : goldCost;
+    const missingGold = Math.max(0, requiredGold - state.resources.ouro);
+    const unavailableLabel = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro` : "Faltam recursos";
+    const smartTotal = affordable ? goldCost : info?.canBuyAndExecute ? requiredGold : 0;
+    const afterGold = Math.max(0, state.resources.ouro - smartTotal);
+    const label = blocked ? "Bloqueado" : affordable ? "Comprar" : info?.canBuyAndExecute ? "Comprar tudo" : unavailableLabel;
+    const disabled = blocked || (!affordable && !info?.canBuyAndExecute);
+    const attrs = affordable ? `data-buy-ship="${nextShip.id}"` : `data-smart-upgrade="ship" data-smart-upgrade-id="${nextShip.id}"`;
+    const balanceClass = disabled && !blocked ? " danger" : "";
+    const afterText = disabled && !blocked ? unavailableLabel : `${formatNumber(afterGold)} Ouro`;
+    const balance = `<div class="upgrade-balance${balanceClass}"><span>Saldo atual: <strong>${formatNumber(state.resources.ouro)} Ouro</strong></span><span>Após compra: <strong>${afterText}</strong></span></div>`;
+    return fleetActionHtml({ mainLabel: label, mainAttrs: attrs, disabled, balance, hint, previousOwnedId });
   }
 
   function statRowsHtml(rows) {
@@ -4924,6 +5188,44 @@
     return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${state.ownedShips.length}/${SHIPS.length}</span><h3>Frota: troque de barco!</h3><p>Construa os barcos em sequência. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${upgradeActionHtml("ship", nextShip.id, nextShip.costs, canBuy, { blocked: progressionIssues.length > 0, hint: `Atual: ${currentShip.name}` })}</article>`;
   }
 
+  function fleetLineCompactHtml() {
+    const currentShip = SHIPS[state.shipId];
+    const highestOwnedId = getHighestOwnedShipId();
+    const previousOwnedId = getAdjacentOwnedShipId(-1);
+    const nextOwnedId = getAdjacentOwnedShipId(1);
+    const viewingLatest = currentShip.id === highestOwnedId;
+    if (!viewingLatest && nextOwnedId !== null) {
+      const nextOwnedShip = SHIPS[nextOwnedId];
+      const currentStats = getStats();
+      const nextStats = getStats(nextOwnedShip.id);
+      const rows = [
+        { label: "Navio seguinte", value: nextOwnedShip.name, delta: "Já construído" },
+        { label: "Dano", value: `${formatNumber(currentStats.damage)} → ${formatNumber(nextStats.damage)}`, delta: formatStatDelta(nextStats.damage - currentStats.damage) },
+        { label: "Vida", value: `${formatNumber(currentStats.maxHp)} → ${formatNumber(nextStats.maxHp)}`, delta: formatStatDelta(nextStats.maxHp - currentStats.maxHp) },
+        { label: "Poder", value: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`, delta: formatStatDelta(nextStats.power - currentStats.power) }
+      ];
+      const balance = `<div class="upgrade-balance"><span>Atual: <strong>${currentShip.name}</strong></span><span>Mais recente: <strong>${SHIPS[highestOwnedId].name}</strong></span></div>`;
+      return `<article class="upgrade-row fleet-upgrade fleet-browsing"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextOwnedShip.id}" aria-label="Próximo barco: ${nextOwnedShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${getOwnedShipIds().length}/${SHIPS.length}</span><h3>Frota: ${currentShip.name}</h3><p>Você está navegando em um navio anterior. Volte ao navio mais recente para construir o próximo barco.</p>${statRowsHtml(rows)}<div class="cost-list"><span class="cost-chip">Navio já construído</span><span class="cost-chip">Sem custo para trocar</span></div><div class="resource-readiness ready">Use Próximo até chegar ao navio mais recente.</div></div>${fleetActionHtml({ mainLabel: "Próximo", mainAttrs: `data-equip-ship="${nextOwnedShip.id}"`, balance, hint: "A compra de novos navios libera no mais recente.", previousOwnedId })}</article>`;
+    }
+    const nextShip = getNextFleetShip();
+    if (!nextShip) {
+      const balance = `<div class="upgrade-balance"><span>Atual: <strong>${currentShip.name}</strong></span><span>Construídos: <strong>${getOwnedShipIds().length}/${SHIPS.length}</strong></span></div>`;
+      return `<article class="upgrade-row completed"><div class="upgrade-row-icon">⛵</div><div class="upgrade-row-main"><span class="level-label">FROTA COMPLETA</span><h3>Frota: ${currentShip.name}</h3><p>Todos os barcos da jornada já foram construídos.</p>${statRowsHtml([{ label: "Navio atual", value: currentShip.name }, { label: "Tier", value: currentShip.tier }, { label: "Poder", value: formatNumber(getStats().power) }])}</div>${fleetActionHtml({ mainLabel: "Completo", disabled: true, balance, previousOwnedId, primary: false })}</article>`;
+    }
+    const progressionIssues = getShipProgressionIssues(nextShip);
+    const affordable = canAfford(nextShip.costs);
+    const currentStats = getStats();
+    const nextStats = getStats(nextShip.id);
+    const canBuy = progressionIssues.length === 0 && affordable;
+    const rows = [
+      { label: "Novo barco", value: nextShip.name, delta: `Tier ${nextShip.tier}` },
+      { label: "Dano", value: `${formatNumber(currentStats.damage)} → ${formatNumber(nextStats.damage)}`, delta: formatStatDelta(nextStats.damage - currentStats.damage) },
+      { label: "Vida", value: `${formatNumber(currentStats.maxHp)} → ${formatNumber(nextStats.maxHp)}`, delta: formatStatDelta(nextStats.maxHp - currentStats.maxHp) },
+      { label: "Poder", value: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`, delta: formatStatDelta(nextStats.power - currentStats.power) }
+    ];
+    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${getOwnedShipIds().length}/${SHIPS.length}</span><h3>Frota: ${currentShip.name}</h3><p>Construa os barcos em sequência. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${fleetPurchaseActionHtml(nextShip, progressionIssues.length > 0, `Atual: ${currentShip.name}`)}</article>`;
+  }
+
   function equipmentLineHtml([key, item]) {
     const equipped = state.equipment[key];
     const affordable = canAfford(item.costs);
@@ -4962,7 +5264,7 @@
       { key: "hull", name: "Casco", icon: "⬡", desc: "Amplia vida, defesa e resistência em combate." }
     ].map(upgradeLineHtml);
     $("#upgrade-feed").innerHTML = [
-      renderUpgradeSection("Frota", [fleetLineHtml(), fleetSelectionLineHtml()]),
+      renderUpgradeSection("Frota", [fleetLineCompactHtml()]),
       renderUpgradeSection("Melhorias", improvements),
       renderUpgradeSection("Equipamentos", Object.entries(EQUIPMENT_META).map(equipmentLineHtml)),
       renderUpgradeSection("Skills", Object.entries(SKILL_META).map(skillLineHtml))
@@ -5261,7 +5563,7 @@
     prestigeConfirmationStage = 1;
     $("#prestige-confirm-step").textContent = "CONFIRMAÇÃO 1 DE 2";
     $("#prestige-modal-title").textContent = "Reiniciar esta jornada?";
-    $("#prestige-modal-message").textContent = "Você manterá Prestígios, Moedas Pirata, estágio visual, título e bônus permanentes do Capitão, além dos pets. Level/XP temporário, Pontos de Nível e equipamentos serão reiniciados.";
+    $("#prestige-modal-message").textContent = "Você manterá Prestígios, Moedas Pirata, estágio visual, título e bônus permanentes do Capitão, além dos pets. Level/XP temporário, Pontos de Nível, equipamentos e Sabotar Inimigo serão reiniciados.";
     $("#prestige-modal-reward").innerHTML = `Você receberá <strong>+${formatNumber(getPrestigeReward())} Moedas Pirata</strong>`;
     $("#prestige-confirm").textContent = "Continuar";
     $("#prestige-modal").classList.remove("hidden");
@@ -5309,6 +5611,7 @@
     state = createDefaultState();
     Object.assign(state, permanent);
     syncCaptainState(state);
+    syncCaptainManualSkillState(state);
     syncCaptainRuntimeState(state);
     syncCaptainEquipmentState(state);
     state.combat.playerHp = getStats().maxHp;
@@ -5499,8 +5802,10 @@
     state.totalLevelPointsEarned = 0;
     state.spentLevelPoints = 0;
     state.availableLevelPoints = 0;
+    state.captainManualSkills = createCaptainManualSkillState();
     state.captainEquipment = createCaptainEquipmentState();
     syncCaptainState(state);
+    syncCaptainManualSkillState(state);
     syncCaptainRuntimeState(state);
     syncCaptainEquipmentState(state);
     state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
@@ -5508,6 +5813,34 @@
     addLog(`Motim iniciado: ${oldName} foi resetado.`, "loot");
     toast("Motim concluído. Escolha o novo visual do Capitão.", "gold-toast");
     navigate("captain");
+    commitGame(true);
+  }
+
+  function upgradeCaptainManualSkill(key = CAPTAIN_MANUAL_SKILL_KEY) {
+    const meta = CAPTAIN_MANUAL_SKILL_META[key];
+    if (!isCaptainSelected()) return toast("Selecione um pirata inicial antes de promover Sabotar Inimigo.", "danger-toast");
+    if (!meta) return;
+    syncCaptainRuntimeState(state);
+    const level = getCaptainManualSkillLevel(key);
+    if (level >= meta.maxLevel) return toast("Sabotar Inimigo já está no nível máximo.", "gold-toast");
+    const cost = getCaptainManualSkillCost(key, level);
+    const available = getAvailableLevelPoints();
+    if (available < cost) return toast(`Faltam ${cost - available} Ponto${cost - available === 1 ? "" : "s"} de Nível para promover Sabotar Inimigo.`, "danger-toast");
+    state.spentLevelPoints += cost;
+    getCaptainManualSkillState(key).level = level + 1;
+    syncCaptainManualSkillState(state);
+    syncCaptainRuntimeState(state);
+    trackAction("upgrade", { type: `captain-${key}` });
+    scene.celebrateCaptain(1.5);
+    lastCaptainManualSkillUpgrade = key;
+    setTimeout(() => {
+      if (lastCaptainManualSkillUpgrade === key) {
+        lastCaptainManualSkillUpgrade = null;
+        if (currentScreen === "captain") renderCaptain();
+      }
+    }, 900);
+    toast(`Sabotar Inimigo promovida para o nível ${level + 1}.`, "gold-toast");
+    addLog(`Sabotar Inimigo agora causa ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key))} do dano atual do navio.`, "loot");
     commitGame(true);
   }
 
@@ -5639,12 +5972,14 @@
     if (target.dataset.selectCaptainGender) selectCaptainGender(target.dataset.selectCaptainGender);
     if (target.dataset.upgradeCaptain !== undefined) upgradeCaptain();
     if (target.dataset.openCaptainMutiny !== undefined) openCaptainMutinyConfirmation();
+    if (target.dataset.upgradeCaptainManualSkill) upgradeCaptainManualSkill(target.dataset.upgradeCaptainManualSkill);
     if (target.dataset.upgradeCaptainEquipment) upgradeCaptainEquipment(target.dataset.upgradeCaptainEquipment);
     if (target.dataset.craftEquipment) craftEquipment(target.dataset.craftEquipment);
     if (target.dataset.upgradeSkill) upgradeSkill(target.dataset.upgradeSkill);
     if (target.dataset.buyMissing) openMissingPurchaseConfirmation(target.dataset.buyMissing, target.dataset.buyMissingId, target.dataset.buyMissingThen === "1");
     if (target.dataset.toggleSkill) toggleSkill(target.dataset.toggleSkill);
     if (target.dataset.skillDock) toggleSkill(target.dataset.skillDock);
+    if (target.dataset.manualSkill) castCaptainManualSkill(target.dataset.manualSkill);
     handleTradeQuantityButton(target);
     if (target.dataset.tradeAction && target.dataset.tradeResource) openTradeConfirmation(target.dataset.tradeResource, target.dataset.tradeAction);
     if (target.dataset.tradeStep && target.dataset.tradeResource) stepTradeQuantity(target.dataset.tradeResource, Number(target.dataset.tradeStep));

@@ -242,6 +242,10 @@ canvas,
 .skill-orb small { position: absolute; z-index: 3; right: 3px; bottom: 2px; padding: 1px 3px; color: var(--deep); border-radius: 3px; background: var(--cyan-2); font-size: 7px; font-weight: 900; letter-spacing: 0; }
 .skill-orb.off { filter: grayscale(.8); opacity: .55; }
 .skill-orb.locked { cursor: not-allowed; filter: grayscale(1); opacity: .45; }
+.manual-skill-orb { border-color: rgba(247,189,74,.62); background: linear-gradient(145deg, rgba(54,27,63,.88), rgba(6,24,36,.9)); box-shadow: 0 0 0 1px rgba(247,189,74,.12), 0 8px 16px rgba(0,0,0,.25); }
+.manual-skill-orb:not(:disabled) { box-shadow: 0 0 18px rgba(182,140,255,.28), 0 8px 16px rgba(0,0,0,.25); }
+.manual-skill-orb .cooldown { background: rgba(17, 9, 25, .78); }
+.manual-skill-orb small { background: var(--gold); }
 
 .dashboard-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 14px; margin-top: 14px; }
 .home-clean-grid { grid-template-columns: .8fr 1.2fr; grid-template-areas: "controls boss" "log pet"; align-items: stretch; }
@@ -551,6 +555,11 @@ canvas,
 .captain-equipment-summary strong { margin-top: 3px; color: #f2f6f4; font-size: 8px; line-height: 1.2; }
 .captain-equipment-feedback { margin-top: 5px; color: var(--green); font-size: 9px; font-weight: 900; }
 .captain-equipment-row.recent-upgrade { animation: captainEquipmentGlow .85s ease-out; }
+.captain-manual-skill-section { margin-top: 2px; }
+.captain-manual-skill-section.locked p { margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.captain-manual-skill-row { border-color: rgba(182,140,255,.24); background: linear-gradient(145deg, rgba(45,25,61,.72), rgba(7,27,40,.96)); }
+.captain-manual-skill-row .upgrade-row-icon { color: var(--gold); border-color: rgba(247,189,74,.3); background: rgba(247,189,74,.1); }
+.captain-manual-skill-row.recent-upgrade { animation: captainEquipmentGlow .85s ease-out; }
 @keyframes captainEquipmentGlow {
   0% { box-shadow: inset 0 0 0 1px rgba(247,189,74,.55), 0 0 0 rgba(247,189,74,0); transform: translateY(0); }
   35% { box-shadow: inset 0 0 0 1px rgba(247,189,74,.85), 0 0 22px rgba(247,189,74,.22); transform: translateY(-1px); }
@@ -724,6 +733,14 @@ canvas,
   font-size: 7px;
   text-align: center;
 }
+.fleet-action-row {
+  grid-template-columns: minmax(82px, .7fr) minmax(128px, 1fr);
+  align-items: stretch;
+}
+.fleet-action-row .fleet-nav-button { padding-inline: 8px; font-size: 10px; }
+.fleet-action-row .upgrade-balance,
+.fleet-action-row small { grid-column: 1 / -1; }
+.fleet-browsing { border-color: rgba(247,189,74,.28); }
 .upgrade-balance {
   display: grid;
   gap: 2px;
@@ -1651,6 +1668,7 @@ canvas,
   .upgrade-row-main p { font-size: 10px; }
   .upgrade-row-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .upgrade-row-action { grid-template-columns: 1fr; }
+  .fleet-action-row { grid-template-columns: 1fr; }
   .upgrade-row-action .button { font-size: 11px; }
   .upgrade-balance { min-width: 0; }
   .fleet-overview { grid-template-columns: 1fr; gap: 7px; padding: 13px; }
