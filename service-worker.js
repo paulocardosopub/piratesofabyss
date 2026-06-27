@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v109-chest-anchor";
+const CACHE = "pirates-abyss-v110-pet-anchor-rewards";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=59",
-  "game.js?v=116",
+  "game.js?v=117",
   "icon.svg",
   "manifest.webmanifest"
 ];

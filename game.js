@@ -1126,8 +1126,147 @@
     }
   }
 
+  function isPetSpritesheetBackgroundPixel(r, g, b, backgroundSamples) {
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const average = (r + g + b) / 3;
+    return backgroundSamples.some(sample => Math.hypot(r - sample.r, g - sample.g, b - sample.b) < 34)
+      || (max - min <= 24 && average >= 86 && average <= 220);
+  }
+
+  function measurePetFrameBounds(sprite, data, width, height) {
+    const frameWidth = Math.floor(width / sprite.columns);
+    const frameHeight = height;
+    const bounds = [];
+    const bodyBounds = [];
+    for (let frame = 0; frame < sprite.frames; frame++) {
+      const frameX = frame * frameWidth;
+      let left = frameWidth, top = frameHeight, right = -1, bottom = -1;
+      const rowCounts = Array(frameHeight).fill(0);
+      const colCounts = Array(frameWidth).fill(0);
+      for (let y = 0; y < frameHeight; y++) {
+        for (let x = 0; x < frameWidth; x++) {
+          const index = (y * width + frameX + x) * 4;
+          if (data[index + 3] <= 8) continue;
+          if (x < left) left = x;
+          if (x > right) right = x;
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+          rowCounts[y]++;
+          colCounts[x]++;
+        }
+      }
+      const fallback = right >= left && bottom >= top
+        ? { left, top, right, bottom, centerX: (left + right) / 2, bottomY: bottom, visibleHeight: bottom - top + 1 }
+        : { left: frameWidth * .24, top: frameHeight * .12, right: frameWidth * .76, bottom: frameHeight * .9, centerX: frameWidth * .5, bottomY: frameHeight * .9, visibleHeight: frameHeight * .78 };
+      bounds[frame] = fallback;
+
+      const maxRow = Math.max(0, ...rowCounts);
+      const maxCol = Math.max(0, ...colCounts);
+      const rowThreshold = Math.max(5, Math.floor(maxRow * .12));
+      const colThreshold = Math.max(5, Math.floor(maxCol * .14));
+      let bodyTop = frameHeight, bodyBottom = -1, bodyLeft = frameWidth, bodyRight = -1;
+      for (let y = fallback.top; y <= fallback.bottom; y++) {
+        if (rowCounts[y] >= rowThreshold) {
+          if (y < bodyTop) bodyTop = y;
+          if (y > bodyBottom) bodyBottom = y;
+        }
+      }
+      for (let x = fallback.left; x <= fallback.right; x++) {
+        if (colCounts[x] >= colThreshold) {
+          if (x < bodyLeft) bodyLeft = x;
+          if (x > bodyRight) bodyRight = x;
+        }
+      }
+      const body = bodyRight >= bodyLeft && bodyBottom >= bodyTop
+        ? { left: bodyLeft, top: bodyTop, right: bodyRight, bottom: bodyBottom, centerX: (bodyLeft + bodyRight) / 2, bottomY: bodyBottom, visibleHeight: bodyBottom - bodyTop + 1 }
+        : fallback;
+      const bodyLooksValid = body.visibleHeight >= fallback.visibleHeight * .45 && body.visibleHeight <= fallback.visibleHeight * 1.08;
+      bodyBounds[frame] = bodyLooksValid ? body : fallback;
+    }
+    const idleBodies = [bodyBounds[0], bodyBounds[1]].filter(Boolean);
+    const average = key => idleBodies.reduce((sum, item) => sum + item[key], 0) / Math.max(1, idleBodies.length);
+    sprite.frameBounds = bounds;
+    sprite.referenceBounds = bounds[0] || bounds.find(Boolean);
+    sprite.frameBodyBounds = bodyBounds;
+    sprite.referenceBodyBounds = idleBodies.length
+      ? {
+          left: average("left"),
+          top: average("top"),
+          right: average("right"),
+          bottom: average("bottom"),
+          centerX: average("centerX"),
+          bottomY: average("bottomY"),
+          visibleHeight: average("visibleHeight")
+        }
+      : bodyBounds[0] || sprite.referenceBounds;
+  }
+
   function preparePetSpritesheet(sprite) {
-    prepareCaptainCharacterSpritesheet(sprite);
+    const image = sprite?.image;
+    if (!image?.complete || !image.naturalWidth || sprite.ready || sprite.processing) return;
+    sprite.processing = true;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = pixels.data;
+      const width = canvas.width;
+      const height = canvas.height;
+      const backgroundSamples = collectCaptainCharacterBackgroundSamples(data, width, height);
+      const visited = new Uint8Array(width * height);
+      const queue = [];
+      let head = 0;
+      const push = (x, y) => {
+        if (x < 0 || y < 0 || x >= width || y >= height) return;
+        const point = y * width + x;
+        if (visited[point]) return;
+        const index = point * 4;
+        if (data[index + 3] <= 8 || isPetSpritesheetBackgroundPixel(data[index], data[index + 1], data[index + 2], backgroundSamples)) {
+          visited[point] = 1;
+          data[index + 3] = 0;
+          queue.push(point);
+        }
+      };
+      for (let x = 0; x < width; x++) {
+        push(x, 0);
+        push(x, height - 1);
+      }
+      for (let y = 1; y < height - 1; y++) {
+        push(0, y);
+        push(width - 1, y);
+      }
+      while (head < queue.length) {
+        const point = queue[head++];
+        const x = point % width;
+        const y = Math.floor(point / width);
+        for (let oy = -1; oy <= 1; oy++) {
+          for (let ox = -1; ox <= 1; ox++) {
+            if (!ox && !oy) continue;
+            push(x + ox, y + oy);
+          }
+        }
+      }
+      const frameWidth = Math.floor(width / (sprite.frames || 3));
+      const seamWidth = 2;
+      for (let seam = frameWidth; seam < width; seam += frameWidth) {
+        for (let x = Math.max(0, seam - seamWidth); x <= Math.min(width - 1, seam + seamWidth); x++) {
+          for (let y = 0; y < height; y++) data[(y * width + x) * 4 + 3] = 0;
+        }
+      }
+      measurePetFrameBounds(sprite, data, width, height);
+      context.putImageData(pixels, 0, 0);
+      sprite.canvas = canvas;
+      sprite.ready = true;
+    } catch (error) {
+      sprite.canvas = null;
+      sprite.ready = true;
+    } finally {
+      sprite.processing = false;
+    }
   }
 
   function setupSpritePreviewCanvas(canvas) {
@@ -1151,7 +1290,7 @@
   function drawSpritesheetPreview(canvas, sprite, options = {}) {
     const image = sprite?.image;
     if (!canvas || !image?.complete || !image.naturalWidth) return false;
-    if (!sprite.ready && !sprite.processing) prepareCaptainCharacterSpritesheet(sprite);
+    if (!sprite.ready && !sprite.processing) (options.prepareSpritesheet || prepareCaptainCharacterSpritesheet)(sprite);
     const source = sprite.canvas || image;
     const columns = sprite.columns || sprite.frames || 3;
     const frame = clamp(Math.floor(Number(options.frame ?? 0) || 0), 0, (sprite.frames || columns) - 1);
@@ -1254,7 +1393,7 @@
     const visual = canvas.dataset.petPreview;
     const sprite = getPetSprite(visual);
     requestPetSprite(sprite);
-    return drawSpritesheetPreview(canvas, sprite, { fill: .86, center: true, centerY: .5 });
+    return drawSpritesheetPreview(canvas, sprite, { fill: .86, center: true, centerY: .5, useBodyBounds: true, prepareSpritesheet: preparePetSpritesheet });
   }
 
   function renderPetPreviewCanvases(root = document) {
@@ -1987,6 +2126,11 @@
     return integerBetween(min, max);
   }
 
+  function getBossChestRewardMultiplier(regionIndex = state.regionIndex) {
+    const mapNumber = clamp(Math.floor(Number(regionIndex) || 0) + 1, 1, REGIONS.length);
+    return mapNumber <= 5 ? .3 : 1;
+  }
+
   function trySpawnChestDrop(dropType, enemy = null) {
     const chance = CHEST_DROP_CHANCES[dropType] || 0;
     if (!chance || scene?.hasPendingChest?.(dropType) || Math.random() >= chance) return false;
@@ -2001,9 +2145,12 @@
     if (!definition) return false;
     chest.opened = true;
     chest.openAge = 0;
-    const gold = definition.gold;
     const isBossChest = chest.dropType === "boss";
-    const pirateCoins = isBossChest && Math.random() < CHEST_PIRATE_COIN_CHANCE ? getBossChestPirateCoins(chest.regionIndex) : 0;
+    const bossRewardMultiplier = isBossChest ? getBossChestRewardMultiplier(chest.regionIndex) : 1;
+    const gold = Math.max(1, Math.round(definition.gold * bossRewardMultiplier));
+    const pirateCoins = isBossChest && Math.random() < CHEST_PIRATE_COIN_CHANCE
+      ? Math.max(1, Math.round(getBossChestPirateCoins(chest.regionIndex) * bossRewardMultiplier))
+      : 0;
     state.resources.ouro += gold;
     state.lifetime.gold += gold;
     trackAction("gold", { amount: gold });
@@ -4510,11 +4657,18 @@
       const sourceHeight = source.height || image.naturalHeight;
       const frameWidth = Math.floor(sourceWidth / frameCount);
       const frameHeight = sourceHeight;
-      const frame = this.getStateSpriteFrame(sprite, SPRITE_HP_STATES.normal, "pet");
+      const attackFrame = Math.min(2, frameCount - 1);
+      const idleFrame = Math.floor((this.time + (pet.id || 0) * .23) * 2.1) % Math.min(2, frameCount);
+      const frame = this.petLunge > .06 ? attackFrame : idleFrame;
       const targetWidth = sprite.width * baseScale;
       const targetHeight = targetWidth * (frameHeight / frameWidth);
+      const frameScale = targetWidth / frameWidth;
       const drawX = -targetWidth * sprite.anchorX;
       const drawY = -targetHeight * sprite.anchorY;
+      const referenceBounds = sprite.referenceBodyBounds || sprite.referenceBounds;
+      const frameBounds = sprite.frameBodyBounds?.[frame] || sprite.frameBounds?.[frame];
+      const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
+      const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
       const breath = this.getBreathingIdleTransform("pet", SPRITE_HP_STATES.normal, (pet.id || 0) * .73);
       const offsetY = (sprite.offsetY || 0) * baseScale;
       const bodyY = y - targetHeight * (1 - sprite.anchorY) - offsetY;
@@ -4524,7 +4678,7 @@
       ctx.translate(x, bodyY + offsetY);
       ctx.scale(breath.scaleX, breath.scaleY);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, drawX, drawY, targetWidth, targetHeight);
+      ctx.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
       this.drawPetWaterSplash(ctx, targetWidth * .06, targetHeight * (1 - sprite.anchorY) - 15 * baseScale, Math.max(26, targetWidth * .36), pet, baseScale, .35);
       ctx.restore();
       return true;
