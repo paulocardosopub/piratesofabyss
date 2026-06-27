@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v103-map-quick-nav";
+const CACHE = "pirates-abyss-v105-surprise-boss";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=59",
-  "game.js?v=110",
+  "game.js?v=112",
   "icon.svg",
   "manifest.webmanifest"
 ];

@@ -82,6 +82,39 @@
   };
 
   const RARITY_COLORS = { common: "#b5c5c4", uncommon: "#67d997", rare: "#64aef4", epic: "#c38af1", legendary: "#ffb349" };
+  const CHEST_SPRITE_PATH = "assets/chests/";
+  const CHEST_DROP_CHANCES = { monster: .05, boss: .30 };
+  const CHEST_PIRATE_COIN_CHANCE = .10;
+  const CHEST_OPEN_DURATION = .85;
+  const CHEST_DEFINITIONS = {
+    common: { id: "common", rarity: "comum", rarityKey: "common", file: "baumonstrocomum.png", gold: 5000, width: 72 },
+    uncommon: { id: "uncommon", rarity: "incomum", rarityKey: "uncommon", file: "baumonstroincomum.png", gold: 15000, width: 74 },
+    rare: { id: "rare", rarity: "raro", rarityKey: "rare", file: "baumonstroraro.png", gold: 35000, width: 78 },
+    epic: { id: "epic", rarity: "epico", rarityKey: "epic", file: "baubossepico.png", gold: 65000, width: 82 },
+    legendary: { id: "legendary", rarity: "lendario", rarityKey: "legendary", file: "baubosslendario.png", gold: 100000, width: 86 }
+  };
+  const CHEST_DROP_POOLS = {
+    monster: [{ id: "common", weight: 72 }, { id: "uncommon", weight: 28 }],
+    boss: [{ id: "rare", weight: 65 }, { id: "epic", weight: 25 }, { id: "legendary", weight: 10 }]
+  };
+  const CHEST_SPRITES = Object.fromEntries(Object.values(CHEST_DEFINITIONS).map(chest => [chest.id, {
+    key: chest.id,
+    image: createLazyImage(),
+    file: chest.file,
+    columns: 3,
+    frames: 3,
+    requested: false,
+    loadFailed: false
+  }]));
+
+  function requestChestSprite(sprite) {
+    if (!sprite) return null;
+    return requestSpriteImage(sprite, `${CHEST_SPRITE_PATH}${sprite.file}`);
+  }
+
+  function getChestSprite(id) {
+    return CHEST_SPRITES[id];
+  }
 
   const PRIMITIVE_REGIONS = [
     { name: "Lagoa dos Primeiros Remadores", weather: "Águas tranquilas", description: "O primeiro remo, a primeira rota e os primeiros perigos.", boss: "Crocomar Ancião", enemies: ["Remador Rival", "Pescador Primitivo", "Jacaré da Lagoa"], drops: { madeira: .30, comida: .28, tecido: .12 }, baseHp: 24, baseDamage: 3, gold: 6, goldRange: [3, 9], bossGold: [60, 100], xp: 5, sky: "#9ec8b7", sea: "#398b82", land: "#6e925d", kind: "PRIMITIVO" },
@@ -1428,6 +1461,7 @@
   let activeCaptainEquipmentKey = "sword";
   let activeMapInfoIndex = null;
   let pendingBossMapAdvanceTimer = 0;
+  let pendingSurpriseBossTimer = 0;
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   function formatNumber(value) {
@@ -1772,7 +1806,8 @@
       /Miss/i,
       /Capit/i,
       /acompanha/i,
-      /Prest/i
+      /Prest/i,
+      /ba[uú]/i
     ];
     if (!importantPatterns.some(pattern => pattern.test(message))) return;
     const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -1859,6 +1894,81 @@
   function clearCurrentEnemy() {
     state.combat.enemy = null;
     state.combat.spawnTimer = 0;
+  }
+
+  function clearPendingChests() {
+    scene?.clearChests?.();
+  }
+
+  function cancelPendingBossMapAdvance() {
+    if (!pendingBossMapAdvanceTimer) return;
+    window.clearTimeout(pendingBossMapAdvanceTimer);
+    pendingBossMapAdvanceTimer = 0;
+  }
+
+  function cancelPendingSurpriseBoss() {
+    if (!pendingSurpriseBossTimer) return;
+    window.clearTimeout(pendingSurpriseBossTimer);
+    pendingSurpriseBossTimer = 0;
+  }
+
+  function chooseWeightedChest(pool = []) {
+    const total = pool.reduce((sum, item) => sum + Math.max(0, Number(item.weight) || 0), 0);
+    if (total <= 0) return null;
+    let roll = Math.random() * total;
+    for (const item of pool) {
+      roll -= Math.max(0, Number(item.weight) || 0);
+      if (roll <= 0) return CHEST_DEFINITIONS[item.id] || null;
+    }
+    return CHEST_DEFINITIONS[pool[pool.length - 1]?.id] || null;
+  }
+
+  function getBossChestPirateCoinRange(regionIndex = state.regionIndex) {
+    const mapNumber = clamp(Math.floor(Number(regionIndex) || 0) + 1, 1, REGIONS.length);
+    if (mapNumber <= 5) return [3, 30];
+    if (mapNumber <= 10) return [31, 40];
+    return [40, 70];
+  }
+
+  function getBossChestPirateCoins(regionIndex = state.regionIndex) {
+    const [min, max] = getBossChestPirateCoinRange(regionIndex);
+    return integerBetween(min, max);
+  }
+
+  function trySpawnChestDrop(dropType, enemy = null) {
+    const chance = CHEST_DROP_CHANCES[dropType] || 0;
+    if (!chance || scene?.hasPendingChest?.(dropType) || Math.random() >= chance) return false;
+    const definition = chooseWeightedChest(CHEST_DROP_POOLS[dropType]);
+    if (!definition) return false;
+    return scene.spawnChest(definition, dropType, state.regionIndex, enemy);
+  }
+
+  function openTreasureChest(chest) {
+    if (!chest || chest.opened) return false;
+    const definition = CHEST_DEFINITIONS[chest.chestId];
+    if (!definition) return false;
+    chest.opened = true;
+    chest.openAge = 0;
+    const gold = definition.gold;
+    const isBossChest = chest.dropType === "boss";
+    const pirateCoins = isBossChest && Math.random() < CHEST_PIRATE_COIN_CHANCE ? getBossChestPirateCoins(chest.regionIndex) : 0;
+    state.resources.ouro += gold;
+    state.lifetime.gold += gold;
+    trackAction("gold", { amount: gold });
+    if (pirateCoins > 0) state.pirateCoins += pirateCoins;
+    scene?.celebrateCaptain?.(1.15);
+    scene?.floatChestReward?.(chest, [
+      { text: `+${formatNumber(gold)} Ouro`, color: RARITY_COLORS[definition.rarityKey] || "#ffe268" },
+      ...(pirateCoins > 0 ? [{ text: `+${formatNumber(pirateCoins)} Moedas Pirata`, color: "#ffb349" }] : [])
+    ]);
+    const logReward = pirateCoins > 0
+      ? `+${formatNumber(gold)} ouro e +${formatNumber(pirateCoins)} moedas pirata`
+      : `+${formatNumber(gold)} ouro`;
+    addLog(`${isBossChest ? "Baú de Boss" : "Baú"} aberto: ${logReward}.`, "loot");
+    toast(`${isBossChest ? "Baú de Boss" : "Baú"} aberto! ${logReward}.`, "gold-toast");
+    renderAll(false);
+    saveGame();
+    return true;
   }
 
   function setActiveShip(id) {
@@ -2549,8 +2659,10 @@
   const BOSS_DEATH_ANIMATION_SECONDS = 1;
   const BOSS_MAP_ADVANCE_DELAY_MS = 1000;
   const BOSS_SURPRISE_CHANCE = .1;
-  const BOSS_SURPRISE_MESSAGE = "Você mordeu a isca de um boss!";
-  const BOSS_SURPRISE_LOOT_KINDS = new Set(["fish", "shark"]);
+  const BOSS_SURPRISE_SPAWN_DELAY_MS = 2000;
+  const BOSS_SURPRISE_MESSAGE = "Você fisgou um peixe estranho...";
+  const BOSS_SURPRISE_LOOT_KINDS = new Set(["fish", "shark", "kraken"]);
+  const MAP_3_BOSS_SURPRISE_LOOT_KINDS = new Set(["bird"]);
 
   function normalizeEnemySpriteKey(value = "") {
     return normalizeSpriteKey(value)
@@ -3368,6 +3480,7 @@
       this.petLunge = 0;
       this.floaters = [];
       this.lootFloaters = [];
+      this.chests = [];
       this.enemyDeathAnimations = [];
       this.playerShipAnimation = null;
       this.playerCaptainReaction = { state: "idle", until: 0 };
@@ -3518,10 +3631,135 @@
       this.enemyDeathAnimations = this.enemyDeathAnimations.slice(-3);
     }
 
+    clearChests(dropType = null) {
+      this.chests = dropType ? this.chests.filter(chest => chest.dropType !== dropType) : [];
+    }
+
+    hasPendingChest(dropType = null) {
+      return this.chests.some(chest => !chest.opened && (!dropType || chest.dropType === dropType));
+    }
+
+    getChestScale() {
+      return Math.min(1.08, Math.max(.62, Math.min(this.width / 850, this.height / 280)));
+    }
+
+    getChestRect(chest, x = null, y = null) {
+      const definition = CHEST_DEFINITIONS[chest?.chestId];
+      const targetWidth = (definition?.width || 74) * this.getChestScale();
+      const targetHeight = targetWidth;
+      const centerX = x ?? (chest?.xRatio ?? .52) * this.width;
+      const waterlineY = y ?? (chest?.yRatio ?? .66) * this.height;
+      return {
+        x: centerX - targetWidth * .5,
+        y: waterlineY - targetHeight * .72,
+        width: targetWidth,
+        height: targetHeight * .9
+      };
+    }
+
+    findChestSpawnPoint(dropType, definition) {
+      const w = this.width;
+      const h = this.height;
+      const horizon = h * .42;
+      const compactStage = w < 620 || h < 240;
+      const playerX = w * .29;
+      const enemyX = w * .71;
+      const playerY = h * (compactStage ? .73 : .69);
+      const enemyY = h * (compactStage ? .64 : .60);
+      const playerScale = Math.min(1.15, w / 950, h / 300);
+      const enemyScale = Math.min(1.02, w / 1050, h / 300);
+      const chestWidth = (definition?.width || 74) * this.getChestScale();
+      const baseX = w * (dropType === "boss" ? .56 : .50);
+      const directProgress = clamp((baseX - playerX) / Math.max(1, enemyX - playerX), 0, 1);
+      const directY = playerY + (enemyY - playerY) * directProgress;
+      const naturalOffset = (dropType === "boss" ? -1 : 1) * (18 + state.regionIndex % 3 * 4);
+      const waterTop = horizon + Math.max(58, chestWidth * .72);
+      const waterBottom = h - Math.max(14, chestWidth * .22);
+      const offsets = dropType === "boss"
+        ? [[0, 0], [w * .035, h * .035], [-w * .045, h * .06], [w * .075, h * .07], [-w * .02, -h * .035], [w * .105, -h * .015]]
+        : [[0, 0], [-w * .04, h * .04], [w * .035, h * .065], [-w * .075, h * .08], [w * .06, -h * .025], [-w * .02, -h * .045]];
+      const protectedBoxes = [
+        { x: playerX - 132 * playerScale, y: playerY - 88 * playerScale, width: 264 * playerScale, height: 138 * playerScale },
+        { x: enemyX - 142 * enemyScale, y: enemyY - 108 * enemyScale, width: 284 * enemyScale, height: 154 * enemyScale },
+        { x: w * .06, y: horizon - 78, width: w * .72, height: 108 }
+      ];
+      if (getEquippedPet()) {
+        const petScale = Math.min(1.1, w / 850, h / 290);
+        const desiredWaterline = playerY + Math.max(58, playerScale * (compactStage ? 78 : 92));
+        const minimumWaterline = playerY + Math.max(24, playerScale * (compactStage ? 34 : 42));
+        const maximumWaterline = h - Math.max(18, petScale * 18);
+        const petY = maximumWaterline > minimumWaterline ? clamp(desiredWaterline, minimumWaterline, maximumWaterline) : maximumWaterline;
+        protectedBoxes.push({ x: w * .43 - 62 * petScale, y: petY - 56 * petScale, width: 124 * petScale, height: 84 * petScale });
+      }
+      this.chests.filter(chest => !chest.opened).forEach(chest => protectedBoxes.push(this.getChestRect(chest)));
+      const overlaps = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+      const pointFor = (dx, dy) => {
+        const x = clamp(baseX + dx, chestWidth * .65, w - chestWidth * .65);
+        const y = clamp(directY + naturalOffset + dy, waterTop, waterBottom);
+        return { x, y, rect: this.getChestRect({ chestId: definition.id }, x, y) };
+      };
+      for (const [dx, dy] of offsets) {
+        const point = pointFor(dx, dy);
+        if (!protectedBoxes.some(box => overlaps(point.rect, box))) return point;
+      }
+      for (let radius = 18; radius <= 90; radius += 18) {
+        for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+          const point = pointFor(Math.cos(angle) * radius, Math.sin(angle) * radius * .7);
+          if (!protectedBoxes.some(box => overlaps(point.rect, box))) return point;
+        }
+      }
+      return pointFor(0, h * .1);
+    }
+
+    spawnChest(definition, dropType, regionIndex, enemy = null) {
+      if (!definition || this.hasPendingChest(dropType)) return false;
+      const point = this.findChestSpawnPoint(dropType, definition, enemy);
+      this.chests.push({
+        chestId: definition.id,
+        dropType,
+        regionIndex,
+        xRatio: point.x / Math.max(1, this.width),
+        yRatio: point.y / Math.max(1, this.height),
+        age: 0,
+        openAge: 0,
+        opened: false,
+        seed: randomBetween(0, 10),
+        hitbox: null
+      });
+      this.chests = this.chests.slice(-4);
+      addLog(dropType === "boss" ? "Você encontrou um baú de Boss!" : "Você encontrou um baú!", "loot");
+      toast(dropType === "boss" ? "Você encontrou um baú de Boss!" : "Você encontrou um baú!", "gold-toast");
+      return true;
+    }
+
+    handleChestPointer(pointer, x, y) {
+      const chest = [...this.chests].reverse().find(item => {
+        if (item.opened) return false;
+        const box = item.hitbox || this.getChestRect(item);
+        const margin = pointer.pointerType === "touch" ? 14 : 7;
+        return x >= box.x - margin && x <= box.x + box.width + margin && y >= box.y - margin && y <= box.y + box.height + margin;
+      });
+      if (!chest) return false;
+      if (pointer.cancelable) pointer.preventDefault();
+      return openTreasureChest(chest);
+    }
+
+    floatChestReward(chest, rewards = []) {
+      const x = (chest?.xRatio ?? .52) * this.width;
+      const y = (chest?.yRatio ?? .66) * this.height - 8;
+      const color = rewards[0]?.color || "#ffe268";
+      this.bursts.push({ x, y: y - 24, age: 0, color });
+      this.aquaticBursts.push({ x, y: y + 4, age: 0, color, kind: "chest" });
+      rewards.forEach((reward, index) => {
+        this.lootFloaters.push({ text: reward.text, x, y: y + index * 24, age: 0, color: reward.color || color });
+      });
+    }
+
     handleEnvironmentPointer(pointer) {
       const rect = this.canvas.getBoundingClientRect();
       const x = (pointer.clientX - rect.left) * (this.width / Math.max(1, rect.width));
       const y = (pointer.clientY - rect.top) * (this.height / Math.max(1, rect.height));
+      if (this.handleChestPointer(pointer, x, y)) return;
       const event = [...this.environmentEvents].reverse().find(item => {
         if (item.collected || !item.hitbox) return false;
         const box = item.hitbox;
@@ -3584,6 +3822,10 @@
       this.bossSurpriseAlerts.forEach(item => item.age += dt);
       this.floaters.forEach(item => item.age += dt);
       this.lootFloaters.forEach(item => item.age += dt);
+      this.chests.forEach(item => {
+        item.age += dt;
+        if (item.opened) item.openAge += dt;
+      });
       this.enemyDeathAnimations.forEach(item => item.age += dt);
       this.environmentEvents.forEach(item => item.age += dt);
       this.autoCollectEnvironmentEvents();
@@ -3594,6 +3836,7 @@
       this.bossSurpriseAlerts = this.bossSurpriseAlerts.filter(item => item.age < item.duration);
       this.floaters = this.floaters.filter(item => item.age < 1.05);
       this.lootFloaters = this.lootFloaters.filter(item => item.age < 1.35);
+      this.chests = this.chests.filter(item => !item.opened || item.openAge < CHEST_OPEN_DURATION);
       this.enemyDeathAnimations = this.enemyDeathAnimations.filter(item => item.age < item.duration);
       this.environmentEvents = this.environmentEvents.filter(item => item.age < item.duration);
       Object.keys(this.environmentTimers).forEach(kind => {
@@ -3634,6 +3877,89 @@
       for (let i = 0; i < phases.length - 1; i++) if (cycle >= phases[i].t && cycle <= phases[i + 1].t) { start = phases[i]; end = phases[i + 1]; break; }
       const progress = (cycle - start.t) / Math.max(.001, end.t - start.t);
       return { cycle, label: start.label, sky: this.mix(start.sky, end.sky, progress), water: this.mix(start.water, end.water, progress), darkness: start.darkness + (end.darkness - start.darkness) * progress };
+    }
+
+    drawChestFallback(ctx, targetWidth, frame, definition) {
+      const open = frame === 2;
+      const glow = frame === 1;
+      const rarityColor = RARITY_COLORS[definition.rarityKey] || "#ffd37a";
+      ctx.save();
+      ctx.translate(0, -targetWidth * .28);
+      ctx.fillStyle = open ? "#6c3e21" : "#8a5128";
+      ctx.strokeStyle = "#2b1a12";
+      ctx.lineWidth = Math.max(2, targetWidth * .035);
+      ctx.beginPath();
+      ctx.roundRect(-targetWidth * .34, -targetWidth * .12, targetWidth * .68, targetWidth * .34, targetWidth * .045);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = open ? "#2b1a12" : rarityColor;
+      ctx.beginPath();
+      ctx.roundRect(-targetWidth * .39, -targetWidth * .27, targetWidth * .78, targetWidth * .23, targetWidth * .09);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = glow ? "#fff1ba" : "#edc36f";
+      ctx.fillRect(-targetWidth * .045, -targetWidth * .22, targetWidth * .09, targetWidth * .43);
+      if (open) {
+        ctx.globalAlpha = .7;
+        ctx.fillStyle = rarityColor;
+        ctx.beginPath();
+        ctx.arc(0, -targetWidth * .17, targetWidth * .16, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    drawChest(ctx, chest) {
+      const definition = CHEST_DEFINITIONS[chest.chestId];
+      if (!definition) return;
+      const sprite = getChestSprite(definition.id);
+      const image = requestChestSprite(sprite);
+      const loaded = image?.complete && image.naturalWidth;
+      const x = clamp((chest.xRatio ?? .52) * this.width, 24, this.width - 24);
+      const baseY = clamp((chest.yRatio ?? .66) * this.height, this.height * .42 + 34, this.height - 12);
+      const bob = Math.sin(this.time * 2.25 + chest.seed) * 3.2;
+      const y = baseY + bob;
+      const targetWidth = definition.width * this.getChestScale();
+      const targetHeight = targetWidth;
+      const frame = chest.opened ? 2 : Math.floor((this.time + chest.seed) / .42) % 2;
+      const openPulse = chest.opened ? Math.sin(clamp(chest.openAge / .28, 0, 1) * Math.PI) * .08 : 0;
+      const fade = chest.opened && chest.openAge > .56 ? clamp(1 - (chest.openAge - .56) / Math.max(.01, CHEST_OPEN_DURATION - .56), 0, 1) : 1;
+      chest.hitbox = this.getChestRect(chest, x, y);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = "rgba(3,18,28,.24)";
+      ctx.beginPath();
+      ctx.ellipse(0, targetWidth * .09, targetWidth * .42, targetWidth * .105, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(223,255,247,.58)";
+      ctx.lineWidth = Math.max(1.2, targetWidth * .022);
+      for (let i = 0; i < 2; i++) {
+        ctx.globalAlpha = fade * (.46 - i * .16);
+        ctx.beginPath();
+        ctx.ellipse(0, targetWidth * (.08 + i * .035), targetWidth * (.35 + i * .13), targetWidth * (.045 + i * .015), 0, Math.PI * .04, Math.PI * .96);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = fade;
+      ctx.scale(1 + openPulse, 1 + openPulse);
+      ctx.shadowColor = RARITY_COLORS[definition.rarityKey] || "#ffd37a";
+      ctx.shadowBlur = chest.opened ? 16 : frame === 1 ? 10 : 4;
+      if (loaded) {
+        const source = sprite.canvas || image;
+        const sourceWidth = source.width || image.naturalWidth;
+        const sourceHeight = source.height || image.naturalHeight;
+        const frameWidth = Math.floor(sourceWidth / 3);
+        const frameHeight = sourceHeight;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, -targetWidth * .5, -targetHeight * .72, targetWidth, targetHeight);
+      } else {
+        this.drawChestFallback(ctx, targetWidth, frame, definition);
+      }
+      ctx.restore();
+    }
+
+    drawChests(ctx) {
+      this.chests.forEach(chest => this.drawChest(ctx, chest));
     }
 
     draw() {
@@ -3709,6 +4035,7 @@
         const petWaterlineY = maximumWaterline > minimumWaterline ? clamp(desiredWaterline, minimumWaterline, maximumWaterline) : maximumWaterline;
         this.drawPet(ctx, w * .43 + attackAdvance, petWaterlineY, pet, petScale);
       }
+      this.drawChests(ctx);
       this.enemyDeathAnimations.forEach(item => {
         if (item.age < 0) return;
         this.drawEnemy(ctx, w * .71, enemyY, enemyScale, item.enemy);
@@ -4856,25 +5183,37 @@
   function canTriggerSurpriseBoss() {
     const enemy = state.combat.enemy;
     if (state.combat.repairing || state.combat.playerHp <= 0) return false;
-    if (pendingBossMapAdvanceTimer || isBossIntroActive(enemy)) return false;
+    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || isBossIntroActive(enemy)) return false;
     if (enemy?.isBoss || enemy?.defeated) return false;
     return true;
   }
 
+  function canLootKindTriggerSurpriseBoss(kind, regionIndex = state.regionIndex) {
+    const mapNumber = Math.floor(Number(regionIndex) || 0) + 1;
+    const allowedKinds = mapNumber === 3 ? MAP_3_BOSS_SURPRISE_LOOT_KINDS : BOSS_SURPRISE_LOOT_KINDS;
+    return allowedKinds.has(kind);
+  }
+
   function tryTriggerSurpriseBossFromLoot(kind) {
-    if (!BOSS_SURPRISE_LOOT_KINDS.has(kind)) return false;
+    if (!canLootKindTriggerSurpriseBoss(kind)) return false;
     if (Math.random() >= BOSS_SURPRISE_CHANCE) return false;
     if (!canTriggerSurpriseBoss()) return false;
     state.combat.running = true;
     state.hasStarted = true;
     state.combat.repairing = false;
     state.combat.enemy = null;
-    state.combat.spawnTimer = 0;
+    state.combat.spawnTimer = -BOSS_SURPRISE_SPAWN_DELAY_MS;
     scene.resetPlayerShipAnimation();
     scene.triggerBossSurpriseAlert();
     toast(BOSS_SURPRISE_MESSAGE, "danger-toast");
     addLog(BOSS_SURPRISE_MESSAGE, "danger-text");
-    spawnEnemy(true, { surprise: true });
+    pendingSurpriseBossTimer = window.setTimeout(() => {
+      pendingSurpriseBossTimer = 0;
+      if (!canTriggerSurpriseBoss()) return;
+      state.combat.spawnTimer = 0;
+      spawnEnemy(true, { surprise: true });
+      renderAll(false);
+    }, BOSS_SURPRISE_SPAWN_DELAY_MS);
     return true;
   }
 
@@ -5063,8 +5402,9 @@
 
   function scheduleBossMapAdvance(defeatedRegionIndex) {
     if (pendingBossMapAdvanceTimer) window.clearTimeout(pendingBossMapAdvanceTimer);
+    const advanceDelay = scene?.hasPendingChest?.("boss") ? Math.max(BOSS_MAP_ADVANCE_DELAY_MS, 6500) : BOSS_MAP_ADVANCE_DELAY_MS;
     state.combat.enemy = null;
-    state.combat.spawnTimer = -BOSS_MAP_ADVANCE_DELAY_MS;
+    state.combat.spawnTimer = -advanceDelay;
     pendingBossMapAdvanceTimer = window.setTimeout(() => {
       pendingBossMapAdvanceTimer = 0;
       if (defeatedRegionIndex < REGIONS.length - 1) {
@@ -5090,7 +5430,7 @@
       }
       renderAll(false);
       saveGame();
-    }, BOSS_MAP_ADVANCE_DELAY_MS);
+    }, advanceDelay);
   }
 
   function defeatEnemy(options = {}) {
@@ -5113,6 +5453,7 @@
       if (!isSurpriseBoss) state.bossesDefeated[state.regionIndex] = true;
       gainXp(region.xp * 35);
       const materials = rewardMaterials(8, enemy);
+      trySpawnChestDrop("boss", enemy);
       addLog(`${isSurpriseBoss ? "Boss surpresa derrotado" : "Boss derrotado"}: ${region.boss}. Drop: ${formatNumber(reward)} Ouro.`, "loot");
       toast(`${region.boss}${isSurpriseBoss ? " surpresa" : ""} foi derrotado!`, "gold-toast");
       if (isSurpriseBoss) {
@@ -5132,6 +5473,7 @@
       trackAction("gold", { amount: gold });
       gainXp(Math.round(region.xp * (enemy.xpMultiplier || 1) * randomBetween(.92, 1.08)));
       const materials = rewardMaterials(1, enemy);
+      trySpawnChestDrop("monster", enemy);
       trackAction("enemy", { onlyGold: materials.length === 0, multiResource: materials.length >= 2, survivor: state.combat.playerHp > 0 && state.combat.playerHp <= getStats().maxHp * .05 });
       addLog(materials.length ? `Vitória contra ${enemy.name}. Drop: ${formatNumber(gold)} Ouro + ${materials.join(", ")}.` : `Vitória contra ${enemy.name}. Drop: ${formatNumber(gold)} Ouro.`, materials.length ? "loot" : "");
       if (state.regionKills[state.regionIndex] === 100 && !state.bossesDefeated[state.regionIndex]) toast(`${region.boss} está disponível para desafio!`, "gold-toast");
@@ -6380,6 +6722,9 @@
       prestigeHistory: [entry, ...state.prestigeHistory].slice(0, 20),
       titles: [...state.titles]
     };
+    cancelPendingBossMapAdvance();
+    cancelPendingSurpriseBoss();
+    clearPendingChests();
     state = createDefaultState();
     Object.assign(state, permanent);
     syncCaptainState(state);
@@ -6731,6 +7076,8 @@
       return;
     }
     if (index === state.regionIndex) return;
+    cancelPendingBossMapAdvance();
+    cancelPendingSurpriseBoss();
     const issues = endgameRequirementIssues(index);
     state.regionIndex = index;
     activeMapInfoIndex = null;
@@ -6746,6 +7093,8 @@
     if (!target.dataset.selectMap) return;
     const index = Number(target.dataset.selectMap);
     if (!(index < state.unlockedRegions)) return;
+    cancelPendingBossMapAdvance();
+    cancelPendingSurpriseBoss();
     const issues = endgameRequirementIssues(index);
     state.regionIndex = index;
     activeMapInfoIndex = null;
@@ -6881,6 +7230,9 @@
 
   function wipeProgress() {
     localStorage.removeItem(SAVE_KEY);
+    cancelPendingBossMapAdvance();
+    cancelPendingSurpriseBoss();
+    clearPendingChests();
     state = createDefaultState();
     $("#confirm-modal").classList.add("hidden");
     toast("Progresso apagado. Uma nova jornada começou.");
