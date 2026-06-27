@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v79-clean-sprite-pockets";
+const CACHE = "pirates-abyss-v83-captain-body-scale";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=49",
-  "game.js?v=89",
+  "styles.css?v=50",
+  "game.js?v=93",
   "icon.svg",
   "manifest.webmanifest"
 ];

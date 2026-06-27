@@ -731,23 +731,32 @@
   const CAPTAIN_CHARACTER_REACTION_SECONDS = { celebrate: 2.35, hit: .42 };
   const CAPTAIN_CHARACTER_GENDER_FILE_KEYS = { male: "masculino", female: "feminino" };
   const PIRATE_CHARACTER_CONFIG = {
-    boat_01: { scale: .340, offsetX: -.04, offsetY: 8, deckY: .84, anchor: "deck", maxHeight: 78 },
-    boat_02: { scale: .325, offsetX: .18, offsetY: 8, deckY: .83, anchor: "deck", maxHeight: 76 },
-    boat_03: { scale: .335, offsetX: -.09, offsetY: 8, deckY: .80, anchor: "deck", maxHeight: 78 },
-    boat_04: { scale: .325, offsetX: -.10, offsetY: 7, deckY: .82, anchor: "deck", maxHeight: 78 },
-    boat_05: { scale: .330, offsetX: -.16, offsetY: 7, deckY: .79, anchor: "deck", maxHeight: 80 },
-    boat_06: { scale: .335, offsetX: -.14, offsetY: 7, deckY: .78, anchor: "deck", maxHeight: 82 },
-    boat_07: { scale: .320, offsetX: .05, offsetY: 6, deckY: .72, anchor: "deck", maxHeight: 82 },
-    boat_08: { scale: .330, offsetX: -.08, offsetY: 7, deckY: .74, anchor: "deck", maxHeight: 84 },
-    boat_09: { scale: .318, offsetX: .18, offsetY: 6, deckY: .73, anchor: "deck", maxHeight: 88 },
-    boat_10: { scale: .312, offsetX: -.27, offsetY: 7, deckY: .74, anchor: "deck", maxHeight: 88 },
-    boat_11: { scale: .322, offsetX: -.10, offsetY: 6, deckY: .71, anchor: "deck", maxHeight: 90 },
-    boat_12: { scale: .312, offsetX: .03, offsetY: 6, deckY: .71, anchor: "deck", maxHeight: 90 },
-    boat_13: { scale: .322, offsetX: -.16, offsetY: 6, deckY: .70, anchor: "deck", maxHeight: 92 },
-    boat_14: { scale: .306, offsetX: -.29, offsetY: 6, deckY: .71, anchor: "deck", maxHeight: 92 },
-    boat_15: { scale: .312, offsetX: -.12, offsetY: 6, deckY: .69, anchor: "deck", maxHeight: 94 },
-    boat_16: { scale: .322, offsetX: -.04, offsetY: 6, deckY: .69, anchor: "deck", maxHeight: 98 },
-    boat_17: { scale: .306, offsetX: .10, offsetY: 6, deckY: .68, anchor: "deck", maxHeight: 100 }
+    boat_01: { scale: .445, offsetX: -.04, offsetY: 13, deckY: .84, anchor: "deck", maxHeight: 112, embed: .18 },
+    boat_02: { scale: .430, offsetX: .17, offsetY: 13, deckY: .83, anchor: "deck", maxHeight: 110, embed: .18 },
+    boat_03: { scale: .440, offsetX: -.09, offsetY: 12, deckY: .80, anchor: "deck", maxHeight: 112, embed: .17 },
+    boat_04: { scale: .430, offsetX: -.10, offsetY: 13, deckY: .82, anchor: "deck", maxHeight: 112, embed: .18 },
+    boat_05: { scale: .430, offsetX: -.16, offsetY: 12, deckY: .79, anchor: "deck", maxHeight: 114, embed: .18 },
+    boat_06: { scale: .425, offsetX: -.14, offsetY: 13, deckY: .78, anchor: "deck", maxHeight: 114, embed: .19 },
+    boat_07: { scale: .410, offsetX: .05, offsetY: 12, deckY: .72, anchor: "deck", maxHeight: 112, embed: .18 },
+    boat_08: { scale: .414, offsetX: -.08, offsetY: 12, deckY: .74, anchor: "deck", maxHeight: 116, embed: .18 },
+    boat_09: { scale: .405, offsetX: .18, offsetY: 11, deckY: .73, anchor: "deck", maxHeight: 118, embed: .19 },
+    boat_10: { scale: .398, offsetX: -.27, offsetY: 12, deckY: .74, anchor: "deck", maxHeight: 118, embed: .20 },
+    boat_11: { scale: .405, offsetX: -.10, offsetY: 11, deckY: .71, anchor: "deck", maxHeight: 120, embed: .20 },
+    boat_12: { scale: .396, offsetX: .03, offsetY: 11, deckY: .71, anchor: "deck", maxHeight: 120, embed: .19 },
+    boat_13: { scale: .398, offsetX: -.16, offsetY: 11, deckY: .70, anchor: "deck", maxHeight: 122, embed: .20 },
+    boat_14: { scale: .388, offsetX: -.29, offsetY: 11, deckY: .71, anchor: "deck", maxHeight: 122, embed: .21 },
+    boat_15: { scale: .388, offsetX: -.12, offsetY: 10, deckY: .69, anchor: "deck", maxHeight: 124, embed: .21 },
+    boat_16: { scale: .392, offsetX: -.04, offsetY: 10, deckY: .69, anchor: "deck", maxHeight: 126, embed: .21 },
+    boat_17: { scale: .382, offsetX: .10, offsetY: 10, deckY: .68, anchor: "deck", maxHeight: 128, embed: .22 },
+    boat_18: { scale: .382, offsetX: -.03, offsetY: 10, deckY: .68, anchor: "deck", maxHeight: 128, embed: .21 },
+    boat_19: { scale: .380, offsetX: -.04, offsetY: 10, deckY: .67, anchor: "deck", maxHeight: 128, embed: .21 },
+    boat_20: { scale: .378, offsetX: -.02, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 130, embed: .21 },
+    boat_21: { scale: .376, offsetX: -.03, offsetY: 10, deckY: .68, anchor: "deck", maxHeight: 132, embed: .22 },
+    boat_22: { scale: .374, offsetX: -.03, offsetY: 10, deckY: .68, anchor: "deck", maxHeight: 134, embed: .22 },
+    boat_23: { scale: .370, offsetX: -.01, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 136, embed: .22 },
+    boat_24: { scale: .370, offsetX: -.02, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 136, embed: .22 },
+    boat_25: { scale: .366, offsetX: -.01, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 138, embed: .23 },
+    boat_26: { scale: .365, offsetX: -.01, offsetY: 9, deckY: .66, anchor: "deck", maxHeight: 140, embed: .23 }
   };
 
   function getPirateCharacterBoatConfig(shipId) {
@@ -777,6 +786,8 @@
       loadFailed: false,
       frameBounds: null,
       referenceBounds: null,
+      frameBodyBounds: null,
+      referenceBodyBounds: null,
       cleanupLightArtifacts: true
     };
     return sprite;
@@ -898,9 +909,12 @@
     const frameWidth = Math.floor(width / sprite.columns);
     const frameHeight = height;
     const bounds = [];
+    const bodyBounds = [];
     for (let frame = 0; frame < sprite.frames; frame++) {
       const frameX = frame * frameWidth;
       let left = frameWidth, top = frameHeight, right = -1, bottom = -1;
+      const rowCounts = Array(frameHeight).fill(0);
+      const colCounts = Array(frameWidth).fill(0);
       for (let y = 0; y < frameHeight; y++) {
         for (let x = 0; x < frameWidth; x++) {
           const index = (y * width + frameX + x) * 4;
@@ -909,14 +923,42 @@
           if (x > right) right = x;
           if (y < top) top = y;
           if (y > bottom) bottom = y;
+          rowCounts[y]++;
+          colCounts[x]++;
         }
       }
-      bounds[frame] = right >= left && bottom >= top
+      const fallback = right >= left && bottom >= top
         ? { left, top, right, bottom, centerX: (left + right) / 2, bottomY: bottom, visibleHeight: bottom - top + 1 }
         : { left: frameWidth * .34, top: frameHeight * .16, right: frameWidth * .66, bottom: frameHeight * .92, centerX: frameWidth * .5, bottomY: frameHeight * .92, visibleHeight: frameHeight * .76 };
+      bounds[frame] = fallback;
+
+      const maxRow = Math.max(0, ...rowCounts);
+      const maxCol = Math.max(0, ...colCounts);
+      const rowThreshold = Math.max(4, Math.floor(maxRow * .1));
+      const colThreshold = Math.max(4, Math.floor(maxCol * .08));
+      let bodyTop = frameHeight, bodyBottom = -1, bodyLeft = frameWidth, bodyRight = -1;
+      for (let y = fallback.top; y <= fallback.bottom; y++) {
+        if (rowCounts[y] >= rowThreshold) {
+          if (y < bodyTop) bodyTop = y;
+          if (y > bodyBottom) bodyBottom = y;
+        }
+      }
+      for (let x = fallback.left; x <= fallback.right; x++) {
+        if (colCounts[x] >= colThreshold) {
+          if (x < bodyLeft) bodyLeft = x;
+          if (x > bodyRight) bodyRight = x;
+        }
+      }
+      const body = bodyRight >= bodyLeft && bodyBottom >= bodyTop
+        ? { left: bodyLeft, top: bodyTop, right: bodyRight, bottom: bodyBottom, centerX: (bodyLeft + bodyRight) / 2, bottomY: bodyBottom, visibleHeight: bodyBottom - bodyTop + 1 }
+        : fallback;
+      const bodyLooksValid = body.visibleHeight >= fallback.visibleHeight * .55 && body.visibleHeight <= fallback.visibleHeight * 1.05;
+      bodyBounds[frame] = bodyLooksValid ? body : fallback;
     }
     sprite.frameBounds = bounds;
     sprite.referenceBounds = bounds[CAPTAIN_CHARACTER_POSES.idle] || bounds[0];
+    sprite.frameBodyBounds = bodyBounds;
+    sprite.referenceBodyBounds = bodyBounds[CAPTAIN_CHARACTER_POSES.idle] || bodyBounds[0] || sprite.referenceBounds;
   }
 
   function prepareCaptainCharacterSpritesheet(sprite) {
@@ -1013,14 +1055,18 @@
     const sourceHeight = source.height || image.naturalHeight;
     const frameWidth = Math.floor(sourceWidth / columns);
     const frameHeight = sourceHeight;
-    const bounds = sprite.frameBounds?.[frame] || sprite.referenceBounds || {
+    const fallbackBounds = {
       left: frameWidth * .2,
       top: frameHeight * .08,
       right: frameWidth * .8,
       bottom: frameHeight * .94,
       centerX: frameWidth * .5,
-      bottomY: frameHeight * .94
+      bottomY: frameHeight * .94,
+      visibleHeight: frameHeight * .86
     };
+    const bounds = options.useBodyBounds
+      ? sprite.frameBodyBounds?.[frame] || sprite.referenceBodyBounds || sprite.frameBounds?.[frame] || sprite.referenceBounds || fallbackBounds
+      : sprite.frameBounds?.[frame] || sprite.referenceBounds || fallbackBounds;
     const visibleWidth = Math.max(1, bounds.right - bounds.left + 1);
     const visibleHeight = Math.max(1, bounds.bottom - bounds.top + 1);
     const { context, width, height } = setupSpritePreviewCanvas(canvas);
@@ -1089,10 +1135,10 @@
     const sprite = getCaptainCharacterSpritesheet(level, gender);
     requestCaptainCharacterSprite(sprite);
     const options = variant === "topbar"
-      ? { fill: 1.75, alignY: 1.2, offsetY: .02 }
+      ? { fill: 1.75, alignY: 1.2, offsetY: .02, useBodyBounds: true }
       : variant === "next"
-        ? { fill: .86, alignY: .96 }
-        : { fill: .92, alignY: .98 };
+        ? { fill: .86, alignY: .96, useBodyBounds: true }
+        : { fill: .92, alignY: .98, useBodyBounds: true };
     return drawSpritesheetPreview(canvas, sprite, options);
   }
 
@@ -1840,25 +1886,30 @@
     return true;
   }
 
-  function checkProgressionUnlocks() {
+  function checkProgressionUnlocks(notify = true) {
     if (!state?.quests) return;
     resetPeriodicProgressIfNeeded();
     missionDefinitions.forEach(item => {
       if (state.quests.completed[item.id] || state.quests.claimed[item.id] || !isProgressionUnlocked(item, missionDefinitions, "quests")) return;
       if (objectiveProgress(item.objective) >= objectiveTarget(item.objective)) {
         state.quests.completed[item.id] = Date.now();
-        toast(`Missão concluída: ${item.name}`, "gold-toast");
-        addLog(`Missão concluída: ${item.name}. Recompensa disponível: ${rewardText(item.reward)}.`, "loot");
+        if (notify) {
+          toast(`Missão concluída: ${item.name}`, "gold-toast");
+          addLog(`Missão concluída: ${item.name}. Recompensa disponível: ${rewardText(item.reward)}.`, "loot");
+        }
       }
     });
   }
 
-  function claimProgressionReward(kind, id) {
-    if (kind !== "mission") return;
-    const definitions = missionDefinitions;
+  function isMissionRewardReady(item) {
     const store = state.quests;
-    const item = definitions.find(entry => entry.id === id);
-    if (!item || !store.completed[id] || store.claimed[id]) return;
+    return Boolean(item && !store.claimed[item.id] && (store.completed[item.id] || (isProgressionUnlocked(item, missionDefinitions, "quests") && objectiveProgress(item.objective) >= objectiveTarget(item.objective))));
+  }
+
+  function grantMissionReward(item) {
+    const store = state.quests;
+    if (!isMissionRewardReady(item)) return false;
+    if (!store.completed[item.id]) store.completed[item.id] = Date.now();
     Object.entries(item.reward.resources || {}).forEach(([key, amount]) => {
       if (!amount) return;
       state.resources[key] = (state.resources[key] || 0) + amount;
@@ -1871,11 +1922,41 @@
     });
     if (item.reward.xp) gainXp(item.reward.xp);
     if (item.reward.title && !state.titles.includes(item.reward.title)) state.titles.push(item.reward.title);
-    store.claimed[id] = Date.now();
-    delete store.completed[id];
+    store.claimed[item.id] = Date.now();
+    delete store.completed[item.id];
+    return true;
+  }
+
+  function claimProgressionReward(kind, id) {
+    if (kind !== "mission") return;
+    const item = missionDefinitions.find(entry => entry.id === id);
+    if (!grantMissionReward(item)) return;
     toast(`Missão recompensada: ${item.name}`, "gold-toast");
     addLog(`Recompensa coletada: ${item.name} — ${rewardText(item.reward)}.`, "loot");
     checkProgressionUnlocks();
+    commitGame(true);
+  }
+
+  function claimAllMissionRewards() {
+    resetPeriodicProgressIfNeeded();
+    checkProgressionUnlocks(false);
+    const claimed = [];
+    let guard = missionDefinitions.length + 1;
+    while (guard-- > 0) {
+      const ready = missionDefinitions.filter(isMissionRewardReady);
+      if (!ready.length) break;
+      ready.forEach(item => {
+        if (grantMissionReward(item)) claimed.push(item);
+      });
+      checkProgressionUnlocks(false);
+    }
+    if (!claimed.length) {
+      renderMissions();
+      return toast("Nenhuma recompensa disponível no momento.");
+    }
+    const suffix = claimed.length === 1 ? "" : "s";
+    toast(`${claimed.length} recompensa${suffix} coletada${suffix}!`, "gold-toast");
+    addLog(`Coletar tudo: ${claimed.length} recompensa${suffix} de missão coletada${suffix}.`, "loot");
     commitGame(true);
   }
 
@@ -3390,7 +3471,9 @@
       const pet = getEquippedPet();
       if (pet) {
         const attackAdvance = Math.sin(this.petLunge * Math.PI) * w * .12;
-        this.drawPet(ctx, w * .43 + attackAdvance, h * (compactStage ? .77 : .73) + Math.sin(this.time * 2 + pet.id) * 4, pet, Math.min(1.1, w / 850, h / 290));
+        const petScale = Math.min(1.1, w / 850, h / 290);
+        const petWaterlineY = playerY + Math.max(78, playerScale * (compactStage ? 108 : 124));
+        this.drawPet(ctx, w * .43 + attackAdvance, petWaterlineY, pet, petScale);
       }
       this.enemyDeathAnimations.forEach(item => {
         if (item.age < 0) return;
@@ -3679,34 +3762,41 @@
       ctx.globalAlpha = 1;
     }
 
+    drawPetWaterSplash(ctx, x, y, width = 44, pet = {}, baseScale = 1, lift = 0) {
+      const scale = Math.max(.65, baseScale);
+      const pulse = 1 + Math.sin(this.time * 3.2 + (pet.id || 0)) * .08;
+      const height = Math.max(4, width * .12);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.lineCap = "round";
+      ctx.lineWidth = Math.max(1.2, 1.8 * scale);
+      ctx.strokeStyle = "rgba(224,255,250,.74)";
+      for (let i = 0; i < 3; i++) {
+        ctx.globalAlpha = .5 - i * .12;
+        ctx.beginPath();
+        ctx.ellipse(0, i * 2, width * (.52 + i * .16) * pulse, height * (.45 + i * .14), 0, Math.PI * .04, Math.PI * .96);
+        ctx.stroke();
+      }
+      ctx.fillStyle = pet.color || "#d8fffb";
+      for (let i = 0; i < 7; i++) {
+        const angle = -Math.PI + i * Math.PI / 6;
+        const distance = width * (.18 + (i % 3) * .045) * pulse;
+        const drop = Math.max(1.2, width * (.018 + (i % 2) * .008));
+        ctx.globalAlpha = .18 + Math.max(0, lift) * .16 + (i % 2) * .08;
+        ctx.beginPath();
+        ctx.arc(Math.cos(angle) * distance, -Math.abs(Math.sin(angle)) * height * (1.6 + lift) + Math.sin(this.time * 4 + i) * 1.5, drop, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
     drawPet(ctx, x, y, pet, baseScale = 1) {
       if (this.drawPetSprite(ctx, x, y, pet, baseScale)) return;
       const size = [0.48, 0.55, 0.68, 0.7, 0.82, 0.9, 1, 1.18, 1.38, 1.55][pet.id] * baseScale;
       const jump = pet.visual === "dolphin" || pet.visual === "seal" ? Math.max(0, Math.sin(this.time * 1.25 + pet.id)) * 15 : 0;
-      ctx.save(); ctx.translate(x, y - jump); ctx.scale(size, size);
-      if (pet.level) {
-        const pulse = 1 + Math.sin(this.time * 2.1 + pet.id) * .05;
-        ctx.save();
-        ctx.globalAlpha = Math.min(.24, .08 + pet.level * .025);
-        const glow = ctx.createRadialGradient(0, 12, 2, 0, 12, (48 + pet.level * 4) * pulse);
-        glow.addColorStop(0, pet.color);
-        glow.addColorStop(.45, `${pet.color}55`);
-        glow.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.ellipse(0, 15, (42 + pet.level * 3) * pulse, (11 + pet.level) * pulse, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = Math.min(.5, .14 + pet.level * .04);
-        ctx.fillStyle = pet.color;
-        for (let i = 0; i < Math.min(5, pet.level + 2); i++) {
-          const angle = this.time * 1.2 + pet.id + i * 1.7;
-          ctx.beginPath();
-          ctx.arc(Math.cos(angle) * (22 + i * 3), -10 + Math.sin(angle * .9) * 13, 1.2 + (i % 2) * .6, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-      ctx.globalAlpha = .18; ctx.fillStyle = "#dffcff"; ctx.beginPath(); ctx.ellipse(0, 17 + jump, 44, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      const bodyY = y - 14 * size;
+      this.drawPetWaterSplash(ctx, x, y - 9 * size, 44 * size, pet, baseScale, jump / 15);
+      ctx.save(); ctx.translate(x, bodyY - jump); ctx.scale(size, size);
       if (pet.visual === "kraken") {
         ctx.strokeStyle = "#713b91"; ctx.lineCap = "round";
         for (let i = 0; i < 5; i++) { ctx.lineWidth = 8 - i * .45; ctx.beginPath(); ctx.moveTo(-28 + i * 14, 18); ctx.bezierCurveTo(-42 + i * 18, -3, -25 + i * 13 + Math.sin(this.time * 1.4 + i) * 8, -35 - i * 3, -12 + i * 8, -48); ctx.stroke(); }
@@ -3780,41 +3870,16 @@
       const drawX = -targetWidth * sprite.anchorX;
       const drawY = -targetHeight * sprite.anchorY;
       const breath = this.getBreathingIdleTransform("pet", SPRITE_HP_STATES.normal, (pet.id || 0) * .73);
+      const offsetY = (sprite.offsetY || 0) * baseScale;
+      const bodyY = y - targetHeight * (1 - sprite.anchorY) - offsetY;
+      const splashY = y - 15 * baseScale;
+      this.drawPetWaterSplash(ctx, x + targetWidth * .06, splashY, Math.max(28, targetWidth * .42), pet, baseScale, (sprite.bob || 0) / 7);
       ctx.save();
-      ctx.translate(x, y + (sprite.offsetY || 0) * baseScale);
+      ctx.translate(x, bodyY + offsetY);
       ctx.scale(breath.scaleX, breath.scaleY);
-      if (pet.level) {
-        const pulse = 1 + Math.sin(this.time * 2.1 + pet.id) * .04;
-        ctx.save();
-        ctx.globalAlpha = Math.min(.1, .035 + pet.level * .012);
-        const glow = ctx.createRadialGradient(targetWidth * .06, targetHeight * .28, 1, targetWidth * .06, targetHeight * .28, targetWidth * .44 * pulse);
-        glow.addColorStop(0, pet.color);
-        glow.addColorStop(.42, `${pet.color}55`);
-        glow.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.ellipse(targetWidth * .06, targetHeight * .28, targetWidth * .42 * pulse, Math.max(7, targetHeight * .13) * pulse, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = Math.min(.18, .055 + pet.level * .018);
-        ctx.fillStyle = pet.color;
-        for (let i = 0; i < Math.min(5, pet.level + 2); i++) {
-          const angle = this.time * 1.25 + pet.id + i * 1.65;
-          ctx.beginPath();
-          ctx.arc(Math.cos(angle) * targetWidth * (.19 + i * .025), -targetHeight * .18 + Math.sin(angle * .9) * targetHeight * .22, Math.max(1, targetWidth * .012), 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-      ctx.globalAlpha = .16;
-      ctx.fillStyle = "#dffcff";
-      ctx.beginPath();
-      ctx.ellipse(targetWidth * .1, targetHeight * .32, targetWidth * .42, Math.max(3, targetHeight * .06), 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
       ctx.imageSmoothingEnabled = false;
-      ctx.shadowColor = "rgba(0,0,0,.34)";
-      ctx.shadowBlur = 8 * baseScale;
       ctx.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, drawX, drawY, targetWidth, targetHeight);
+      this.drawPetWaterSplash(ctx, targetWidth * .06, targetHeight * (1 - sprite.anchorY) - 15 * baseScale, Math.max(26, targetWidth * .36), pet, baseScale, .35);
       ctx.restore();
       return true;
     }
@@ -3923,29 +3988,32 @@
       const frameHeight = sourceHeight;
       const poseName = this.getPlayerCaptainPose();
       const frame = CAPTAIN_CHARACTER_POSES[poseName] ?? CAPTAIN_CHARACTER_POSES.idle;
-      const bounds = sprite.frameBounds?.[frame] || sprite.referenceBounds;
-      const reference = sprite.referenceBounds || bounds;
-      if (!bounds || !reference) return false;
-      const visibleRatio = clamp(Math.max(reference.visibleHeight || 0, bounds.visibleHeight || 0) / Math.max(1, frameHeight), .18, 1);
+      const fullBounds = sprite.frameBounds?.[frame] || sprite.referenceBounds;
+      const bodyBounds = sprite.frameBodyBounds?.[frame] || sprite.referenceBodyBounds || fullBounds;
+      const referenceBody = sprite.referenceBodyBounds || bodyBounds || fullBounds;
+      if (!fullBounds || !bodyBounds || !referenceBody) return false;
+      const bodyHeight = Math.max(1, referenceBody.visibleHeight || referenceBody.bottom - referenceBody.top + 1);
       const visualHeight = Math.min(targetWidth * config.scale, (config.maxHeight || 38) * scale);
-      const targetFrameHeight = visualHeight / visibleRatio;
-      const targetFrameWidth = targetFrameHeight * (frameWidth / frameHeight);
-      const frameScale = targetFrameHeight / frameHeight;
+      const frameScale = visualHeight / bodyHeight;
+      const targetFrameHeight = frameHeight * frameScale;
+      const targetFrameWidth = frameWidth * frameScale;
       const footX = targetWidth * (config.offsetX || 0);
       const footY = -targetHeight * (shipSprite.anchorY ?? .64) + targetHeight * (config.deckY ?? .55) + (config.offsetY || 0) * scale;
-      const drawX = footX - bounds.centerX * frameScale;
-      const drawY = footY - bounds.bottomY * frameScale;
+      const drawX = footX - bodyBounds.centerX * frameScale;
+      const drawY = footY - bodyBounds.bottomY * frameScale;
       const frameX = frame * frameWidth;
+      const embed = clamp(Number(config.embed ?? .15) || .15, .08, .24);
+      const clipBottom = footY - visualHeight * embed;
+      const shadowY = clipBottom - Math.max(1, 1.5 * scale);
 
       ctx.save();
-      const clipBottom = footY - visualHeight * .1;
       ctx.beginPath();
       ctx.rect(-targetWidth, -targetHeight * 1.4, targetWidth * 2, clipBottom + targetHeight * 1.4);
       ctx.clip();
       ctx.globalAlpha = .24;
       ctx.fillStyle = "rgba(0,0,0,.72)";
       ctx.beginPath();
-      ctx.ellipse(footX, footY + 1 * scale, Math.max(5, visualHeight * .22), Math.max(1.8, visualHeight * .045), 0, 0, Math.PI * 2);
+      ctx.ellipse(footX, shadowY, Math.max(5, visualHeight * .22), Math.max(1.8, visualHeight * .045), 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
       if (poseName === "hit") ctx.filter = "brightness(1.14) saturate(1.08)";
@@ -5743,18 +5811,16 @@
     const target = objectiveTarget(item.objective);
     const ratio = clamp(progress / Math.max(1, target), 0, 1);
     const hiddenSecret = item.secret && status === "locked";
-    const statusText = status === "claimed" ? "Recompensa coletada" : status === "ready" ? "Concluída" : status === "locked" ? "Bloqueada" : "Em andamento";
+    const statusText = status === "claimed" ? "Coletada" : status === "ready" ? "Concluída" : status === "locked" ? "Bloqueada" : "Em andamento";
     const rarity = item.rarity ? `<span class="codex-rarity ${item.rarity.toLowerCase()}">${item.rarity}</span>` : "";
-    const compactMeta = status === "claimed" ? `<div class="codex-compact-meta"><span>Registro concluído</span><strong>${store.claimed[item.id] ? new Date(store.claimed[item.id]).toLocaleDateString("pt-BR") : "Coletada"}</strong></div>` : "";
-    return `<article class="codex-card compact ${status} ${hiddenSecret ? "secret" : ""}">
-      <div class="codex-card-top"><div class="codex-icon">${hiddenSecret ? "?" : item.icon}</div><div><span class="eyebrow">${item.category}</span><h3>${hiddenSecret ? "Missão secreta" : item.name}</h3></div><span class="codex-status">${statusText}</span></div>
-      ${rarity}
-      <p>${hiddenSecret ? "Objetivo oculto até ser descoberto nos mares." : item.description}</p>
-      <div class="codex-objective"><span>Progresso</span><strong>${formatNumber(Math.min(progress, target))} / ${formatNumber(target)}</strong></div>
-      <div class="codex-progress"><i style="width:${Math.round(ratio * 100)}%"></i></div>
-      ${compactMeta || `<div class="codex-meta"><span>Nível ${item.recommendedLevel || item.level || 1}</span><span>${item.resets === "daily" ? "Diária" : item.resets === "weekly" ? "Semanal" : "Permanente"}</span></div>`}
-      <div class="codex-reward"><span>Recompensa</span><strong>${hiddenSecret ? "???" : rewardText(item.reward)}</strong></div>
-      <button class="button primary" data-claim-${kind}="${item.id}" ${status === "ready" ? "" : "disabled"}>${status === "ready" ? "Coletar recompensa" : status === "claimed" ? "Coletada" : "Ainda não concluída"}</button>
+    const period = item.resets === "daily" ? "Diária" : item.resets === "weekly" ? "Semanal" : "Permanente";
+    const claimedDate = status === "claimed" && store.claimed[item.id] ? new Date(store.claimed[item.id]).toLocaleDateString("pt-BR") : "";
+    const actionText = status === "ready" ? "Coletar" : status === "claimed" ? "Coletada" : status === "locked" ? "Bloqueada" : "Pendente";
+    return `<article class="mission-row ${status} ${hiddenSecret ? "secret" : ""}">
+      <div class="mission-row-main"><div class="mission-row-title"><div class="mission-icon">${hiddenSecret ? "?" : item.icon}</div><div><div class="mission-name-line"><h3>${hiddenSecret ? "Missão secreta" : item.name}</h3><span class="codex-status">${statusText}</span></div><p>${hiddenSecret ? "Objetivo oculto até ser descoberto nos mares." : item.description}</p></div></div><div class="mission-row-meta"><span>${item.category}</span><span>Nível ${item.recommendedLevel || item.level || 1}</span><span>${claimedDate || period}</span>${rarity}</div></div>
+      <div class="mission-row-progress"><span>Progresso</span><strong>${formatNumber(Math.min(progress, target))} / ${formatNumber(target)}</strong><div class="codex-progress"><i style="width:${Math.round(ratio * 100)}%"></i></div></div>
+      <div class="mission-row-reward"><span>Recompensa</span><strong>${hiddenSecret ? "???" : rewardText(item.reward)}</strong></div>
+      <button class="button primary mission-row-action" data-claim-${kind}="${item.id}" ${status === "ready" ? "" : "disabled"}>${actionText}</button>
     </article>`;
   }
 
@@ -5763,7 +5829,13 @@
     checkProgressionUnlocks();
     renderProgressionFilters("mission-filters", MISSION_FILTERS, activeMissionFilter);
     const complete = completedCount(state.quests, missionDefinitions);
+    const readyCount = missionDefinitions.filter(item => progressionStatus(item, state.quests, "quests") === "ready").length;
+    const claimAllButton = $("#missions-claim-all");
     $("#missions-summary").textContent = `${complete} / ${missionDefinitions.length}`;
+    if (claimAllButton) {
+      claimAllButton.disabled = readyCount === 0;
+      claimAllButton.textContent = readyCount ? `Coletar tudo (${readyCount})` : "Coletar tudo";
+    }
     const cards = progressionList(missionDefinitions, state.quests, "quests", "mission")
       .filter(entry => shouldShowProgression(entry, activeMissionFilter, "mission"))
       .sort((a, b) => b.score - a.score)
@@ -5890,6 +5962,7 @@
     renderCombatHud();
     if (expensive && shouldRenderInactiveScreens()) Object.values(SCREEN_RENDERERS).forEach(render => render());
     else renderScreen();
+    setActiveScreen(currentScreen);
   }
 
   function upgrade(type) {
@@ -6197,6 +6270,7 @@
     if (target.dataset.tradeAction && target.dataset.tradeResource) openTradeConfirmation(target.dataset.tradeResource, target.dataset.tradeAction);
     if (target.dataset.tradeStep && target.dataset.tradeResource) stepTradeQuantity(target.dataset.tradeResource, Number(target.dataset.tradeStep));
     handleMissionFilterButton(target);
+    if (target.dataset.claimAllMissions !== undefined) claimAllMissionRewards();
     if (target.dataset.claimMission) claimProgressionReward("mission", target.dataset.claimMission);
     handleMapSelection(target);
   }

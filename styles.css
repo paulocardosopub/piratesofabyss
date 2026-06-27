@@ -475,6 +475,67 @@ canvas,
 }
 .codex-compact-meta strong { color: var(--green); }
 .codex-card .button { width: 100%; }
+#screen-missions .page-heading { flex-wrap: wrap; }
+.mission-heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.mission-heading-actions .button { min-width: 146px; white-space: nowrap; }
+.mission-list { display: grid; gap: 8px; }
+.mission-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, .24fr) minmax(170px, .44fr) 116px;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(7,27,40,.7);
+}
+.mission-row.ready { border-color: rgba(247,189,74,.48); background: linear-gradient(90deg, rgba(247,189,74,.1), rgba(7,27,40,.76) 34%); }
+.mission-row.claimed { opacity: .68; }
+.mission-row.locked { filter: grayscale(.35); }
+.mission-row.secret { border-style: dashed; }
+.mission-row-main, .mission-row-main > div, .mission-name-line, .mission-row-reward { min-width: 0; }
+.mission-row-title { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 9px; }
+.mission-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+  border: 1px solid rgba(247,189,74,.24);
+  border-radius: 8px;
+  background: rgba(247,189,74,.075);
+  font-size: 18px;
+}
+.mission-name-line { display: flex; align-items: center; gap: 8px; }
+.mission-row h3 { margin: 0; overflow: hidden; font: 700 15px Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
+.mission-row p { margin: 2px 0 0; overflow: hidden; color: var(--muted); font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.mission-row .codex-status { flex: 0 0 auto; padding: 4px 6px; font-size: 7px; }
+.mission-row.ready .codex-status { color: #2b1805; background: var(--gold); }
+.mission-row-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.mission-row-meta span, .mission-row .codex-rarity {
+  width: auto;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: var(--muted);
+  background: rgba(255,255,255,.045);
+  font-size: 8px;
+  font-weight: 850;
+}
+.mission-row-progress, .mission-row-reward { display: grid; gap: 4px; }
+.mission-row-progress span, .mission-row-reward span { color: var(--muted); font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.mission-row-progress strong { color: #dce9e6; font-size: 11px; font-variant-numeric: tabular-nums; }
+.mission-row-reward strong {
+  display: -webkit-box;
+  max-height: 30px;
+  overflow: hidden;
+  color: var(--gold);
+  font-size: 10px;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.mission-row-action.button { width: 100%; min-height: 34px; padding: 7px 9px; }
 
 .page-heading { display: flex; align-items: center; justify-content: space-between; min-height: 120px; gap: 24px; }
 .page-heading h1 { margin: 4px 0 5px; font: 700 clamp(28px, 4vw, 42px) Georgia, serif; }
@@ -1557,6 +1618,8 @@ canvas,
   .upgrade-balance { min-width: 155px; }
   .upgrade-grid { grid-template-columns: repeat(2, 1fr); }
   .fleet-grid, .equipment-grid, .resources-grid, .codex-grid { grid-template-columns: repeat(3, 1fr); }
+  .mission-row { grid-template-columns: minmax(0, 1fr) minmax(128px, .34fr) 108px; }
+  .mission-row-reward { grid-column: 1 / -1; }
   .skills-grid { grid-template-columns: repeat(2, 1fr); }
   .pets-grid { grid-template-columns: repeat(2, 1fr); }
   .captain-bonus-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1697,6 +1760,11 @@ canvas,
   .ship-stat-row { grid-column: 1 / -1; justify-content: space-between; }
   .ship-stat-row div { text-align: center; }
   .upgrade-grid, .equipment-grid, .skills-grid, .fleet-grid, .resources-grid, .maps-grid, .trade-grid, .codex-grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
+  .mission-heading-actions { width: 100%; justify-content: space-between; }
+  .mission-heading-actions .button { min-width: 132px; }
+  .mission-row { grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 9px; }
+  .mission-row-reward { grid-column: auto; }
+  .mission-row p { white-space: normal; }
   .upgrade-card, .equipment-card, .skill-card, .ship-card, .resource-card { padding: 14px; }
   .ship-visual { margin: -14px -14px 11px; }
   .map-card { min-height: 0; }

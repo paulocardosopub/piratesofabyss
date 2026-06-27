@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=49">
+  <link rel="stylesheet" href="styles.css?v=50">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -197,10 +197,13 @@
       <section class="screen" id="screen-missions" aria-labelledby="missions-title">
         <div class="page-heading">
           <div><span class="eyebrow">ROTAS DO CAPITÃO</span><h1 id="missions-title">Missões</h1><p>Objetivos guiados para evoluir seu navio, abrir mapas, derrotar bosses e manter a frota sempre com um rumo claro.</p></div>
-          <div class="codex-counter"><span>MISSÕES</span><strong id="missions-summary">0 / 100</strong></div>
+          <div class="mission-heading-actions">
+            <button class="button primary" id="missions-claim-all" data-claim-all-missions disabled>Coletar tudo</button>
+            <div class="codex-counter"><span>MISSÕES</span><strong id="missions-summary">0 / 100</strong></div>
+          </div>
         </div>
         <div class="codex-tabs" id="mission-filters" aria-label="Filtros de missões"></div>
-        <div class="codex-grid" id="missions-grid"></div>
+        <div class="mission-list" id="missions-grid"></div>
       </section>
 
       <section class="screen" id="screen-stats" aria-labelledby="stats-title">
@@ -274,6 +277,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=89"></script>
+  <script src="game.js?v=93"></script>
 </body>
 </html>
