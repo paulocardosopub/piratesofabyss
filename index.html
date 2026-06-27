@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=57">
+  <link rel="stylesheet" href="styles.css?v=59">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -34,6 +34,7 @@
         <div class="battle-stage" id="battle-stage">
           <canvas id="sea-canvas" aria-label="Duelo naval automático."></canvas>
           <div class="scene-vignette"></div>
+          <button class="combat-collapse-toggle" id="combat-collapse-toggle" type="button" aria-label="Minimizar combate" aria-pressed="false" title="Minimizar combate"><span aria-hidden="true">-</span></button>
 
           <div class="region-badge">
             <span class="eyebrow">REGIÃO ATUAL</span>
@@ -95,6 +96,10 @@
             <div class="boss-row">
               <div class="boss-portrait" id="boss-portrait">☠</div>
               <div><span class="eyebrow">REGIÃO</span><strong id="boss-name">Boss regional</strong><small id="boss-status">Derrote 100 inimigos</small></div>
+              <div class="boss-map-controls" aria-label="Navegacao rapida de mapas">
+                <button class="boss-map-button" id="boss-prev-map" type="button" data-map-step="-1" aria-label="Voltar mapa" title="Voltar mapa">Voltar</button>
+                <button class="boss-map-button" id="boss-next-map" type="button" data-map-step="1" aria-label="Avancar mapa" title="Avancar mapa">Avancar</button>
+              </div>
               <button class="button boss-button" id="boss-button" disabled>Desafiar Boss</button>
             </div>
           </article>
@@ -277,6 +282,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=108"></script>
+  <script src="game.js?v=110"></script>
 </body>
 </html>

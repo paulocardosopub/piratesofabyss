@@ -2,8 +2,11 @@
   "use strict";
 
   const SAVE_KEY = "pirates-of-the-abyss-save-v1";
+  const COMBAT_MINIMIZED_KEY = "pirates-of-the-abyss-combat-minimized";
   const OFFLINE_REWARD_RATE = .3;
   const OFFLINE_MODAL_AUTO_HIDE_MS = 5000;
+  const COMMON_MONSTER_BALANCE_LAST_REGION = 10;
+  const COMMON_MONSTER_BALANCE_MULTIPLIER = 4;
   const PRESTIGE_REGION_NAME = "Oceano Profundo";
   const PRESTIGE_BOSS_NAME = "Megalodon Ancestral";
   const PET_PIRATE_COIN_COSTS = [10, 18, 30, 45, 65, 90, 120, 155, 200, 260];
@@ -1267,10 +1270,11 @@
 
   function createDefaultState() {
     return {
-      version: 10,
+      version: 11,
       resources: { ouro: 1200, madeira: 90, ferro: 55, tecido: 45, comida: 22, polvora: 28, pedra: 0, cristal: 0, perola: 0, gema: 0, ambar: 0, fragmentos: 0 },
       pirateCoins: 0,
       prestiges: 0,
+      totalActivePlaySeconds: 0,
       prestigeHistory: [],
       captainSelectedGender: null,
       captainLevel: 0,
@@ -1363,13 +1367,15 @@
       merged.pirateCoins = Math.max(0, Math.floor(Number(saved.pirateCoins || 0)));
       merged.prestiges = Math.max(0, Math.floor(Number(saved.prestiges || 0)));
       merged.prestigeHistory = Array.isArray(saved.prestigeHistory) ? saved.prestigeHistory.slice(0, 20) : [];
+      const prestigeActiveSeconds = merged.prestigeHistory.reduce((sum, item) => sum + Math.max(0, Number(item.activeDuration || 0)), 0);
+      merged.totalActivePlaySeconds = Math.max(0, Number(saved.totalActivePlaySeconds || 0), Number(merged.lifetime.playSeconds || 0) + prestigeActiveSeconds);
       syncCaptainState(merged);
       syncCaptainManualSkillState(merged);
       syncCaptainRuntimeState(merged, saved);
       syncCaptainEquipmentState(merged);
       merged.journeyStartedAt = Number(saved.journeyStartedAt || Date.now());
       merged.maxRegionReached = clamp(Math.max(Number(saved.maxRegionReached || 0), merged.regionIndex), 0, REGIONS.length - 1);
-      merged.version = 10;
+      merged.version = 11;
       return merged;
     } catch (error) {
       console.warn("Não foi possível carregar o save.", error);
@@ -1405,6 +1411,7 @@
 
   let state = applyCaptainVisualAuditState(loadState());
   let currentScreen = "home";
+  let combatMinimized = loadCombatMinimizedPreference();
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
   let lastSave = performance.now();
@@ -1818,6 +1825,35 @@
   function commitGame(expensive = true) {
     renderAll(expensive);
     saveGame();
+  }
+
+  function loadCombatMinimizedPreference() {
+    try { return localStorage.getItem(COMBAT_MINIMIZED_KEY) === "1"; } catch (error) { return false; }
+  }
+
+  function setCombatMinimized(minimized, persist = true) {
+    combatMinimized = Boolean(minimized);
+    const shell = $(".persistent-combat");
+    const stage = $("#battle-stage");
+    const button = $("#combat-collapse-toggle");
+    shell?.classList.toggle("combat-minimized", combatMinimized);
+    stage?.classList.toggle("combat-minimized", combatMinimized);
+    if (button) {
+      const label = combatMinimized ? "Maximizar combate" : "Minimizar combate";
+      button.setAttribute("aria-label", label);
+      button.setAttribute("aria-pressed", String(combatMinimized));
+      button.title = label;
+      const icon = button.querySelector("span");
+      if (icon) icon.textContent = combatMinimized ? "+" : "-";
+    }
+    if (persist) {
+      try { localStorage.setItem(COMBAT_MINIMIZED_KEY, combatMinimized ? "1" : "0"); } catch (error) {}
+    }
+    scene?.resize?.();
+  }
+
+  function toggleCombatMinimized() {
+    setCombatMinimized(!combatMinimized);
   }
 
   function clearCurrentEnemy() {
@@ -2436,6 +2472,22 @@
     "MAP-06_05_Canoa_das_Almas_Perdidas_sprite_9frames.png": { name: "Fragata_Pirata", regionIndex: 8 },
     "MAP-06_06_Bote_do_Executor_sprite_9frames.png": { name: "Almirante_Negro", regionIndex: 8 }
   };
+  const BOSS_FIVE_POSE_ANIMATIONS = {
+    spawn: { frames: [0, 1], fps: 3.4, loop: false, blend: true },
+    idle: { frames: [1], fps: 1, loop: true, blend: false },
+    walking: { frames: [1], fps: 1, loop: true, blend: false },
+    attack: { frames: [2], fps: 1, loop: false, blend: false },
+    hit: { frames: [3], fps: 1, loop: false, blend: false },
+    death: { frames: [4], fps: 1, loop: false, blend: false }
+  };
+  const BOSS_FIVE_POSE_LAYOUT = {
+    frames: 5,
+    columns: 5,
+    rows: 1,
+    explicitGrid: true,
+    stateFrames: { normal: 1, damaged: 3, defeated: 4 },
+    animations: BOSS_FIVE_POSE_ANIMATIONS
+  };
   const ENEMY_SPRITESHEET_OPTIONS = {
     Remador_Rival: { width: 250, anchorY: .68 },
     Pescador_Primitivo: { width: 265, anchorY: .7 },
@@ -2450,7 +2502,7 @@
         death: { frames: [8], fps: 1, loop: false, blend: false }
       }
     },
-    Boss_Crocomar_Anciao: { width: 380, anchorY: .58 },
+    Boss_Crocomar_Anciao: { width: 380, anchorY: .58, ...BOSS_FIVE_POSE_LAYOUT },
     Canoa_Tribal: { width: 275, anchorY: .64 },
     Cacador_do_Mangue: { width: 275, anchorY: .67 },
     Reptil_das_Raizes: {
@@ -2467,13 +2519,7 @@
     Boss_Deinosuchus_do_Mangue: {
       width: 390,
       anchorY: .59,
-      animations: {
-        idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
-        walking: { frames: [0, 1, 2, 1], fps: 5, loop: true, blend: true },
-        attack: { frames: [3, 4, 5, 4], fps: 8, loop: false, blend: true },
-        hit: { frames: [6, 7], fps: 7.5, loop: false, blend: true },
-        death: { frames: [8], fps: 1, loop: false, blend: false }
-      }
+      ...BOSS_FIVE_POSE_LAYOUT
     },
     Canoa_de_Couro: { width: 260, anchorY: .58 },
     Pterodactilo_Cacador: { width: 300, anchorY: .56, offsetY: -52 },
@@ -2538,11 +2584,17 @@
     const base = ENEMY_SPRITE_LAYOUTS[key] || ENEMY_SPRITE_LAYOUTS[legacyKey] || {};
     const override = ENEMY_SPRITESHEET_OPTIONS_BY_KEY[key] || {};
     return {
+      frames: base.frames,
+      columns: base.columns,
+      rows: base.rows,
       width: base.width,
       anchorX: base.anchorX,
       anchorY: base.anchorY,
       offsetX: base.offsetX,
       offsetY: base.offsetY,
+      explicitGrid: base.explicitGrid,
+      stateFrames: base.stateFrames,
+      animations: base.animations,
       ...override
     };
   }
@@ -2675,6 +2727,7 @@
     const fallback = clamp(Math.floor(Number(fallbackFrame) || 0), 0, maxFrame);
     const rawFrames = animation?.frames?.length ? animation.frames : [fallback];
     const frames = rawFrames.map(frame => clamp(Math.floor(Number(frame) || 0), 0, maxFrame));
+    if (sprite?.explicitGrid) return frames;
     if (key === "death") return [fallback];
     const stableFrames = frames.filter(frame => isFrameStableForAnimation(sprite, frame, referenceFrame, options));
     return stableFrames.length === frames.length ? frames : [fallback];
@@ -2718,6 +2771,14 @@
     const role = sprite.role || "enemy";
     const defaults = SPRITE_STATE_SPRITES[role] || ENEMY_STATE_SPRITES;
     const maxFrame = Math.max(0, (sprite.frames || 1) - 1);
+    if (sprite.customStateFrames) {
+      sprite.stateFrames = {
+        normal: clamp(Math.floor(Number(sprite.customStateFrames.normal) || 0), 0, maxFrame),
+        damaged: clamp(Math.floor(Number(sprite.customStateFrames.damaged ?? sprite.customStateFrames.normal) || 0), 0, maxFrame),
+        defeated: clamp(Math.floor(Number(sprite.customStateFrames.defeated ?? sprite.customStateFrames.normal) || 0), 0, maxFrame)
+      };
+      return;
+    }
     const normalFrame = clamp(Math.floor(defaults.normal || 0), 0, maxFrame);
     const defeatedFrame = clamp(Math.floor(defaults.defeated ?? normalFrame), 0, maxFrame);
     if (role !== "enemy") {
@@ -2736,6 +2797,7 @@
   }
 
   function normalizeSpritesheetGrid(sprite, width, height) {
+    if (sprite.explicitGrid) return;
     const fileFrameCount = getSpritesheetFrameCountFromFile(sprite.file);
     if (fileFrameCount === 9 && width === height && width % 3 === 0 && height % 3 === 0) {
       sprite.columns = 3;
@@ -3105,7 +3167,8 @@
     const name = getEnemySpritesheetNameFromFile(file);
     const options = getEnemySpritesheetOptions(name);
     const fileFrameCount = getSpritesheetFrameCountFromFile(file);
-    const usesNineFrameLayout = fileFrameCount === 9;
+    const optionFrameCount = Math.floor(Number(options.frames) || 0);
+    const usesNineFrameLayout = !options.explicitGrid && !optionFrameCount && fileFrameCount === 9;
     const key = normalizeEnemySpriteKey(name);
     const regionalKey = alias?.regionIndex != null ? getEnemyRegionalSpritesheetKey(key, alias.regionIndex) : key;
     const sprite = {
@@ -3116,10 +3179,12 @@
       canvas: null,
       file,
       regionIndex: alias?.regionIndex ?? null,
-      frames: fileFrameCount || options.frames || 9,
+      frames: optionFrameCount || fileFrameCount || 9,
       columns: options.columns || 3,
       rows: usesNineFrameLayout ? 3 : options.rows || 3,
       animations: options.animations || null,
+      explicitGrid: Boolean(options.explicitGrid),
+      customStateFrames: options.stateFrames || null,
       width: options.width || 285,
       anchorX: options.anchorX ?? .5,
       anchorY: options.anchorY ?? .64,
@@ -4102,7 +4167,7 @@
         actionName = "spawn";
         elapsed = Math.max(0, now - animation.spawnStartedAt);
         actionProgress = clamp(elapsed / BOSS_SPAWN_ANIMATION_SECONDS, 0, 1);
-        frame = normalFrame;
+        frame = getAnimationFrameAtTime(sprite, "spawn", elapsed, normalFrame, normalFrame, { centerShift: .24, bottomShift: .24, topShift: .3, minArea: .45, maxArea: 1.6 });
       } else if (animation.attackUntil > now) {
         actionName = "attack";
         elapsed = Math.max(0, now - animation.attackStartedAt);
@@ -4710,6 +4775,11 @@
     return 1;
   }
 
+  function getCommonMonsterBalanceMultiplier(regionIndex) {
+    const index = Math.floor(Number(regionIndex) || 0);
+    return index >= 0 && index <= COMMON_MONSTER_BALANCE_LAST_REGION ? COMMON_MONSTER_BALANCE_MULTIPLIER : 1;
+  }
+
   function endgameRequirementIssues(index) {
     const req = ENDGAME_REQUIREMENTS[index];
     if (!req) return [];
@@ -4735,9 +4805,10 @@
     const profile = isBoss ? null : ENEMY_CATEGORIES[encounter.category];
     const mod = ENDGAME_ENEMY_MODS[state.regionIndex] || {};
     const stage = getEndgameStageMultiplier(state.regionIndex);
+    const commonBalance = isBoss ? 1 : getCommonMonsterBalanceMultiplier(state.regionIndex);
     const enemyName = isBoss ? region.boss : encounter.name;
     const visual = inferEnemyVisual(enemyName, region, isBoss ? "BOSS" : encounter.category, isBoss ? 5 : encounter.tier, isBoss);
-    const hp = Math.round(region.baseHp * variation * (isBoss ? 34 * (mod.bossHp || 1) : profile.hp * stage * (mod.hp || 1)));
+    const hp = Math.round(region.baseHp * variation * (isBoss ? 34 * (mod.bossHp || 1) : profile.hp * stage * (mod.hp || 1) * commonBalance));
     const spawnEndsAt = isBoss ? scene.time + BOSS_SPAWN_ANIMATION_SECONDS : 0;
     state.combat.enemy = {
       name: enemyName,
@@ -4752,7 +4823,7 @@
       spawnEndsAt,
       maxHp: hp,
       hp,
-      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 * (mod.bossDamage || 1) : profile.damage * stage * (mod.damage || 1))),
+      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 * (mod.bossDamage || 1) : profile.damage * stage * (mod.damage || 1) * commonBalance)),
       armor: Math.round((isBoss ? 22 + state.regionIndex * 9 : (2 + state.regionIndex * 5) * profile.armor) * (isBoss ? (mod.bossArmor || 1) : (mod.armor || 1))),
       evasion: Math.min(.28, (isBoss ? .035 : profile.evasion) + (mod.evasion || 0)),
       attackSpeed: (isBoss ? .82 : profile.attackSpeed) * (mod.attackSpeed || 1),
@@ -5087,6 +5158,7 @@
   function combatTick(dt, now) {
     if (!state.combat.running) return;
     state.lifetime.playSeconds += dt;
+    state.totalActivePlaySeconds = Math.max(0, Number(state.totalActivePlaySeconds) || 0) + dt;
     if (state.combat.repairing) {
       const elapsed = now - state.combat.repairStarted;
       if (elapsed >= 4000 || elapsed > 6000) finishRepair(elapsed > 6000);
@@ -5154,7 +5226,7 @@
     const stats = getStats();
     const prestigeIdle = getPrestigeBonuses().idle;
     const efficiency = (.55 + Math.min(.25, (state.resources.comida || 0) / 5000)) * (1 + prestigeIdle);
-    const cycle = region.baseHp / Math.max(1, stats.dps) + getSpawnDelay() / 1000;
+    const cycle = (region.baseHp * getCommonMonsterBalanceMultiplier(state.regionIndex)) / Math.max(1, stats.dps) + getSpawnDelay() / 1000;
     const kills = Math.max(1, Math.floor(capped / cycle * efficiency * OFFLINE_REWARD_RATE));
     const gold = calculateGoldReward(kills * region.gold * .94);
     const xp = Math.round(kills * region.xp * .94);
@@ -5397,6 +5469,21 @@
     $("#boss-status").textContent = defeated ? "Boss derrotado • continue farmando" : available ? "Desafio disponível agora" : `Faltam ${Math.max(0, 100 - kills)} vitórias`;
     $("#boss-button").disabled = !available || Boolean(state.combat.enemy?.isBoss);
     $("#boss-button").textContent = defeated ? "Boss derrotado" : state.combat.enemy?.isBoss ? "Em combate" : "Desafiar boss";
+    const prevMapButton = $("#boss-prev-map");
+    const nextMapButton = $("#boss-next-map");
+    if (prevMapButton) {
+      const prevIndex = state.regionIndex - 1;
+      prevMapButton.disabled = prevIndex < 0;
+      prevMapButton.title = prevIndex >= 0 ? `Voltar para ${REGIONS[prevIndex].name}` : "Primeiro mapa";
+      prevMapButton.setAttribute("aria-label", prevMapButton.title);
+    }
+    if (nextMapButton) {
+      const nextIndex = state.regionIndex + 1;
+      const unlocked = nextIndex < state.unlockedRegions && nextIndex < REGIONS.length;
+      nextMapButton.disabled = !unlocked;
+      nextMapButton.title = nextIndex >= REGIONS.length ? "Ultimo mapa" : unlocked ? `Avancar para ${REGIONS[nextIndex].name}` : "Proximo mapa bloqueado";
+      nextMapButton.setAttribute("aria-label", nextMapButton.title);
+    }
     $("#start-button").textContent = `Combate Auto: ${state.combat.running ? "ON" : "OFF"}`;
     const needed = xpNeeded();
     const xpText = $("#xp-text");
@@ -6274,11 +6361,13 @@
       number: state.prestiges + 1, date: new Date().toLocaleDateString("pt-BR"), map: state.maxRegionReached + 1,
       boss: REGIONS[strongestBossIndex].boss, power: getStats().power, coins: reward,
       ship: SHIPS[Math.max(...state.ownedShips)].name, pet: currentPet?.name || null,
-      duration: Math.max(0, Math.floor((Date.now() - state.journeyStartedAt) / 1000))
+      duration: Math.max(0, Math.floor((Date.now() - state.journeyStartedAt) / 1000)),
+      activeDuration: Math.max(0, Math.floor(Number(state.lifetime.playSeconds || 0)))
     };
     const permanent = {
       prestiges: state.prestiges + 1,
       pirateCoins: state.pirateCoins + reward,
+      totalActivePlaySeconds: Math.max(0, Number(state.totalActivePlaySeconds) || 0),
       captainSelectedGender: state.captainSelectedGender,
       captainLevel: state.captainLevel,
       captainVisualImage: state.captainVisualImage,
@@ -6320,7 +6409,7 @@
     $("#progression-stats").innerHTML = list([
       ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
-    $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
+    $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
   }
 
   const SCREEN_ALIASES = { trade: "resources" };
@@ -6634,6 +6723,25 @@
     renderMaps();
   }
 
+  function quickSelectRegionMap(index) {
+    index = Math.floor(Number(index));
+    if (!Number.isInteger(index) || index < 0 || index >= REGIONS.length) return;
+    if (!(index < state.unlockedRegions)) {
+      toast("Esse mapa ainda nao foi desbloqueado.", "danger-toast");
+      return;
+    }
+    if (index === state.regionIndex) return;
+    const issues = endgameRequirementIssues(index);
+    state.regionIndex = index;
+    activeMapInfoIndex = null;
+    syncCaptainEquipmentState(state);
+    scheduleNearbyRegionPreload();
+    clearCurrentEnemy();
+    toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa regiao.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
+    if (issues.length) addLog(`Alerta de endgame: recomenda-se evoluir antes de avancar. ${issues.join(" - ")}.`, "danger-text");
+    commitGame(true);
+  }
+
   function handleMapSelection(target) {
     if (!target.dataset.selectMap) return;
     const index = Number(target.dataset.selectMap);
@@ -6663,6 +6771,10 @@
     }
     if (target.dataset.mapHotspot !== undefined) {
       openMapInfo(Number(target.dataset.mapHotspot));
+      return;
+    }
+    if (target.dataset.mapStep !== undefined) {
+      quickSelectRegionMap(state.regionIndex + Number(target.dataset.mapStep));
       return;
     }
     if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);
@@ -6797,6 +6909,7 @@
   $("#start-button").addEventListener("click", toggleAutoCombat);
   $("#reset-button").addEventListener("click", repairShipFromButton);
   $("#boss-button").addEventListener("click", challengeBoss);
+  $("#combat-collapse-toggle")?.addEventListener("click", toggleCombatMinimized);
   $("#offline-close").addEventListener("click", closeOfflineModal);
   $("#wipe-button").addEventListener("click", () => $("#confirm-modal").classList.remove("hidden"));
   $("#confirm-cancel").addEventListener("click", () => $("#confirm-modal").classList.add("hidden"));
@@ -6816,6 +6929,7 @@
   });
   window.addEventListener("beforeunload", saveGame);
 
+  setCombatMinimized(combatMinimized, false);
   const offlineSeconds = (Date.now() - Number(state.lastSeen || Date.now())) / 1000;
   if (!VISUAL_AUDIT_CONFIG && offlineSeconds >= 30) applyOfflineProgress(offlineSeconds, true);
   state.combat.playerHp = clamp(state.combat.playerHp || getStats().maxHp, 1, getStats().maxHp);
