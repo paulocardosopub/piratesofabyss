@@ -21,6 +21,8 @@
   const CAPTAIN_MANUAL_SKILL_BASE_COOLDOWN = 10;
   const CAPTAIN_MANUAL_SKILL_MAX_LEVEL = 20;
   const CAPTAIN_HP_REGEN_INTERVAL_SECONDS = 5;
+  const AUTO_ATTACK_CAPTAIN_LEVEL_REQUIRED = 2;
+  const MANUAL_ATTACK_TUTORIAL_DURATION_MS = 30000;
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -1925,6 +1927,8 @@
   let activeMapInfoIndex = null;
   let pendingBossMapAdvanceTimer = 0;
   let pendingSurpriseBossTimer = 0;
+  let manualAttackTutorialStartedAt = Date.now();
+  let manualAttackTutorialDismissed = false;
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   function formatNumber(value) {
@@ -2151,7 +2155,22 @@
   }
 
   function getCombatRegionLabel(region = REGIONS[state.regionIndex]) {
-    return `${region.name} • Mapa ${state.regionIndex + 1}/${REGIONS.length}`;
+    const regionIndex = REGIONS.indexOf(region);
+    const number = regionIndex >= 0 ? regionIndex + 1 : state.regionIndex + 1;
+    return `${number} - ${region.name}`;
+  }
+
+  function isAutoAttackUnlocked(source = state) {
+    return Math.floor(Number(source.captainRuntimeLevel || 1)) >= AUTO_ATTACK_CAPTAIN_LEVEL_REQUIRED;
+  }
+
+  function shouldShowManualAttackTutorial(now = Date.now()) {
+    return state.pirateLevel < 2 && !manualAttackTutorialDismissed && now - manualAttackTutorialStartedAt <= MANUAL_ATTACK_TUTORIAL_DURATION_MS;
+  }
+
+  function completeManualAttackTutorial() {
+    manualAttackTutorialDismissed = true;
+    $("#manual-attack-tutorial")?.classList.add("hidden");
   }
 
   function getUpgradeCost(type, level = state.levels[type]) {
@@ -6072,10 +6091,20 @@
   }
 
   function manualShipAttack() {
+    if (state.combat.repairing || state.combat.playerHp <= 0) return false;
+    if (!state.combat.running) {
+      state.combat.running = true;
+      state.hasStarted = true;
+      trackAction("firstCombat");
+    }
+    if (!state.combat.enemy) {
+      state.combat.spawnTimer = 0;
+      spawnEnemy(false);
+    }
     const enemy = state.combat.enemy;
-    if (!state.combat.running || state.combat.repairing || state.combat.playerHp <= 0) return false;
     if (!enemy || enemy.defeated || isBossIntroActive(enemy)) return false;
     basicAttack({ manual: true, allowDoubleStrike: false });
+    completeManualAttackTutorial();
     renderCombatHud();
     return true;
   }
@@ -6347,9 +6376,13 @@
     }
     if (enemy.slowed > 0) enemy.slowed -= dt;
     const stats = getStats();
-    state.combat.attackTimer += dt * 1000;
-    let shots = 0;
-    while (state.combat.attackTimer >= stats.attackInterval && shots < 4 && state.combat.enemy) { state.combat.attackTimer -= stats.attackInterval; basicAttack(); shots++; }
+    if (isAutoAttackUnlocked()) {
+      state.combat.attackTimer += dt * 1000;
+      let shots = 0;
+      while (state.combat.attackTimer >= stats.attackInterval && shots < 4 && state.combat.enemy) { state.combat.attackTimer -= stats.attackInterval; basicAttack(); shots++; }
+    } else {
+      state.combat.attackTimer = 0;
+    }
     if (!state.combat.enemy) return;
     const pet = getEquippedPet();
     if (pet) {
@@ -6532,6 +6565,93 @@
     }
   }
 
+  function getSpritesheetFrameAspect(sprite, fallback = .72) {
+    if (!sprite) return fallback;
+    const source = sprite.canvas || sprite.image;
+    const sourceWidth = source?.width || source?.naturalWidth || 0;
+    const sourceHeight = source?.height || source?.naturalHeight || 0;
+    const columns = Math.max(1, sprite.columns || 1);
+    const rows = Math.max(1, sprite.rows || 1);
+    if (!sourceWidth || !sourceHeight) return fallback;
+    return (sourceHeight / rows) / Math.max(1, sourceWidth / columns);
+  }
+
+  function getCombatEntityHudAnchors() {
+    const stage = $("#battle-stage");
+    const w = scene.width || stage?.clientWidth || 320;
+    const h = scene.height || stage?.clientHeight || 180;
+    const compactStage = w < 620 || h < 240;
+    const playerY = h * (compactStage ? .73 : .69) + Math.sin(scene.time * 1.55) * 3;
+    const enemyY = h * (compactStage ? .64 : .60);
+    const playerScale = Math.min(1.15, w / 950, h / 300);
+    const enemyBaseScale = Math.min(1.02, w / 1050, h / 300);
+    const playerSprite = getPlayerShipSpritesheet(SHIPS[state.shipId].name);
+    const playerHeight = (playerSprite?.width || 240) * playerScale * getSpritesheetFrameAspect(playerSprite, .72);
+    const playerAnchorY = playerSprite?.anchorY ?? .64;
+    const playerTop = playerY + (playerSprite?.offsetY || 0) * playerScale - playerHeight * playerAnchorY;
+    let enemyTop = enemyY - 92 * enemyBaseScale;
+    const enemy = state.combat.enemy;
+
+    if (enemy) {
+      const enemySprite = getEnemyAnimatedSpritesheet(enemy);
+      if (enemySprite) {
+        const scale = scene.enemySceneScale(enemyBaseScale, enemy, enemySprite.width);
+        const enemyHeight = enemySprite.width * scale * getSpritesheetFrameAspect(enemySprite, .72);
+        enemyTop = enemyY + (enemySprite.offsetY || 0) * scale - enemyHeight * (enemySprite.anchorY ?? .64);
+      } else {
+        const visual = enemy.visual || inferEnemyVisual(enemy.name, REGIONS[state.regionIndex], enemy.category, enemy.visualTier, enemy.isBoss);
+        const scale = scene.enemySceneScale(enemyBaseScale * (visual?.scale || 1), enemy, 250 * (visual?.scale || 1));
+        enemyTop = enemyY - (enemy.isBoss ? 132 : 108) * scale;
+      }
+    }
+
+    return {
+      width: w,
+      height: h,
+      compactStage,
+      player: { x: w * .29, y: playerTop - (compactStage ? 7 : 12) },
+      enemy: { x: w * .71, y: enemyTop - (compactStage ? 7 : 12) }
+    };
+  }
+
+  function positionFloatingHealth(node, anchor, bounds) {
+    if (!node || !anchor || !bounds) return;
+    const nodeWidth = node.offsetWidth || 150;
+    const nodeHeight = node.offsetHeight || 38;
+    const edge = bounds.compactStage ? 6 : 12;
+    const topClearance = bounds.compactStage ? 30 : 52;
+    const bottomClearance = bounds.compactStage ? 40 : 76;
+    const minY = topClearance + nodeHeight;
+    const maxY = Math.max(minY, bounds.height - bottomClearance);
+    node.style.left = `${clamp(anchor.x, nodeWidth / 2 + edge, bounds.width - nodeWidth / 2 - edge)}px`;
+    node.style.top = `${clamp(anchor.y, minY, maxY)}px`;
+  }
+
+  function positionManualAttackTutorial(bounds) {
+    const node = $("#manual-attack-tutorial");
+    if (!node || !bounds) return;
+    const visible = shouldShowManualAttackTutorial();
+    node.classList.toggle("hidden", !visible);
+    if (!visible) return;
+    const hitbox = scene.getPlayerManualAttackHitbox?.("mouse");
+    if (!hitbox) return;
+    const nodeWidth = node.offsetWidth || 130;
+    const nodeHeight = node.offsetHeight || 30;
+    const edge = bounds.compactStage ? 8 : 14;
+    const playerHealthBottom = Number.parseFloat($("#player-floating-health")?.style.top || "") || bounds.player.y;
+    const targetX = hitbox.x + hitbox.width * .54;
+    const targetY = Math.max(hitbox.y + hitbox.height * .62, playerHealthBottom + nodeHeight + (bounds.compactStage ? 8 : 14));
+    node.style.left = `${clamp(targetX, nodeWidth / 2 + edge, bounds.width - nodeWidth / 2 - edge)}px`;
+    node.style.top = `${clamp(targetY, nodeHeight + 8, bounds.height - (bounds.compactStage ? 50 : 86))}px`;
+  }
+
+  function updateFloatingCombatHudPositions() {
+    const anchors = getCombatEntityHudAnchors();
+    positionFloatingHealth($("#player-floating-health"), anchors.player, anchors);
+    positionFloatingHealth($("#enemy-floating-health"), anchors.enemy, anchors);
+    positionManualAttackTutorial(anchors);
+  }
+
   function renderCombatHud() {
     const stats = getStats();
     const ship = SHIPS[state.shipId];
@@ -6540,25 +6660,20 @@
     const maxHp = stats.maxHp;
     $("#battle-stage")?.classList.toggle("fixed-background", regionUsesFixedBackground(state.regionIndex));
     $("#scene-region").textContent = getCombatRegionLabel(region);
-    $("#scene-weather").textContent = region.dayNightCycle === false ? region.weather : `${region.weather} • ${scene.getDayState(region).label}`;
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
-    $("#player-health-fill").style.width = `${state.combat.playerHp / maxHp * 100}%`;
+    $("#player-health-fill").style.width = `${state.combat.playerHp / Math.max(1, maxHp) * 100}%`;
     $("#player-health-text").textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(maxHp)}`;
     $("#ship-name").textContent = ship.name;
-    $("#ship-level-badge").textContent = `NV. ${state.levels.ship}`;
+    $("#enemy-floating-health")?.classList.toggle("hidden", !enemy);
     if (enemy) {
       $("#enemy-name").textContent = enemy.name;
-      $("#enemy-kind").textContent = enemy.kind;
-      $("#enemy-level").textContent = enemy.isBoss ? "BOSS" : `NV. ${1 + state.regionIndex * 10}`;
-      $("#enemy-health-fill").style.width = `${Math.max(0, enemy.hp / enemy.maxHp * 100)}%`;
+      $("#enemy-health-fill").style.width = `${Math.max(0, enemy.hp / Math.max(1, enemy.maxHp) * 100)}%`;
       $("#enemy-health-text").textContent = `${formatNumber(enemy.hp)} / ${formatNumber(enemy.maxHp)}`;
     } else {
-      $("#enemy-name").textContent = state.combat.running ? "Vasculhando o horizonte..." : "Nenhum alvo avistado";
-      $("#enemy-kind").textContent = "ALTO-MAR";
-      $("#enemy-level").textContent = "—";
       $("#enemy-health-fill").style.width = "0%";
-      $("#enemy-health-text").textContent = "Aguardando inimigo";
+      $("#enemy-health-text").textContent = "";
     }
+    updateFloatingCombatHudPositions();
   }
 
   function renderTopbar() {
@@ -6622,7 +6737,6 @@
     const kills = state.regionKills[state.regionIndex];
     $("#battle-stage")?.classList.toggle("fixed-background", regionUsesFixedBackground(state.regionIndex));
     $("#scene-region").textContent = getCombatRegionLabel(region);
-    $("#scene-weather").textContent = region.weather;
     $("#metric-damage").textContent = formatNumber(stats.damage);
     $("#metric-dps").textContent = formatNumber(stats.dps);
     const speedMetric = $("#metric-speed");
@@ -6654,7 +6768,12 @@
       nextMapButton.title = nextIndex >= REGIONS.length ? "Ultimo mapa" : unlocked ? `Avancar para ${REGIONS[nextIndex].name}` : "Proximo mapa bloqueado";
       nextMapButton.setAttribute("aria-label", nextMapButton.title);
     }
-    $("#start-button").textContent = `Combate Auto: ${state.combat.running ? "ON" : "OFF"}`;
+    const autoAttackUnlocked = isAutoAttackUnlocked();
+    const startButton = $("#start-button");
+    startButton.textContent = autoAttackUnlocked
+      ? `Combate Auto: ${state.combat.running ? "ON" : "OFF"}`
+      : state.combat.running ? "Combate: ON • Auto no Nv. 2" : "Iniciar combate manual";
+    startButton.title = autoAttackUnlocked ? "Liga ou desliga o combate automático." : "Auto ataque libera no nível 2 do Capitão. Até lá, clique no barco para atacar.";
     const needed = xpNeeded();
     const xpText = $("#xp-text");
     const pirateLevelText = $("#pirate-level-text");
@@ -6920,7 +7039,7 @@
 
   function captainManualSkillDockHtml() {
     const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_MANUAL_SKILL_KEY];
-    return `<button class="skill-orb manual-skill-orb" data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}" title="${meta.name}"><span class="cooldown"></span><span class="icon">${meta.icon}</span><small>MAN</small></button>`;
+    return `<button class="skill-orb manual-skill-orb" data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}" title="${meta.name}" aria-label="${meta.name}"><span class="cooldown"></span><span class="icon">✦</span></button>`;
   }
 
   function updateCaptainManualSkillDock() {
@@ -6935,7 +7054,8 @@
     node.classList.toggle("off", unlocked && !ready);
     node.disabled = !ready;
     node.querySelector(".cooldown").style.transform = `scaleY(${unlocked ? clamp(remaining / meta.cooldown, 0, 1) : 1})`;
-    node.querySelector("small").textContent = !unlocked ? "PIR" : remaining > 0 ? `${Math.ceil(remaining)}s` : hasTarget ? "MAN" : "ALVO";
+    const label = node.querySelector("small");
+    if (label) label.textContent = "";
     node.title = !unlocked
       ? "Selecione um pirata inicial para desbloquear Sabotar Inimigo"
       : remaining > 0
@@ -6947,8 +7067,12 @@
 
   function renderSkillDock() {
     const dock = $("#skill-dock");
+    const manualDock = $("#manual-skill-dock");
     const skillKeys = Object.keys(SKILL_META);
-    if (dock.childElementCount === skillKeys.length + 1 && $(`[data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}"]`, dock)) {
+    if (
+      dock.childElementCount === skillKeys.length &&
+      (!manualDock || (manualDock.childElementCount === 1 && $(`[data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}"]`, manualDock)))
+    ) {
       skillKeys.forEach(key => {
         const node = $(`[data-skill-dock="${key}"]`, dock);
         node.classList.toggle("off", !state.skills[key].auto);
@@ -6959,7 +7083,9 @@
       updateCaptainManualSkillDock();
       return;
     }
-    dock.innerHTML = `${Object.entries(SKILL_META).map(([key, meta]) => `<button class="skill-orb ${isSkillUnlocked(key) ? "" : "locked"}" data-skill-dock="${key}" title="${meta.name}"><span class="cooldown"></span><span class="icon">${meta.icon}</span><small>${isSkillUnlocked(key) ? (state.skills[key].auto ? "AUTO" : "OFF") : `N${meta.unlock}`}</small></button>`).join("")}${captainManualSkillDockHtml()}`;
+    dock.innerHTML = Object.entries(SKILL_META).map(([key, meta]) => `<button class="skill-orb ${isSkillUnlocked(key) ? "" : "locked"}" data-skill-dock="${key}" title="${meta.name}"><span class="cooldown"></span><span class="icon">${meta.icon}</span><small>${isSkillUnlocked(key) ? (state.skills[key].auto ? "AUTO" : "OFF") : `N${meta.unlock}`}</small></button>`).join("");
+    if (manualDock) manualDock.innerHTML = captainManualSkillDockHtml();
+    else dock.insertAdjacentHTML("beforeend", captainManualSkillDockHtml());
     updateCaptainManualSkillDock();
   }
 
@@ -8017,6 +8143,11 @@
     }
     const target = event.target.closest("button");
     if (!target) return;
+    if (target.dataset.manualBasicAttackTutorial !== undefined) {
+      if (!manualShipAttack()) toast("Toque no barco quando houver alvo vivo.", "danger-toast");
+      else commitGame(false);
+      return;
+    }
     if (target.dataset.closeMapInfo !== undefined) {
       closeMapInfo();
       return;
@@ -8113,6 +8244,7 @@
       trackAction("firstCombat");
       if (state.combat.playerHp <= 0) finishRepair(true);
       if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay();
+      if (!isAutoAttackUnlocked()) toast("Auto ataque libera no nível 2 do Capitão. Clique no barco para atacar.", "gold-toast");
     }
     commitGame(false);
   }

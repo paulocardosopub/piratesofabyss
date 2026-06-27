@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v112-captain-manual-positions";
+const CACHE = "pirates-abyss-v118-smaller-attack-tutorial";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=63",
-  "game.js?v=127",
+  "styles.css?v=68",
+  "game.js?v=131",
   "icon.svg",
   "manifest.webmanifest"
 ];
