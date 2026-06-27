@@ -1981,6 +1981,9 @@
   function calculateXpReward(amount) {
     return Math.max(0, Number(amount) || 0) * getXpGainMultiplier();
   }
+  function getPrestigeMonsterCoinBonus() {
+    return Math.floor(Math.max(0, Number(state.lifetime.enemies) || 0) / PRESTIGE_MONSTER_COIN_STEP) * PRESTIGE_MONSTER_COIN_BONUS;
+  }
   function getPrestigeReward() {
     if (!canPrestige()) return 0;
     const stats = getStats();
@@ -1991,7 +1994,7 @@
     const strengthScore = Math.sqrt(stats.power) / 14 + Math.sqrt(stats.dps) / 18 + Math.sqrt(stats.maxHp) / 30;
     const journeyScore = upgradeScore * .12 + Math.log10(1 + state.lifetime.enemies) * 1.5 + resourceScore * .08 + state.ownedPets.length;
     const baseReward = Math.max(nextPetCost, Math.floor(nextPetCost + Math.max(0, progressScore + strengthScore + journeyScore - 8)));
-    return Math.floor(baseReward * PRESTIGE_PIRATE_COIN_REWARD_MULTIPLIER);
+    return Math.floor(baseReward * PRESTIGE_PIRATE_COIN_REWARD_MULTIPLIER + getPrestigeMonsterCoinBonus());
   }
 
   function getSkillCooldown(key, level = state.skills[key].level, speed = getStats().speed) {
@@ -2589,7 +2592,9 @@
   const ENEMY_STATE_SPRITES = { normal: 0, damaged: 6, defeated: 8 };
   const PLAYER_SHIP_STATE_SPRITES = { normal: 0, damaged: 0, defeated: 8 };
   const PET_STATE_SPRITES = { normal: 0, damaged: 1, defeated: 2 };
-  const PRESTIGE_PIRATE_COIN_REWARD_MULTIPLIER = 3;
+  const PRESTIGE_PIRATE_COIN_REWARD_MULTIPLIER = 6;
+  const PRESTIGE_MONSTER_COIN_STEP = 100;
+  const PRESTIGE_MONSTER_COIN_BONUS = 10;
   const SPRITE_STATE_SPRITES = {
     enemy: ENEMY_STATE_SPRITES,
     playerShip: PLAYER_SHIP_STATE_SPRITES,
@@ -7098,7 +7103,8 @@
     $("#prestige-content").classList.toggle("prestige-disabled", !unlocked);
     $("#prestige-summary").innerHTML = [
       ["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Mapa máximo", `${state.maxRegionReached + 1} • ${REGIONS[state.maxRegionReached].name}`],
-      ["Bosses derrotados", bossesCount()], ["Poder Naval", stats.power], ["DPS total", stats.dps], ["Nível pirata", state.pirateLevel], ["Melhor navio", bestShip.name]
+      ["Bosses derrotados", bossesCount()], ["Monstros derrotados", state.lifetime.enemies], ["Bônus monstros", `+${formatNumber(getPrestigeMonsterCoinBonus())} Moedas Pirata`],
+      ["Poder Naval", stats.power], ["DPS total", stats.dps], ["Nível pirata", state.pirateLevel], ["Melhor navio", bestShip.name]
     ].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
     $("#prestige-reward").textContent = `${formatNumber(reward)} Moedas Pirata`;
     $("#prestige-button").disabled = !unlocked;
