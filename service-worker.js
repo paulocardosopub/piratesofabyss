@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v43-captain-topbar";
+const CACHE = "pirates-abyss-v51-fixed-prologue-backgrounds";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -82,6 +82,24 @@ const ENEMY_ASSET_FILES = [
   "transporte_ilegal.png",
   "vulto_do_triangulo.png"
 ];
+const ENEMY_SPRITESHEET_ASSET_FILES = [
+  "01_Remador_Rival_sprite_9frames.png",
+  "02_Pescador_Primitivo_sprite_9frames.png",
+  "03_Jacare_da_Lagoa_sprite_9frames.png",
+  "04_Boss_Crocomar_Anciao_sprite_9frames.png",
+  "05_Canoa_Tribal_sprite_9frames.png",
+  "06_Cacador_do_Mangue_sprite_9frames.png",
+  "07_Reptil_das_Raizes_sprite_9frames.png",
+  "08_Boss_Deinosuchus_do_Mangue_sprite_9frames.png",
+  "01_Canoa_de_Couro_sprite_9frames.png",
+  "02_Pterodactilo_Cacador_sprite_9frames.png",
+  "03_Remador_das_Ilhas_sprite_9frames.png",
+  "04_Boss_Rei_Pteranodonte_sprite_9frames.png",
+  "05_Jangada_de_Caca_sprite_9frames.png",
+  "06_Ictiossauro_sprite_9frames.png",
+  "07_Saqueador_da_Selva_sprite_9frames.png",
+  "08_Boss_Mosasaurus_Jovem_sprite_9frames.png"
+];
 const SHIP_ASSET_FILES = [
   "barco_de_pesca_adaptado.png",
   "black_abyss.png",
@@ -110,12 +128,26 @@ const SHIP_ASSET_FILES = [
   "kraken_hunter.png",
   "navio_mercante_armado.png"
 ];
+const PLAYER_SHIP_SPRITESHEET_ASSET_FILES = [
+  "PLAYER-01_01_Bote_de_Tronco_sprite_9frames.png",
+  "PLAYER-01_02_Jangada_de_Cipó_sprite_9frames.png",
+  "PLAYER-01_03_Canoa_de_Caça_sprite_9frames.png",
+  "PLAYER-01_04_Jangada_Reforçada_Primitiva_sprite_9frames.png",
+  "PLAYER-01_05_Canoa_do_Titã_sprite_9frames.png",
+  "PLAYER-01_06_Bote_Armado_sprite_9frames.png",
+  "PLAYER-01_07_Jangada_Reforçada_sprite_9frames.png",
+  "PLAYER-01_08_Barco_de_Pesca_Adaptado_sprite_9frames.png",
+  "PLAYER-01_09_Escuna_Leve_sprite_9frames.png",
+  "PLAYER-02_01_Escuna_Mercante_sprite_9frames.png",
+  "PLAYER-02_02_Cutter_Real_sprite_9frames.png",
+  "PLAYER-02_03_Brigantina_Pequena_sprite_9frames.png",
+  "PLAYER-02_04_Corveta_Simples_sprite_9frames.png",
+  "PLAYER-02_05_Brigantina_Pirata_sprite_9frames.png",
+  "PLAYER-02_06_Corveta_Armada_sprite_9frames.png",
+  "PLAYER-02_07_Galeota_sprite_9frames.png",
+  "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png"
+];
 const ISLAND_ASSET_FILES = [
-  "01_lagoa_dos_primeiros_remadores.png",
-  "02_manguezal_dos_ancestrais.png",
-  "03_ilhas_dos_pterodactilos.png",
-  "04_selva_dos_repteis_marinhos.png",
-  "05_canal_do_tita_jurassico.png",
   "06_costa_dos_naufragos.png",
   "07_ilhas_comerciais.png",
   "08_mar_das_tempestades.png",
@@ -126,6 +158,13 @@ const ISLAND_ASSET_FILES = [
   "13_arquipelago_vulcanico.png",
   "14_reino_congelado.png",
   "15_abismo_do_kraken.png"
+];
+const FIXED_BACKGROUND_ASSET_FILES = [
+  "01 - Lagoa dos Remadores.png",
+  "02 - Manguezal dos Ancestrais.png",
+  "03 - Ilha dos Pterodactilos.png",
+  "04 - Selva dos Repteis Marinhos.png",
+  "05 - Canal Ancestral.png"
 ];
 const OCEAN_ASSET_FILES = [
   "16_fundo_do_mar_oceano.png"
@@ -167,13 +206,16 @@ const CAPTAIN_ASSET_FILES = [
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=38",
-  "game.js?v=55",
+  "styles.css?v=39",
+  "game.js?v=63",
   "icon.svg",
   "manifest.webmanifest",
   "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif",
+  ...FIXED_BACKGROUND_ASSET_FILES.map(file => `assets/newbackgrounds/${file}`),
   ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),
+  ...ENEMY_SPRITESHEET_ASSET_FILES.map(file => `assets/spritesenemies/${file}`),
   ...SHIP_ASSET_FILES.map(file => `assets/ships/${file}`),
+  ...PLAYER_SHIP_SPRITESHEET_ASSET_FILES.map(file => `assets/spritesships/${file}`),
   ...ISLAND_ASSET_FILES.map(file => `assets/backgrounds/islands/${file}`),
   ...OCEAN_ASSET_FILES.map(file => `assets/backgrounds/ocean/${file}`),
   ...PET_ASSET_FILES.map(file => `assets/pets/${file}`),

@@ -54,6 +54,19 @@
     { name: "Reino Congelado", weather: "Nevasca cortante", description: "Icebergs, monstros gelados e navios presos no gelo.", boss: "Jormungandr de Gelo", enemies: ["Navio Congelado", "Corsário de Gelo", "Serpente Glacial", "Guardião Congelado", "Fragata Ártica"], drops: { cristal: .12, gema: .045 }, baseHp: 125000, baseDamage: 7200, gold: 335, goldRange: [220, 450], bossGold: [60000, 100000], xp: 7800, sky: "#b4d4df", sea: "#447b91", land: "#d2e2e1", kind: "GLACIAL" },
     { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Criatura Abissal", "Navio Amaldiçoado", "Tentáculo Menor", "Leviatã Jovem", "Guardião do Abismo", "Frota Fantasma"], drops: { fragmentos: .008, gema: .05, cristal: .13 }, baseHp: 320000, baseDamage: 18000, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 18000, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
   ];
+  const FIXED_BACKGROUND_PATH = "assets/newbackgrounds/";
+  const FIXED_BACKGROUND_ASSET_FILES = [
+    "01 - Lagoa dos Remadores.png",
+    "02 - Manguezal dos Ancestrais.png",
+    "03 - Ilha dos Pterodactilos.png",
+    "04 - Selva dos Repteis Marinhos.png",
+    "05 - Canal Ancestral.png"
+  ];
+  PRIMITIVE_REGIONS.forEach((region, index) => {
+    region.dayNightCycle = false;
+    region.fixedBackground = true;
+    region.fixedBackgroundFile = FIXED_BACKGROUND_ASSET_FILES[index];
+  });
   const REGIONS = [...PRIMITIVE_REGIONS, ...MAIN_REGIONS];
   const PROLOGUE_MAP_ASSET = "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif";
   const PROLOGUE_MAP_POINTS = [
@@ -111,11 +124,11 @@
 
   const ISLAND_SPRITE_PATH = "assets/backgrounds/islands/";
   const ISLAND_ASSET_FILES = [
-    "01_lagoa_dos_primeiros_remadores.png",
-    "02_manguezal_dos_ancestrais.png",
-    "03_ilhas_dos_pterodactilos.png",
-    "04_selva_dos_repteis_marinhos.png",
-    "05_canal_do_tita_jurassico.png",
+    null,
+    null,
+    null,
+    null,
+    null,
     "06_costa_dos_naufragos.png",
     "07_ilhas_comerciais.png",
     "08_mar_das_tempestades.png",
@@ -135,8 +148,21 @@
     image.src = src;
     return image;
   };
-  const ISLAND_SPRITES = ISLAND_ASSET_FILES.map(file => ({ file, image: loadSceneSprite(`${ISLAND_SPRITE_PATH}${file}`) }));
+  const FIXED_BACKGROUND_SPRITES = FIXED_BACKGROUND_ASSET_FILES.map(file => ({ file, image: loadSceneSprite(`${FIXED_BACKGROUND_PATH}${file}`) }));
+  const ISLAND_SPRITES = ISLAND_ASSET_FILES.map((file, index) => (
+    !file || REGIONS[index]?.fixedBackground ? null : { file, image: loadSceneSprite(`${ISLAND_SPRITE_PATH}${file}`) }
+  ));
   const OCEAN_SPRITE = { file: OCEAN_ASSET_FILES[0], image: loadSceneSprite(`${OCEAN_SPRITE_PATH}${OCEAN_ASSET_FILES[0]}`) };
+
+  function regionUsesFixedBackground(index) {
+    const region = REGIONS[index];
+    return Boolean(region?.fixedBackground && region.fixedBackgroundFile);
+  }
+
+  function getFixedBackgroundSprite(region) {
+    const index = FIXED_BACKGROUND_ASSET_FILES.indexOf(region?.fixedBackgroundFile);
+    return index >= 0 ? FIXED_BACKGROUND_SPRITES[index] : null;
+  }
 
   function getRegionIslandSprite(index) {
     return ISLAND_SPRITES[index];
@@ -1137,6 +1163,7 @@
   function setActiveShip(id) {
     state.shipId = id;
     state.combat.playerHp = getStats().maxHp;
+    scene?.resetPlayerShipAnimation();
     clearCurrentEnemy();
   }
 
@@ -1309,6 +1336,10 @@
     return String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
+  function normalizeSpriteKey(value = "") {
+    return normalizeText(value).replace(/_/g, " ").replace(/\s+/g, " ").trim();
+  }
+
   const SHIP_SPRITE_PATH = "assets/ships/";
   const SHIP_SPRITES = [
     ["Bote de Tronco", "bote_de_tronco.png", { width: 230, anchorY: .63 }],
@@ -1355,6 +1386,94 @@
 
   function getShipSprite(name) {
     return SHIP_SPRITES[normalizeText(name)];
+  }
+
+  const PLAYER_SHIP_SPRITESHEET_PATH = "assets/spritesships/";
+  const PLAYER_SHIP_SPRITESHEET_FILES = [
+    "PLAYER-01_01_Bote_de_Tronco_sprite_9frames.png",
+    "PLAYER-01_02_Jangada_de_Cipó_sprite_9frames.png",
+    "PLAYER-01_03_Canoa_de_Caça_sprite_9frames.png",
+    "PLAYER-01_04_Jangada_Reforçada_Primitiva_sprite_9frames.png",
+    "PLAYER-01_05_Canoa_do_Titã_sprite_9frames.png",
+    "PLAYER-01_06_Bote_Armado_sprite_9frames.png",
+    "PLAYER-01_07_Jangada_Reforçada_sprite_9frames.png",
+    "PLAYER-01_08_Barco_de_Pesca_Adaptado_sprite_9frames.png",
+    "PLAYER-01_09_Escuna_Leve_sprite_9frames.png",
+    "PLAYER-02_01_Escuna_Mercante_sprite_9frames.png",
+    "PLAYER-02_02_Cutter_Real_sprite_9frames.png",
+    "PLAYER-02_03_Brigantina_Pequena_sprite_9frames.png",
+    "PLAYER-02_04_Corveta_Simples_sprite_9frames.png",
+    "PLAYER-02_05_Brigantina_Pirata_sprite_9frames.png",
+    "PLAYER-02_06_Corveta_Armada_sprite_9frames.png",
+    "PLAYER-02_07_Galeota_sprite_9frames.png",
+    "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png"
+  ];
+  const PLAYER_SHIP_DEFAULT_ANIMATIONS = {
+    idle: { frames: [0], fps: 1, loop: true, blend: false },
+    moving: { frames: [0], fps: 1, loop: true, blend: false },
+    hit: { frames: [6], fps: 7, loop: false, blend: false },
+    death: { frames: [6, 7, 8], fps: 4.2, loop: false, blend: true }
+  };
+  const PLAYER_SHIP_TALL_ANIMATIONS = {
+    idle: { frames: [0], fps: 1, loop: true, blend: false },
+    moving: { frames: [0], fps: 1, loop: true, blend: false },
+    hit: { frames: [9], fps: 7, loop: false, blend: false },
+    death: { frames: [9, 10, 11], fps: 4.2, loop: false, blend: true }
+  };
+  const PLAYER_SHIP_SPRITESHEET_OPTIONS = {
+    Bote_de_Tronco: { width: 230, anchorY: .63 },
+    Jangada_de_Cipó: { width: 245, anchorY: .66 },
+    Canoa_de_Caça: { width: 240, anchorY: .58, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Jangada_Reforçada_Primitiva: { width: 255, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Canoa_do_Titã: { width: 265, anchorY: .63 },
+    Bote_Armado: { width: 260, anchorY: .66, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Jangada_Reforçada: { width: 270, anchorY: .66, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Barco_de_Pesca_Adaptado: { width: 275, anchorY: .64 },
+    Escuna_Leve: { width: 285, anchorY: .66 },
+    Escuna_Mercante: { width: 295, anchorY: .66, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Cutter_Real: { width: 300, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Brigantina_Pequena: { width: 305, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Corveta_Simples: { width: 310, anchorY: .66 },
+    Brigantina_Pirata: { width: 320, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Corveta_Armada: { width: 320, anchorY: .64 },
+    Galeota: { width: 310, anchorY: .61 },
+    Navio_Mercante_Armado: { width: 330, anchorY: .64, rows: 4, frames: 12, animations: PLAYER_SHIP_TALL_ANIMATIONS }
+  };
+
+  function getPlayerShipSpritesheetNameFromFile(file) {
+    return file.replace(/^PLAYER-\d+_\d+_/, "").replace(/_sprite_9frames\.png$/i, "");
+  }
+
+  const PLAYER_SHIP_SPRITESHEETS = PLAYER_SHIP_SPRITESHEET_FILES.reduce((sprites, file) => {
+    const name = getPlayerShipSpritesheetNameFromFile(file);
+    const options = PLAYER_SHIP_SPRITESHEET_OPTIONS[name] || {};
+    const image = new Image();
+    const sprite = {
+      key: name,
+      image,
+      canvas: null,
+      file,
+      frames: options.frames || 9,
+      columns: options.columns || 3,
+      rows: options.rows || 3,
+      animations: options.animations || PLAYER_SHIP_DEFAULT_ANIMATIONS,
+      width: options.width || 280,
+      anchorX: options.anchorX ?? .5,
+      anchorY: options.anchorY ?? .64,
+      offsetX: options.offsetX || 0,
+      offsetY: options.offsetY || 0,
+      ready: false,
+      processing: false
+    };
+    image.decoding = "async";
+    image.onload = () => prepareEnemySpritesheet(sprite);
+    image.src = `${PLAYER_SHIP_SPRITESHEET_PATH}${file}`;
+    sprites[normalizeSpriteKey(name)] = sprite;
+    return sprites;
+  }, {});
+
+  function getPlayerShipSpritesheet(name) {
+    return PLAYER_SHIP_SPRITESHEETS[normalizeSpriteKey(name)];
   }
 
   const ENEMY_SPRITE_PATH = "assets/enemies/";
@@ -1460,6 +1579,241 @@
     return ENEMY_SPRITES[normalizeText(name)];
   }
 
+  const ENEMY_SPRITESHEET_PATH = "assets/spritesenemies/";
+  const ENEMY_SPRITESHEET_FILES = [
+    "01_Remador_Rival_sprite_9frames.png",
+    "02_Pescador_Primitivo_sprite_9frames.png",
+    "03_Jacare_da_Lagoa_sprite_9frames.png",
+    "04_Boss_Crocomar_Anciao_sprite_9frames.png",
+    "05_Canoa_Tribal_sprite_9frames.png",
+    "06_Cacador_do_Mangue_sprite_9frames.png",
+    "07_Reptil_das_Raizes_sprite_9frames.png",
+    "08_Boss_Deinosuchus_do_Mangue_sprite_9frames.png",
+    "01_Canoa_de_Couro_sprite_9frames.png",
+    "02_Pterodactilo_Cacador_sprite_9frames.png",
+    "03_Remador_das_Ilhas_sprite_9frames.png",
+    "04_Boss_Rei_Pteranodonte_sprite_9frames.png",
+    "05_Jangada_de_Caca_sprite_9frames.png",
+    "06_Ictiossauro_sprite_9frames.png",
+    "07_Saqueador_da_Selva_sprite_9frames.png",
+    "08_Boss_Mosasaurus_Jovem_sprite_9frames.png"
+  ];
+  const ENEMY_SPRITESHEET_OPTIONS = {
+    Remador_Rival: { width: 250, anchorY: .68 },
+    Pescador_Primitivo: { width: 265, anchorY: .7 },
+    Jacare_da_Lagoa: {
+      width: 270,
+      anchorY: .58,
+      rows: 4,
+      frames: 12,
+      animations: {
+        idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
+        walking: { frames: [0, 1, 2, 1], fps: 5.5, loop: true, blend: true },
+        hit: { frames: [0], fps: 1, loop: false, blend: false },
+        death: { frames: [9, 10, 11], fps: 4.5, loop: false, blend: true }
+      }
+    },
+    Boss_Crocomar_Anciao: { width: 380, anchorY: .58 },
+    Canoa_Tribal: { width: 275, anchorY: .64 },
+    Cacador_do_Mangue: { width: 275, anchorY: .67 },
+    Reptil_das_Raizes: {
+      width: 315,
+      anchorY: .6,
+      rows: 4,
+      frames: 12,
+      animations: {
+        idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
+        walking: { frames: [0, 1, 2, 1], fps: 5.2, loop: true, blend: true },
+        hit: { frames: [7], fps: 7.5, loop: false, blend: false },
+        death: { frames: [9, 10, 11], fps: 4.3, loop: false, blend: true }
+      }
+    },
+    Boss_Deinosuchus_do_Mangue: {
+      width: 390,
+      anchorY: .59,
+      rows: 4,
+      frames: 12,
+      animations: {
+        idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
+        walking: { frames: [0, 1, 2, 1], fps: 5, loop: true, blend: true },
+        hit: { frames: [8], fps: 7.5, loop: false, blend: false },
+        death: { frames: [9, 10, 11], fps: 4.3, loop: false, blend: true }
+      }
+    },
+    Canoa_de_Couro: { width: 260, anchorY: .58 },
+    Pterodactilo_Cacador: { width: 300, anchorY: .56, offsetY: -52 },
+    Remador_das_Ilhas: { width: 255, anchorY: .65 },
+    Boss_Rei_Pteranodonte: { width: 330, anchorY: .55, offsetY: -55 },
+    Jangada_de_Caca: { width: 285, anchorY: .65 },
+    Ictiossauro: { width: 315, anchorY: .56 },
+    Saqueador_da_Selva: { width: 285, anchorY: .66 },
+    Boss_Mosasaurus_Jovem: { width: 380, anchorY: .56 }
+  };
+  const ENEMY_SPRITESHEET_NAME_BY_ENEMY = [
+    ["remador_rival", "Remador_Rival"],
+    ["pescador_primitivo", "Pescador_Primitivo"],
+    ["jacare_da_lagoa", "Jacare_da_Lagoa"],
+    ["boss_crocomar_anciao", "Boss_Crocomar_Anciao"],
+    ["crocomar_anciao", "Boss_Crocomar_Anciao"],
+    ["canoa_tribal", "Canoa_Tribal"],
+    ["cacador_do_mangue", "Cacador_do_Mangue"],
+    ["reptil_das_raizes", "Reptil_das_Raizes"],
+    ["boss_deinosuchus_do_mangue", "Boss_Deinosuchus_do_Mangue"],
+    ["deinosuchus_do_mangue", "Boss_Deinosuchus_do_Mangue"],
+    ["canoa_de_couro", "Canoa_de_Couro"],
+    ["pterodactilo_cacador", "Pterodactilo_Cacador"],
+    ["remador_das_ilhas", "Remador_das_Ilhas"],
+    ["boss_rei_pteranodonte", "Boss_Rei_Pteranodonte"],
+    ["rei_pteranodonte", "Boss_Rei_Pteranodonte"],
+    ["jangada_de_caca", "Jangada_de_Caca"],
+    ["ictiossauro", "Ictiossauro"],
+    ["saqueador_da_selva", "Saqueador_da_Selva"],
+    ["boss_mosasaurus_jovem", "Boss_Mosasaurus_Jovem"],
+    ["mosasaurus_jovem", "Boss_Mosasaurus_Jovem"]
+  ].reduce((map, [internalName, spriteName]) => {
+    map[normalizeEnemySpriteKey(internalName)] = spriteName;
+    return map;
+  }, {});
+  const ENEMY_SPRITESHEET_ANIMATIONS = {
+    idle: { frames: [0, 1, 2, 1], fps: 3, loop: true, blend: true },
+    walking: { frames: [0, 1, 2, 1], fps: 4.8, loop: true, blend: true },
+    hit: { frames: [6, 7], fps: 9, loop: false, blend: true },
+    death: { frames: [6, 7, 8], fps: 4.8, loop: false, blend: true }
+  };
+  const ENEMY_HIT_ANIMATION_SECONDS = .34;
+  const ENEMY_DEATH_ANIMATION_SECONDS = .95;
+
+  function normalizeEnemySpriteKey(value = "") {
+    return normalizeSpriteKey(value);
+  }
+
+  function getEnemySpritesheetNameFromFile(file) {
+    return file.replace(/^\d+_/, "").replace(/_sprite_9frames\.png$/i, "");
+  }
+
+  function measureEnemyFrameBounds(sprite, data, width, height) {
+    const frameWidth = Math.floor(width / sprite.columns);
+    const frameHeight = Math.floor(height / sprite.rows);
+    const bounds = [];
+    for (let frame = 0; frame < sprite.frames; frame++) {
+      const frameX = (frame % sprite.columns) * frameWidth;
+      const frameY = Math.floor(frame / sprite.columns) * frameHeight;
+      let left = frameWidth, top = frameHeight, right = -1, bottom = -1;
+      for (let y = 0; y < frameHeight; y++) {
+        for (let x = 0; x < frameWidth; x++) {
+          const index = ((frameY + y) * width + frameX + x) * 4;
+          if (data[index + 3] <= 8) continue;
+          if (x < left) left = x;
+          if (x > right) right = x;
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+        }
+      }
+      bounds[frame] = right >= left && bottom >= top
+        ? { left, top, right, bottom, centerX: (left + right) / 2, bottomY: bottom }
+        : { left: 0, top: 0, right: frameWidth, bottom: frameHeight, centerX: frameWidth / 2, bottomY: frameHeight };
+    }
+    const referenceFrames = [0, 1, 2].map(frame => bounds[frame]).filter(Boolean);
+    const average = key => referenceFrames.reduce((sum, item) => sum + item[key], 0) / Math.max(1, referenceFrames.length);
+    sprite.frameBounds = bounds;
+    sprite.referenceBounds = { centerX: average("centerX"), bottomY: average("bottomY") };
+  }
+
+  function prepareEnemySpritesheet(sprite) {
+    const image = sprite.image;
+    if (!image?.complete || !image.naturalWidth || sprite.ready || sprite.processing) return;
+    sprite.processing = true;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = pixels.data;
+      const samplePoints = [
+        0,
+        (canvas.width - 1) * 4,
+        ((canvas.height - 1) * canvas.width) * 4,
+        ((canvas.height - 1) * canvas.width + canvas.width - 1) * 4
+      ];
+      const bg = samplePoints.reduce((color, index) => {
+        color.r += data[index];
+        color.g += data[index + 1];
+        color.b += data[index + 2];
+        return color;
+      }, { r: 0, g: 0, b: 0 });
+      bg.r /= samplePoints.length;
+      bg.g /= samplePoints.length;
+      bg.b /= samplePoints.length;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const saturation = max - min;
+        const average = (r + g + b) / 3;
+        const distance = Math.hypot(r - bg.r, g - bg.g, b - bg.b);
+        if (distance < 36 || (saturation < 9 && average > 88 && average < 180)) data[i + 3] = 0;
+      }
+      measureEnemyFrameBounds(sprite, data, canvas.width, canvas.height);
+      context.putImageData(pixels, 0, 0);
+      sprite.canvas = canvas;
+      sprite.ready = true;
+    } catch (error) {
+      sprite.canvas = null;
+      sprite.ready = true;
+    } finally {
+      sprite.processing = false;
+    }
+  }
+
+  const ENEMY_ANIMATED_SPRITESHEETS = ENEMY_SPRITESHEET_FILES.reduce((sprites, file) => {
+    const name = getEnemySpritesheetNameFromFile(file);
+    const options = ENEMY_SPRITESHEET_OPTIONS[name] || {};
+    const image = new Image();
+    const sprite = {
+      key: name,
+      image,
+      canvas: null,
+      file,
+      frames: options.frames || 9,
+      columns: options.columns || 3,
+      rows: options.rows || 3,
+      animations: options.animations || null,
+      width: options.width || 285,
+      anchorX: options.anchorX ?? .5,
+      anchorY: options.anchorY ?? .64,
+      offsetX: options.offsetX || 0,
+      offsetY: options.offsetY || 0,
+      ready: false,
+      processing: false
+    };
+    image.decoding = "async";
+    image.onload = () => prepareEnemySpritesheet(sprite);
+    image.src = `${ENEMY_SPRITESHEET_PATH}${file}`;
+    sprites[normalizeEnemySpriteKey(name)] = sprite;
+    return sprites;
+  }, {});
+
+  function getEnemyAnimatedSpritesheet(name) {
+    const key = normalizeEnemySpriteKey(name);
+    const mapped = ENEMY_SPRITESHEET_NAME_BY_ENEMY[key] || name;
+    return ENEMY_ANIMATED_SPRITESHEETS[normalizeEnemySpriteKey(mapped)];
+  }
+
+  function createEnemySpriteAnimation(name) {
+    const sprite = getEnemyAnimatedSpritesheet(name);
+    if (!sprite) return null;
+    return { sheetKey: sprite.key, frameSeed: randomBetween(0, 5), hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 };
+  }
+
+  function ensureEnemySpriteAnimation(enemy) {
+    const sprite = getEnemyAnimatedSpritesheet(enemy?.name);
+    if (!sprite) return null;
+    if (!enemy.animation || enemy.animation.sheetKey !== sprite.key) enemy.animation = createEnemySpriteAnimation(enemy.name);
+    return enemy.animation;
+  }
+
   function inferEnemyVisual(name, region = {}, fallback = "PIRATA", tier = 1, isBoss = false) {
     const raw = `${name} ${region.name || ""} ${region.kind || ""}`;
     const text = normalizeText(raw);
@@ -1509,6 +1863,8 @@
       this.petLunge = 0;
       this.floaters = [];
       this.lootFloaters = [];
+      this.enemyDeathAnimations = [];
+      this.playerShipAnimation = null;
       this.environmentEvents = [];
       this.environmentTimers = { bird: 2.5, fish: 3.5, shark: 19, kraken: 72 };
       this.resize = this.resize.bind(this);
@@ -1545,6 +1901,64 @@
 
     floatDamage(amount, atEnemy = true, color = "#fff0bc") {
       this.floaters.push({ text: amount, x: this.width * (atEnemy ? .70 : .30) + randomBetween(-25, 25), y: this.height * (atEnemy ? .47 : .60), age: 0, color });
+    }
+
+    markEnemyHit(enemy) {
+      const animation = ensureEnemySpriteAnimation(enemy);
+      if (!animation || enemy.defeated) return;
+      animation.hitStartedAt = this.time;
+      animation.hitUntil = this.time + ENEMY_HIT_ANIMATION_SECONDS;
+    }
+
+    ensurePlayerShipAnimation(ship) {
+      const sprite = getPlayerShipSpritesheet(ship?.name);
+      if (!sprite) return null;
+      if (!this.playerShipAnimation || this.playerShipAnimation.sheetKey !== sprite.key) {
+        this.playerShipAnimation = { sheetKey: sprite.key, frameSeed: randomBetween(0, 5), hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 };
+      }
+      return this.playerShipAnimation;
+    }
+
+    markPlayerShipHit() {
+      const animation = this.ensurePlayerShipAnimation(SHIPS[state.shipId]);
+      if (!animation || animation.deathStartedAt) return;
+      animation.hitStartedAt = this.time;
+      animation.hitUntil = this.time + .34;
+    }
+
+    markPlayerShipDeath() {
+      const animation = this.ensurePlayerShipAnimation(SHIPS[state.shipId]);
+      if (!animation || animation.deathStartedAt) return;
+      animation.hitUntil = 0;
+      animation.deathStartedAt = this.time;
+    }
+
+    resetPlayerShipAnimation() {
+      if (this.playerShipAnimation) {
+        this.playerShipAnimation.hitUntil = 0;
+        this.playerShipAnimation.deathStartedAt = 0;
+      }
+    }
+
+    queueEnemyDeath(enemy, delay = 0) {
+      const animation = ensureEnemySpriteAnimation(enemy);
+      if (!animation) return;
+      this.enemyDeathAnimations.push({
+        age: -delay,
+        duration: ENEMY_DEATH_ANIMATION_SECONDS,
+        enemy: {
+          name: enemy.name,
+          kind: enemy.kind,
+          category: enemy.category,
+          visual: enemy.visual,
+          visualKind: enemy.visualKind,
+          visualTier: enemy.visualTier,
+          isBoss: enemy.isBoss,
+          defeated: true,
+          animation: { ...animation, hitUntil: 0, deathStartedAt: this.time + delay }
+        }
+      });
+      this.enemyDeathAnimations = this.enemyDeathAnimations.slice(-3);
     }
 
     handleEnvironmentPointer(pointer) {
@@ -1610,6 +2024,7 @@
       this.aquaticBursts.forEach(item => item.age += dt);
       this.floaters.forEach(item => item.age += dt);
       this.lootFloaters.forEach(item => item.age += dt);
+      this.enemyDeathAnimations.forEach(item => item.age += dt);
       this.environmentEvents.forEach(item => item.age += dt);
       this.autoCollectEnvironmentEvents();
       this.projectiles = this.projectiles.filter(item => item.age < item.duration);
@@ -1617,6 +2032,7 @@
       this.aquaticBursts = this.aquaticBursts.filter(item => item.age < .9);
       this.floaters = this.floaters.filter(item => item.age < 1.05);
       this.lootFloaters = this.lootFloaters.filter(item => item.age < 1.35);
+      this.enemyDeathAnimations = this.enemyDeathAnimations.filter(item => item.age < item.duration);
       this.environmentEvents = this.environmentEvents.filter(item => item.age < item.duration);
       Object.keys(this.environmentTimers).forEach(kind => {
         this.environmentTimers[kind] -= dt;
@@ -1638,7 +2054,10 @@
       });
     }
 
-    getDayState() {
+    getDayState(region = REGIONS[state.regionIndex]) {
+      if (region?.dayNightCycle === false) {
+        return { cycle: 0, label: "", sky: region.sky, water: region.sea, darkness: 0, fixed: true };
+      }
       const cycle = ((Date.now() / 1000) % 480) / 480;
       const phases = [
         { t: 0, label: "Manhã", sky: "#9ac9df", water: "#3b8ca4", darkness: 0 },
@@ -1661,54 +2080,57 @@
       const h = this.height;
       const region = REGIONS[state.regionIndex];
       const horizon = h * .42;
-      const day = this.getDayState();
+      const day = this.getDayState(region);
       ctx.clearRect(0, 0, w, h);
 
-      const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-      sky.addColorStop(0, this.mix(region.sky, day.darkness > .4 ? "#08162d" : "#d9ecf1", .28 + day.darkness * .35));
-      sky.addColorStop(.58, day.sky);
-      sky.addColorStop(1, this.mix(region.sky, day.darkness > .4 ? "#263352" : "#f5d9ad", .38));
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, w, horizon + 2);
+      if (this.drawFixedBackground(ctx, w, h, region)) {
+        this.drawEnvironmentEvents(ctx, horizon, w, h);
+      } else {
+        const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+        sky.addColorStop(0, this.mix(region.sky, day.darkness > .4 ? "#08162d" : "#d9ecf1", .28 + day.darkness * .35));
+        sky.addColorStop(.58, day.sky);
+        sky.addColorStop(1, this.mix(region.sky, day.darkness > .4 ? "#263352" : "#f5d9ad", .38));
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, w, horizon + 2);
 
-      if (day.darkness > .3) this.drawStars(ctx, w, horizon, day.darkness);
-      const celestialNight = day.cycle >= .5 && day.cycle < .92;
-      const celestialProgress = celestialNight ? (day.cycle - .5) / .42 : day.cycle < .5 ? day.cycle / .5 : (day.cycle - .92) / .08;
-      const sunX = w * (.08 + clamp(celestialProgress, 0, 1) * .84);
-      const celestialY = horizon * (.7 - Math.sin(clamp(celestialProgress, 0, 1) * Math.PI) * .5);
-      const sunRadius = Math.min(w, h) * (celestialNight ? .035 : .055);
-      const sunGlow = ctx.createRadialGradient(sunX, celestialY, 2, sunX, celestialY, sunRadius * 2.4);
-      sunGlow.addColorStop(0, celestialNight ? "rgba(225,240,244,.88)" : "rgba(255,245,190,.9)");
-      sunGlow.addColorStop(.28, celestialNight ? "rgba(192,218,230,.15)" : "rgba(255,211,114,.18)");
-      sunGlow.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = sunGlow; ctx.fillRect(sunX - sunRadius * 2.5, celestialY - sunRadius * 2.5, sunRadius * 5, sunRadius * 5);
-      if (celestialNight) { ctx.fillStyle = "rgba(230,242,242,.8)"; ctx.beginPath(); ctx.arc(sunX, celestialY, sunRadius * .55, 0, Math.PI * 2); ctx.fill(); }
+        if (day.darkness > .3) this.drawStars(ctx, w, horizon, day.darkness);
+        const celestialNight = day.cycle >= .5 && day.cycle < .92;
+        const celestialProgress = celestialNight ? (day.cycle - .5) / .42 : day.cycle < .5 ? day.cycle / .5 : (day.cycle - .92) / .08;
+        const sunX = w * (.08 + clamp(celestialProgress, 0, 1) * .84);
+        const celestialY = horizon * (.7 - Math.sin(clamp(celestialProgress, 0, 1) * Math.PI) * .5);
+        const sunRadius = Math.min(w, h) * (celestialNight ? .035 : .055);
+        const sunGlow = ctx.createRadialGradient(sunX, celestialY, 2, sunX, celestialY, sunRadius * 2.4);
+        sunGlow.addColorStop(0, celestialNight ? "rgba(225,240,244,.88)" : "rgba(255,245,190,.9)");
+        sunGlow.addColorStop(.28, celestialNight ? "rgba(192,218,230,.15)" : "rgba(255,211,114,.18)");
+        sunGlow.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = sunGlow; ctx.fillRect(sunX - sunRadius * 2.5, celestialY - sunRadius * 2.5, sunRadius * 5, sunRadius * 5);
+        if (celestialNight) { ctx.fillStyle = "rgba(230,242,242,.8)"; ctx.beginPath(); ctx.arc(sunX, celestialY, sunRadius * .55, 0, Math.PI * 2); ctx.fill(); }
 
-      this.drawCloud(ctx, ((w * .06 + this.time * 2.4) % (w + 180)) - 90, h * .16, 1.18, day.darkness);
-      this.drawCloud(ctx, ((w * .51 + this.time * 1.5) % (w + 160)) - 80, h * .095, .78, day.darkness);
-      this.drawCloud(ctx, ((w * .82 + this.time * 1.1) % (w + 140)) - 70, h * .22, .56, day.darkness);
+        this.drawCloud(ctx, ((w * .06 + this.time * 2.4) % (w + 180)) - 90, h * .16, 1.18, day.darkness);
+        this.drawCloud(ctx, ((w * .51 + this.time * 1.5) % (w + 160)) - 80, h * .095, .78, day.darkness);
+        this.drawCloud(ctx, ((w * .82 + this.time * 1.1) % (w + 140)) - 70, h * .22, .56, day.darkness);
 
-      const sea = ctx.createLinearGradient(0, horizon, 0, h);
-      sea.addColorStop(0, day.water);
-      sea.addColorStop(.3, this.mix(region.sea, day.darkness > .4 ? "#102c46" : "#6fbac1", .22));
-      sea.addColorStop(1, this.mix(region.sea, "#02101c", .52 + day.darkness * .18));
-      ctx.fillStyle = sea;
-      ctx.fillRect(0, horizon, w, h - horizon);
-      this.drawOceanTexture(ctx, horizon, w, h, day.darkness);
-      if (!celestialNight && day.cycle < .58) this.drawSunPath(ctx, sunX, horizon, h);
-      this.drawWaves(ctx, horizon, w, h);
-      this.drawEnvironmentEvents(ctx, horizon, w, h);
+        const sea = ctx.createLinearGradient(0, horizon, 0, h);
+        sea.addColorStop(0, day.water);
+        sea.addColorStop(.3, this.mix(region.sea, day.darkness > .4 ? "#102c46" : "#6fbac1", .22));
+        sea.addColorStop(1, this.mix(region.sea, "#02101c", .52 + day.darkness * .18));
+        ctx.fillStyle = sea;
+        ctx.fillRect(0, horizon, w, h - horizon);
+        this.drawOceanTexture(ctx, horizon, w, h, day.darkness);
+        if (!celestialNight && day.cycle < .58) this.drawSunPath(ctx, sunX, horizon, h);
+        this.drawWaves(ctx, horizon, w, h);
+        this.drawEnvironmentEvents(ctx, horizon, w, h);
 
-      if (!this.drawRegionIslandSprite(ctx, w, h, horizon, state.regionIndex)) {
-        this.drawIsland(ctx, w * .27, horizon + 16, w * .46, region.land, 1.12, 0);
+        if (!this.drawRegionIslandSprite(ctx, w, h, horizon, state.regionIndex)) {
+          this.drawIsland(ctx, w * .27, horizon + 16, w * .46, region.land, 1.12, 0);
+        }
+
+        if (state.regionIndex === 2) this.drawRain(ctx, w, h);
+        if (state.regionIndex === 8) this.drawSnow(ctx, w, h);
+        if (state.regionIndex === 5) this.drawFog(ctx, w, h);
       }
 
-      if (state.regionIndex === 2) this.drawRain(ctx, w, h);
-      if (state.regionIndex === 8) this.drawSnow(ctx, w, h);
-      if (state.regionIndex === 5) this.drawFog(ctx, w, h);
-
       const bobPlayer = Math.sin(this.time * 1.55) * 3;
-      const bobEnemy = Math.sin(this.time * 1.35 + 1.4) * 3;
       const compactStage = w < 620 || h < 240;
       const playerY = h * (compactStage ? .73 : .69);
       const enemyY = h * (compactStage ? .64 : .60);
@@ -1720,8 +2142,12 @@
         const attackAdvance = Math.sin(this.petLunge * Math.PI) * w * .12;
         this.drawPet(ctx, w * .43 + attackAdvance, h * (compactStage ? .77 : .73) + Math.sin(this.time * 2 + pet.id) * 4, pet, Math.min(1.1, w / 850, h / 290));
       }
+      this.enemyDeathAnimations.forEach(item => {
+        if (item.age < 0) return;
+        this.drawEnemy(ctx, w * .71, enemyY, enemyScale, item.enemy);
+      });
       const enemy = state.combat.enemy;
-      if (enemy) this.drawEnemy(ctx, w * .71, enemyY + bobEnemy, enemyScale, enemy);
+      if (enemy) this.drawEnemy(ctx, w * .71, enemyY, enemyScale, enemy);
 
       this.projectiles.forEach(item => {
         const t = item.age / item.duration;
@@ -1789,6 +2215,37 @@
       return `rgb(${ca.map((v, i) => Math.round(v + (cb[i] - v) * amount)).join(",")})`;
     }
 
+    drawFixedBackground(ctx, w, h, region) {
+      if (!region?.fixedBackground) return false;
+      const sprite = getFixedBackgroundSprite(region);
+      const image = sprite?.image;
+      if (!image?.complete || !image.naturalWidth) {
+        ctx.fillStyle = region.sea || "#126f88";
+        ctx.fillRect(0, 0, w, h);
+        return true;
+      }
+      const scale = Math.min(w / image.naturalWidth, h / image.naturalHeight);
+      const targetWidth = image.naturalWidth * scale;
+      const targetHeight = image.naturalHeight * scale;
+      const drawX = (w - targetWidth) * .5;
+      const drawY = (h - targetHeight) * .5;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      const strip = Math.min(64, image.naturalWidth, image.naturalHeight);
+      if (drawX > .5) {
+        ctx.drawImage(image, 0, 0, strip, image.naturalHeight, 0, drawY, drawX, targetHeight);
+        ctx.drawImage(image, image.naturalWidth - strip, 0, strip, image.naturalHeight, drawX + targetWidth, drawY, w - drawX - targetWidth, targetHeight);
+      }
+      if (drawY > .5) {
+        ctx.drawImage(image, 0, 0, image.naturalWidth, strip, 0, 0, w, drawY);
+        ctx.drawImage(image, 0, image.naturalHeight - strip, image.naturalWidth, strip, 0, drawY + targetHeight, w, h - drawY - targetHeight);
+      }
+      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      ctx.restore();
+      return true;
+    }
+
     drawOceanTexture(ctx, horizon, w, h, darkness = 0) {
       const image = OCEAN_SPRITE.image;
       if (!image?.complete || !image.naturalWidth) return false;
@@ -1815,6 +2272,7 @@
     }
 
     drawRegionIslandSprite(ctx, w, h, horizon, regionIndex) {
+      if (regionUsesFixedBackground(regionIndex)) return false;
       let drew = false;
       getIslandComposition(regionIndex).forEach((layer, order) => {
         const sprite = getRegionIslandSprite(layer.spriteIndex);
@@ -2088,6 +2546,141 @@
       return true;
     }
 
+    getEnemySpritesheetPose(enemy, sprite) {
+      const animation = ensureEnemySpriteAnimation(enemy);
+      if (!animation) return null;
+      if (sprite.image?.complete && sprite.image.naturalWidth && !sprite.ready && !sprite.processing) prepareEnemySpritesheet(sprite);
+      let stateName = "idle";
+      let elapsed = this.time + (animation.frameSeed || 0);
+      if (animation.deathStartedAt) {
+        stateName = "death";
+        elapsed = Math.max(0, this.time - animation.deathStartedAt);
+      } else if (animation.hitUntil && this.time < animation.hitUntil) {
+        stateName = "hit";
+        elapsed = Math.max(0, this.time - animation.hitStartedAt);
+      } else if (state.combat.running && !state.combat.repairing) {
+        stateName = "walking";
+      }
+      const sequence = sprite.animations?.[stateName] || ENEMY_SPRITESHEET_ANIMATIONS[stateName] || ENEMY_SPRITESHEET_ANIMATIONS.idle;
+      const progress = elapsed * sequence.fps;
+      const rawFrame = Math.floor(progress);
+      const sequenceIndex = sequence.loop ? rawFrame % sequence.frames.length : Math.min(sequence.frames.length - 1, rawFrame);
+      const canBlendNext = sequence.blend && (sequence.loop || rawFrame < sequence.frames.length - 1);
+      const nextIndex = sequence.loop ? (sequenceIndex + 1) % sequence.frames.length : Math.min(sequence.frames.length - 1, sequenceIndex + 1);
+      const blend = canBlendNext ? clamp((progress - rawFrame - .18) / .64, 0, 1) : 0;
+      return { stateName, frame: sequence.frames[sequenceIndex], nextFrame: sequence.frames[nextIndex], blend, elapsed };
+    }
+
+    drawEnemySpritesheet(ctx, x, y, scale, enemy, sprite) {
+      const image = sprite.image;
+      if (!image?.complete || !image.naturalWidth) return false;
+      const pose = this.getEnemySpritesheetPose(enemy, sprite);
+      if (!pose) return false;
+      const source = sprite.canvas || image;
+      const sourceWidth = source.width || image.naturalWidth;
+      const sourceHeight = source.height || image.naturalHeight;
+      const frameWidth = Math.floor(sourceWidth / sprite.columns);
+      const frameHeight = Math.floor(sourceHeight / sprite.rows);
+      const targetWidth = sprite.width * scale;
+      const targetHeight = targetWidth * (frameHeight / frameWidth);
+      const referenceBounds = sprite.referenceBounds;
+      const frameScale = targetWidth / frameWidth;
+      const drawX = -targetWidth * sprite.anchorX;
+      const drawY = -targetHeight * sprite.anchorY;
+      ctx.save();
+      ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
+      if (pose.stateName === "hit") ctx.filter = "brightness(1.2) saturate(1.12)";
+      let baseAlpha = 1;
+      if (pose.stateName === "death") {
+        const fadeStart = ENEMY_DEATH_ANIMATION_SECONDS * .72;
+        if (pose.elapsed > fadeStart) baseAlpha = clamp(1 - (pose.elapsed - fadeStart) / Math.max(.001, ENEMY_DEATH_ANIMATION_SECONDS - fadeStart), 0, 1);
+      }
+      ctx.imageSmoothingEnabled = false;
+      ctx.shadowColor = pose.stateName === "hit" ? "rgba(255,230,180,.58)" : "rgba(0,0,0,.34)";
+      ctx.shadowBlur = pose.stateName === "hit" ? 14 * scale : 7 * scale;
+      const drawFrame = (frame, alpha) => {
+        const frameX = (frame % sprite.columns) * frameWidth;
+        const frameY = Math.floor(frame / sprite.columns) * frameHeight;
+        const frameBounds = sprite.frameBounds?.[frame];
+        const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
+        const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
+        ctx.globalAlpha = baseAlpha * alpha;
+        ctx.drawImage(source, frameX, frameY, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
+      };
+      drawFrame(pose.frame, 1 - pose.blend);
+      if (pose.blend > 0 && pose.nextFrame !== pose.frame) drawFrame(pose.nextFrame, pose.blend);
+      ctx.restore();
+      return true;
+    }
+
+    getPlayerShipSpritesheetPose(ship, sprite, options = {}) {
+      const animation = this.ensurePlayerShipAnimation(ship);
+      if (!animation) return null;
+      if (sprite.image?.complete && sprite.image.naturalWidth && !sprite.ready && !sprite.processing) prepareEnemySpritesheet(sprite);
+      if (!options.preview && state.combat.repairing && state.combat.playerHp <= 0 && !animation.deathStartedAt) animation.deathStartedAt = this.time;
+      let stateName = "idle";
+      let elapsed = this.time + (animation.frameSeed || 0);
+      if (!options.preview && animation.deathStartedAt) {
+        stateName = "death";
+        elapsed = Math.max(0, this.time - animation.deathStartedAt);
+      } else if (!options.preview && animation.hitUntil && this.time < animation.hitUntil) {
+        stateName = "hit";
+        elapsed = Math.max(0, this.time - animation.hitStartedAt);
+      } else if (!options.preview && state.combat.running && !state.combat.repairing) {
+        stateName = "moving";
+      }
+      const sequence = sprite.animations?.[stateName] || PLAYER_SHIP_DEFAULT_ANIMATIONS[stateName] || PLAYER_SHIP_DEFAULT_ANIMATIONS.idle;
+      const progress = elapsed * sequence.fps;
+      const rawFrame = Math.floor(progress);
+      const sequenceIndex = sequence.loop ? rawFrame % sequence.frames.length : Math.min(sequence.frames.length - 1, rawFrame);
+      const canBlendNext = sequence.blend && (sequence.loop || rawFrame < sequence.frames.length - 1);
+      const nextIndex = sequence.loop ? (sequenceIndex + 1) % sequence.frames.length : Math.min(sequence.frames.length - 1, sequenceIndex + 1);
+      const blend = canBlendNext ? clamp((progress - rawFrame - .18) / .64, 0, 1) : 0;
+      return { stateName, frame: sequence.frames[sequenceIndex], nextFrame: sequence.frames[nextIndex], blend, elapsed };
+    }
+
+    drawPlayerShipSpritesheet(ctx, x, y, scale, ship, sprite, options = {}) {
+      const image = sprite.image;
+      if (!image?.complete || !image.naturalWidth) return false;
+      const pose = this.getPlayerShipSpritesheetPose(ship, sprite, options);
+      if (!pose) return false;
+      const source = sprite.canvas || image;
+      const sourceWidth = source.width || image.naturalWidth;
+      const sourceHeight = source.height || image.naturalHeight;
+      const frameWidth = Math.floor(sourceWidth / sprite.columns);
+      const frameHeight = Math.floor(sourceHeight / sprite.rows);
+      const targetWidth = sprite.width * scale;
+      const targetHeight = targetWidth * (frameHeight / frameWidth);
+      const referenceBounds = sprite.referenceBounds;
+      const frameScale = targetWidth / frameWidth;
+      const drawX = -targetWidth * sprite.anchorX;
+      const drawY = -targetHeight * sprite.anchorY;
+      ctx.save();
+      ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
+      if (pose.stateName === "hit") ctx.filter = "brightness(1.18) saturate(1.08)";
+      let baseAlpha = 1;
+      if (pose.stateName === "death") {
+        const fadeStart = 1.05;
+        if (pose.elapsed > fadeStart) baseAlpha = clamp(1 - (pose.elapsed - fadeStart) / .45, 0, 1);
+      }
+      ctx.imageSmoothingEnabled = false;
+      ctx.shadowColor = pose.stateName === "hit" ? "rgba(255,230,180,.52)" : "rgba(0,0,0,.34)";
+      ctx.shadowBlur = pose.stateName === "hit" ? 13 * scale : 8 * scale;
+      const drawFrame = (frame, alpha) => {
+        const frameX = (frame % sprite.columns) * frameWidth;
+        const frameY = Math.floor(frame / sprite.columns) * frameHeight;
+        const frameBounds = sprite.frameBounds?.[frame];
+        const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
+        const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
+        ctx.globalAlpha = baseAlpha * alpha;
+        ctx.drawImage(source, frameX, frameY, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
+      };
+      drawFrame(pose.frame, 1 - pose.blend);
+      if (pose.blend > 0 && pose.nextFrame !== pose.frame) drawFrame(pose.nextFrame, pose.blend);
+      ctx.restore();
+      return true;
+    }
+
     drawEnemySprite(ctx, x, y, scale, sprite) {
       const image = sprite.image;
       if (!image?.complete || !image.naturalWidth) return false;
@@ -2116,7 +2709,9 @@
       return true;
     }
 
-    drawPlayerShip(ctx, x, y, scale, ship) {
+    drawPlayerShip(ctx, x, y, scale, ship, options = {}) {
+      const animatedSprite = getPlayerShipSpritesheet(ship.name);
+      if (animatedSprite && this.drawPlayerShipSpritesheet(ctx, x, y, scale, ship, animatedSprite, options)) return;
       const sprite = getShipSprite(ship.name);
       if (sprite && this.drawShipSprite(ctx, x, y, scale, sprite)) return;
       this.drawShip(ctx, x, y, scale, false, ship.tier, false, ship.id, ship.type);
@@ -2146,6 +2741,8 @@
     }
 
     drawEnemy(ctx, x, y, scale, enemy) {
+      const animatedSprite = getEnemyAnimatedSpritesheet(enemy.name);
+      if (animatedSprite && this.drawEnemySpritesheet(ctx, x, y, this.enemySceneScale(scale, enemy, animatedSprite.width), enemy, animatedSprite)) return;
       const sprite = getEnemySprite(enemy.name);
       if (sprite && this.drawEnemySprite(ctx, x, y, this.enemySceneScale(scale, enemy, sprite.width), sprite)) return;
       const visual = enemy.visual || inferEnemyVisual(enemy.name, REGIONS[state.regionIndex], enemy.category, enemy.visualTier, enemy.isBoss);
@@ -2473,6 +3070,7 @@
       kind: isBoss ? `BOSS ${visual.label}` : visual.label,
       category: isBoss ? "BOSS" : encounter.category,
       visual,
+      animation: createEnemySpriteAnimation(enemyName),
       visualKind: isBoss ? region.kind : profile.visual,
       visualTier: isBoss ? 5 : encounter.tier,
       isBoss,
@@ -2506,14 +3104,18 @@
     const damage = Math.max(1, Math.round(rawDamage * mitigation * skillPenalty));
     enemy.hp = Math.max(0, enemy.hp - damage);
     state.lifetime.highestDamage = Math.max(state.lifetime.highestDamage, damage);
+    const hitTarget = enemy;
+    const markHit = () => {
+      if (state.combat.enemy === hitTarget && hitTarget.hp > 0 && !hitTarget.defeated) scene.markEnemyHit(hitTarget);
+    };
     if (options.pet) {
       scene.petStrike(options.pet);
-      setTimeout(() => scene.floatDamage(damage, true, options.color || "#bff7ff"), 180);
+      setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#bff7ff"); }, 180);
     } else {
       scene.fire(true, options.color || "#ffd37a");
-      setTimeout(() => { scene.burst(true, options.color || "#f4a34c"); scene.floatDamage(damage, true, options.color || "#fff0bc"); }, 340);
+      setTimeout(() => { markHit(); scene.burst(true, options.color || "#f4a34c"); scene.floatDamage(damage, true, options.color || "#fff0bc"); }, 340);
     }
-    if (enemy.hp <= 0) defeatEnemy();
+    if (enemy.hp <= 0) defeatEnemy({ visualDelay: options.pet ? .18 : .34 });
   }
 
   function basicAttack(options = {}) {
@@ -2585,12 +3187,13 @@
       if (enemy.special.includes("abissal")) state.combat.petAttackTimer = Math.max(0, state.combat.petAttackTimer - 650);
       addLog(`${enemy.name} aplica ${enemy.special}.`, "danger-text");
     }
+    if (state.combat.playerHp > 0) scene.markPlayerShipHit();
     const attackColor = enemy.visual?.attack === "ghost" ? "#9ff4e9" : enemy.visual?.attack === "ice" ? "#8ee8ff" : enemy.visual?.attack === "fire" ? "#ff7048" : enemy.visual?.attack === "abyss" ? "#b18cff" : enemy.visual?.attack === "wave" || enemy.visual?.attack === "splash" ? "#7bdfff" : enemy.visual?.attack === "arrow" || enemy.visual?.attack === "harpoon" ? "#e3c06f" : "#ff8c68";
     scene.fire(false, attackColor);
     setTimeout(() => { scene.burst(false, attackColor); scene.floatDamage(damage, false, attackColor); }, 340);
     if (state.combat.playerHp <= 0) {
       if (enemy.isBoss) cancelBossBattle();
-      else beginRepair();
+      else { scene.markPlayerShipDeath(); beginRepair(); }
     }
   }
 
@@ -2627,6 +3230,7 @@
     state.combat.repairing = false;
     state.combat.playerHp = getStats().maxHp;
     state.combat.attackTimer = 0;
+    scene.resetPlayerShipAnimation();
     addLog(forced ? "Protocolo de segurança concluiu o reparo." : "Reparo concluído. Retomando o combate.", "loot");
   }
 
@@ -2648,10 +3252,11 @@
     return found;
   }
 
-  function defeatEnemy() {
+  function defeatEnemy(options = {}) {
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
     enemy.defeated = true;
+    scene.queueEnemyDeath(enemy, options.visualDelay || 0);
     const region = REGIONS[state.regionIndex];
     if (getEquippedPet()) state.lifetime.petKills += 1;
     if (enemy.isBoss) {
@@ -2706,6 +3311,7 @@
     state.combat.repairStarted = 0;
     state.combat.playerHp = getStats().maxHp;
     state.combat.enemy = null;
+    scene.resetPlayerShipAnimation();
     clearCombatTimers();
     state.combat.spawnTimer = getSpawnDelay();
     state.combat.running = true;
@@ -2923,8 +3529,10 @@
     const stats = getStats();
     const ship = SHIPS[state.shipId];
     const enemy = state.combat.enemy;
+    const region = REGIONS[state.regionIndex];
     const maxHp = stats.maxHp;
-    $("#scene-weather").textContent = `${REGIONS[state.regionIndex].weather} • ${scene.getDayState().label}`;
+    $("#battle-stage")?.classList.toggle("fixed-background", regionUsesFixedBackground(state.regionIndex));
+    $("#scene-weather").textContent = region.dayNightCycle === false ? region.weather : `${region.weather} • ${scene.getDayState(region).label}`;
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
     $("#player-health-fill").style.width = `${state.combat.playerHp / maxHp * 100}%`;
     $("#player-health-text").textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(maxHp)}`;
@@ -2994,13 +3602,14 @@
     ctx.strokeStyle = "rgba(225,251,246,.28)"; ctx.lineWidth = 1;
     for (let i = 0; i < 4; i++) { const y = height * (.62 + i * .09); ctx.beginPath(); ctx.moveTo(i * 17, y); ctx.quadraticCurveTo(width * .32, y - 3, width * .62, y); ctx.lineTo(width, y - 2); ctx.stroke(); }
     const scale = compact ? .45 : .58;
-    scene.drawPlayerShip(ctx, width * .5, height * .71, scale, ship);
+    scene.drawPlayerShip(ctx, width * .5, height * .71, scale, ship, { preview: true });
   }
 
   function renderHome() {
     const region = REGIONS[state.regionIndex];
     const stats = getStats();
     const kills = state.regionKills[state.regionIndex];
+    $("#battle-stage")?.classList.toggle("fixed-background", regionUsesFixedBackground(state.regionIndex));
     $("#scene-region").textContent = region.name;
     $("#scene-weather").textContent = region.weather;
     $("#metric-damage").textContent = formatNumber(stats.damage);
@@ -4123,6 +4732,7 @@
     state.hasStarted = true;
     trackAction("firstCombat");
     state.combat.repairing = false;
+    scene.resetPlayerShipAnimation();
     spawnEnemy(true);
     renderAll(false);
   }
