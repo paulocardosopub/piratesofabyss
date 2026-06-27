@@ -305,19 +305,19 @@
 
   const PRIMITIVE_SHIPS = [
     { name: "Bote de Tronco", type: "Primitivo", tier: 0, levelReq: 1, hp: 62, damage: 7, speed: 86, armor: 0, costs: { ouro: 0, madeira: 0 } },
-    { name: "Jangada de Cipó", type: "Primitivo", tier: 0, levelReq: 1, hp: 76, damage: 9, speed: 91, armor: 1, costs: { ouro: 45, madeira: 12 } },
-    { name: "Canoa de Caça", type: "Primitivo", tier: 0, levelReq: 2, hp: 92, damage: 12, speed: 96, armor: 1, costs: { ouro: 90, madeira: 22, comida: 8 } },
-    { name: "Jangada Reforçada Primitiva", type: "Primitivo", tier: 0, levelReq: 2, hp: 112, damage: 15, speed: 99, armor: 2, costs: { ouro: 160, madeira: 34, tecido: 8 } },
-    { name: "Canoa do Titã", type: "Primitivo", tier: 0, levelReq: 3, hp: 132, damage: 17, speed: 102, armor: 2, costs: { ouro: 260, madeira: 48, ferro: 12 } }
+    { name: "Jangada de Cipó", type: "Primitivo", tier: 0, levelReq: 1, hp: 76, damage: 9, speed: 91, armor: 1, costs: { ouro: 90, madeira: 24 } },
+    { name: "Canoa de Caça", type: "Primitivo", tier: 0, levelReq: 2, hp: 92, damage: 12, speed: 96, armor: 1, costs: { ouro: 180, madeira: 44, comida: 16 } },
+    { name: "Jangada Reforçada Primitiva", type: "Primitivo", tier: 0, levelReq: 2, hp: 112, damage: 15, speed: 99, armor: 2, costs: { ouro: 320, madeira: 68, tecido: 16 } },
+    { name: "Canoa do Titã", type: "Primitivo", tier: 0, levelReq: 3, hp: 132, damage: 17, speed: 102, armor: 2, costs: { ouro: 520, madeira: 96, ferro: 24 } }
   ];
 
   const MAIN_SHIPS = [
-    { name: "Bote Armado", type: "Pirata", tier: 1, levelReq: 1, hp: 140, damage: 18, speed: 103, armor: 2, costs: { ouro: 0, madeira: 0 } },
-    { name: "Jangada Reforçada", type: "Civil", tier: 1, levelReq: 2, hp: 175, damage: 21, speed: 108, armor: 3, costs: { ouro: 1500, madeira: 25 } },
-    { name: "Barco de Pesca Adaptado", type: "Pescador", tier: 1, levelReq: 3, hp: 215, damage: 24, speed: 116, armor: 4, costs: { ouro: 3000, madeira: 40, tecido: 15 } },
-    { name: "Escuna Leve", type: "Pirata", tier: 1, levelReq: 3, hp: 270, damage: 60, speed: 150, armor: 10, costs: { ouro: 5000, madeira: 50 } },
-    { name: "Escuna Mercante", type: "Mercante", tier: 2, levelReq: 5, hp: 390, damage: 60, speed: 150, armor: 8, costs: { ouro: 12000, madeira: 120, tecido: 30 } },
-    { name: "Cutter Real", type: "Marinha", tier: 2, levelReq: 7, hp: 530, damage: 65, speed: 158, armor: 12, costs: { ouro: 24000, madeira: 190, ferro: 55, tecido: 45 } },
+    { name: "Bote Armado", type: "Pirata", tier: 1, levelReq: 1, hp: 140, damage: 18, speed: 103, armor: 2, costs: { ouro: 900, madeira: 100, ferro: 25 } },
+    { name: "Jangada Reforçada", type: "Civil", tier: 1, levelReq: 2, hp: 175, damage: 21, speed: 108, armor: 3, costs: { ouro: 2600, madeira: 80 } },
+    { name: "Barco de Pesca Adaptado", type: "Pescador", tier: 1, levelReq: 3, hp: 215, damage: 24, speed: 116, armor: 4, costs: { ouro: 5200, madeira: 90, tecido: 34 } },
+    { name: "Escuna Leve", type: "Pirata", tier: 1, levelReq: 3, hp: 270, damage: 60, speed: 150, armor: 10, costs: { ouro: 8000, madeira: 110 } },
+    { name: "Escuna Mercante", type: "Mercante", tier: 2, levelReq: 5, hp: 390, damage: 60, speed: 150, armor: 8, costs: { ouro: 18000, madeira: 210, tecido: 55 } },
+    { name: "Cutter Real", type: "Marinha", tier: 2, levelReq: 7, hp: 530, damage: 65, speed: 158, armor: 12, costs: { ouro: 34000, madeira: 300, ferro: 90, tecido: 75 } },
     { name: "Brigantina Pequena", type: "Pirata", tier: 2, levelReq: 9, hp: 720, damage: 80, speed: 150, armor: 15, costs: { ouro: 38000, madeira: 300, ferro: 90, polvora: 35 } },
     { name: "Corveta Simples", type: "Marinha", tier: 2, levelReq: 12, hp: 990, damage: 105, speed: 162, armor: 19, costs: { ouro: 65000, madeira: 520, ferro: 160, tecido: 80 } },
     { name: "Brigantina Pirata", type: "Pirata", tier: 3, levelReq: 15, hp: 1500, damage: 160, speed: 172, armor: 24, costs: { ouro: 80000, madeira: 750, ferro: 260, polvora: 100 } },

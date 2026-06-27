@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v105-surprise-boss";
+const CACHE = "pirates-abyss-v106-early-ship-costs";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=59",
-  "game.js?v=112",
+  "game.js?v=113",
   "icon.svg",
   "manifest.webmanifest"
 ];
