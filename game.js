@@ -7,6 +7,8 @@
   const OFFLINE_MODAL_AUTO_HIDE_MS = 5000;
   const COMMON_MONSTER_BALANCE_LAST_REGION = 10;
   const COMMON_MONSTER_BALANCE_MULTIPLIER = 4;
+  const EARLY_GAME_REWARD_MAP_COUNT = 5;
+  const EARLY_GAME_REWARD_MULTIPLIER = .1;
   const PRESTIGE_REGION_NAME = "Oceano Profundo";
   const PRESTIGE_BOSS_NAME = "Megalodon Ancestral";
   const PET_PIRATE_COIN_COSTS = [10, 18, 30, 45, 65, 90, 120, 155, 200, 260];
@@ -82,6 +84,60 @@
   };
 
   const RARITY_COLORS = { common: "#b5c5c4", uncommon: "#67d997", rare: "#64aef4", epic: "#c38af1", legendary: "#ffb349" };
+  const RESOURCE_GOLD_VALUES = Object.freeze({
+    madeira: 25,
+    ferro: 35,
+    tecido: 30,
+    comida: 20,
+    polvora: 75,
+    pedra: 90,
+    cristal: 300,
+    perola: 450,
+    gema: 1000,
+    ambar: 1200,
+    fragmentos: 10000
+  });
+  const FOOD_LOOT_SELL_GOLD_VALUE = 8;
+  const SECONDARY_RESOURCE_KEYS = Object.keys(RESOURCE_GOLD_VALUES);
+
+  function getResourceGoldValue(key) {
+    return key === "ouro" ? 1 : RESOURCE_GOLD_VALUES[key] || 0;
+  }
+
+  function convertResourceAmountToGold(key, amount) {
+    return Math.max(0, Number(amount) || 0) * getResourceGoldValue(key);
+  }
+
+  function convertResourceBundleToGold(bundle = {}) {
+    return Object.entries(bundle || {}).reduce((sum, [key, amount]) => sum + convertResourceAmountToGold(key, amount), 0);
+  }
+
+  function goldOnlyBundle(bundle = {}) {
+    return { ouro: Math.max(0, Math.round(convertResourceBundleToGold(bundle))) };
+  }
+
+  function isGoldOnlyCost(cost = {}) {
+    return Object.keys(cost || {}).every(key => key === "ouro");
+  }
+
+  function scaleRewardAmount(amount, multiplier = 1) {
+    const value = Math.max(0, Number(amount) || 0);
+    if (!value) return 0;
+    return Math.max(1, Math.round(value * multiplier));
+  }
+
+  function scaleRewardBundle(bundle = {}, multiplier = 1) {
+    return Object.fromEntries(Object.entries(bundle || {}).map(([key, amount]) => [key, scaleRewardAmount(amount, multiplier)]));
+  }
+
+  function scaleReward(reward = {}, multiplier = 1) {
+    return {
+      ...reward,
+      resources: scaleRewardBundle(reward.resources || {}, multiplier),
+      xp: reward.xp ? scaleRewardAmount(reward.xp, multiplier) : reward.xp
+    };
+  }
+
   const CHEST_SPRITE_PATH = "assets/chests/";
   const CHEST_SPRITE_VERSION = "3";
   const CHEST_DROP_CHANCES = { monster: .05, boss: .30 };
@@ -387,6 +443,23 @@
     { name: "Black Abyss", type: "Espectral", tier: 5, levelReq: 80, hp: 78000, damage: 6500, speed: 260, armor: 250, costs: { ouro: 1000000, madeira: 5000, ferro: 3000, polvora: 2000, cristal: 250, gema: 100, fragmentos: 25 } }
   ];
   const SHIPS = [...PRIMITIVE_SHIPS, ...MAIN_SHIPS].map((ship, id) => ({ id, bossReq: 0, ...ship }));
+  const SHIP_UNLOCK_BY_MAP = Object.freeze({
+    1: 1,
+    2: 2,
+    3: 3,
+    4: 4,
+    5: 5,
+    6: 7,
+    7: 9,
+    8: 11,
+    9: 13,
+    10: 15,
+    11: 17,
+    12: 19,
+    13: 21,
+    14: 23,
+    15: 26
+  });
 
   const ENEMY_CATEGORIES = {
     PESCADOR: { label: "PESCADOR", visual: "PESCADOR", hp: .66, damage: .48, armor: .45, gold: .72, xp: .78, attackSpeed: 1.12, evasion: .01, drops: { comida: .34, tecido: .18, madeira: .22 } },
@@ -568,9 +641,9 @@
   const PET_SPRITE_PATH = "assets/newpets/";
   const PET_SPRITE_CONFIG = {
     fish: { file: "PET-01_Peixe-Palhaço_sprite_3frames.png", width: 66, cardWidth: 86, anchorX: .42, anchorY: .58, offsetY: 2 },
-    jelly: { file: "PET-02_Água-viva_sprite_3frames.png", width: 70, cardWidth: 88, anchorX: .44, anchorY: .57, offsetY: -3 },
+    jelly: { file: "PET-02_Água-viva_sprite_3frames.png", width: 70, cardWidth: 88, anchorX: .44, anchorY: .57, offsetY: -3, seamWidth: 7 },
     turtle: { file: "PET-03_Tartaruga_Marinha_sprite_3frames.png", width: 76, cardWidth: 92, anchorX: .42, anchorY: .57, offsetY: 2 },
-    seal: { file: "PET-04_Foca_sprite_3frames.png", width: 78, cardWidth: 94, anchorX: .42, anchorY: .6, offsetY: 4, bob: 7 },
+    seal: { file: "PET-04_Foca_sprite_3frames.png", width: 78, cardWidth: 94, anchorX: .42, anchorY: .6, offsetY: 4, bob: 7, preserveNeutralPixels: true, seamWidth: 5 },
     dolphin: { file: "PET-05_Golfinho_sprite_3frames.png", width: 88, cardWidth: 98, anchorX: .42, anchorY: .57, offsetY: -2, bob: 7 },
     ray: { file: "PET-06_Arraia_Elétrica_sprite_3frames.png", width: 92, cardWidth: 100, anchorX: .43, anchorY: .57, offsetY: 1 },
     shark: { file: "PET-07_Tubarão_sprite_3frames.png", width: 98, cardWidth: 104, anchorX: .42, anchorY: .57, offsetY: 1 },
@@ -1126,12 +1199,12 @@
     }
   }
 
-  function isPetSpritesheetBackgroundPixel(r, g, b, backgroundSamples) {
+  function isPetSpritesheetBackgroundPixel(r, g, b, backgroundSamples, sprite = {}) {
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     const average = (r + g + b) / 3;
     return backgroundSamples.some(sample => Math.hypot(r - sample.r, g - sample.g, b - sample.b) < 34)
-      || (max - min <= 24 && average >= 86 && average <= 220);
+      || (!sprite.preserveNeutralPixels && max - min <= 24 && average >= 86 && average <= 220);
   }
 
   function measurePetFrameBounds(sprite, data, width, height) {
@@ -1225,7 +1298,7 @@
         const point = y * width + x;
         if (visited[point]) return;
         const index = point * 4;
-        if (data[index + 3] <= 8 || isPetSpritesheetBackgroundPixel(data[index], data[index + 1], data[index + 2], backgroundSamples)) {
+        if (data[index + 3] <= 8 || isPetSpritesheetBackgroundPixel(data[index], data[index + 1], data[index + 2], backgroundSamples, sprite)) {
           visited[point] = 1;
           data[index + 3] = 0;
           queue.push(point);
@@ -1251,7 +1324,7 @@
         }
       }
       const frameWidth = Math.floor(width / (sprite.frames || 3));
-      const seamWidth = 2;
+      const seamWidth = Math.max(2, Math.floor(Number(sprite.seamWidth || 4)));
       for (let seam = frameWidth; seam < width; seam += frameWidth) {
         for (let x = Math.max(0, seam - seamWidth); x <= Math.min(width - 1, seam + seamWidth); x++) {
           for (let y = 0; y < height; y++) data[(y * width + x) * 4 + 3] = 0;
@@ -1423,7 +1496,7 @@
   let activeMissionFilter = "Próximas de concluir";
 
   function rewardText(reward = {}) {
-    const parts = Object.entries(reward.resources || {}).filter(([, value]) => value > 0).map(([key, value]) => `${formatNumber(key === "ouro" ? calculateGoldReward(value) : value)} ${RESOURCE_META[key]?.name || key}`);
+    const parts = Object.entries(goldOnlyBundle(reward.resources || {})).filter(([, value]) => value > 0).map(([, value]) => `${formatNumber(calculateGoldReward(value))} Gold`);
     if (reward.xp) parts.push(`${formatNumber(calculateXpReward(reward.xp))} XP`);
     if (reward.title) parts.push(`Título "${reward.title}"`);
     if (reward.cosmetic) parts.push(reward.cosmetic);
@@ -1467,7 +1540,7 @@
       ["Preparado para o Mar", "Tenha 5 upgrades em canhões, velas e casco.", { kind: "allCoreUpgrades", target: 5 }, { ouro: 750 }],
       ["Caçada Regional", "Derrote 75 inimigos na jornada.", { kind: "enemies", target: 75 }, { ouro: 500, madeira: 25, ferro: 25 }],
       ["Pirata Iniciante", "Alcance nível 3 de pirata.", { kind: "pirateLevel", target: 3 }, { ouro: 1000 }]
-    ].forEach(([name, description, objective, resources], index) => add({ name, description, objective, reward: { resources, xp: index < 3 ? 10 : 50 }, recommendedLevel: Math.max(1, Math.ceil((index + 1) / 2)), icon: "☠" }));
+    ].forEach(([name, description, objective, resources], index) => add({ name, description, objective, reward: { resources, xp: index < 3 ? 10 : 50 }, recommendedLevel: Math.max(1, Math.ceil((index + 1) / 2)), icon: "☠", earlyReward: true }));
     [75, 200, 500, 1000, 2500, 5000, 10000].forEach((target, i) => add({ name: `Caçador dos Mares ${roman[i]}`, description: `Derrote ${shortNumber(target)} inimigos no total.`, category: "Combate", type: "combat", objective: { kind: "enemies", target }, reward: { resources: { ouro: 750 * (i + 1), polvora: i < 3 ? 25 * (i + 1) : 0, cristal: i >= 4 ? i : 0 }, xp: 25 * (i + 1) }, recommendedLevel: 2 + i * 4, icon: "⚔" }));
     [1, 3, 5, 10, REGIONS.length].forEach((target, i) => add({ name: `Boss Hunter ${roman[i]}`, description: i === 0 ? "Derrote o primeiro boss regional." : `Derrote ${target} bosses regionais.`, category: "Boss", type: "boss", objective: { kind: "bosses", target }, reward: { resources: { ouro: 2500 * (i + 1), cristal: i >= 1 ? 3 * i : 0, fragmentos: i >= 3 ? i : 0 }, xp: 100 * (i + 1) }, recommendedLevel: 8 + i * 8, icon: "👑" }));
     MAIN_REGIONS.slice(0, 10).forEach((region, i) => add({ name: region.name, description: `Desbloqueie ${region.name}.`, category: "Mapas", type: "map", objective: { kind: "regionUnlocked", target: PRIMITIVE_REGIONS.length + i + 1 }, reward: { resources: { ouro: 1800 * (i + 1), ...(i > 6 ? { fragmentos: 1 } : i > 3 ? { perola: 2 } : { madeira: 40 }) }, xp: 75 * (i + 1) }, recommendedLevel: 3 + i * 5, icon: "⌖" }));
@@ -1492,10 +1565,92 @@
     return selected.map((item, index, all) => ({ ...item, reward: balanceReward(item.reward), prevId: all[index - 1]?.type === item.type ? all[index - 1].id : null, nextId: all[index + 1]?.type === item.type ? all[index + 1].id : null }));
   })();
 
+  function normalizeGoldEconomyObjective(objective) {
+    if (!objective) return objective;
+    if (objective.kind === "resource") {
+      return { kind: "gold", target: Math.max(1000, Math.round(convertResourceAmountToGold(objective.key, objective.target))) };
+    }
+    if (["tradeBuys", "tradeSells", "tradeTransactions", "dailyTrades", "weeklyTrades"].includes(objective.kind)) {
+      return { kind: "gold", target: Math.max(2500, Math.round((objective.target || 1) * 1200)) };
+    }
+    if (objective.kind === "weeklyResources") return { kind: "gold", target: 25000 };
+    if (objective.kind === "resourceTotal") return { kind: "gold", target: Math.max(5000, Math.round((objective.target || 1) * 20)) };
+    if (objective.kind === "allResourcesSeen") return { kind: "gold", target: 100000 };
+    if (objective.kind === "multiResourceDrops") return { kind: "onlyGoldBattles", target: 25 };
+    if (objective.kind === "all") return { ...objective, objectives: objective.objectives.map(normalizeGoldEconomyObjective) };
+    return objective;
+  }
+
+  function normalizeGoldEconomyMission(item) {
+    if (item.reward?.resources) item.reward.resources = goldOnlyBundle(item.reward.resources);
+    if (item.earlyReward) item.reward = scaleReward(item.reward, EARLY_GAME_REWARD_MULTIPLIER);
+    const oldKind = item.objective?.kind;
+    item.objective = normalizeGoldEconomyObjective(item.objective);
+    if (oldKind === "resource") {
+      item.category = "Gold";
+      item.type = "gold";
+      SECONDARY_RESOURCE_KEYS.forEach(key => {
+        const name = RESOURCE_META[key]?.name;
+        if (name) item.name = item.name.split(name).join("Gold");
+      });
+      item.name = item.name.replace(/Madeira|Ferro|Tecido|Polvora|Cristal|Perola|Ambar|Fragmentos|Pedra|Comida/gi, "Gold");
+      item.description = `Colete ${item.objective.target} Gold ao longo da jornada.`;
+      item.icon = RESOURCE_META.ouro.icon;
+    }
+    if (item.category === "Recursos" || item.type === "resource") {
+      item.category = "Gold";
+      item.type = "gold";
+      item.description = item.description.replace(/recursos|materiais/gi, "Gold");
+      item.icon = RESOURCE_META.ouro.icon;
+    }
+    if (item.category === "Comercio" || item.category === "Comércio" || item.type === "trade") {
+      item.category = "Gold";
+      item.type = "gold";
+      item.name = item.name.replace(/Comercio|Comércio|Mercador|Negocio|Negócio|Venda no Porto/gi, "Saque");
+      item.description = `Colete ${item.objective.target} Gold ao longo da jornada.`;
+      item.icon = RESOURCE_META.ouro.icon;
+    }
+    if (oldKind === "weeklyResources") {
+      item.name = "Semana de Gold";
+      item.description = "Colete Gold suficiente durante a semana.";
+      item.category = "Semanal";
+      item.icon = RESOURCE_META.ouro.icon;
+    }
+    if (oldKind === "allResourcesSeen") {
+      item.name = "Mestre do Gold";
+      item.description = "Colete uma grande quantia de Gold na jornada.";
+      item.icon = RESOURCE_META.ouro.icon;
+    }
+    if (oldKind === "multiResourceDrops") {
+      item.name = "Mar de Gold";
+      item.description = "Receba apenas Gold em 25 batalhas.";
+      item.icon = RESOURCE_META.ouro.icon;
+    }
+    return item;
+  }
+
+  function normalizeGoldEconomyDefinitions() {
+    SHIPS.forEach(ship => { ship.costs = goldOnlyBundle(ship.costs); });
+    PETS.forEach(pet => { pet.costs = goldOnlyBundle(pet.costs); });
+    Object.values(EQUIPMENT_META).forEach(item => { item.costs = goldOnlyBundle(item.costs); });
+    Object.values(ENEMY_CATEGORIES).forEach(profile => {
+      profile.goldDrops = { ...(profile.drops || {}) };
+      profile.drops = {};
+    });
+    REGIONS.forEach(region => {
+      region.goldDrops = { ...(region.drops || {}) };
+      region.drops = {};
+    });
+    missionDefinitions.forEach(normalizeGoldEconomyMission);
+  }
+
+  normalizeGoldEconomyDefinitions();
+
   function createDefaultState() {
     return {
-      version: 11,
-      resources: { ouro: 1200, madeira: 90, ferro: 55, tecido: 45, comida: 22, polvora: 28, pedra: 0, cristal: 0, perola: 0, gema: 0, ambar: 0, fragmentos: 0 },
+      version: 12,
+      resources: { ouro: 1200 },
+      resourcesConvertedToGold: true,
       pirateCoins: 0,
       prestiges: 0,
       totalActivePlaySeconds: 0,
@@ -1547,6 +1702,35 @@
     };
   }
 
+  function migrateResourcesToGold(target, saved = {}) {
+    const savedResources = saved.resources || {};
+    const hadSecondaryResources = Object.entries(savedResources).some(([key, amount]) => key !== "ouro" && Number(amount) > 0);
+    const shouldConvert = saved.resourcesConvertedToGold !== true;
+    const secondaryGold = shouldConvert
+      ? SECONDARY_RESOURCE_KEYS.reduce((sum, key) => sum + convertResourceAmountToGold(key, savedResources[key] || 0), 0)
+      : 0;
+    const currentGold = Math.max(0, Number(target.resources?.ouro ?? savedResources.ouro ?? 0) || 0);
+    target.resources = { ouro: Math.round(currentGold + secondaryGold) };
+    target.resourcesConvertedToGold = true;
+    return shouldConvert || hadSecondaryResources;
+  }
+
+  function normalizeSavedLogText(target) {
+    if (!Array.isArray(target.logs)) {
+      target.logs = [];
+      return false;
+    }
+    let changed = false;
+    target.logs = target.logs.slice(0, 100).map(item => {
+      if (!item || typeof item.message !== "string") return item;
+      const message = item.message.replace(/Gold\s+extra/g, "Ouro extra");
+      if (message === item.message) return item;
+      changed = true;
+      return { ...item, message };
+    });
+    return changed;
+  }
+
   function loadState() {
     const defaults = createDefaultState();
     try {
@@ -1560,6 +1744,8 @@
       merged.captainManualSkills = { ...defaults.captainManualSkills, ...(saved.captainManualSkills || {}) };
       merged.skills = Object.fromEntries(Object.keys(SKILL_META).map(key => [key, { ...defaults.skills[key], ...((saved.skills || {})[key] || {}) }]));
       merged.lifetime = { ...defaults.lifetime, ...(saved.lifetime || {}) };
+      const resourcesNeedSave = migrateResourcesToGold(merged, saved);
+      const logsNeedSave = normalizeSavedLogText(merged);
       merged.progression = mergeProgression(saved.progression, defaults.progression);
       merged.quests = { completed: { ...(saved.quests?.completed || {}) }, claimed: { ...(saved.quests?.claimed || {}) } };
       delete merged.achievements;
@@ -1599,7 +1785,10 @@
       syncCaptainEquipmentState(merged);
       merged.journeyStartedAt = Number(saved.journeyStartedAt || Date.now());
       merged.maxRegionReached = clamp(Math.max(Number(saved.maxRegionReached || 0), merged.regionIndex), 0, REGIONS.length - 1);
-      merged.version = 11;
+      merged.version = 12;
+      if (resourcesNeedSave || logsNeedSave) {
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(merged)); } catch (error) {}
+      }
       return merged;
     } catch (error) {
       console.warn("Não foi possível carregar o save.", error);
@@ -1650,6 +1839,7 @@
   let lastCaptainEquipmentUpgrade = null;
   let lastCaptainManualSkillUpgrade = null;
   let activeCaptainEquipmentKey = "sword";
+  let activeShipUpgradeCategory = "improvements";
   let activeMapInfoIndex = null;
   let pendingBossMapAdvanceTimer = 0;
   let pendingSurpriseBossTimer = 0;
@@ -1885,25 +2075,25 @@
       const cost = { ouro: pow(120, 1.54), madeira: pow(12, 1.42) };
       if (level >= 3) cost.comida = pow(5, 1.35);
       if (level >= 10) cost.perola = pow(1, 1.25);
-      return cost;
+      return goldOnlyBundle(cost);
     }
     if (type === "cannons") {
       const cost = { ouro: pow(150, 1.55), ferro: pow(15, 1.43), polvora: pow(10, 1.43) };
       if (level >= 7) cost.cristal = pow(2, 1.3);
       if (level >= 13) cost.gema = pow(1, 1.22);
-      return cost;
+      return goldOnlyBundle(cost);
     }
     if (type === "sails") {
       const cost = { ouro: pow(100, 1.52), tecido: pow(10, 1.44) };
       if (level >= 7) cost.cristal = pow(2, 1.28);
       if (level >= 13) cost.gema = pow(1, 1.2);
-      return cost;
+      return goldOnlyBundle(cost);
     }
     const cost = { ouro: pow(150, 1.56), madeira: pow(25, 1.42), ferro: pow(10, 1.4) };
     if (level >= 5) cost.pedra = pow(4, 1.35);
     if (level >= 9) cost.cristal = pow(2, 1.28);
     if (level >= 14) cost.perola = pow(1, 1.2);
-    return cost;
+    return goldOnlyBundle(cost);
   }
 
   function getSkillCost(key) {
@@ -1912,14 +2102,15 @@
     const cost = { ouro: Math.round(300 * Math.pow(1.62, level - 1)) };
     cost[meta.materials[0]] = Math.round(12 * Math.pow(1.48, level - 1));
     cost[meta.materials[1]] = Math.round(6 * Math.pow(1.42, level - 1));
-    return cost;
+    return goldOnlyBundle(cost);
   }
 
-  function canAfford(cost) { return Object.entries(cost).every(([key, amount]) => (state.resources[key] || 0) >= amount); }
-  function spend(cost) { Object.entries(cost).forEach(([key, amount]) => { state.resources[key] -= amount; }); }
+  function canAfford(cost) { return Object.entries(goldOnlyBundle(cost)).every(([key, amount]) => (state.resources[key] || 0) >= amount); }
+  function spend(cost) { Object.entries(goldOnlyBundle(cost)).forEach(([key, amount]) => { state.resources[key] = Math.max(0, (state.resources[key] || 0) - amount); }); }
   function isDirectlyPurchasableResource(key) { return key !== "ouro" && key !== "fragmentos" && Boolean(TRADE_PRICES[key]); }
   function getMissingResourceEntries(cost) {
-    return Object.entries(cost).map(([key, amount]) => ({ key, amount, owned: state.resources[key] || 0, missing: Math.max(0, amount - (state.resources[key] || 0)) })).filter(item => item.missing > 0);
+    const normalized = goldOnlyBundle(cost);
+    return Object.entries(normalized).map(([key, amount]) => ({ key, amount, owned: state.resources[key] || 0, missing: Math.max(0, amount - (state.resources[key] || 0)) })).filter(item => item.missing > 0);
   }
   function getMissingPurchaseInfo(cost) {
     const missing = getMissingResourceEntries(cost);
@@ -2126,9 +2317,11 @@
     return integerBetween(min, max);
   }
 
-  function getBossChestRewardMultiplier(regionIndex = state.regionIndex) {
+  function getChestRewardMultiplier(dropType, regionIndex = state.regionIndex) {
     const mapNumber = clamp(Math.floor(Number(regionIndex) || 0) + 1, 1, REGIONS.length);
-    return mapNumber <= 5 ? .3 : 1;
+    return mapNumber <= EARLY_GAME_REWARD_MAP_COUNT && (dropType === "monster" || dropType === "boss")
+      ? EARLY_GAME_REWARD_MULTIPLIER
+      : 1;
   }
 
   function trySpawnChestDrop(dropType, enemy = null) {
@@ -2146,10 +2339,10 @@
     chest.opened = true;
     chest.openAge = 0;
     const isBossChest = chest.dropType === "boss";
-    const bossRewardMultiplier = isBossChest ? getBossChestRewardMultiplier(chest.regionIndex) : 1;
-    const gold = Math.max(1, Math.round(definition.gold * bossRewardMultiplier));
+    const rewardMultiplier = getChestRewardMultiplier(chest.dropType, chest.regionIndex);
+    const gold = Math.max(1, Math.round(definition.gold * rewardMultiplier));
     const pirateCoins = isBossChest && Math.random() < CHEST_PIRATE_COIN_CHANCE
-      ? Math.max(1, Math.round(getBossChestPirateCoins(chest.regionIndex) * bossRewardMultiplier))
+      ? Math.max(1, Math.round(getBossChestPirateCoins(chest.regionIndex) * rewardMultiplier))
       : 0;
     state.resources.ouro += gold;
     state.lifetime.gold += gold;
@@ -2327,7 +2520,7 @@
     const store = state.quests;
     if (!isMissionRewardReady(item)) return false;
     if (!store.completed[item.id]) store.completed[item.id] = Date.now();
-    Object.entries(item.reward.resources || {}).forEach(([key, amount]) => {
+    Object.entries(goldOnlyBundle(item.reward.resources || {})).forEach(([key, amount]) => {
       if (!amount) return;
       const finalAmount = key === "ouro" ? calculateGoldReward(amount) : amount;
       state.resources[key] = (state.resources[key] || 0) + finalAmount;
@@ -3736,6 +3929,10 @@
       this.aquaticBursts.push({ x: this.width * .69, y: this.height * .54, age: 0, color: pet.color, kind: pet.visual });
     }
 
+    manualAttackFeedback(color = "#9ff4e9") {
+      this.bursts.push({ x: this.width * .31, y: this.height * .64, age: 0, color });
+    }
+
     floatDamage(amount, atEnemy = true, color = "#fff0bc") {
       this.floaters.push({ text: amount, x: this.width * (atEnemy ? .70 : .30) + randomBetween(-25, 25), y: this.height * (atEnemy ? .47 : .60), age: 0, color });
     }
@@ -3943,6 +4140,30 @@
       return openTreasureChest(chest);
     }
 
+    getPlayerManualAttackHitbox(pointerType = "mouse") {
+      const compactStage = this.width < 620 || this.height < 240;
+      const playerX = this.width * .29;
+      const playerY = this.height * (compactStage ? .73 : .69);
+      const playerScale = Math.min(1.15, this.width / 950, this.height / 300);
+      const touchBoost = pointerType === "touch" ? 1.28 : 1;
+      const width = clamp(250 * playerScale * touchBoost, 108, this.width * .58);
+      const height = clamp(154 * playerScale * touchBoost, 88, this.height * .72);
+      return {
+        x: clamp(playerX - width * .52, 0, this.width - width),
+        y: clamp(playerY - height * .62, 0, this.height - height),
+        width,
+        height
+      };
+    }
+
+    handleManualShipPointer(pointer, x, y) {
+      const box = this.getPlayerManualAttackHitbox(pointer.pointerType);
+      if (x < box.x || x > box.x + box.width || y < box.y || y > box.y + box.height) return false;
+      if (!manualShipAttack()) return false;
+      if (pointer.cancelable) pointer.preventDefault();
+      return true;
+    }
+
     floatChestReward(chest, rewards = []) {
       const x = (chest?.xRatio ?? .52) * this.width;
       const y = (chest?.yRatio ?? .66) * this.height - 8;
@@ -3965,9 +4186,12 @@
         const margin = pointer.pointerType === "touch" ? 14 : 7;
         return x >= box.x - margin && x <= box.x + box.width + margin && y >= box.y - margin && y <= box.y + box.height + margin;
       });
-      if (!event) return;
-      if (pointer.cancelable) pointer.preventDefault();
-      this.collectEnvironmentEvent(event);
+      if (event) {
+        if (pointer.cancelable) pointer.preventDefault();
+        this.collectEnvironmentEvent(event);
+        return;
+      }
+      this.handleManualShipPointer(pointer, x, y);
     }
 
     collectEnvironmentEvent(event, options = {}) {
@@ -3988,16 +4212,21 @@
       const burstX = event.screenX ?? this.width * .5;
       const burstY = event.screenY ?? this.height * .5;
       const baseAmount = automatic ? Math.max(1, Math.round(reward.food * percent)) : Math.max(1, reward.food - Math.round(reward.food * alreadyCollected));
-      const amount = automatic ? Math.max(1, Math.round(baseAmount * (1 + getCaptainBonuses().autoFoodBonus))) : baseAmount;
+      const foodEquivalent = automatic ? Math.max(1, Math.round(baseAmount * (1 + getCaptainBonuses().autoFoodBonus))) : baseAmount;
+      const amount = calculateGoldReward(foodEquivalent * FOOD_LOOT_SELL_GOLD_VALUE);
       this.bursts.push({ x: burstX, y: burstY, age: 0, color: reward.color });
-      this.lootFloaters.push({ text: `${automatic ? "Auto " : ""}+${amount} Comida`, x: burstX, y: burstY, age: 0, color: reward.color });
-      state.resources.comida += amount;
-      state.lifetime.resources += amount;
-      addCollectedResource("comida", amount);
+      this.lootFloaters.push({ text: `${automatic ? "Auto " : ""}+${formatNumber(amount)} Gold`, x: burstX, y: burstY, age: 0, color: reward.color });
+      state.resources.ouro += amount;
+      state.lifetime.gold += amount;
+      trackAction("gold", { amount });
       if (event.kind === "kraken") trackAction("kraken");
-      addLog(`${reward.name} capturado${automatic ? " automaticamente" : ""}: +${amount} Comida.`, "loot");
-      if (!automatic) toast(`+${amount} Comida • ${reward.name}`, "gold-toast");
-      if (!automatic) tryTriggerSurpriseBossFromLoot(event.kind);
+      addLog(`${reward.name} capturado${automatic ? " automaticamente" : ""}: +${formatNumber(amount)} Gold.`, "loot");
+      if (!automatic) {
+        toast(`+${formatNumber(amount)} Gold - ${reward.name}`, "gold-toast");
+        tryTriggerSurpriseBossFromLoot(event.kind);
+        commitGame(false);
+        return true;
+      }
       commitGame(false);
       return true;
     }
@@ -4588,7 +4817,6 @@
       const size = [0.48, 0.55, 0.68, 0.7, 0.82, 0.9, 1, 1.18, 1.38, 1.55][pet.id] * baseScale;
       const jump = pet.visual === "dolphin" || pet.visual === "seal" ? Math.max(0, Math.sin(this.time * 1.25 + pet.id)) * 15 : 0;
       const bodyY = y - 14 * size;
-      this.drawPetWaterSplash(ctx, x, y - 9 * size, 44 * size, pet, baseScale, jump / 15);
       ctx.save(); ctx.translate(x, bodyY - jump); ctx.scale(size, size);
       if (pet.visual === "kraken") {
         ctx.strokeStyle = "#713b91"; ctx.lineCap = "round";
@@ -4672,14 +4900,11 @@
       const breath = this.getBreathingIdleTransform("pet", SPRITE_HP_STATES.normal, (pet.id || 0) * .73);
       const offsetY = (sprite.offsetY || 0) * baseScale;
       const bodyY = y - targetHeight * (1 - sprite.anchorY) - offsetY;
-      const splashY = y - 15 * baseScale;
-      this.drawPetWaterSplash(ctx, x + targetWidth * .06, splashY, Math.max(28, targetWidth * .42), pet, baseScale, (sprite.bob || 0) / 7);
       ctx.save();
       ctx.translate(x, bodyY + offsetY);
       ctx.scale(breath.scaleX, breath.scaleY);
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
-      this.drawPetWaterSplash(ctx, targetWidth * .06, targetHeight * (1 - sprite.anchorY) - 15 * baseScale, Math.max(26, targetWidth * .36), pet, baseScale, .35);
       ctx.restore();
       return true;
     }
@@ -5370,7 +5595,7 @@
       special: mod.special || "",
       goldMultiplier: isBoss ? 1 : profile.gold,
       xpMultiplier: isBoss ? 1 : profile.xp,
-      bonusDrops: isBoss ? {} : profile.drops,
+      bonusGoldDrops: isBoss ? {} : profile.goldDrops || profile.drops || {},
       burnTime: 0,
       burnDps: 0,
       slowed: 0,
@@ -5449,6 +5674,7 @@
       scene.sabotageEnemy(options.color || "#b68cff");
       setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#f1c7ff"); }, 120);
     } else {
+      if (options.manual) scene.manualAttackFeedback(options.color || "#9ff4e9");
       scene.fire(true, options.color || "#ffd37a");
       setTimeout(() => { markHit(); scene.burst(true, options.color || "#f4a34c"); scene.floatDamage(damage, true, options.color || "#fff0bc"); }, 340);
     }
@@ -5461,19 +5687,34 @@
     scene.markPlayerShipAttack();
     const stats = getStats();
     const hitChance = stats.precision * (1 - (enemy.evasion || 0));
-    if (Math.random() > hitChance) { scene.fire(true, "#cbd6d0"); addLog(enemy.evasion > .08 ? `${enemy.name} escapou com uma manobra veloz.` : "O disparo passou longe do alvo."); return; }
+    if (Math.random() > hitChance) {
+      if (options.manual) scene.manualAttackFeedback("#9ff4e9");
+      scene.fire(true, options.manual ? "#9ff4e9" : "#cbd6d0");
+      addLog(enemy.evasion > .08 ? `${enemy.name} escapou com uma manobra veloz.` : "O disparo passou longe do alvo.");
+      return;
+    }
     const critical = Math.random() < stats.crit;
     const raw = stats.damage * randomBetween(.91, 1.09) * (critical ? 2 : 1) * (1 + (getEquippedPet()?.dpsBonus || 0));
-    dealToEnemy(raw, { color: critical ? "#ffe268" : "#ffd37a" });
+    const attackColor = options.manual ? (critical ? "#fff19a" : "#9ff4e9") : critical ? "#ffe268" : "#ffd37a";
+    dealToEnemy(raw, { color: attackColor, manual: options.manual });
     if (critical) {
-      scene.floatDamage("Crítico!", true, "#ffe268");
+      scene.floatDamage("Crítico!", true, attackColor);
       addLog(`Acerto crítico de ${formatNumber(raw)}!`, "loot");
     }
-    if (!options.doubleStrike && state.combat.enemy && !state.combat.enemy.defeated && Math.random() < stats.doubleAttackChance) {
+    if (options.allowDoubleStrike !== false && !options.doubleStrike && state.combat.enemy && !state.combat.enemy.defeated && Math.random() < stats.doubleAttackChance) {
       scene.floatDamage("Ataque Duplo!", true, "#9ff4e9");
       addLog("Ataque duplo do Capitão!", "loot");
       setTimeout(() => basicAttack({ doubleStrike: true }), 90);
     }
+  }
+
+  function manualShipAttack() {
+    const enemy = state.combat.enemy;
+    if (!state.combat.running || state.combat.repairing || state.combat.playerHp <= 0) return false;
+    if (!enemy || enemy.defeated || isBossIntroActive(enemy)) return false;
+    basicAttack({ manual: true, allowDoubleStrike: false });
+    renderCombatHud();
+    return true;
   }
 
   function castSkill(key) {
@@ -5597,19 +5838,23 @@
   function rewardMaterials(multiplier = 1, enemy = state.combat.enemy) {
     const region = REGIONS[state.regionIndex];
     const lootBonus = state.equipment.compass ? 1.08 : 1;
-    const found = [];
-    const dropKeys = new Set([...Object.keys(region.drops), ...Object.keys(enemy?.bonusDrops || {})]);
+    let extraGold = 0;
+    const regionDrops = region.goldDrops || region.drops || {};
+    const enemyDrops = enemy?.bonusGoldDrops || enemy?.bonusDrops || {};
+    const dropKeys = new Set([...Object.keys(regionDrops), ...Object.keys(enemyDrops)]);
     dropKeys.forEach(key => {
-      const chance = Math.min(.88, (region.drops[key] || 0) + (enemy?.bonusDrops?.[key] || 0));
+      const chance = Math.min(.88, (regionDrops[key] || 0) + (enemyDrops[key] || 0));
       if (Math.random() < chance * lootBonus * (1 + getPrestigeBonuses().drop) * (multiplier > 1 ? 1.65 : 1)) {
         const amount = Math.max(1, Math.round(integerBetween(1, 1 + Math.floor(state.regionIndex / 2)) * multiplier));
-        state.resources[key] += amount;
-        state.lifetime.resources += amount;
-        addCollectedResource(key, amount);
-        found.push(`${amount} ${RESOURCE_META[key].name}`);
+        extraGold += Math.round(convertResourceAmountToGold(key, amount));
       }
     });
-    return found;
+    if (extraGold <= 0) return [];
+    const gold = calculateGoldReward(extraGold);
+    state.resources.ouro += gold;
+    state.lifetime.gold += gold;
+    trackAction("gold", { amount: gold });
+    return [`${formatNumber(gold)} Ouro extra`];
   }
 
   function scheduleBossMapAdvance(defeatedRegionIndex) {
@@ -5779,7 +6024,7 @@
     const region = REGIONS[state.regionIndex];
     const stats = getStats();
     const prestigeIdle = getPrestigeBonuses().idle;
-    const efficiency = (.55 + Math.min(.25, (state.resources.comida || 0) / 5000)) * (1 + prestigeIdle);
+    const efficiency = .62 * (1 + prestigeIdle);
     const cycle = (region.baseHp * getCommonMonsterBalanceMultiplier(state.regionIndex)) / Math.max(1, stats.dps) + getSpawnDelay() / 1000;
     const kills = Math.max(1, Math.floor(capped / cycle * efficiency * OFFLINE_REWARD_RATE));
     const gold = calculateGoldReward(kills * region.gold * .94);
@@ -5793,15 +6038,18 @@
     trackAction("offline", { seconds: capped });
     gainXp(xp);
     const rewards = [{ name: "Ouro", amount: gold }, { name: "XP", amount: calculateXpReward(xp) }, { name: "Vitórias", amount: kills }];
-    Object.entries(region.drops).forEach(([key, chance]) => {
+    let extraGold = 0;
+    Object.entries(region.goldDrops || region.drops || {}).forEach(([key, chance]) => {
       const amount = Math.floor(kills * chance * (1 + getPrestigeBonuses().drop) * randomBetween(.75, 1.15));
-      if (amount > 0) {
-        state.resources[key] += amount;
-        state.lifetime.resources += amount;
-        addCollectedResource(key, amount);
-        rewards.push({ name: RESOURCE_META[key].name, amount });
-      }
+      if (amount > 0) extraGold += Math.round(convertResourceAmountToGold(key, amount));
     });
+    if (extraGold > 0) {
+      const extraGoldReward = calculateGoldReward(extraGold);
+      state.resources.ouro += extraGoldReward;
+      state.lifetime.gold += extraGoldReward;
+      trackAction("gold", { amount: extraGoldReward });
+      rewards.push({ name: "Ouro extra", amount: extraGoldReward });
+    }
     if (showModal) {
       $("#offline-time").textContent = `Sua frota navegou por ${formatDuration(capped)} (limite de 24 horas). Eficiência offline: ${Math.round(OFFLINE_REWARD_RATE * (1 + prestigeIdle) * 100)}% do combate ativo.`;
       $("#offline-rewards").innerHTML = rewards.map(item => `<div><span>${item.name}</span><strong>+${formatNumber(item.amount)}</strong></div>`).join("");
@@ -5819,12 +6067,12 @@
 
   // Renderização da interface
   function resourceCostHtml(cost) {
-    return Object.entries(cost).map(([key, amount]) => `<span class="cost-chip ${(state.resources[key] || 0) < amount ? "missing" : ""}">${RESOURCE_META[key].icon} ${formatNumber(amount)} ${RESOURCE_META[key].name}</span>`).join("");
+    return Object.entries(goldOnlyBundle(cost)).map(([key, amount]) => `<span class="cost-chip ${(state.resources[key] || 0) < amount ? "missing" : ""}">${RESOURCE_META[key].icon} ${formatNumber(amount)} Gold</span>`).join("");
   }
 
   function missingResourcesText(cost) {
-    const missing = Object.entries(cost).filter(([key, amount]) => (state.resources[key] || 0) < amount).map(([key, amount]) => `${formatNumber(amount - (state.resources[key] || 0))} ${RESOURCE_META[key].name}`);
-    return missing.length ? `Faltam: ${missing.join(" • ")}` : "Recursos suficientes para melhorar";
+    const missingGold = Math.max(0, (goldOnlyBundle(cost).ouro || 0) - (state.resources.ouro || 0));
+    return missingGold ? `Faltam: ${formatNumber(missingGold)} Gold` : "Gold suficiente para melhorar";
   }
 
   function missingPurchasePanelHtml(cost, context) {
@@ -5839,7 +6087,7 @@
   }
 
   function insertMissingPurchasePanel(button, cost, context, allowed = true) {
-    if (!allowed || canAfford(cost) || button.parentElement.querySelector(".missing-purchase-panel")) return;
+    if (!allowed || canAfford(cost) || isGoldOnlyCost(goldOnlyBundle(cost)) || button.parentElement.querySelector(".missing-purchase-panel")) return;
     button.insertAdjacentHTML("beforebegin", missingPurchasePanelHtml(cost, context));
   }
 
@@ -5859,7 +6107,7 @@
       const ship = SHIPS[id];
       if (!ship || state.ownedShips.includes(id)) return;
       const prestigeReq = Math.max(0, ship.tier - 1);
-      const progressionOk = (ship.tier === 0 || state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) && state.prestiges >= prestigeReq && state.pirateLevel >= ship.levelReq;
+      const progressionOk = isShipUnlockedInCurrentJourney(ship) && (ship.tier === 0 || state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) && state.prestiges >= prestigeReq && state.pirateLevel >= ship.levelReq;
       insertMissingPurchasePanel(button, ship.costs, { kind: "ship", id }, progressionOk);
     });
     $$("[data-buy-pet]", root).forEach(button => {
@@ -5879,7 +6127,10 @@
     }
     if (kind === "skill" && SKILL_META[id] && isSkillUnlocked(id)) return { cost: getSkillCost(id), label: `${SKILL_META[id].name} nivel ${state.skills[id].level + 1}`, execute: () => upgradeSkill(id) };
     if (kind === "equipment" && EQUIPMENT_META[id] && !state.equipment[id]) return { cost: EQUIPMENT_META[id].costs, label: EQUIPMENT_META[id].name, execute: () => craftEquipment(id) };
-    if (kind === "ship" && SHIPS[id] && !state.ownedShips.includes(id)) return { cost: SHIPS[id].costs, label: SHIPS[id].name, execute: () => buyShip(id) };
+    if (kind === "ship" && SHIPS[id] && !state.ownedShips.includes(id)) {
+      const lockIssue = getShipMapLockIssue(SHIPS[id]);
+      return { cost: SHIPS[id].costs, label: SHIPS[id].name, blocked: Boolean(lockIssue), blockedMessage: lockIssue ? "Este barco ainda não foi desbloqueado nesta jornada." : "", execute: () => buyShip(id) };
+    }
     if (kind === "pet" && PETS[id] && !state.ownedPets.includes(id)) return { cost: PETS[id].costs, label: PETS[id].name, execute: () => buyPet(id) };
     return null;
   }
@@ -5887,6 +6138,7 @@
   function openMissingPurchaseConfirmation(kind, id, completeAfterPurchase = false) {
     const context = getMissingPurchaseContext(kind, id);
     if (!context) return toast("Compra direta indisponivel.", "danger-toast");
+    if (context.blocked) return toast(context.blockedMessage || "Compra bloqueada.", "danger-toast");
     const info = getMissingPurchaseInfo(context.cost);
     if (!info.purchasable.length) return toast("Nenhum recurso faltante pode ser comprado direto.", "danger-toast");
     if (state.resources.ouro < info.total) return toast(`Ouro insuficiente. Faltam ${formatNumber(info.total - state.resources.ouro)} Ouro.`, "danger-toast");
@@ -6109,7 +6361,7 @@
       ["Auto pássaros", formatCaptainPercent(bonuses.birdAutoCollect)],
       ["Auto tubarão", formatCaptainPercent(bonuses.sharkAutoCollect)],
       ["Regen. HP", `${formatCaptainPercent(bonuses.hpRegenPercentPerSecond)}/s`],
-      ["Bônus auto comida", `+${formatCaptainPercent(bonuses.autoFoodBonus)}`]
+      ["Bônus auto Gold", `+${formatCaptainPercent(bonuses.autoFoodBonus)}`]
     ];
     return rows.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
   }
@@ -6120,7 +6372,7 @@
     if (b.spawnBonus) parts.push(`+${formatCaptainPercent(b.spawnBonus)} spawn`);
     if (b.birdAutoCollect) parts.push(`+${formatCaptainPercent(b.birdAutoCollect)} auto pássaros`);
     if (b.sharkAutoCollect) parts.push(`+${formatCaptainPercent(b.sharkAutoCollect)} auto tubarão`);
-    if (b.autoFoodBonus) parts.push(`+${formatCaptainPercent(b.autoFoodBonus)} comida auto`);
+    if (b.autoFoodBonus) parts.push(`+${formatCaptainPercent(b.autoFoodBonus)} Gold auto`);
     if (b.hpRegenPercentPerSecond) parts.push(`+${formatCaptainPercent(b.hpRegenPercentPerSecond)}/s HP`);
     return parts.join(" • ");
   }
@@ -6367,6 +6619,48 @@
     return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}s`;
   }
 
+  function getShipNumber(shipOrId) {
+    const rawId = typeof shipOrId === "number" ? shipOrId : Number(shipOrId?.id);
+    const id = Number.isFinite(rawId) ? Math.floor(rawId) : 0;
+    return id + 1;
+  }
+
+  function getJourneyMaxUnlockedMap(source = state) {
+    const reached = Math.floor(Number(source?.maxRegionReached));
+    const unlocked = Math.floor(Number(source?.unlockedRegions));
+    const reachedMap = Number.isFinite(reached) ? reached + 1 : 1;
+    const unlockedMap = Number.isFinite(unlocked) ? unlocked : 1;
+    return clamp(Math.max(1, reachedMap, unlockedMap), 1, REGIONS.length);
+  }
+
+  function getMaxShipNumberForMap(mapNumber = getJourneyMaxUnlockedMap()) {
+    const currentMap = clamp(Math.floor(Number(mapNumber) || 1), 1, REGIONS.length);
+    let limit = SHIP_UNLOCK_BY_MAP[1];
+    for (let map = 1; map <= currentMap; map += 1) {
+      if (SHIP_UNLOCK_BY_MAP[map]) limit = SHIP_UNLOCK_BY_MAP[map];
+    }
+    return clamp(limit, 1, SHIPS.length);
+  }
+
+  function getCurrentJourneyShipLimit(source = state) {
+    return getMaxShipNumberForMap(getJourneyMaxUnlockedMap(source));
+  }
+
+  function getRequiredMapForShip(shipOrId) {
+    const shipNumber = getShipNumber(shipOrId);
+    const entry = Object.entries(SHIP_UNLOCK_BY_MAP).find(([, maxShip]) => shipNumber <= maxShip);
+    return entry ? Number(entry[0]) : REGIONS.length;
+  }
+
+  function isShipUnlockedInCurrentJourney(shipOrId, source = state) {
+    return getShipNumber(shipOrId) <= getCurrentJourneyShipLimit(source);
+  }
+
+  function getShipMapLockIssue(ship) {
+    if (!ship || isShipUnlockedInCurrentJourney(ship)) return "";
+    return `Desbloqueia no Mapa ${getRequiredMapForShip(ship)}`;
+  }
+
   function getStatsPreview(levelOverrides = {}, shipId = state.shipId) {
     const previousLevels = state.levels;
     state.levels = { ...state.levels, ...levelOverrides };
@@ -6415,7 +6709,7 @@
     const goldCost = cost?.ouro || 0;
     const requiredGold = affordable ? goldCost : info ? info.total + goldCost : goldCost;
     const missingGold = Math.max(0, requiredGold - state.resources.ouro);
-    const unavailableLabel = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro` : "Faltam recursos";
+    const unavailableLabel = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro` : "Faltam Gold";
     const smartTotal = affordable ? goldCost : info?.canBuyAndExecute ? requiredGold : 0;
     const afterGold = Math.max(0, state.resources.ouro - smartTotal);
     const label = blocked ? "Bloqueado" : affordable ? "Comprar" : info?.canBuyAndExecute ? "Comprar tudo" : unavailableLabel;
@@ -6439,7 +6733,7 @@
     const goldCost = cost?.ouro || 0;
     const requiredGold = affordable ? goldCost : info ? info.total + goldCost : goldCost;
     const missingGold = Math.max(0, requiredGold - state.resources.ouro);
-    const unavailableLabel = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro` : "Faltam recursos";
+    const unavailableLabel = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro` : "Faltam Gold";
     const smartTotal = affordable ? goldCost : info?.canBuyAndExecute ? requiredGold : 0;
     const afterGold = Math.max(0, state.resources.ouro - smartTotal);
     const directLabel = kind === "upgrade" || kind === "skill" ? "Melhorar" : "Comprar";
@@ -6453,6 +6747,8 @@
 
   function getShipProgressionIssues(ship) {
     const issues = [];
+    const mapLockIssue = getShipMapLockIssue(ship);
+    if (mapLockIssue) issues.push(mapLockIssue);
     const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
     if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
     const prestigeReq = Math.max(0, ship.tier - 1);
@@ -6505,7 +6801,8 @@
       { label: "Vida", value: `${formatNumber(currentStats.maxHp)} → ${formatNumber(nextStats.maxHp)}`, delta: formatStatDelta(nextStats.maxHp - currentStats.maxHp) },
       { label: "Poder", value: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`, delta: formatStatDelta(nextStats.power - currentStats.power) }
     ];
-    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${state.ownedShips.length}/${SHIPS.length}</span><h3>Frota: troque de barco!</h3><p>Construa os barcos em sequência. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${upgradeActionHtml("ship", nextShip.id, nextShip.costs, canBuy, { blocked: progressionIssues.length > 0, hint: `Atual: ${currentShip.name}` })}</article>`;
+    const mapHint = getShipMapLockIssue(nextShip);
+    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${state.ownedShips.length}/${SHIPS.length}</span><h3>Frota: troque de barco!</h3><p>Avance nos mapas para liberar embarcações mais fortes. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${upgradeActionHtml("ship", nextShip.id, nextShip.costs, canBuy, { blocked: progressionIssues.length > 0, hint: mapHint || `Atual: ${currentShip.name}` })}</article>`;
   }
 
   function fleetLineCompactHtml() {
@@ -6543,7 +6840,43 @@
       { label: "Vida", value: `${formatNumber(currentStats.maxHp)} → ${formatNumber(nextStats.maxHp)}`, delta: formatStatDelta(nextStats.maxHp - currentStats.maxHp) },
       { label: "Poder", value: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`, delta: formatStatDelta(nextStats.power - currentStats.power) }
     ];
-    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${getOwnedShipIds().length}/${SHIPS.length}</span><h3>Frota: ${currentShip.name}</h3><p>Construa os barcos em sequência. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${fleetPurchaseActionHtml(nextShip, progressionIssues.length > 0, `Atual: ${currentShip.name}`)}</article>`;
+    const mapHint = getShipMapLockIssue(nextShip);
+    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${getOwnedShipIds().length}/${SHIPS.length}</span><h3>Frota: ${currentShip.name}</h3><p>Avance nos mapas para liberar embarcações mais fortes. O próximo upgrade troca imediatamente para ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${fleetPurchaseActionHtml(nextShip, progressionIssues.length > 0, mapHint || `Atual: ${currentShip.name}`)}</article>`;
+  }
+
+  function fleetRoadmapHtml() {
+    const currentMap = getJourneyMaxUnlockedMap();
+    const shipLimit = getCurrentJourneyShipLimit();
+    const highestOwnedId = getHighestOwnedShipId();
+    const nextLockedShip = SHIPS.find(ship => getShipNumber(ship) > shipLimit);
+    const summary = [
+      ["Mapa atual", `${currentMap}/${REGIONS.length}`],
+      ["Compra liberada", `Barco ${shipLimit}`],
+      ["Próxima liberação", nextLockedShip ? `Mapa ${getRequiredMapForShip(nextLockedShip)}` : "Frota completa"]
+    ].map(([label, value]) => `<span><small>${label}</small><strong>${value}</strong></span>`).join("");
+    const cards = SHIPS.map(ship => {
+      const shipNumber = getShipNumber(ship);
+      const owned = state.ownedShips.includes(ship.id);
+      const current = state.shipId === ship.id;
+      const next = ship.id === highestOwnedId + 1;
+      const mapLocked = !isShipUnlockedInCurrentJourney(ship);
+      const requiredMap = getRequiredMapForShip(ship);
+      const issues = getShipProgressionIssues(ship);
+      const affordable = canAfford(ship.costs);
+      const canBuy = next && !owned && !mapLocked && issues.length === 0 && affordable;
+      const stats = getStats(ship.id);
+      const status = current ? "Equipado" : owned ? "Comprado" : mapLocked ? `Mapa ${requiredMap}` : next && issues.length === 0 ? "Liberado" : "Em sequência";
+      const button = current
+        ? `<button class="button" disabled>Equipado</button>`
+        : owned
+          ? `<button class="button" data-equip-ship="${ship.id}">Equipar</button>`
+          : canBuy
+            ? `<button class="button primary" data-buy-ship="${ship.id}">Comprar</button>`
+            : `<button class="button" disabled>${mapLocked ? `Desbloqueia no Mapa ${requiredMap}` : next && !affordable ? "Falta Gold" : next ? "Bloqueado" : "Em sequência"}</button>`;
+      const issueText = mapLocked ? `Desbloqueia no Mapa ${requiredMap}` : owned ? "Disponível na frota" : next ? (issues.join(" • ") || missingResourcesText(ship.costs)) : "Compre os barcos anteriores primeiro";
+      return `<article class="fleet-roadmap-card ${current ? "current" : owned ? "owned" : mapLocked ? "locked" : next ? "available" : "future"}"><span class="fleet-roadmap-number">Barco ${shipNumber}</span><div class="fleet-roadmap-preview"><canvas data-next-ship-preview="${ship.id}" aria-label="${ship.name}"></canvas></div><h3>${ship.name}</h3><small>Tier ${ship.tier} • Poder ${formatNumber(stats.power)}</small><strong class="fleet-roadmap-status">${status}</strong><p>${issueText}</p>${button}</article>`;
+    }).join("");
+    return `<section class="upgrade-feed-section fleet-roadmap-section"><h2>Evolução por mapas</h2><div class="fleet-unlock-panel"><div class="fleet-unlock-summary">${summary}<p>Avance nos mapas para liberar embarcações mais fortes nesta jornada. Ao prestigiar, esse limite volta ao Mapa 1.</p></div><div class="fleet-roadmap">${cards}</div></div></section>`;
   }
 
   function equipmentLineHtml([key, item]) {
@@ -6574,6 +6907,15 @@
     return `<section class="upgrade-feed-section"><h2>${title}</h2><div class="upgrade-feed-list">${rows.join("")}</div></section>`;
   }
 
+  function shipUpgradeCategoryTabsHtml() {
+    const tabs = [
+      ["improvements", "Melhorias", "⚒", "Upgrade direto"],
+      ["equipment", "Equipamentos", "✥", "Artefatos navais"],
+      ["skills", "Skills", "✹", "Habilidades"]
+    ];
+    return `<div class="ship-upgrade-tabs" role="tablist" aria-label="Categorias do navio">${tabs.map(([key, label, icon, hint]) => `<button type="button" class="ship-upgrade-tab ${activeShipUpgradeCategory === key ? "selected" : ""}" data-ship-upgrade-category="${key}" role="tab" aria-selected="${activeShipUpgradeCategory === key}"><span class="ship-upgrade-tab-icon">${icon}</span><span class="ship-upgrade-tab-copy"><strong>${label}</strong><small>${hint}</small></span></button>`).join("")}</div>`;
+  }
+
   function renderUpgrades() {
     const stats = getStats();
     $("#naval-power").textContent = formatNumber(stats.power);
@@ -6583,17 +6925,25 @@
       { key: "sails", name: "Velas", icon: "◒", desc: "Acelera ataques, deslocamento, precisão e evasão." },
       { key: "hull", name: "Casco", icon: "⬡", desc: "Amplia vida, defesa e resistência em combate." }
     ].map(upgradeLineHtml);
+    const categories = {
+      improvements: renderUpgradeSection("Melhorias", improvements),
+      equipment: renderUpgradeSection("Equipamentos", Object.entries(EQUIPMENT_META).map(equipmentLineHtml)),
+      skills: renderUpgradeSection("Skills", Object.entries(SKILL_META).map(skillLineHtml))
+    };
+    if (!categories[activeShipUpgradeCategory]) activeShipUpgradeCategory = "improvements";
     $("#upgrade-feed").innerHTML = [
       renderUpgradeSection("Frota", [fleetLineCompactHtml()]),
-      renderUpgradeSection("Melhorias", improvements),
-      renderUpgradeSection("Equipamentos", Object.entries(EQUIPMENT_META).map(equipmentLineHtml)),
-      renderUpgradeSection("Skills", Object.entries(SKILL_META).map(skillLineHtml))
+      fleetRoadmapHtml(),
+      shipUpgradeCategoryTabsHtml(),
+      `<div class="ship-upgrade-category-panel">${categories[activeShipUpgradeCategory]}</div>`
     ].join("");
     $$("[data-next-ship-preview]", $("#upgrade-feed")).forEach(canvas => renderShipPreview(canvas, SHIPS[Number(canvas.dataset.nextShipPreview)], true));
   }
 
   function getShipRequirements(ship) {
     const issues = [];
+    const mapLockIssue = getShipMapLockIssue(ship);
+    if (mapLockIssue) issues.push(mapLockIssue);
     const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
     if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
     const prestigeReq = Math.max(0, ship.tier - 1);
@@ -6601,7 +6951,7 @@
     if (state.pirateLevel < ship.levelReq) issues.push(`Requer nível ${ship.levelReq}`);
     Object.entries(ship.costs).forEach(([key, amount]) => {
       const missing = Math.max(0, amount - (state.resources[key] || 0));
-      if (missing > 0) issues.push(`Faltam ${formatNumber(missing)} ${RESOURCE_META[key].name}`);
+      if (missing > 0) issues.push(`Faltam ${formatNumber(missing)} Gold`);
     });
     return issues;
   }
@@ -6641,7 +6991,8 @@
       if (!point || !region) return "";
       const status = mapStatus(activeMapInfoIndex);
       const description = point.description || region.description;
-      const drops = point.mapIndex > PRIMITIVE_REGIONS.length ? `<div class="map-drops prologue-map-modal-drops">${mapDropsHtml(region)}</div>` : "";
+      const extraChance = Math.min(.95, Object.values(region.goldDrops || {}).reduce((sum, chance) => sum + Number(chance || 0), 0));
+      const drops = `<div class="map-drops prologue-map-modal-drops"><span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS.legendary}"><span>${RESOURCE_META.ouro.icon}</span>Ouro extra <b>${Math.round(extraChance * 100)}%</b></span><span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS.rare}"><span>Baú</span>Comum <b>${Math.round(CHEST_DROP_CHANCES.monster * 100)}%</b></span></div>`;
       return `<div class="prologue-map-modal-layer" data-close-map-info><article class="prologue-map-modal-card" role="dialog" aria-modal="true" aria-labelledby="map-info-title"><button class="prologue-map-close" data-close-map-info aria-label="Fechar">×</button><span class="map-number">${mapStepLabel(point)}</span><h3 id="map-info-title">${point.title || region.name}</h3><span class="map-status ${status.key}">${status.label}</span><p>${description}</p><div class="prologue-map-modal-meta"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div>${drops}<div class="prologue-map-modal-actions"><button class="button primary" data-select-map="${activeMapInfoIndex}" ${!status.unlocked || status.current ? "disabled" : ""}>${status.unlocked ? status.current ? "Atual" : "Viajar" : "Bloqueado"}</button><button class="button" data-close-map-info>Fechar</button></div></article></div>`;
     };
     const mapBoardHtml = ({ title, subtitle, asset, alt, points }, sectionClass = "") => `<section class="map-section ${sectionClass}"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="prologue-map-board"><img src="${asset}" alt="${alt}" class="prologue-map-image"><div class="prologue-map-points">${points.map(mapHotspotHtml).join("")}</div></div></section>`;
@@ -6969,11 +7320,10 @@
     $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
   }
 
-  const SCREEN_ALIASES = { trade: "resources" };
+  const SCREEN_ALIASES = { trade: "upgrades", resources: "upgrades" };
   const SCREEN_RENDERERS = {
     upgrades: renderUpgrades,
     maps: renderMaps,
-    resources: renderResources,
     missions: renderMissions,
     captain: renderCaptain,
     pets: () => {
@@ -7014,7 +7364,7 @@
     const oldStats = getStats();
     const oldRatio = state.combat.playerHp / oldStats.maxHp;
     const cost = getUpgradeCost(type);
-    if (!canAfford(cost)) return toast("Recursos insuficientes para essa melhoria.", "danger-toast");
+    if (!canAfford(cost)) return toast("Gold insuficiente para essa melhoria.", "danger-toast");
     spend(cost); state.levels[type] += 1;
     trackAction("upgrade", { type });
     const newStats = getStats();
@@ -7029,13 +7379,14 @@
   function buyShip(id) {
     const ship = SHIPS[id];
     if (!ship || state.ownedShips.includes(id)) return;
+    if (!isShipUnlockedInCurrentJourney(ship)) return toast("Este barco ainda não foi desbloqueado nesta jornada.", "danger-toast");
     const nextShip = getNextFleetShip();
     if (!nextShip || ship.id !== nextShip.id) return toast("A frota evolui em sequência: compre o próximo barco da lista.", "danger-toast");
     if (ship.tier >= 1 && !state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) return toast("Conclua o prólogo da Era Primitiva para acessar navios piratas.", "danger-toast");
     const prestigeReq = Math.max(0, ship.tier - 1);
     if (state.prestiges < prestigeReq) return toast(`Tier ${ship.tier} requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}.`, "danger-toast");
     if (state.pirateLevel < ship.levelReq) return toast(`Requer nível ${ship.levelReq} para comprar ${ship.name}.`, "danger-toast");
-    if (!canAfford(ship.costs)) return toast("Ainda faltam recursos para construir este navio.", "danger-toast");
+    if (!canAfford(ship.costs)) return toast("Ainda falta Gold para construir este navio.", "danger-toast");
     spend(ship.costs); state.ownedShips.push(id); setActiveShip(id);
     trackAction("shipSwitch");
     scene.celebrateCaptain(2.5);
@@ -7056,7 +7407,7 @@
     if (issues.length) return toast(`Pet bloqueado: ${issues.join(" • ")}.`, "danger-toast");
     const pirateCoinCost = PET_PIRATE_COIN_COSTS[id];
     if (state.pirateCoins < pirateCoinCost) return toast("Moedas Pirata insuficientes para este pet.", "danger-toast");
-    if (!canAfford(pet.costs)) return toast("Ainda faltam recursos para adotar este pet.", "danger-toast");
+    if (!canAfford(pet.costs)) return toast("Ainda falta Gold para adotar este pet.", "danger-toast");
     spend(pet.costs); state.pirateCoins -= pirateCoinCost; state.ownedPets.push(id); state.petLevels[id] = 1; state.equippedPetId = id; state.combat.petAttackTimer = 0; state.lifetime.petsBought += 1;
     toast(`${pet.name} foi comprado e equipado!`, "gold-toast"); addLog(`${pet.name} agora acompanha seu navio.`, "loot"); commitGame(true);
   }
@@ -7189,6 +7540,12 @@
     if (!CAPTAIN_EQUIPMENT_META[key]) return;
     activeCaptainEquipmentKey = key;
     if (currentScreen === "captain") renderCaptain();
+  }
+
+  function selectShipUpgradeCategory(key) {
+    if (!["improvements", "equipment", "skills"].includes(key)) return;
+    activeShipUpgradeCategory = key;
+    if (currentScreen === "upgrades") renderUpgrades();
   }
 
   function upgradeCaptainEquipment(key) {
@@ -7324,6 +7681,11 @@
       closeMapInfo();
       return;
     }
+    const shipCategoryTarget = event.target.closest("[data-ship-upgrade-category]");
+    if (shipCategoryTarget) {
+      selectShipUpgradeCategory(shipCategoryTarget.dataset.shipUpgradeCategory);
+      return;
+    }
     const target = event.target.closest("button");
     if (!target) return;
     if (target.dataset.closeMapInfo !== undefined) {
@@ -7352,6 +7714,10 @@
     if (target.dataset.upgradeCaptainManualSkill) upgradeCaptainManualSkill(target.dataset.upgradeCaptainManualSkill);
     if (target.dataset.selectCaptainEquipment) {
       selectCaptainEquipment(target.dataset.selectCaptainEquipment);
+      return;
+    }
+    if (target.dataset.shipUpgradeCategory) {
+      selectShipUpgradeCategory(target.dataset.shipUpgradeCategory);
       return;
     }
     if (target.dataset.upgradeCaptainEquipment) upgradeCaptainEquipment(target.dataset.upgradeCaptainEquipment);
@@ -7398,12 +7764,12 @@
   function executeSmartUpgrade(kind, id) {
     const context = getMissingPurchaseContext(kind, id);
     if (!context) return toast("Upgrade indisponível.", "danger-toast");
+    if (context.blocked) return toast(context.blockedMessage || "Compra bloqueada.", "danger-toast");
     if (canAfford(context.cost)) return context.execute();
     const info = getMissingPurchaseInfo(context.cost);
     if (!info.canBuyAndExecute) {
       const missingGold = Math.max(0, info.total + (context.cost.ouro || 0) - state.resources.ouro);
-      const blockedResources = info.blocked.filter(item => item.key !== "ouro").map(item => RESOURCE_META[item.key].name);
-      const message = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro para comprar este upgrade.` : `Ainda faltam recursos${blockedResources.length ? `: ${blockedResources.join(", ")}` : ""}.`;
+      const message = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro para comprar este upgrade.` : "Ainda falta Gold para este upgrade.";
       return toast(message, "danger-toast");
     }
     const result = buyMissingResources(context.cost);

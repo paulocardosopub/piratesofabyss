@@ -386,7 +386,7 @@ canvas,
   width: min(860px, 100%);
   height: var(--bottom-nav-height);
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(8, 1fr);
   margin: var(--combat-nav-gap) auto 0;
   padding: 5px;
   border: 1px solid rgba(159, 205, 203, .2);
@@ -396,6 +396,7 @@ canvas,
   backdrop-filter: blur(18px);
 }
 .bottom-nav button { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 0 6px; border: 0; border-radius: 11px; color: var(--muted); background: transparent; cursor: pointer; }
+.bottom-nav button[data-screen-target="resources"] { display: none; }
 .bottom-nav button > span { font-size: 17px; }
 .bottom-nav button strong { min-width: 0; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .bottom-nav button.active { color: var(--cyan-2); background: rgba(53,212,207,.1); }
@@ -750,6 +751,60 @@ canvas,
   max-width: 980px;
   margin: 0 auto;
 }
+.ship-upgrade-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 1px 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.ship-upgrade-tabs::-webkit-scrollbar { display: none; }
+.ship-upgrade-tab {
+  position: relative;
+  flex: 0 0 150px;
+  max-width: 150px;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid rgba(110,239,226,.16);
+  border-radius: 6px;
+  color: #eefbf8;
+  background: rgba(255,255,255,.045);
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.ship-upgrade-tab:hover, .ship-upgrade-tab.selected {
+  border-color: rgba(247,189,74,.6);
+  background: rgba(247,189,74,.11);
+  transform: translateY(-1px);
+}
+.ship-upgrade-tab > * { pointer-events: none; }
+.ship-upgrade-tab-icon {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--gold);
+  background: rgba(0,0,0,.18);
+  font-size: 15px;
+}
+.ship-upgrade-tab-copy { min-width: 0; display: grid; gap: 2px; text-align: left; }
+.ship-upgrade-tab-copy strong,
+.ship-upgrade-tab-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ship-upgrade-tab-copy strong { font-size: 10px; line-height: 1.05; }
+.ship-upgrade-tab-copy small { color: var(--muted); font-size: 7px; font-weight: 900; line-height: 1; text-transform: uppercase; }
+.ship-upgrade-category-panel { display: grid; gap: 8px; min-width: 0; }
 .upgrade-feed-section {
   display: grid;
   gap: 8px;
@@ -938,6 +993,103 @@ canvas,
 }
 .fleet-ship-option.current small { color: rgba(6,30,37,.78); }
 .fleet-ship-option.current strong { color: rgba(6,30,37,.86); }
+.fleet-unlock-panel { display: grid; gap: 9px; }
+.fleet-unlock-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid rgba(247,189,74,.2);
+  border-radius: 8px;
+  background: rgba(247,189,74,.055);
+}
+.fleet-unlock-summary span {
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: rgba(0,0,0,.17);
+}
+.fleet-unlock-summary small,
+.fleet-unlock-summary strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fleet-unlock-summary small { color: var(--muted); font-size: 7px; font-weight: 900; text-transform: uppercase; }
+.fleet-unlock-summary strong { margin-top: 2px; color: var(--gold); font-size: 11px; }
+.fleet-unlock-summary p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #d3dfdc;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.fleet-roadmap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+  gap: 7px;
+}
+.fleet-roadmap-card {
+  min-width: 0;
+  min-height: 188px;
+  display: grid;
+  grid-template-rows: auto 54px auto auto auto 1fr auto;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid rgba(160,203,202,.16);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(38,43,47,.96), rgba(24,29,35,.98));
+}
+.fleet-roadmap-card.current { border-color: rgba(110,239,226,.72); box-shadow: inset 0 0 0 1px rgba(110,239,226,.35); }
+.fleet-roadmap-card.owned { border-color: rgba(89,211,157,.36); }
+.fleet-roadmap-card.available { border-color: rgba(247,189,74,.48); }
+.fleet-roadmap-card.locked { filter: saturate(.7); opacity: .72; }
+.fleet-roadmap-number,
+.fleet-roadmap-status {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.fleet-roadmap-status { color: var(--gold); }
+.fleet-roadmap-preview {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: rgba(18,49,65,.8);
+}
+.fleet-roadmap-preview canvas { width: 100%; height: 100%; display: block; }
+.fleet-roadmap-card h3 {
+  margin: 0;
+  overflow: hidden;
+  color: #fff;
+  font: 900 11px/1.08 ui-sans-serif, system-ui, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fleet-roadmap-card small,
+.fleet-roadmap-card p {
+  display: block;
+  overflow: hidden;
+  color: #c5d1d0;
+  font-size: 7px;
+  line-height: 1.25;
+}
+.fleet-roadmap-card p {
+  min-height: 27px;
+  margin: 0;
+  color: #aebfbd;
+}
+.fleet-roadmap-card .button {
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 5px;
+  border-radius: 5px;
+  font-size: 8px;
+  line-height: 1.05;
+  white-space: normal;
+}
 .upgrade-row .auto-switch.compact {
   max-width: 290px;
   margin: 5px 0 0;
@@ -1573,9 +1725,7 @@ canvas,
 .pet-card.owned { border-color: rgba(100,174,244,.36); }
 .pet-card.equipped { border-color: var(--pet-color); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pet-color) 60%, transparent), 0 12px 35px rgba(0,0,0,.2); }
 .pet-visual { position: relative; height: 148px; display: grid; place-items: center; margin: -17px -17px 13px; overflow: hidden; background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--pet-color) 28%, transparent), transparent 38%), linear-gradient(#227891, #0b405b); }
-.pet-visual::before, .pet-visual::after { content: ""; position: absolute; right: -10%; bottom: 13px; width: 58%; height: 7px; border-top: 2px solid rgba(222,255,249,.28); border-radius: 50%; transform: rotate(-3deg); }
-.pet-visual::after { right: auto; left: -8%; bottom: 31px; width: 42%; }
-.pet-visual i { position: absolute; width: var(--pet-aura-size, 68px); height: calc(var(--pet-aura-size, 68px) * .3); transform: translateY(22px); border-radius: 50%; opacity: var(--pet-aura-alpha, .08); background: radial-gradient(ellipse, color-mix(in srgb, var(--pet-color) 38%, transparent), transparent 72%); filter: blur(var(--pet-aura-glow, 8px)); animation: pet-aura-swim 2.8s ease-in-out infinite; }
+.pet-visual::before, .pet-visual::after, .pet-visual i { display: none; }
 .pet-sprite { display: block; aspect-ratio: 1; background-image: var(--pet-sprite); background-repeat: no-repeat; background-size: 300% 100%; background-position: 0% 0%; image-rendering: pixelated; image-rendering: crisp-edges; }
 .pet-sprite-canvas { display: block; aspect-ratio: 1; image-rendering: pixelated; image-rendering: crisp-edges; }
 .pet-visual .pet-sprite, .pet-visual .pet-sprite-canvas { z-index: 1; width: min(78%, var(--pet-card-sprite-size, 116px)); height: min(78%, var(--pet-card-sprite-size, 116px)); filter: drop-shadow(0 8px 8px rgba(0,0,0,.35)); animation: pet-bob 2.6s ease-in-out infinite; }
@@ -1836,6 +1986,9 @@ canvas,
   .captain-points-wallet { width: 100%; }
   .captain-equipment-tabs { margin-inline: -2px; padding-bottom: 6px; }
   .captain-equipment-tab { flex-basis: 98px; grid-template-columns: 20px minmax(0, 1fr); min-height: 34px; padding: 5px; }
+  .ship-upgrade-tabs { margin-inline: -2px; padding-bottom: 6px; }
+  .ship-upgrade-tab { flex-basis: 118px; grid-template-columns: 22px minmax(0, 1fr); min-height: 36px; padding: 5px; }
+  .ship-upgrade-tab-icon { width: 22px; height: 22px; font-size: 13px; }
   .captain-equipment-tab-icon { width: 20px; height: 20px; font-size: 13px; }
   .captain-equipment-tab-badge { position: absolute; top: 3px; right: 3px; min-width: 18px; padding: 2px 3px; font-size: 7px; }
   .captain-equipment-row { grid-template-columns: 42px minmax(0, 1fr); }
