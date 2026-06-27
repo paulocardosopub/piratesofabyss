@@ -1420,6 +1420,7 @@
   let lastCaptainManualSkillUpgrade = null;
   let activeCaptainEquipmentKey = "sword";
   let activeMapInfoIndex = null;
+  let pendingBossMapAdvanceTimer = 0;
 
   const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   function formatNumber(value) {
@@ -1640,6 +1641,10 @@
   function getSpawnDelay() {
     const baseSpawnInterval = 5000 * Math.pow(100 / getStats().speed, .72);
     return Math.max(280, baseSpawnInterval / (1 + getCaptainBonuses().spawnBonus));
+  }
+
+  function getCombatRegionLabel(region = REGIONS[state.regionIndex]) {
+    return `${region.name} • Mapa ${state.regionIndex + 1}/${REGIONS.length}`;
   }
 
   function getUpgradeCost(type, level = state.levels[type]) {
@@ -2494,6 +2499,12 @@
   const ENEMY_HIT_ANIMATION_SECONDS = .34;
   const ENEMY_ATTACK_ANIMATION_SECONDS = .46;
   const ENEMY_DEATH_ANIMATION_SECONDS = .95;
+  const BOSS_SPAWN_ANIMATION_SECONDS = 1;
+  const BOSS_DEATH_ANIMATION_SECONDS = 1;
+  const BOSS_MAP_ADVANCE_DELAY_MS = 1000;
+  const BOSS_SURPRISE_CHANCE = .1;
+  const BOSS_SURPRISE_MESSAGE = "Você mordeu a isca de um boss!";
+  const BOSS_SURPRISE_LOOT_KINDS = new Set(["fish", "shark"]);
 
   function normalizeEnemySpriteKey(value = "") {
     return normalizeSpriteKey(value)
@@ -2622,6 +2633,61 @@
       Math.abs((a.bottomY - b.bottomY) / Math.max(1, frameHeight)) * 1.35 +
       Math.abs((a.upperRatio || 0) - (b.upperRatio || 0)) * .8 +
       Math.abs((a.lowerRatio || 0) - (b.lowerRatio || 0)) * .8;
+  }
+
+  function getSpritesheetAnimation(sprite, key) {
+    return sprite?.animations?.[key] || ENEMY_SPRITESHEET_ANIMATIONS[key] || null;
+  }
+
+  function isFrameStableForAnimation(sprite, frame, referenceFrame = 0, options = {}) {
+    const frameWidth = sprite.frameWidth || 1;
+    const frameHeight = sprite.frameHeight || 1;
+    const reference = sprite.frameBounds?.[referenceFrame] || sprite.referenceBounds;
+    const candidate = sprite.frameBounds?.[frame];
+    if (!reference || !candidate || !candidate.area) return frame === referenceFrame;
+    if (frame === referenceFrame) return true;
+    const areaRatio = candidate.area / Math.max(1, reference.area || candidate.area);
+    const heightRatio = candidate.height / Math.max(1, reference.height || candidate.height);
+    const widthRatio = candidate.width / Math.max(1, reference.width || candidate.width);
+    const centerShift = Math.abs(candidate.centerX - reference.centerX) / Math.max(1, frameWidth);
+    const bottomShift = Math.abs(candidate.bottomY - reference.bottomY) / Math.max(1, frameHeight);
+    const topShift = Math.abs(candidate.top - reference.top) / Math.max(1, frameHeight);
+    const minArea = options.minArea ?? .56;
+    const maxArea = options.maxArea ?? 1.42;
+    const minHeight = options.minHeight ?? .68;
+    const maxHeight = options.maxHeight ?? 1.36;
+    const minWidth = options.minWidth ?? .62;
+    const maxWidth = options.maxWidth ?? 1.34;
+    const maxCenterShift = options.centerShift ?? .17;
+    const maxBottomShift = options.bottomShift ?? .18;
+    const maxTopShift = options.topShift ?? .24;
+    return areaRatio >= minArea && areaRatio <= maxArea &&
+      heightRatio >= minHeight && heightRatio <= maxHeight &&
+      widthRatio >= minWidth && widthRatio <= maxWidth &&
+      centerShift <= maxCenterShift &&
+      bottomShift <= maxBottomShift &&
+      topShift <= maxTopShift;
+  }
+
+  function getSafeAnimationFrames(sprite, key, fallbackFrame, referenceFrame = fallbackFrame, options = {}) {
+    const animation = getSpritesheetAnimation(sprite, key);
+    const maxFrame = Math.max(0, (sprite?.frames || 1) - 1);
+    const fallback = clamp(Math.floor(Number(fallbackFrame) || 0), 0, maxFrame);
+    const rawFrames = animation?.frames?.length ? animation.frames : [fallback];
+    const frames = rawFrames.map(frame => clamp(Math.floor(Number(frame) || 0), 0, maxFrame));
+    if (key === "death") return [fallback];
+    const stableFrames = frames.filter(frame => isFrameStableForAnimation(sprite, frame, referenceFrame, options));
+    return stableFrames.length === frames.length ? frames : [fallback];
+  }
+
+  function getAnimationFrameAtTime(sprite, key, elapsed, fallbackFrame, referenceFrame = fallbackFrame, options = {}) {
+    const animation = getSpritesheetAnimation(sprite, key);
+    const frames = getSafeAnimationFrames(sprite, key, fallbackFrame, referenceFrame, options);
+    if (!animation || frames.length <= 1) return frames[0] ?? fallbackFrame;
+    const frameIndex = animation.loop
+      ? Math.floor(Math.max(0, elapsed) * animation.fps) % frames.length
+      : Math.min(frames.length - 1, Math.floor(Math.max(0, elapsed) * animation.fps));
+    return frames[frameIndex] ?? frames[0] ?? fallbackFrame;
   }
 
   function isAliveDamagedFrame(sprite, frame, normalFrame, defeatedFrame) {
@@ -3164,7 +3230,19 @@
   function createEnemySpriteAnimation(name, regionIndex = state.regionIndex) {
     const sprite = getEnemyAnimatedSpritesheet(name, regionIndex);
     if (!sprite) return null;
-    return { sheetKey: sprite.sheetKey || normalizeEnemySpriteKey(sprite.key), frameSeed: randomBetween(0, 5), attackStartedAt: -999, attackUntil: 0, hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 };
+    return {
+      sheetKey: sprite.sheetKey || normalizeEnemySpriteKey(sprite.key),
+      frameSeed: randomBetween(0, 5),
+      spawnStartedAt: -999,
+      spawnUntil: 0,
+      attackStartedAt: -999,
+      attackUntil: 0,
+      hitStartedAt: -999,
+      hitUntil: 0,
+      deathStartedAt: 0,
+      poseName: "",
+      poseChangedAt: -999
+    };
   }
 
   function ensureEnemySpriteAnimation(enemy) {
@@ -3221,6 +3299,7 @@
       this.bursts = [];
       this.sabotageEffects = [];
       this.aquaticBursts = [];
+      this.bossSurpriseAlerts = [];
       this.petLunge = 0;
       this.floaters = [];
       this.lootFloaters = [];
@@ -3259,6 +3338,20 @@
     sabotageEnemy(color = "#b68cff") {
       this.sabotageEffects.push({ x: this.width * .70, y: this.height * .52, age: 0, color });
       this.sabotageEffects = this.sabotageEffects.slice(-4);
+    }
+
+    triggerBossSurpriseAlert() {
+      this.bossSurpriseAlerts.push({ age: 0, duration: .85 });
+      this.bossSurpriseAlerts = this.bossSurpriseAlerts.slice(-2);
+      this.bursts.push({ x: this.width * .70, y: this.height * .52, age: 0, color: "#ff5a4e" });
+      this.aquaticBursts.push({ x: this.width * .69, y: this.height * .56, age: 0, color: "#ff5a4e", kind: "boss-surprise" });
+      const stage = $("#battle-stage");
+      if (stage) {
+        stage.classList.remove("boss-surprise-shake");
+        void stage.offsetWidth;
+        stage.classList.add("boss-surprise-shake");
+        window.setTimeout(() => stage.classList.remove("boss-surprise-shake"), 720);
+      }
     }
 
     petStrike(pet) {
@@ -3343,7 +3436,7 @@
       if (!animation) return;
       this.enemyDeathAnimations.push({
         age: -delay,
-        duration: ENEMY_DEATH_ANIMATION_SECONDS,
+        duration: enemy.isBoss ? BOSS_DEATH_ANIMATION_SECONDS : ENEMY_DEATH_ANIMATION_SECONDS,
         enemy: {
           name: enemy.name,
           kind: enemy.kind,
@@ -3352,6 +3445,7 @@
           visualKind: enemy.visualKind,
           visualTier: enemy.visualTier,
           isBoss: enemy.isBoss,
+          isSurpriseBoss: enemy.isSurpriseBoss,
           defeated: true,
           animation: { ...animation, attackUntil: 0, hitUntil: 0, deathStartedAt: this.time + delay }
         }
@@ -3401,6 +3495,7 @@
       if (event.kind === "kraken") trackAction("kraken");
       addLog(`${reward.name} capturado${automatic ? " automaticamente" : ""}: +${amount} Comida.`, "loot");
       if (!automatic) toast(`+${amount} Comida • ${reward.name}`, "gold-toast");
+      if (!automatic) tryTriggerSurpriseBossFromLoot(event.kind);
       commitGame(false);
       return true;
     }
@@ -3421,6 +3516,7 @@
       this.bursts.forEach(item => item.age += dt);
       this.sabotageEffects.forEach(item => item.age += dt);
       this.aquaticBursts.forEach(item => item.age += dt);
+      this.bossSurpriseAlerts.forEach(item => item.age += dt);
       this.floaters.forEach(item => item.age += dt);
       this.lootFloaters.forEach(item => item.age += dt);
       this.enemyDeathAnimations.forEach(item => item.age += dt);
@@ -3430,6 +3526,7 @@
       this.bursts = this.bursts.filter(item => item.age < .75);
       this.sabotageEffects = this.sabotageEffects.filter(item => item.age < .85);
       this.aquaticBursts = this.aquaticBursts.filter(item => item.age < .9);
+      this.bossSurpriseAlerts = this.bossSurpriseAlerts.filter(item => item.age < item.duration);
       this.floaters = this.floaters.filter(item => item.age < 1.05);
       this.lootFloaters = this.lootFloaters.filter(item => item.age < 1.35);
       this.enemyDeathAnimations = this.enemyDeathAnimations.filter(item => item.age < item.duration);
@@ -3642,6 +3739,33 @@
         ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 7;
         ctx.fillText(item.text, item.x, item.y - 18 - item.age * 34);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      });
+      this.drawBossSurpriseAlerts(ctx, w, h);
+    }
+
+    drawBossSurpriseAlerts(ctx, w, h) {
+      this.bossSurpriseAlerts.forEach(item => {
+        const t = clamp(item.age / item.duration, 0, 1);
+        const pulse = Math.sin(t * Math.PI);
+        ctx.save();
+        ctx.globalAlpha = (1 - t) * .55;
+        ctx.fillStyle = "#9a1f26";
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalAlpha = pulse;
+        ctx.strokeStyle = "#ffca6a";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([12, 10]);
+        ctx.strokeRect(18 + pulse * 8, 18 + pulse * 8, w - 36 - pulse * 16, h - 36 - pulse * 16);
+        ctx.setLineDash([]);
+        ctx.shadowColor = "#ff5a4e";
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = "#fff2c4";
+        ctx.font = `900 ${Math.max(18, Math.min(32, w * .036))}px ui-sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.globalAlpha = Math.min(1, pulse * 1.25);
+        ctx.fillText(BOSS_SURPRISE_MESSAGE, w * .5, h * .36);
+        ctx.restore();
       });
     }
 
@@ -3956,6 +4080,67 @@
       return true;
     }
 
+    getBossSpritesheetPose(enemy, sprite, animation, hp, maxHp, isDefeated, hpStateName) {
+      const maxFrame = Math.max(0, (sprite?.frames || 1) - 1);
+      const normalFrame = this.getStateSpriteFrame(sprite, SPRITE_HP_STATES.normal, "enemy");
+      const damagedFrame = this.getStateSpriteFrame(sprite, SPRITE_HP_STATES.damaged, "enemy");
+      const defeatedFrame = this.getStateSpriteFrame(sprite, SPRITE_HP_STATES.defeated, "enemy");
+      const now = this.time;
+      let actionName = hpStateName;
+      let elapsed = now + (animation.frameSeed || 0);
+      let actionProgress = 1;
+      let frame = hpStateName === SPRITE_HP_STATES.damaged ? damagedFrame : normalFrame;
+      let stateName = hpStateName;
+
+      if (isDefeated) {
+        stateName = SPRITE_HP_STATES.defeated;
+        actionName = "death";
+        elapsed = animation.deathStartedAt ? Math.max(0, now - animation.deathStartedAt) : 0;
+        actionProgress = clamp(elapsed / BOSS_DEATH_ANIMATION_SECONDS, 0, 1);
+        frame = clamp(defeatedFrame, 0, maxFrame);
+      } else if (animation.spawnUntil > now) {
+        actionName = "spawn";
+        elapsed = Math.max(0, now - animation.spawnStartedAt);
+        actionProgress = clamp(elapsed / BOSS_SPAWN_ANIMATION_SECONDS, 0, 1);
+        frame = normalFrame;
+      } else if (animation.attackUntil > now) {
+        actionName = "attack";
+        elapsed = Math.max(0, now - animation.attackStartedAt);
+        actionProgress = clamp(elapsed / ENEMY_ATTACK_ANIMATION_SECONDS, 0, 1);
+        frame = getAnimationFrameAtTime(sprite, "attack", elapsed, frame, normalFrame, { centerShift: .2, bottomShift: .2, topShift: .26, minArea: .5, maxArea: 1.5 });
+      } else if (animation.hitUntil > now) {
+        actionName = "hit";
+        elapsed = Math.max(0, now - animation.hitStartedAt);
+        actionProgress = clamp(elapsed / ENEMY_HIT_ANIMATION_SECONDS, 0, 1);
+        frame = getAnimationFrameAtTime(sprite, "hit", elapsed, damagedFrame, normalFrame, { centerShift: .16, bottomShift: .16, topShift: .2, minArea: .56, maxArea: 1.34 });
+      } else if (stateName === SPRITE_HP_STATES.damaged) {
+        actionName = "damaged";
+        elapsed = now + (animation.frameSeed || 0);
+        frame = damagedFrame;
+      } else {
+        actionName = "idle";
+        elapsed = now + (animation.frameSeed || 0);
+        frame = getAnimationFrameAtTime(sprite, "idle", elapsed, normalFrame, normalFrame, { centerShift: .12, bottomShift: .12, topShift: .16, minArea: .72, maxArea: 1.18, minHeight: .82, maxHeight: 1.16, minWidth: .82, maxWidth: 1.16 });
+      }
+
+      if (animation.poseName !== actionName) {
+        animation.poseName = actionName;
+        animation.poseChangedAt = now;
+      }
+
+      return {
+        stateName,
+        frame,
+        blend: 0,
+        elapsed,
+        seed: animation.frameSeed || 0,
+        actionName,
+        actionProgress,
+        transitionProgress: clamp((now - (animation.poseChangedAt || now)) / .18, 0, 1),
+        hpRatio: hp / Math.max(1, maxHp)
+      };
+    }
+
     getEnemySpritesheetPose(enemy, sprite) {
       const animation = ensureEnemySpriteAnimation(enemy);
       if (!animation) return null;
@@ -3965,6 +4150,7 @@
       const isDefeated = enemy.defeated || hp <= 0;
       const stateName = this.getSpriteHpState(hp, maxHp, isDefeated);
       if (!isDefeated && animation.deathStartedAt) animation.deathStartedAt = 0;
+      if (enemy.isBoss) return this.getBossSpritesheetPose(enemy, sprite, animation, hp, maxHp, isDefeated, stateName);
       return {
         stateName,
         frame: this.getStateSpriteFrame(sprite, stateName, "enemy"),
@@ -3972,6 +4158,40 @@
         elapsed: stateName === SPRITE_HP_STATES.defeated && animation.deathStartedAt ? Math.max(0, this.time - animation.deathStartedAt) : this.time + (animation.frameSeed || 0),
         seed: animation.frameSeed || 0
       };
+    }
+
+    getEnemyPoseVisualTransform(enemy, pose, scale) {
+      const transform = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotate: 0, alpha: 1, filter: "" };
+      if (!enemy.isBoss || !pose?.actionName) return transform;
+      const progress = clamp(pose.actionProgress ?? 1, 0, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      if (pose.actionName === "spawn") {
+        transform.x = 28 * (1 - ease) * scale;
+        transform.y = 6 * (1 - ease) * scale;
+        transform.scaleX = .9 + ease * .1;
+        transform.scaleY = .9 + ease * .1;
+        transform.alpha = clamp(ease * 1.12, 0, 1);
+        transform.filter = `brightness(${.82 + ease * .18}) saturate(${.82 + ease * .18})`;
+      } else if (pose.actionName === "attack") {
+        const lunge = Math.sin(progress * Math.PI);
+        transform.x = -14 * lunge * scale;
+        transform.y = -2 * lunge * scale;
+        transform.scaleX = 1 + .028 * lunge;
+        transform.scaleY = 1 - .016 * lunge;
+        transform.filter = `brightness(${1 + .16 * lunge}) saturate(${1 + .08 * lunge})`;
+      } else if (pose.actionName === "hit") {
+        const recoil = Math.sin(progress * Math.PI);
+        transform.x = 7 * recoil * scale;
+        transform.filter = `brightness(${1 + .26 * recoil}) saturate(${1 - .14 * recoil})`;
+      } else if (pose.actionName === "damaged") {
+        transform.filter = "brightness(.92) saturate(.86)";
+      } else if (pose.actionName === "death") {
+        transform.y = 8 * ease * scale;
+        transform.rotate = -.024 * ease;
+        transform.scaleY = 1 - .08 * ease;
+        transform.filter = `brightness(${1 - .22 * ease}) saturate(${1 - .35 * ease})`;
+      }
+      return transform;
     }
 
     drawEnemySpritesheet(ctx, x, y, scale, enemy, sprite) {
@@ -3992,13 +4212,18 @@
       const drawX = -targetWidth * sprite.anchorX;
       const drawY = -targetHeight * sprite.anchorY;
       const breath = this.getBreathingIdleTransform("enemy", pose.stateName, pose.seed || 0);
+      const visualTransform = this.getEnemyPoseVisualTransform(enemy, pose, scale);
       ctx.save();
       ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
-      ctx.scale(breath.scaleX, breath.scaleY);
-      let baseAlpha = 1;
+      ctx.translate(visualTransform.x, visualTransform.y);
+      if (visualTransform.rotate) ctx.rotate(visualTransform.rotate);
+      ctx.scale(breath.scaleX * visualTransform.scaleX, breath.scaleY * visualTransform.scaleY);
+      if (visualTransform.filter) ctx.filter = visualTransform.filter;
+      let baseAlpha = visualTransform.alpha;
       if (pose.stateName === SPRITE_HP_STATES.defeated) {
-        const fadeStart = ENEMY_DEATH_ANIMATION_SECONDS * .72;
-        if (pose.elapsed > fadeStart) baseAlpha = clamp(1 - (pose.elapsed - fadeStart) / Math.max(.001, ENEMY_DEATH_ANIMATION_SECONDS - fadeStart), 0, 1);
+        const deathDuration = enemy.isBoss ? BOSS_DEATH_ANIMATION_SECONDS : ENEMY_DEATH_ANIMATION_SECONDS;
+        const fadeStart = deathDuration * .72;
+        if (pose.elapsed > fadeStart) baseAlpha *= clamp(1 - (pose.elapsed - fadeStart) / Math.max(.001, deathDuration - fadeStart), 0, 1);
       }
       ctx.imageSmoothingEnabled = false;
       ctx.shadowColor = "rgba(0,0,0,.34)";
@@ -4502,7 +4727,7 @@
     return checks.filter(([, owned, needed]) => owned < needed).map(([label, owned, needed]) => `${label}: ${formatNumber(owned)} / ${formatNumber(needed)}`);
   }
 
-  function spawnEnemy(isBoss = false) {
+  function spawnEnemy(isBoss = false, options = {}) {
     const region = REGIONS[state.regionIndex];
     const variation = randomBetween(.9, 1.14);
     const roster = REGION_ENCOUNTERS[state.regionIndex] || [];
@@ -4513,6 +4738,7 @@
     const enemyName = isBoss ? region.boss : encounter.name;
     const visual = inferEnemyVisual(enemyName, region, isBoss ? "BOSS" : encounter.category, isBoss ? 5 : encounter.tier, isBoss);
     const hp = Math.round(region.baseHp * variation * (isBoss ? 34 * (mod.bossHp || 1) : profile.hp * stage * (mod.hp || 1)));
+    const spawnEndsAt = isBoss ? scene.time + BOSS_SPAWN_ANIMATION_SECONDS : 0;
     state.combat.enemy = {
       name: enemyName,
       kind: isBoss ? `BOSS ${visual.label}` : visual.label,
@@ -4522,6 +4748,8 @@
       visualKind: isBoss ? region.kind : profile.visual,
       visualTier: isBoss ? 5 : encounter.tier,
       isBoss,
+      isSurpriseBoss: Boolean(options.surprise),
+      spawnEndsAt,
       maxHp: hp,
       hp,
       damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 * (mod.bossDamage || 1) : profile.damage * stage * (mod.damage || 1))),
@@ -4538,15 +4766,51 @@
       slowed: 0,
       defeated: false
     };
+    if (state.combat.enemy.animation && isBoss) {
+      state.combat.enemy.animation.spawnStartedAt = scene.time;
+      state.combat.enemy.animation.spawnUntil = spawnEndsAt;
+      state.combat.enemy.animation.poseName = "spawn";
+      state.combat.enemy.animation.poseChangedAt = scene.time;
+    }
     state.combat.attackTimer = 0;
     state.combat.petAttackTimer = 0;
     state.combat.enemyAttackTimer = 0;
-    addLog(isBoss ? `${region.boss} emergiu para o duelo!` : `${state.combat.enemy.name} avistado a estibordo.`, isBoss ? "danger-text" : "");
+    addLog(isBoss ? `${options.surprise ? "Boss surpresa: " : ""}${region.boss} emergiu para o duelo!` : `${state.combat.enemy.name} avistado a estibordo.`, isBoss ? "danger-text" : "");
+  }
+
+  function isBossIntroActive(enemy = state.combat.enemy) {
+    return Boolean(enemy?.isBoss && !enemy.defeated && Number(enemy.spawnEndsAt || 0) > scene.time);
+  }
+
+  function canTriggerSurpriseBoss() {
+    const enemy = state.combat.enemy;
+    if (state.combat.repairing || state.combat.playerHp <= 0) return false;
+    if (pendingBossMapAdvanceTimer || isBossIntroActive(enemy)) return false;
+    if (enemy?.isBoss || enemy?.defeated) return false;
+    return true;
+  }
+
+  function tryTriggerSurpriseBossFromLoot(kind) {
+    if (!BOSS_SURPRISE_LOOT_KINDS.has(kind)) return false;
+    if (Math.random() >= BOSS_SURPRISE_CHANCE) return false;
+    if (!canTriggerSurpriseBoss()) return false;
+    state.combat.running = true;
+    state.hasStarted = true;
+    state.combat.repairing = false;
+    state.combat.enemy = null;
+    state.combat.spawnTimer = 0;
+    scene.resetPlayerShipAnimation();
+    scene.triggerBossSurpriseAlert();
+    toast(BOSS_SURPRISE_MESSAGE, "danger-toast");
+    addLog(BOSS_SURPRISE_MESSAGE, "danger-text");
+    spawnEnemy(true, { surprise: true });
+    return true;
   }
 
   function dealToEnemy(rawDamage, options = {}) {
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
+    if (isBossIntroActive(enemy)) return;
     const mitigation = options.ignoreArmor ? 1 : 100 / (100 + enemy.armor);
     const skillPenalty = options.skill ? 1 - (enemy.skillResist || 0) : 1;
     const damage = Math.max(1, Math.round(rawDamage * mitigation * skillPenalty));
@@ -4726,6 +4990,38 @@
     return found;
   }
 
+  function scheduleBossMapAdvance(defeatedRegionIndex) {
+    if (pendingBossMapAdvanceTimer) window.clearTimeout(pendingBossMapAdvanceTimer);
+    state.combat.enemy = null;
+    state.combat.spawnTimer = -BOSS_MAP_ADVANCE_DELAY_MS;
+    pendingBossMapAdvanceTimer = window.setTimeout(() => {
+      pendingBossMapAdvanceTimer = 0;
+      if (defeatedRegionIndex < REGIONS.length - 1) {
+        const completedPrologue = defeatedRegionIndex === PRIMITIVE_REGIONS.length - 1;
+        const nextRegionIndex = defeatedRegionIndex + 1;
+        const shouldAutoTravel = state.regionIndex === defeatedRegionIndex;
+        state.unlockedRegions = Math.max(state.unlockedRegions, nextRegionIndex + 1);
+        state.maxRegionReached = Math.max(state.maxRegionReached, nextRegionIndex);
+        if (shouldAutoTravel) {
+          state.regionIndex = nextRegionIndex;
+          state.combat.enemy = null;
+          state.combat.spawnTimer = -700;
+        }
+        queueRegionPreload(nextRegionIndex);
+        scheduleNearbyRegionPreload();
+        toast(`${REGIONS[nextRegionIndex].name} foi desbloqueada.`, "gold-toast");
+        addLog(`Novo mapa desbloqueado: ${REGIONS[nextRegionIndex].name}.`, "loot");
+        if (completedPrologue) setTimeout(() => toast("A Era Primitiva ficou para trás. Agora começa a verdadeira jornada pirata.", "gold-toast"), 450);
+      } else {
+        state.combat.enemy = null;
+        if (state.regionIndex === defeatedRegionIndex) state.combat.running = false;
+        toast("Você conquistou o Abismo e se tornou uma lenda!", "gold-toast");
+      }
+      renderAll(false);
+      saveGame();
+    }, BOSS_MAP_ADVANCE_DELAY_MS);
+  }
+
   function defeatEnemy(options = {}) {
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
@@ -4735,6 +5031,7 @@
     const region = REGIONS[state.regionIndex];
     if (getEquippedPet()) state.lifetime.petKills += 1;
     if (enemy.isBoss) {
+      const isSurpriseBoss = Boolean(enemy.isSurpriseBoss);
       const reward = calculateGoldReward(integerBetween(region.bossGold[0], region.bossGold[1]));
       state.resources.ouro += reward;
       state.lifetime.gold += reward;
@@ -4742,25 +5039,16 @@
       trackAction("gold", { amount: reward });
       trackAction("boss");
       if (getEquippedPet()) state.lifetime.bossesWithPet += 1;
-      state.bossesDefeated[state.regionIndex] = true;
+      if (!isSurpriseBoss) state.bossesDefeated[state.regionIndex] = true;
       gainXp(region.xp * 35);
       const materials = rewardMaterials(8, enemy);
-      addLog(`Boss derrotado: ${region.boss}. Drop: ${formatNumber(reward)} Ouro.`, "loot");
-      toast(`${region.boss} foi derrotado!`, "gold-toast");
-      if (state.regionIndex < REGIONS.length - 1) {
-        const completedPrologue = state.regionIndex === PRIMITIVE_REGIONS.length - 1;
-        state.unlockedRegions = Math.max(state.unlockedRegions, state.regionIndex + 2);
-        state.regionIndex += 1;
-        state.maxRegionReached = Math.max(state.maxRegionReached, state.regionIndex);
-        scheduleNearbyRegionPreload();
+      addLog(`${isSurpriseBoss ? "Boss surpresa derrotado" : "Boss derrotado"}: ${region.boss}. Drop: ${formatNumber(reward)} Ouro.`, "loot");
+      toast(`${region.boss}${isSurpriseBoss ? " surpresa" : ""} foi derrotado!`, "gold-toast");
+      if (isSurpriseBoss) {
         state.combat.enemy = null;
-        state.combat.spawnTimer = -700;
-        toast(`${REGIONS[state.regionIndex].name} foi desbloqueada.`, "gold-toast");
-        addLog(`Novo mapa desbloqueado: ${REGIONS[state.regionIndex].name}.`, "loot");
-        if (completedPrologue) setTimeout(() => toast("A Era Primitiva ficou para trás. Agora começa a verdadeira jornada pirata.", "gold-toast"), 450);
+        state.combat.spawnTimer = -BOSS_MAP_ADVANCE_DELAY_MS;
       } else {
-        state.combat.running = false;
-        toast("Você conquistou o Abismo e se tornou uma lenda!", "gold-toast");
+        scheduleBossMapAdvance(state.regionIndex);
       }
       if (materials.length) addLog(`Drop do boss: ${materials.join(", ")}.`, "loot");
     } else {
@@ -4816,6 +5104,7 @@
     }
     const enemy = state.combat.enemy;
     if (enemy.defeated) return;
+    if (isBossIntroActive(enemy)) return;
     if (enemy.burnTime > 0) {
       enemy.burnTime -= dt;
       enemy.hp = Math.max(0, enemy.hp - enemy.burnDps * dt);
@@ -5008,6 +5297,7 @@
     const region = REGIONS[state.regionIndex];
     const maxHp = stats.maxHp;
     $("#battle-stage")?.classList.toggle("fixed-background", regionUsesFixedBackground(state.regionIndex));
+    $("#scene-region").textContent = getCombatRegionLabel(region);
     $("#scene-weather").textContent = region.dayNightCycle === false ? region.weather : `${region.weather} • ${scene.getDayState(region).label}`;
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
     $("#player-health-fill").style.width = `${state.combat.playerHp / maxHp * 100}%`;
@@ -5089,7 +5379,7 @@
     const stats = getStats();
     const kills = state.regionKills[state.regionIndex];
     $("#battle-stage")?.classList.toggle("fixed-background", regionUsesFixedBackground(state.regionIndex));
-    $("#scene-region").textContent = region.name;
+    $("#scene-region").textContent = getCombatRegionLabel(region);
     $("#scene-weather").textContent = region.weather;
     $("#metric-damage").textContent = formatNumber(stats.damage);
     $("#metric-dps").textContent = formatNumber(stats.dps);
