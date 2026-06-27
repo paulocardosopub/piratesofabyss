@@ -11,6 +11,7 @@
   const PET_UPGRADE_POWER_STEP = .32;
   const CAPTAIN_MAX_LEVEL = 10;
   const CAPTAIN_ASSET_PATH = "assets/pirates/";
+  const CAPTAIN_CHARACTER_ASSET_PATH = "assets/newpirates/";
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -440,22 +441,22 @@
 
   const PET_SPRITE_PATH = "assets/pets/";
   const PET_SPRITE_CONFIG = {
-    fish: { file: "peixe_palhaco.png", width: 48, anchorX: .36, anchorY: .56, offsetY: 1 },
-    jelly: { file: "agua_viva.png", width: 58, anchorX: .42, anchorY: .55, offsetY: -4 },
-    turtle: { file: "tartaruga_marinha.png", width: 68, anchorX: .38, anchorY: .54, offsetY: 1 },
-    seal: { file: "foca.png", width: 76, anchorX: .38, anchorY: .58, offsetY: 3, bob: 8 },
-    dolphin: { file: "golfinho.png", width: 84, anchorX: .38, anchorY: .56, offsetY: -2, bob: 7 },
-    ray: { file: "arraia_eletrica.png", width: 88, anchorX: .4, anchorY: .55, offsetY: 0 },
-    shark: { file: "tubarao.png", width: 104, anchorX: .38, anchorY: .55, offsetY: 0 },
-    orca: { file: "baleia_assassina.png", width: 116, anchorX: .39, anchorY: .55, offsetY: -1 },
-    megalodon: { file: "megalodon.png", width: 126, anchorX: .39, anchorY: .55, offsetY: 0 },
-    kraken: { file: "kraken.png", width: 138, anchorX: .43, anchorY: .58, offsetY: -3, bob: 5 }
+    fish: { file: "peixe_palhaco.png", width: 74, cardWidth: 106, anchorX: .42, anchorY: .58, offsetY: 2 },
+    jelly: { file: "agua_viva.png", width: 80, cardWidth: 108, anchorX: .44, anchorY: .57, offsetY: -3 },
+    turtle: { file: "tartaruga_marinha.png", width: 86, cardWidth: 110, anchorX: .42, anchorY: .57, offsetY: 2 },
+    seal: { file: "foca.png", width: 88, cardWidth: 112, anchorX: .42, anchorY: .6, offsetY: 4, bob: 7 },
+    dolphin: { file: "golfinho.png", width: 102, cardWidth: 116, anchorX: .42, anchorY: .57, offsetY: -2, bob: 7 },
+    ray: { file: "arraia_eletrica.png", width: 106, cardWidth: 116, anchorX: .43, anchorY: .57, offsetY: 1 },
+    shark: { file: "tubarao.png", width: 124, cardWidth: 120, anchorX: .42, anchorY: .57, offsetY: 1 },
+    orca: { file: "baleia_assassina.png", width: 134, cardWidth: 122, anchorX: .42, anchorY: .57, offsetY: 0 },
+    megalodon: { file: "megalodon.png", width: 148, cardWidth: 124, anchorX: .42, anchorY: .57, offsetY: 1 },
+    kraken: { file: "kraken.png", width: 158, cardWidth: 126, anchorX: .44, anchorY: .6, offsetY: -3, bob: 5 }
   };
   const PET_SPRITES = Object.fromEntries(Object.entries(PET_SPRITE_CONFIG).map(([visual, config]) => {
     const image = new Image();
     image.decoding = "async";
     image.src = `${PET_SPRITE_PATH}${config.file}`;
-    return [visual, { ...config, image }];
+    return [visual, { frames: 3, ...config, image }];
   }));
 
   function getPetSprite(visual) {
@@ -465,6 +466,17 @@
   function getPetSpriteUrl(visual) {
     const sprite = getPetSprite(visual);
     return sprite ? `${PET_SPRITE_PATH}${sprite.file}` : "";
+  }
+
+  function getPetSpriteStyle(visual) {
+    const sprite = getPetSprite(visual);
+    if (!sprite) return "";
+    const cardWidth = sprite.cardWidth || 112;
+    return `--pet-sprite:url(${getPetSpriteUrl(visual)});--pet-card-sprite-size:${cardWidth}px;--pet-home-sprite-size:${Math.min(64, Math.round(cardWidth * .58))}px;--pet-current-sprite-size:${Math.min(78, Math.round(cardWidth * .7))}px;`;
+  }
+
+  function petSpriteHtml() {
+    return `<span class="pet-sprite" aria-hidden="true"></span>`;
   }
 
   function createCaptainBonuses() {
@@ -621,6 +633,174 @@
     target.captainBonuses = getCaptainBonusesForLevel(level);
     target.captainUpgradePurchased = Array.from({ length: level }, (_, index) => index + 1);
     return target;
+  }
+
+  const CAPTAIN_CHARACTER_POSES = { idle: 0, celebrate: 1, hit: 2 };
+  const CAPTAIN_CHARACTER_REACTION_SECONDS = { celebrate: 2.35, hit: .42 };
+  const CAPTAIN_CHARACTER_GENDER_FILE_KEYS = { male: "masculino", female: "feminino" };
+  const PIRATE_CHARACTER_CONFIG = {
+    boat_01: { scale: .160, offsetX: -.04, offsetY: -2, deckY: .60, anchor: "deck", maxHeight: 38 },
+    boat_02: { scale: .155, offsetX: .18, offsetY: -2, deckY: .59, anchor: "deck", maxHeight: 37 },
+    boat_03: { scale: .160, offsetX: -.09, offsetY: -1, deckY: .56, anchor: "deck", maxHeight: 39 },
+    boat_04: { scale: .155, offsetX: -.10, offsetY: -2, deckY: .58, anchor: "deck", maxHeight: 38 },
+    boat_05: { scale: .160, offsetX: -.16, offsetY: -3, deckY: .55, anchor: "deck", maxHeight: 39 },
+    boat_06: { scale: .165, offsetX: -.14, offsetY: -3, deckY: .54, anchor: "deck", maxHeight: 41 },
+    boat_07: { scale: .160, offsetX: .05, offsetY: -4, deckY: .50, anchor: "deck", maxHeight: 40 },
+    boat_08: { scale: .165, offsetX: -.08, offsetY: -3, deckY: .52, anchor: "deck", maxHeight: 41 },
+    boat_09: { scale: .170, offsetX: .18, offsetY: -4, deckY: .54, anchor: "deck", maxHeight: 44 },
+    boat_10: { scale: .170, offsetX: -.27, offsetY: -3, deckY: .55, anchor: "deck", maxHeight: 44 },
+    boat_11: { scale: .172, offsetX: -.10, offsetY: -4, deckY: .52, anchor: "deck", maxHeight: 45 },
+    boat_12: { scale: .170, offsetX: .03, offsetY: -4, deckY: .52, anchor: "deck", maxHeight: 45 },
+    boat_13: { scale: .172, offsetX: -.16, offsetY: -4, deckY: .51, anchor: "deck", maxHeight: 46 },
+    boat_14: { scale: .174, offsetX: -.29, offsetY: -4, deckY: .52, anchor: "deck", maxHeight: 47 },
+    boat_15: { scale: .174, offsetX: -.12, offsetY: -5, deckY: .50, anchor: "deck", maxHeight: 47 },
+    boat_16: { scale: .176, offsetX: -.04, offsetY: -4, deckY: .50, anchor: "deck", maxHeight: 48 },
+    boat_17: { scale: .176, offsetX: .10, offsetY: -5, deckY: .49, anchor: "deck", maxHeight: 50 }
+  };
+
+  function getPirateCharacterBoatConfig(shipId) {
+    const index = Math.floor(Number(shipId) || 0) + 1;
+    return PIRATE_CHARACTER_CONFIG[`boat_${String(index).padStart(2, "0")}`] || null;
+  }
+
+  function getCaptainCharacterFile(level, gender) {
+    const cleanGender = normalizeCaptainGender(gender) || "male";
+    const fileGender = CAPTAIN_CHARACTER_GENDER_FILE_KEYS[cleanGender] || CAPTAIN_CHARACTER_GENDER_FILE_KEYS.male;
+    return `pirata_${fileGender}_tier_${String(clamp(Math.floor(Number(level) || 1), 1, CAPTAIN_MAX_LEVEL)).padStart(2, "0")}_3sprites.png`;
+  }
+
+  function createCaptainCharacterSpritesheet(level, gender) {
+    const cleanGender = normalizeCaptainGender(gender) || "male";
+    const file = getCaptainCharacterFile(level, cleanGender);
+    const image = new Image();
+    const sprite = {
+      key: `${cleanGender}:${level}`,
+      image,
+      canvas: null,
+      file,
+      columns: 3,
+      frames: 3,
+      ready: false,
+      processing: false,
+      frameBounds: null,
+      referenceBounds: null
+    };
+    image.decoding = "async";
+    image.onload = () => prepareCaptainCharacterSpritesheet(sprite);
+    image.src = `${CAPTAIN_CHARACTER_ASSET_PATH}${file}`;
+    return sprite;
+  }
+
+  const CAPTAIN_CHARACTER_SPRITESHEETS = Object.fromEntries(
+    ["male", "female"].flatMap(gender => Array.from({ length: CAPTAIN_MAX_LEVEL }, (_, index) => {
+      const level = index + 1;
+      return [`${gender}:${level}`, createCaptainCharacterSpritesheet(level, gender)];
+    }))
+  );
+
+  function getCaptainCharacterSpritesheet(level, gender) {
+    const cleanGender = normalizeCaptainGender(gender) || "male";
+    const cleanLevel = clamp(Math.floor(Number(level) || 1), 1, CAPTAIN_MAX_LEVEL);
+    return CAPTAIN_CHARACTER_SPRITESHEETS[`${cleanGender}:${cleanLevel}`] || CAPTAIN_CHARACTER_SPRITESHEETS["male:1"];
+  }
+
+  function getActiveCaptainCharacterSpritesheet() {
+    return getCaptainCharacterSpritesheet(getCaptainLevel() || 1, getCaptainGender() || "male");
+  }
+
+  function isCaptainCharacterBackgroundPixel(r, g, b, backgroundSamples) {
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const average = (r + g + b) / 3;
+    if (max - min < 18 && average > 218) return true;
+    return backgroundSamples.some(sample => Math.hypot(r - sample.r, g - sample.g, b - sample.b) < 32);
+  }
+
+  function measureCaptainCharacterFrameBounds(sprite, data, width, height) {
+    const frameWidth = Math.floor(width / sprite.columns);
+    const frameHeight = height;
+    const bounds = [];
+    for (let frame = 0; frame < sprite.frames; frame++) {
+      const frameX = frame * frameWidth;
+      let left = frameWidth, top = frameHeight, right = -1, bottom = -1;
+      for (let y = 0; y < frameHeight; y++) {
+        for (let x = 0; x < frameWidth; x++) {
+          const index = (y * width + frameX + x) * 4;
+          if (data[index + 3] <= 8) continue;
+          if (x < left) left = x;
+          if (x > right) right = x;
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+        }
+      }
+      bounds[frame] = right >= left && bottom >= top
+        ? { left, top, right, bottom, centerX: (left + right) / 2, bottomY: bottom, visibleHeight: bottom - top + 1 }
+        : { left: frameWidth * .34, top: frameHeight * .16, right: frameWidth * .66, bottom: frameHeight * .92, centerX: frameWidth * .5, bottomY: frameHeight * .92, visibleHeight: frameHeight * .76 };
+    }
+    sprite.frameBounds = bounds;
+    sprite.referenceBounds = bounds[CAPTAIN_CHARACTER_POSES.idle] || bounds[0];
+  }
+
+  function prepareCaptainCharacterSpritesheet(sprite) {
+    const image = sprite.image;
+    if (!image?.complete || !image.naturalWidth || sprite.ready || sprite.processing) return;
+    sprite.processing = true;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = pixels.data;
+      const width = canvas.width;
+      const height = canvas.height;
+      const sample = (x, y) => {
+        const index = (y * width + x) * 4;
+        return { r: data[index], g: data[index + 1], b: data[index + 2] };
+      };
+      const backgroundSamples = [sample(0, 0), sample(width - 1, 0), sample(0, height - 1), sample(width - 1, height - 1)];
+      const visited = new Uint8Array(width * height);
+      const queue = [];
+      let head = 0;
+      const push = (x, y) => {
+        if (x < 0 || y < 0 || x >= width || y >= height) return;
+        const point = y * width + x;
+        if (visited[point]) return;
+        const index = point * 4;
+        if (data[index + 3] <= 8 || isCaptainCharacterBackgroundPixel(data[index], data[index + 1], data[index + 2], backgroundSamples)) {
+          visited[point] = 1;
+          data[index + 3] = 0;
+          queue.push(point);
+        }
+      };
+      for (let x = 0; x < width; x++) {
+        push(x, 0);
+        push(x, height - 1);
+      }
+      for (let y = 1; y < height - 1; y++) {
+        push(0, y);
+        push(width - 1, y);
+      }
+      while (head < queue.length) {
+        const point = queue[head++];
+        const x = point % width;
+        const y = Math.floor(point / width);
+        push(x + 1, y);
+        push(x - 1, y);
+        push(x, y + 1);
+        push(x, y - 1);
+      }
+      measureCaptainCharacterFrameBounds(sprite, data, width, height);
+      context.putImageData(pixels, 0, 0);
+      sprite.canvas = canvas;
+      sprite.ready = true;
+    } catch (error) {
+      sprite.canvas = null;
+      sprite.ready = true;
+    } finally {
+      sprite.processing = false;
+    }
   }
 
   const TODAY_KEY = () => new Date().toLocaleDateString("sv-SE");
@@ -933,7 +1113,7 @@
   }
   function getPetAuraStyle(pet) {
     const level = pet?.level || 1;
-    return `--pet-color:${pet?.color || "#6eefe2"};--pet-aura-size:${48 + level * 8}px;--pet-aura-glow:${8 + level * 3}px;--pet-aura-alpha:${Math.min(.26, .1 + level * .03)};`;
+    return `${getPetSpriteStyle(pet?.visual)}--pet-color:${pet?.color || "#6eefe2"};--pet-aura-size:${44 + level * 7}px;--pet-aura-glow:${5 + level * 1.5}px;--pet-aura-alpha:${Math.min(.12, .045 + level * .012)};`;
   }
   function petLevelPips(level) {
     return Array.from({ length: PET_MAX_LEVEL }, (_, index) => `<i class="${index < level ? "on" : ""}"></i>`).join("");
@@ -1178,6 +1358,7 @@
       state.xp -= xpNeeded();
       state.pirateLevel += 1;
       const unlocked = Object.entries(SKILL_META).find(([, meta]) => meta.unlock === state.pirateLevel);
+      scene.celebrateCaptain(1.8);
       toast(unlocked ? `Nível ${state.pirateLevel}! ${unlocked[1].name} foi desbloqueado.` : `Nível ${state.pirateLevel} alcançado!`, "gold-toast");
       addLog(`Seu capitão alcançou o nível ${state.pirateLevel}.`, "loot");
     }
@@ -1903,6 +2084,7 @@
       this.lootFloaters = [];
       this.enemyDeathAnimations = [];
       this.playerShipAnimation = null;
+      this.playerCaptainReaction = { state: "idle", until: 0 };
       this.environmentEvents = [];
       this.environmentTimers = { bird: 2.5, fish: 3.5, shark: 19, kraken: 72 };
       this.resize = this.resize.bind(this);
@@ -1962,6 +2144,7 @@
       if (!animation || animation.deathStartedAt) return;
       animation.hitStartedAt = this.time;
       animation.hitUntil = this.time + .34;
+      this.markPlayerCaptainHit();
     }
 
     markPlayerShipDeath() {
@@ -1969,6 +2152,7 @@
       if (!animation || animation.deathStartedAt) return;
       animation.hitUntil = 0;
       animation.deathStartedAt = this.time;
+      this.markPlayerCaptainHit();
     }
 
     resetPlayerShipAnimation() {
@@ -1976,6 +2160,19 @@
         this.playerShipAnimation.hitUntil = 0;
         this.playerShipAnimation.deathStartedAt = 0;
       }
+      this.playerCaptainReaction = { state: "idle", until: 0 };
+    }
+
+    markPlayerCaptainHit() {
+      this.playerCaptainReaction = { state: "hit", until: this.time + CAPTAIN_CHARACTER_REACTION_SECONDS.hit };
+    }
+
+    celebrateCaptain(seconds = CAPTAIN_CHARACTER_REACTION_SECONDS.celebrate) {
+      this.playerCaptainReaction = { state: "celebrate", until: this.time + seconds };
+    }
+
+    getPlayerCaptainPose() {
+      return this.playerCaptainReaction.until > this.time ? this.playerCaptainReaction.state : "idle";
     }
 
     queueEnemyDeath(enemy, delay = 0) {
@@ -2542,8 +2739,13 @@
       const image = sprite?.image;
       if (!image?.complete || !image.naturalWidth) return false;
       const bob = Math.sin(this.time * 1.75 + pet.id) * (sprite.bob ?? 4) * baseScale;
+      const frameCount = sprite.frames || 3;
+      const frameWidth = Math.floor(image.naturalWidth / frameCount);
+      const frameHeight = image.naturalHeight;
+      const attackFrame = frameCount - 1;
+      const frame = this.petLunge > .06 ? attackFrame : 0;
       const targetWidth = sprite.width * baseScale;
-      const targetHeight = targetWidth * (image.naturalHeight / image.naturalWidth);
+      const targetHeight = targetWidth * (frameHeight / frameWidth);
       const drawX = -targetWidth * sprite.anchorX;
       const drawY = -targetHeight * sprite.anchorY;
       ctx.save();
@@ -2551,7 +2753,7 @@
       if (pet.level) {
         const pulse = 1 + Math.sin(this.time * 2.1 + pet.id) * .04;
         ctx.save();
-        ctx.globalAlpha = Math.min(.24, .08 + pet.level * .024);
+        ctx.globalAlpha = Math.min(.1, .035 + pet.level * .012);
         const glow = ctx.createRadialGradient(targetWidth * .06, targetHeight * .28, 1, targetWidth * .06, targetHeight * .28, targetWidth * .44 * pulse);
         glow.addColorStop(0, pet.color);
         glow.addColorStop(.42, `${pet.color}55`);
@@ -2560,7 +2762,7 @@
         ctx.beginPath();
         ctx.ellipse(targetWidth * .06, targetHeight * .28, targetWidth * .42 * pulse, Math.max(7, targetHeight * .13) * pulse, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.globalAlpha = Math.min(.48, .12 + pet.level * .035);
+        ctx.globalAlpha = Math.min(.18, .055 + pet.level * .018);
         ctx.fillStyle = pet.color;
         for (let i = 0; i < Math.min(5, pet.level + 2); i++) {
           const angle = this.time * 1.25 + pet.id + i * 1.65;
@@ -2576,9 +2778,10 @@
       ctx.ellipse(targetWidth * .1, targetHeight * .32, targetWidth * .42, Math.max(3, targetHeight * .06), 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = false;
       ctx.shadowColor = "rgba(0,0,0,.34)";
       ctx.shadowBlur = 8 * baseScale;
-      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
+      ctx.drawImage(image, frame * frameWidth, 0, frameWidth, frameHeight, drawX, drawY, targetWidth, targetHeight);
       ctx.restore();
       return true;
     }
@@ -2676,6 +2879,51 @@
       return { stateName, frame: sequence.frames[sequenceIndex], nextFrame: sequence.frames[nextIndex], blend, elapsed };
     }
 
+    drawCaptainCharacter(ctx, ship, shipSprite, targetWidth, targetHeight, scale, options = {}) {
+      if (options.preview) return false;
+      const config = getPirateCharacterBoatConfig(ship?.id);
+      if (!config) return false;
+      const sprite = getActiveCaptainCharacterSpritesheet();
+      const image = sprite?.image;
+      if (!image?.complete || !image.naturalWidth) return false;
+      if (!sprite.ready && !sprite.processing) prepareCaptainCharacterSpritesheet(sprite);
+      const source = sprite.canvas || image;
+      const sourceWidth = source.width || image.naturalWidth;
+      const sourceHeight = source.height || image.naturalHeight;
+      const frameWidth = Math.floor(sourceWidth / sprite.columns);
+      const frameHeight = sourceHeight;
+      const poseName = this.getPlayerCaptainPose();
+      const frame = CAPTAIN_CHARACTER_POSES[poseName] ?? CAPTAIN_CHARACTER_POSES.idle;
+      const bounds = sprite.frameBounds?.[frame] || sprite.referenceBounds;
+      const reference = sprite.referenceBounds || bounds;
+      if (!bounds || !reference) return false;
+      const visibleRatio = clamp(Math.max(reference.visibleHeight || 0, bounds.visibleHeight || 0) / Math.max(1, frameHeight), .18, 1);
+      const visualHeight = Math.min(targetWidth * config.scale, (config.maxHeight || 38) * scale);
+      const targetFrameHeight = visualHeight / visibleRatio;
+      const targetFrameWidth = targetFrameHeight * (frameWidth / frameHeight);
+      const frameScale = targetFrameHeight / frameHeight;
+      const footX = targetWidth * (config.offsetX || 0);
+      const footY = -targetHeight * (shipSprite.anchorY ?? .64) + targetHeight * (config.deckY ?? .55) + (config.offsetY || 0) * scale;
+      const drawX = footX - bounds.centerX * frameScale;
+      const drawY = footY - bounds.bottomY * frameScale;
+      const frameX = frame * frameWidth;
+
+      ctx.save();
+      ctx.globalAlpha = .24;
+      ctx.fillStyle = "rgba(0,0,0,.72)";
+      ctx.beginPath();
+      ctx.ellipse(footX, footY + 1 * scale, Math.max(5, visualHeight * .22), Math.max(1.8, visualHeight * .045), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      if (poseName === "hit") ctx.filter = "brightness(1.14) saturate(1.08)";
+      ctx.imageSmoothingEnabled = false;
+      ctx.shadowColor = "rgba(0,0,0,.34)";
+      ctx.shadowBlur = 3.5 * scale;
+      ctx.drawImage(source, frameX, 0, frameWidth, frameHeight, drawX, drawY, targetFrameWidth, targetFrameHeight);
+      ctx.restore();
+      return true;
+    }
+
     drawPlayerShipSpritesheet(ctx, x, y, scale, ship, sprite, options = {}) {
       const image = sprite.image;
       if (!image?.complete || !image.naturalWidth) return false;
@@ -2714,6 +2962,7 @@
       };
       drawFrame(pose.frame, 1 - pose.blend);
       if (pose.blend > 0 && pose.nextFrame !== pose.frame) drawFrame(pose.nextFrame, pose.blend);
+      if (pose.stateName !== "death") this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
       ctx.restore();
       return true;
     }
@@ -3294,6 +3543,7 @@
     if (!enemy || enemy.defeated) return;
     enemy.defeated = true;
     scene.queueEnemyDeath(enemy, options.visualDelay || 0);
+    scene.celebrateCaptain(enemy.isBoss ? 2.8 : 1.65);
     const region = REGIONS[state.regionIndex];
     if (getEquippedPet()) state.lifetime.petKills += 1;
     if (enemy.isBoss) {
@@ -3677,7 +3927,7 @@
     $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
     const pet = getEquippedPet();
     const petCard = $("#home-pet-card");
-    $("#home-pet-icon").innerHTML = pet ? `<img src="${getPetSpriteUrl(pet.visual)}" alt="">` : "🐾";
+    $("#home-pet-icon").innerHTML = pet ? petSpriteHtml() : "🐾";
     $("#home-pet-name").textContent = pet?.name || "Nenhum pet equipado";
     petCard.classList.toggle("equipped", Boolean(pet));
     petCard.setAttribute("style", pet ? getPetAuraStyle(pet) : "");
@@ -3700,7 +3950,7 @@
     const banner = $("#pet-current-banner");
     banner.className = `pet-current-banner${current ? " equipped" : ""}`;
     banner.setAttribute("style", current ? getPetAuraStyle(current) : "");
-    banner.innerHTML = current ? `<div class="pet-current-icon"><img src="${getPetSpriteUrl(current.visual)}" alt=""></div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
+    banner.innerHTML = current ? `<div class="pet-current-icon">${petSpriteHtml()}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
     $("#pets-grid").innerHTML = PETS.map(basePet => {
       const owned = state.ownedPets.includes(basePet.id);
       const level = owned ? getPetLevel(basePet.id) : 1;
@@ -3724,7 +3974,7 @@
       const requirement = owned
         ? `<div class="pet-requirements ready"><strong>Upgrade permanente</strong><br>${upgradeCost ? state.pirateCoins >= upgradeCost ? "Moedas Pirata disponíveis para evoluir." : `Faltam ${formatNumber(upgradeCost - state.pirateCoins)} Moedas Pirata para evoluir.` : "Este pet já atingiu o nível máximo."}</div>`
         : issues.length ? `<div class="pet-requirements"><strong>${prestigeLine}</strong><br>Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready"><strong>${prestigeLine}</strong><br>${state.pirateCoins >= pirateCoinCost ? "Moedas e requisitos disponíveis" : `Faltam ${pirateCoinCost - state.pirateCoins} Moedas Pirata`}</div>`;
-      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-visual"><img src="${getPetSpriteUrl(pet.visual)}" alt=""><i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
+      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-visual">${petSpriteHtml()}<i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
     }).join("");
   }
 
@@ -4443,6 +4693,7 @@
     const newStats = getStats();
     if (type === "hull" || type === "ship") state.combat.playerHp = Math.max(state.combat.playerHp, Math.round(newStats.maxHp * oldRatio));
     addLog(`${type === "ship" ? "Navio" : type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} melhorado para o nível ${state.levels[type]}.`, "loot");
+    scene.celebrateCaptain(type === "ship" ? 2.4 : 1.55);
     const powerGain = Math.max(0, newStats.power - oldStats.power);
     toast(`Melhoria concluída! Poder Naval: ${formatNumber(oldStats.power)} → ${formatNumber(newStats.power)} (+${formatNumber(powerGain)}).`);
     commitGame(true);
@@ -4460,6 +4711,7 @@
     if (!canAfford(ship.costs)) return toast("Ainda faltam recursos para construir este navio.", "danger-toast");
     spend(ship.costs); state.ownedShips.push(id); setActiveShip(id);
     trackAction("shipSwitch");
+    scene.celebrateCaptain(2.5);
     toast(`${ship.name} foi construído e equipado!`, "gold-toast"); addLog(`${ship.name} agora lidera sua frota.`, "loot"); commitGame(true);
   }
 
@@ -4512,6 +4764,7 @@
     state.captainLevel = 1;
     syncCaptainState(state);
     syncCaptainEquipmentState(state);
+    scene.celebrateCaptain(2.4);
     addLog(`${getCaptainName(1, cleanGender)} assumiu o comando permanente.`, "loot");
     toast(`${CAPTAIN_GENDERS[cleanGender].label} escolhido!`, "gold-toast");
     commitGame(true);
@@ -4527,6 +4780,7 @@
     state.pirateCoins -= cost;
     state.captainLevel = next.level;
     syncCaptainState(state);
+    scene.celebrateCaptain(2.8);
     toast(`${next.name} desbloqueado!`, "gold-toast");
     addLog(`Capitão evoluiu para ${next.name} usando Moedas Pirata.`, "loot");
     commitGame(true);
@@ -4579,6 +4833,7 @@
     syncCaptainRuntimeState(state);
     syncCaptainEquipmentState(state);
     trackAction("upgrade", { type: `captain-${key}` });
+    scene.celebrateCaptain(1.8);
     const newStats = getStats();
     state.combat.playerHp = clamp(Math.round(newStats.maxHp * oldRatio), state.combat.playerHp > 0 ? 1 : 0, newStats.maxHp);
     lastCaptainEquipmentUpgrade = key;

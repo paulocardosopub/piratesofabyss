@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v55-journey-map-hotspots";
+const CACHE = "pirates-abyss-v59-captain-sprites";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -203,11 +203,33 @@ const CAPTAIN_ASSET_FILES = [
   "10 - Pirata Lendário Masculino.png",
   "10 - Pirata Lendário Feminino.png"
 ];
+const CAPTAIN_CHARACTER_ASSET_FILES = [
+  "pirata_masculino_tier_01_3sprites.png",
+  "pirata_masculino_tier_02_3sprites.png",
+  "pirata_masculino_tier_03_3sprites.png",
+  "pirata_masculino_tier_04_3sprites.png",
+  "pirata_masculino_tier_05_3sprites.png",
+  "pirata_masculino_tier_06_3sprites.png",
+  "pirata_masculino_tier_07_3sprites.png",
+  "pirata_masculino_tier_08_3sprites.png",
+  "pirata_masculino_tier_09_3sprites.png",
+  "pirata_masculino_tier_10_3sprites.png",
+  "pirata_feminino_tier_01_3sprites.png",
+  "pirata_feminino_tier_02_3sprites.png",
+  "pirata_feminino_tier_03_3sprites.png",
+  "pirata_feminino_tier_04_3sprites.png",
+  "pirata_feminino_tier_05_3sprites.png",
+  "pirata_feminino_tier_06_3sprites.png",
+  "pirata_feminino_tier_07_3sprites.png",
+  "pirata_feminino_tier_08_3sprites.png",
+  "pirata_feminino_tier_09_3sprites.png",
+  "pirata_feminino_tier_10_3sprites.png"
+];
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=41",
-  "game.js?v=66",
+  "styles.css?v=43",
+  "game.js?v=69",
   "icon.svg",
   "manifest.webmanifest",
   "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif",
@@ -221,7 +243,8 @@ const ASSETS = [
   ...ISLAND_ASSET_FILES.map(file => `assets/backgrounds/islands/${file}`),
   ...OCEAN_ASSET_FILES.map(file => `assets/backgrounds/ocean/${file}`),
   ...PET_ASSET_FILES.map(file => `assets/pets/${file}`),
-  ...CAPTAIN_ASSET_FILES.map(file => `assets/pirates/${file}`)
+  ...CAPTAIN_ASSET_FILES.map(file => `assets/pirates/${file}`),
+  ...CAPTAIN_CHARACTER_ASSET_FILES.map(file => `assets/newpirates/${file}`)
 ];
 
 self.addEventListener("install", event => {
