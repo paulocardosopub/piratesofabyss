@@ -749,18 +749,18 @@
   const PIRATE_CHARACTER_CONFIG = {
     boat_01: { scale: .445, offsetX: -.04, offsetY: 16, deckY: .86, anchor: "deck", maxHeight: 112, embed: .32, railOverlap: .05 },
     boat_02: { scale: .430, offsetX: .17, offsetY: 16, deckY: .85, anchor: "deck", maxHeight: 110, embed: .33, railOverlap: .05 },
-    boat_03: { scale: .440, offsetX: -.09, offsetY: 15, deckY: .82, anchor: "deck", maxHeight: 112, embed: .32, railOverlap: .048 },
+    boat_03: { scale: .440, offsetX: -.05, offsetY: 13, deckY: .80, anchor: "deck", maxHeight: 112, embed: .38, railOverlap: .072 },
     boat_04: { scale: .430, offsetX: -.10, offsetY: 16, deckY: .84, anchor: "deck", maxHeight: 112, embed: .33, railOverlap: .05 },
     boat_05: { scale: .430, offsetX: -.16, offsetY: 15, deckY: .81, anchor: "deck", maxHeight: 114, embed: .32, railOverlap: .05 },
-    boat_06: { scale: .425, offsetX: -.14, offsetY: 16, deckY: .80, anchor: "deck", maxHeight: 114, embed: .34, railOverlap: .052 },
+    boat_06: { scale: .425, offsetX: -.07, offsetY: 14, deckY: .78, anchor: "deck", maxHeight: 114, embed: .40, railOverlap: .076 },
     boat_07: { scale: .410, offsetX: .05, offsetY: 15, deckY: .74, anchor: "deck", maxHeight: 112, embed: .33, railOverlap: .05 },
     boat_08: { scale: .414, offsetX: -.08, offsetY: 15, deckY: .76, anchor: "deck", maxHeight: 116, embed: .33, railOverlap: .05 },
     boat_09: { scale: .405, offsetX: .16, offsetY: 16, deckY: .78, anchor: "deck", maxHeight: 118, embed: .36, railOverlap: .058 },
-    boat_10: { scale: .398, offsetX: -.23, offsetY: 17, deckY: .80, anchor: "deck", maxHeight: 118, embed: .37, railOverlap: .06 },
+    boat_10: { scale: .398, offsetX: -.17, offsetY: 17, deckY: .80, anchor: "deck", maxHeight: 118, embed: .41, railOverlap: .074 },
     boat_11: { scale: .405, offsetX: -.07, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 120, embed: .37, railOverlap: .06 },
     boat_12: { scale: .396, offsetX: .06, offsetY: 16, deckY: .78, anchor: "deck", maxHeight: 120, embed: .37, railOverlap: .06 },
-    boat_13: { scale: .398, offsetX: -.11, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 122, embed: .38, railOverlap: .062 },
-    boat_14: { scale: .388, offsetX: -.22, offsetY: 17, deckY: .79, anchor: "deck", maxHeight: 122, embed: .39, railOverlap: .064 },
+    boat_13: { scale: .398, offsetX: .02, offsetY: 18, deckY: .80, anchor: "deck", maxHeight: 122, embed: .46, railOverlap: .084 },
+    boat_14: { scale: .388, offsetX: -.15, offsetY: 15, deckY: .77, anchor: "deck", maxHeight: 122, embed: .43, railOverlap: .08 },
     boat_15: { scale: .388, offsetX: -.07, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 124, embed: .39, railOverlap: .064 },
     boat_16: { scale: .392, offsetX: .02, offsetY: 16, deckY: .78, anchor: "deck", maxHeight: 126, embed: .39, railOverlap: .064 },
     boat_17: { scale: .382, offsetX: .12, offsetY: 16, deckY: .77, anchor: "deck", maxHeight: 128, embed: .40, railOverlap: .066 },
@@ -4299,10 +4299,10 @@
       const drawX = footX - referenceBody.centerX * frameScale;
       const drawY = footY - referenceBody.bottomY * frameScale;
       const frameX = frame * frameWidth;
-      const embed = clamp(Number(config.embed ?? .3) || .3, .12, .48);
+      const embed = clamp((Number(config.embed ?? .3) || .3) + .025, .16, .56);
       const clipBottom = footY - Math.max(7 * scale, visualHeight * embed);
       const shadowY = clipBottom - Math.max(1, 1.5 * scale);
-      const railOverlap = Math.max(2 * scale, visualHeight * clamp(Number(config.railOverlap ?? .045) || .045, .02, .09));
+      const railOverlap = Math.max(2 * scale, visualHeight * clamp((Number(config.railOverlap ?? .045) || .045) + .008, .02, .13));
 
       ctx.save();
       ctx.beginPath();
