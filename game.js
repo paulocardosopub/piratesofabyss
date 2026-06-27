@@ -697,7 +697,8 @@
       requested: false,
       loadFailed: false,
       frameBounds: null,
-      referenceBounds: null
+      referenceBounds: null,
+      cleanupLightArtifacts: true
     };
     return sprite;
   }
@@ -732,6 +733,86 @@
     const average = (r + g + b) / 3;
     if (max - min < 18 && average > 218) return true;
     return backgroundSamples.some(sample => Math.hypot(r - sample.r, g - sample.g, b - sample.b) < 32);
+  }
+
+  function isCaptainCharacterHaloPixel(r, g, b) {
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const average = (r + g + b) / 3;
+    return max - min <= 28 && average >= 96;
+  }
+
+  function collectCaptainCharacterBackgroundSamples(data, width, height) {
+    const points = [
+      [0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1],
+      [Math.floor(width * .25), 0], [Math.floor(width * .5), 0], [Math.floor(width * .75), 0],
+      [Math.floor(width * .25), height - 1], [Math.floor(width * .5), height - 1], [Math.floor(width * .75), height - 1],
+      [0, Math.floor(height * .25)], [0, Math.floor(height * .5)], [0, Math.floor(height * .75)],
+      [width - 1, Math.floor(height * .25)], [width - 1, Math.floor(height * .5)], [width - 1, Math.floor(height * .75)]
+    ];
+    return points.map(([x, y]) => {
+      const index = (y * width + x) * 4;
+      return { r: data[index], g: data[index + 1], b: data[index + 2] };
+    });
+  }
+
+  function cleanupCaptainCharacterLightArtifacts(data, width, height, backgroundSamples) {
+    const total = width * height;
+    const visited = new Uint8Array(total);
+    const isBackgroundCandidate = point => {
+      const index = point * 4;
+      if (data[index + 3] <= 8) return false;
+      return isCaptainCharacterBackgroundPixel(data[index], data[index + 1], data[index + 2], backgroundSamples);
+    };
+    const isCandidate = point => {
+      const index = point * 4;
+      if (data[index + 3] <= 8) return false;
+      return isBackgroundCandidate(point) || isCaptainCharacterHaloPixel(data[index], data[index + 1], data[index + 2]);
+    };
+    const touchesTransparent = (x, y) => {
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          if (!ox && !oy) continue;
+          const nx = x + ox;
+          const ny = y + oy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) return true;
+          if (data[(ny * width + nx) * 4 + 3] <= 8) return true;
+        }
+      }
+      return false;
+    };
+    for (let start = 0; start < total; start++) {
+      if (visited[start] || !isCandidate(start)) continue;
+      const queue = [start];
+      const component = [];
+      let head = 0;
+      let nearTransparent = false;
+      let backgroundPixels = 0;
+      visited[start] = 1;
+      while (head < queue.length) {
+        const point = queue[head++];
+        const x = point % width;
+        const y = Math.floor(point / width);
+        component.push(point);
+        if (isBackgroundCandidate(point)) backgroundPixels++;
+        if (touchesTransparent(x, y)) nearTransparent = true;
+        for (let oy = -1; oy <= 1; oy++) {
+          const ny = y + oy;
+          if (ny < 0 || ny >= height) continue;
+          for (let ox = -1; ox <= 1; ox++) {
+            if (!ox && !oy) continue;
+            const nx = x + ox;
+            if (nx < 0 || nx >= width) continue;
+            const next = ny * width + nx;
+            if (visited[next] || !isCandidate(next)) continue;
+            visited[next] = 1;
+            queue.push(next);
+          }
+        }
+      }
+      if (!nearTransparent && backgroundPixels < 120) continue;
+      component.forEach(point => { data[point * 4 + 3] = 0; });
+    }
   }
 
   function measureCaptainCharacterFrameBounds(sprite, data, width, height) {
@@ -773,11 +854,7 @@
       const data = pixels.data;
       const width = canvas.width;
       const height = canvas.height;
-      const sample = (x, y) => {
-        const index = (y * width + x) * 4;
-        return { r: data[index], g: data[index + 1], b: data[index + 2] };
-      };
-      const backgroundSamples = [sample(0, 0), sample(width - 1, 0), sample(0, height - 1), sample(width - 1, height - 1)];
+      const backgroundSamples = collectCaptainCharacterBackgroundSamples(data, width, height);
       const visited = new Uint8Array(width * height);
       const queue = [];
       let head = 0;
@@ -804,11 +881,14 @@
         const point = queue[head++];
         const x = point % width;
         const y = Math.floor(point / width);
-        push(x + 1, y);
-        push(x - 1, y);
-        push(x, y + 1);
-        push(x, y - 1);
+        for (let oy = -1; oy <= 1; oy++) {
+          for (let ox = -1; ox <= 1; ox++) {
+            if (!ox && !oy) continue;
+            push(x + ox, y + oy);
+          }
+        }
       }
+      if (sprite.cleanupLightArtifacts) cleanupCaptainCharacterLightArtifacts(data, width, height, backgroundSamples);
       measureCaptainCharacterFrameBounds(sprite, data, width, height);
       context.putImageData(pixels, 0, 0);
       sprite.canvas = canvas;
@@ -1721,6 +1801,30 @@
 
   function normalizeSpriteKey(value = "") {
     return normalizeText(value).replace(/[_\-.:"']/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  const SPRITE_HP_STATES = Object.freeze({
+    normal: "normal",
+    damaged: "damaged",
+    defeated: "defeated"
+  });
+  const ENEMY_STATE_SPRITES = { normal: 0, damaged: 6, defeated: 8 };
+  const PLAYER_SHIP_STATE_SPRITES = { normal: 0, damaged: 6, defeated: 8 };
+  const PET_STATE_SPRITES = { normal: 0, damaged: 1, defeated: 2 };
+  const SPRITE_STATE_SPRITES = {
+    enemy: ENEMY_STATE_SPRITES,
+    playerShip: PLAYER_SHIP_STATE_SPRITES,
+    pet: PET_STATE_SPRITES
+  };
+  const SPRITE_BREATHING_PRESETS = {
+    enemy: { normal: .018, damaged: .012, defeated: .0025, speed: 1.85 },
+    playerShip: { normal: .008, damaged: .006, defeated: .0015, speed: 1.35 },
+    pet: { normal: .022, damaged: .014, defeated: .003, speed: 2.05 }
+  };
+  if (typeof window !== "undefined") {
+    window.PIRATES_SPRITE_HP_STATES = SPRITE_HP_STATES;
+    window.PIRATES_STATE_SPRITES = SPRITE_STATE_SPRITES;
+    window.PIRATES_BREATHING_PRESETS = SPRITE_BREATHING_PRESETS;
   }
 
   const PLAYER_SHIP_SPRITESHEET_PATH = "assets/spritesships/";
@@ -3118,6 +3222,29 @@
       ctx.restore();
     }
 
+    getSpriteHpState(currentHp, maxHp, defeated = false) {
+      const hp = Math.max(0, Number(currentHp) || 0);
+      if (defeated || hp <= 0) return SPRITE_HP_STATES.defeated;
+      const ratio = hp / Math.max(1, Number(maxHp) || hp || 1);
+      return ratio <= .5 ? SPRITE_HP_STATES.damaged : SPRITE_HP_STATES.normal;
+    }
+
+    getStateSpriteFrame(sprite, stateName, role = "enemy") {
+      const frames = SPRITE_STATE_SPRITES[role] || ENEMY_STATE_SPRITES;
+      const selected = frames[stateName] ?? frames.normal ?? 0;
+      return clamp(Math.floor(Number(selected) || 0), 0, Math.max(0, (sprite?.frames || 1) - 1));
+    }
+
+    getBreathingIdleTransform(role, stateName, seed = 0) {
+      const preset = SPRITE_BREATHING_PRESETS[role] || SPRITE_BREATHING_PRESETS.enemy;
+      const intensity = preset[stateName] ?? preset.normal ?? .01;
+      const t = this.time * (preset.speed || 1.8) + seed;
+      return {
+        scaleX: 1 + Math.sin(t) * intensity * .55,
+        scaleY: 1 + Math.sin(t * 1.17 + 1.35) * intensity
+      };
+    }
+
     drawPetSprite(ctx, x, y, pet, baseScale = 1) {
       const sprite = getPetSprite(pet.visual);
       requestPetSprite(sprite);
@@ -3125,20 +3252,20 @@
       if (!image?.complete || !image.naturalWidth) return false;
       if (!sprite.ready && !sprite.processing) preparePetSpritesheet(sprite);
       const source = sprite.canvas || image;
-      const bob = Math.sin(this.time * 1.75 + pet.id) * (sprite.bob ?? 4) * baseScale;
       const frameCount = sprite.frames || 3;
       const sourceWidth = source.width || image.naturalWidth;
       const sourceHeight = source.height || image.naturalHeight;
       const frameWidth = Math.floor(sourceWidth / frameCount);
       const frameHeight = sourceHeight;
-      const attackFrame = frameCount - 1;
-      const frame = this.petLunge > .06 ? attackFrame : 0;
+      const frame = this.getStateSpriteFrame(sprite, SPRITE_HP_STATES.normal, "pet");
       const targetWidth = sprite.width * baseScale;
       const targetHeight = targetWidth * (frameHeight / frameWidth);
       const drawX = -targetWidth * sprite.anchorX;
       const drawY = -targetHeight * sprite.anchorY;
+      const breath = this.getBreathingIdleTransform("pet", SPRITE_HP_STATES.normal, (pet.id || 0) * .73);
       ctx.save();
-      ctx.translate(x, y + (sprite.offsetY || 0) * baseScale + bob);
+      ctx.translate(x, y + (sprite.offsetY || 0) * baseScale);
+      ctx.scale(breath.scaleX, breath.scaleY);
       if (pet.level) {
         const pulse = 1 + Math.sin(this.time * 2.1 + pet.id) * .04;
         ctx.save();
@@ -3179,30 +3306,16 @@
       const animation = ensureEnemySpriteAnimation(enemy);
       if (!animation) return null;
       if (sprite.image?.complete && sprite.image.naturalWidth && !sprite.ready && !sprite.processing) prepareEnemySpritesheet(sprite);
-      let stateName = "idle";
-      let elapsed = this.time + (animation.frameSeed || 0);
-      if (animation.deathStartedAt) {
-        stateName = "death";
-        elapsed = Math.max(0, this.time - animation.deathStartedAt);
-      } else if (animation.hitUntil && this.time < animation.hitUntil) {
-        stateName = "hit";
-        elapsed = Math.max(0, this.time - animation.hitStartedAt);
-      } else if (animation.attackUntil && this.time < animation.attackUntil) {
-        stateName = "attack";
-        elapsed = Math.max(0, this.time - animation.attackStartedAt);
-      } else if (state.combat.running && !state.combat.repairing) {
-        stateName = "walking";
-      }
-      const sequence = sprite.animations?.[stateName] || ENEMY_SPRITESHEET_ANIMATIONS[stateName] || ENEMY_SPRITESHEET_ANIMATIONS.idle;
-      const maxFrame = Math.max(0, (sprite.frames || 1) - 1);
-      const frames = (sequence.frames || [0]).map(frame => clamp(Math.floor(Number(frame) || 0), 0, maxFrame));
-      const progress = elapsed * sequence.fps;
-      const rawFrame = Math.floor(progress);
-      const sequenceIndex = sequence.loop ? rawFrame % frames.length : Math.min(frames.length - 1, rawFrame);
-      const canBlendNext = sequence.blend && (sequence.loop || rawFrame < frames.length - 1);
-      const nextIndex = sequence.loop ? (sequenceIndex + 1) % frames.length : Math.min(frames.length - 1, sequenceIndex + 1);
-      const blend = canBlendNext ? clamp((progress - rawFrame - .18) / .64, 0, 1) : 0;
-      return { stateName, frame: frames[sequenceIndex], nextFrame: frames[nextIndex], blend, elapsed };
+      const maxHp = Math.max(1, Number(enemy.maxHp) || Number(enemy.hp) || 1);
+      const hp = enemy.defeated ? 0 : Math.max(0, Number(enemy.hp ?? maxHp) || 0);
+      const stateName = this.getSpriteHpState(hp, maxHp, enemy.defeated || Boolean(animation.deathStartedAt));
+      return {
+        stateName,
+        frame: this.getStateSpriteFrame(sprite, stateName, "enemy"),
+        blend: 0,
+        elapsed: animation.deathStartedAt ? Math.max(0, this.time - animation.deathStartedAt) : this.time + (animation.frameSeed || 0),
+        seed: animation.frameSeed || 0
+      };
     }
 
     drawEnemySpritesheet(ctx, x, y, scale, enemy, sprite) {
@@ -3222,18 +3335,18 @@
       const frameScale = targetWidth / frameWidth;
       const drawX = -targetWidth * sprite.anchorX;
       const drawY = -targetHeight * sprite.anchorY;
+      const breath = this.getBreathingIdleTransform("enemy", pose.stateName, pose.seed || 0);
       ctx.save();
       ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
-      if (pose.stateName === "hit") ctx.filter = "brightness(1.2) saturate(1.12)";
-      else if (pose.stateName === "attack") ctx.filter = "saturate(1.08) contrast(1.04)";
+      ctx.scale(breath.scaleX, breath.scaleY);
       let baseAlpha = 1;
-      if (pose.stateName === "death") {
+      if (pose.stateName === SPRITE_HP_STATES.defeated) {
         const fadeStart = ENEMY_DEATH_ANIMATION_SECONDS * .72;
         if (pose.elapsed > fadeStart) baseAlpha = clamp(1 - (pose.elapsed - fadeStart) / Math.max(.001, ENEMY_DEATH_ANIMATION_SECONDS - fadeStart), 0, 1);
       }
       ctx.imageSmoothingEnabled = false;
-      ctx.shadowColor = pose.stateName === "hit" ? "rgba(255,230,180,.58)" : pose.stateName === "attack" ? "rgba(255,190,120,.36)" : "rgba(0,0,0,.34)";
-      ctx.shadowBlur = pose.stateName === "hit" ? 14 * scale : pose.stateName === "attack" ? 10 * scale : 7 * scale;
+      ctx.shadowColor = "rgba(0,0,0,.34)";
+      ctx.shadowBlur = 7 * scale;
       const drawFrame = (frame, alpha) => {
         const frameX = (frame % sprite.columns) * frameWidth;
         const frameY = Math.floor(frame / sprite.columns) * frameHeight;
@@ -3243,41 +3356,28 @@
         ctx.globalAlpha = baseAlpha * alpha;
         ctx.drawImage(source, frameX, frameY, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
       };
-      drawFrame(pose.frame, 1 - pose.blend);
-      if (pose.blend > 0 && pose.nextFrame !== pose.frame) drawFrame(pose.nextFrame, pose.blend);
+      drawFrame(pose.frame, 1);
       ctx.restore();
       return true;
     }
 
     getPlayerShipSpritesheetPose(ship, sprite, options = {}) {
-      const animation = this.ensurePlayerShipAnimation(ship);
+      const animation = options.preview
+        ? { sheetKey: sprite.key, frameSeed: (Number(ship?.id) || 0) * .47, attackStartedAt: -999, attackUntil: 0, hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 }
+        : this.ensurePlayerShipAnimation(ship);
       if (!animation) return null;
       if (sprite.image?.complete && sprite.image.naturalWidth && !sprite.ready && !sprite.processing) prepareEnemySpritesheet(sprite);
       if (!options.preview && state.combat.repairing && state.combat.playerHp <= 0 && !animation.deathStartedAt) animation.deathStartedAt = this.time;
-      let stateName = "idle";
-      let elapsed = this.time + (animation.frameSeed || 0);
-      if (!options.preview && animation.deathStartedAt) {
-        stateName = "death";
-        elapsed = Math.max(0, this.time - animation.deathStartedAt);
-      } else if (!options.preview && animation.hitUntil && this.time < animation.hitUntil) {
-        stateName = "hit";
-        elapsed = Math.max(0, this.time - animation.hitStartedAt);
-      } else if (!options.preview && animation.attackUntil && this.time < animation.attackUntil) {
-        stateName = "attack";
-        elapsed = Math.max(0, this.time - animation.attackStartedAt);
-      } else if (!options.preview && state.combat.running && !state.combat.repairing) {
-        stateName = "moving";
-      }
-      const sequence = sprite.animations?.[stateName] || PLAYER_SHIP_DEFAULT_ANIMATIONS[stateName] || PLAYER_SHIP_DEFAULT_ANIMATIONS.idle;
-      const maxFrame = Math.max(0, (sprite.frames || 1) - 1);
-      const frames = (sequence.frames || [0]).map(frame => clamp(Math.floor(Number(frame) || 0), 0, maxFrame));
-      const progress = elapsed * sequence.fps;
-      const rawFrame = Math.floor(progress);
-      const sequenceIndex = sequence.loop ? rawFrame % frames.length : Math.min(frames.length - 1, rawFrame);
-      const canBlendNext = sequence.blend && (sequence.loop || rawFrame < frames.length - 1);
-      const nextIndex = sequence.loop ? (sequenceIndex + 1) % frames.length : Math.min(frames.length - 1, sequenceIndex + 1);
-      const blend = canBlendNext ? clamp((progress - rawFrame - .18) / .64, 0, 1) : 0;
-      return { stateName, frame: frames[sequenceIndex], nextFrame: frames[nextIndex], blend, elapsed };
+      const maxHp = Math.max(1, getStats().maxHp || 1);
+      const hp = options.preview ? maxHp : Math.max(0, Number(state.combat.playerHp) || 0);
+      const stateName = this.getSpriteHpState(hp, maxHp, !options.preview && Boolean(animation.deathStartedAt));
+      return {
+        stateName,
+        frame: this.getStateSpriteFrame(sprite, stateName, "playerShip"),
+        blend: 0,
+        elapsed: animation.deathStartedAt ? Math.max(0, this.time - animation.deathStartedAt) : this.time + (animation.frameSeed || 0),
+        seed: animation.frameSeed || 0
+      };
     }
 
     drawCaptainCharacter(ctx, ship, shipSprite, targetWidth, targetHeight, scale, options = {}) {
@@ -3354,17 +3454,18 @@
       const frameScale = targetWidth / frameWidth;
       const drawX = -targetWidth * sprite.anchorX;
       const drawY = -targetHeight * sprite.anchorY;
+      const breath = this.getBreathingIdleTransform("playerShip", pose.stateName, pose.seed || 0);
       ctx.save();
       ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
-      if (pose.stateName === "hit") ctx.filter = "brightness(1.18) saturate(1.08)";
+      ctx.scale(breath.scaleX, breath.scaleY);
       let baseAlpha = 1;
-      if (pose.stateName === "death") {
+      if (pose.stateName === SPRITE_HP_STATES.defeated) {
         const fadeStart = 1.05;
         if (pose.elapsed > fadeStart) baseAlpha = clamp(1 - (pose.elapsed - fadeStart) / .45, 0, 1);
       }
       ctx.imageSmoothingEnabled = false;
-      ctx.shadowColor = pose.stateName === "hit" ? "rgba(255,230,180,.52)" : "rgba(0,0,0,.34)";
-      ctx.shadowBlur = pose.stateName === "hit" ? 13 * scale : 8 * scale;
+      ctx.shadowColor = "rgba(0,0,0,.34)";
+      ctx.shadowBlur = 8 * scale;
       const drawFrame = (frame, alpha) => {
         const frameX = (frame % sprite.columns) * frameWidth;
         const frameY = Math.floor(frame / sprite.columns) * frameHeight;
@@ -3374,9 +3475,8 @@
         ctx.globalAlpha = baseAlpha * alpha;
         ctx.drawImage(source, frameX, frameY, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
       };
-      if (pose.stateName !== "death") this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
-      drawFrame(pose.frame, 1 - pose.blend);
-      if (pose.blend > 0 && pose.nextFrame !== pose.frame) drawFrame(pose.nextFrame, pose.blend);
+      if (pose.stateName !== SPRITE_HP_STATES.defeated) this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
+      drawFrame(pose.frame, 1);
       ctx.restore();
       return true;
     }
