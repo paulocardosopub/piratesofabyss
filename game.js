@@ -10,7 +10,6 @@
   const PET_BASE_STRENGTH_MULTIPLIER = 2;
   const PET_UPGRADE_POWER_STEP = .32;
   const CAPTAIN_MAX_LEVEL = 10;
-  const CAPTAIN_ASSET_PATH = "assets/pirates/";
   const CAPTAIN_CHARACTER_ASSET_PATH = "assets/newpirates/";
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -67,7 +66,11 @@
     "08 - Mar das Tempestades.png",
     "09 - Baía dos Corsários.png",
     "10 - Oceano Profundo.png",
-    "11 - Triangulo Maldito.png"
+    "11 - Triangulo Maldito.png",
+    "12 - Mar Imperial.png",
+    "13 - Arquipelago Vulcanico.png",
+    "14 - Reino Congelado.png",
+    "15 - Abismo do Kraken.png"
   ];
   const REGIONS = [...PRIMITIVE_REGIONS, ...MAIN_REGIONS];
   FIXED_BACKGROUND_ASSET_FILES.forEach((file, index) => {
@@ -174,10 +177,10 @@
     null,
     null,
     null,
-    "12_mar_imperial.png",
-    "13_arquipelago_vulcanico.png",
-    "14_reino_congelado.png",
-    "15_abismo_do_kraken.png"
+    null,
+    null,
+    null,
+    null
   ];
   const OCEAN_SPRITE_PATH = "assets/backgrounds/ocean/";
   const OCEAN_ASSET_FILES = ["16_fundo_do_mar_oceano.png"];
@@ -441,22 +444,27 @@
 
   const PET_SPRITE_PATH = "assets/pets/";
   const PET_SPRITE_CONFIG = {
-    fish: { file: "peixe_palhaco.png", width: 74, cardWidth: 106, anchorX: .42, anchorY: .58, offsetY: 2 },
-    jelly: { file: "agua_viva.png", width: 80, cardWidth: 108, anchorX: .44, anchorY: .57, offsetY: -3 },
-    turtle: { file: "tartaruga_marinha.png", width: 86, cardWidth: 110, anchorX: .42, anchorY: .57, offsetY: 2 },
-    seal: { file: "foca.png", width: 88, cardWidth: 112, anchorX: .42, anchorY: .6, offsetY: 4, bob: 7 },
-    dolphin: { file: "golfinho.png", width: 102, cardWidth: 116, anchorX: .42, anchorY: .57, offsetY: -2, bob: 7 },
-    ray: { file: "arraia_eletrica.png", width: 106, cardWidth: 116, anchorX: .43, anchorY: .57, offsetY: 1 },
-    shark: { file: "tubarao.png", width: 124, cardWidth: 120, anchorX: .42, anchorY: .57, offsetY: 1 },
-    orca: { file: "baleia_assassina.png", width: 134, cardWidth: 122, anchorX: .42, anchorY: .57, offsetY: 0 },
-    megalodon: { file: "megalodon.png", width: 148, cardWidth: 124, anchorX: .42, anchorY: .57, offsetY: 1 },
-    kraken: { file: "kraken.png", width: 158, cardWidth: 126, anchorX: .44, anchorY: .6, offsetY: -3, bob: 5 }
+    fish: { file: "peixe_palhaco.png", width: 66, cardWidth: 86, anchorX: .42, anchorY: .58, offsetY: 2 },
+    jelly: { file: "agua_viva.png", width: 70, cardWidth: 88, anchorX: .44, anchorY: .57, offsetY: -3 },
+    turtle: { file: "tartaruga_marinha.png", width: 76, cardWidth: 92, anchorX: .42, anchorY: .57, offsetY: 2 },
+    seal: { file: "foca.png", width: 78, cardWidth: 94, anchorX: .42, anchorY: .6, offsetY: 4, bob: 7 },
+    dolphin: { file: "golfinho.png", width: 88, cardWidth: 98, anchorX: .42, anchorY: .57, offsetY: -2, bob: 7 },
+    ray: { file: "arraia_eletrica.png", width: 92, cardWidth: 100, anchorX: .43, anchorY: .57, offsetY: 1 },
+    shark: { file: "tubarao.png", width: 98, cardWidth: 104, anchorX: .42, anchorY: .57, offsetY: 1 },
+    orca: { file: "baleia_assassina.png", width: 106, cardWidth: 108, anchorX: .42, anchorY: .57, offsetY: 0 },
+    megalodon: { file: "megalodon.png", width: 114, cardWidth: 112, anchorX: .42, anchorY: .57, offsetY: 1 },
+    kraken: { file: "kraken.png", width: 120, cardWidth: 116, anchorX: .44, anchorY: .6, offsetY: -3, bob: 5 }
   };
   const PET_SPRITES = Object.fromEntries(Object.entries(PET_SPRITE_CONFIG).map(([visual, config]) => {
     const image = new Image();
     image.decoding = "async";
+    const sprite = { key: visual, canvas: null, columns: 3, frames: 3, ready: false, processing: false, frameBounds: null, referenceBounds: null, ...config, image };
+    image.onload = () => {
+      preparePetSpritesheet(sprite);
+      requestAnimationFrame(() => renderPetPreviewCanvases());
+    };
     image.src = `${PET_SPRITE_PATH}${config.file}`;
-    return [visual, { frames: 3, ...config, image }];
+    return [visual, sprite];
   }));
 
   function getPetSprite(visual) {
@@ -475,8 +483,8 @@
     return `--pet-sprite:url(${getPetSpriteUrl(visual)});--pet-card-sprite-size:${cardWidth}px;--pet-home-sprite-size:${Math.min(64, Math.round(cardWidth * .58))}px;--pet-current-sprite-size:${Math.min(78, Math.round(cardWidth * .7))}px;`;
   }
 
-  function petSpriteHtml() {
-    return `<span class="pet-sprite" aria-hidden="true"></span>`;
+  function petSpriteHtml(visual) {
+    return `<canvas class="pet-sprite-canvas" data-pet-preview="${visual || ""}" aria-hidden="true"></canvas>`;
   }
 
   function createCaptainBonuses() {
@@ -607,7 +615,7 @@
   function getCaptainImageUrl(level, gender) {
     const cleanGender = normalizeCaptainGender(gender);
     if (!cleanGender) return "";
-    return `${CAPTAIN_ASSET_PATH}${getCaptainLevelData(level).files[cleanGender]}`;
+    return `${CAPTAIN_CHARACTER_ASSET_PATH}${getCaptainCharacterFile(level, cleanGender)}`;
   }
 
   function getCaptainName(level, gender) {
@@ -639,23 +647,23 @@
   const CAPTAIN_CHARACTER_REACTION_SECONDS = { celebrate: 2.35, hit: .42 };
   const CAPTAIN_CHARACTER_GENDER_FILE_KEYS = { male: "masculino", female: "feminino" };
   const PIRATE_CHARACTER_CONFIG = {
-    boat_01: { scale: .160, offsetX: -.04, offsetY: -2, deckY: .60, anchor: "deck", maxHeight: 38 },
-    boat_02: { scale: .155, offsetX: .18, offsetY: -2, deckY: .59, anchor: "deck", maxHeight: 37 },
-    boat_03: { scale: .160, offsetX: -.09, offsetY: -1, deckY: .56, anchor: "deck", maxHeight: 39 },
-    boat_04: { scale: .155, offsetX: -.10, offsetY: -2, deckY: .58, anchor: "deck", maxHeight: 38 },
-    boat_05: { scale: .160, offsetX: -.16, offsetY: -3, deckY: .55, anchor: "deck", maxHeight: 39 },
-    boat_06: { scale: .165, offsetX: -.14, offsetY: -3, deckY: .54, anchor: "deck", maxHeight: 41 },
-    boat_07: { scale: .160, offsetX: .05, offsetY: -4, deckY: .50, anchor: "deck", maxHeight: 40 },
-    boat_08: { scale: .165, offsetX: -.08, offsetY: -3, deckY: .52, anchor: "deck", maxHeight: 41 },
-    boat_09: { scale: .170, offsetX: .18, offsetY: -4, deckY: .54, anchor: "deck", maxHeight: 44 },
-    boat_10: { scale: .170, offsetX: -.27, offsetY: -3, deckY: .55, anchor: "deck", maxHeight: 44 },
-    boat_11: { scale: .172, offsetX: -.10, offsetY: -4, deckY: .52, anchor: "deck", maxHeight: 45 },
-    boat_12: { scale: .170, offsetX: .03, offsetY: -4, deckY: .52, anchor: "deck", maxHeight: 45 },
-    boat_13: { scale: .172, offsetX: -.16, offsetY: -4, deckY: .51, anchor: "deck", maxHeight: 46 },
-    boat_14: { scale: .174, offsetX: -.29, offsetY: -4, deckY: .52, anchor: "deck", maxHeight: 47 },
-    boat_15: { scale: .174, offsetX: -.12, offsetY: -5, deckY: .50, anchor: "deck", maxHeight: 47 },
-    boat_16: { scale: .176, offsetX: -.04, offsetY: -4, deckY: .50, anchor: "deck", maxHeight: 48 },
-    boat_17: { scale: .176, offsetX: .10, offsetY: -5, deckY: .49, anchor: "deck", maxHeight: 50 }
+    boat_01: { scale: .340, offsetX: -.04, offsetY: 8, deckY: .84, anchor: "deck", maxHeight: 78 },
+    boat_02: { scale: .325, offsetX: .18, offsetY: 8, deckY: .83, anchor: "deck", maxHeight: 76 },
+    boat_03: { scale: .335, offsetX: -.09, offsetY: 8, deckY: .80, anchor: "deck", maxHeight: 78 },
+    boat_04: { scale: .325, offsetX: -.10, offsetY: 7, deckY: .82, anchor: "deck", maxHeight: 78 },
+    boat_05: { scale: .330, offsetX: -.16, offsetY: 7, deckY: .79, anchor: "deck", maxHeight: 80 },
+    boat_06: { scale: .335, offsetX: -.14, offsetY: 7, deckY: .78, anchor: "deck", maxHeight: 82 },
+    boat_07: { scale: .320, offsetX: .05, offsetY: 6, deckY: .72, anchor: "deck", maxHeight: 82 },
+    boat_08: { scale: .330, offsetX: -.08, offsetY: 7, deckY: .74, anchor: "deck", maxHeight: 84 },
+    boat_09: { scale: .318, offsetX: .18, offsetY: 6, deckY: .73, anchor: "deck", maxHeight: 88 },
+    boat_10: { scale: .312, offsetX: -.27, offsetY: 7, deckY: .74, anchor: "deck", maxHeight: 88 },
+    boat_11: { scale: .322, offsetX: -.10, offsetY: 6, deckY: .71, anchor: "deck", maxHeight: 90 },
+    boat_12: { scale: .312, offsetX: .03, offsetY: 6, deckY: .71, anchor: "deck", maxHeight: 90 },
+    boat_13: { scale: .322, offsetX: -.16, offsetY: 6, deckY: .70, anchor: "deck", maxHeight: 92 },
+    boat_14: { scale: .306, offsetX: -.29, offsetY: 6, deckY: .71, anchor: "deck", maxHeight: 92 },
+    boat_15: { scale: .312, offsetX: -.12, offsetY: 6, deckY: .69, anchor: "deck", maxHeight: 94 },
+    boat_16: { scale: .322, offsetX: -.04, offsetY: 6, deckY: .69, anchor: "deck", maxHeight: 98 },
+    boat_17: { scale: .306, offsetX: .10, offsetY: 6, deckY: .68, anchor: "deck", maxHeight: 100 }
   };
 
   function getPirateCharacterBoatConfig(shipId) {
@@ -801,6 +809,98 @@
     } finally {
       sprite.processing = false;
     }
+  }
+
+  function preparePetSpritesheet(sprite) {
+    prepareCaptainCharacterSpritesheet(sprite);
+  }
+
+  function setupSpritePreviewCanvas(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(1, Math.round(rect.width || canvas.clientWidth || 64));
+    const height = Math.max(1, Math.round(rect.height || canvas.clientHeight || width));
+    const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+    const pixelWidth = Math.round(width * dpr);
+    const pixelHeight = Math.round(height * dpr);
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
+    const context = canvas.getContext("2d");
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.clearRect(0, 0, width, height);
+    context.imageSmoothingEnabled = false;
+    return { context, width, height };
+  }
+
+  function drawSpritesheetPreview(canvas, sprite, options = {}) {
+    const image = sprite?.image;
+    if (!canvas || !image?.complete || !image.naturalWidth) return false;
+    if (!sprite.ready && !sprite.processing) prepareCaptainCharacterSpritesheet(sprite);
+    const source = sprite.canvas || image;
+    const columns = sprite.columns || sprite.frames || 3;
+    const frame = clamp(Math.floor(Number(options.frame ?? 0) || 0), 0, (sprite.frames || columns) - 1);
+    const sourceWidth = source.width || image.naturalWidth;
+    const sourceHeight = source.height || image.naturalHeight;
+    const frameWidth = Math.floor(sourceWidth / columns);
+    const frameHeight = sourceHeight;
+    const bounds = sprite.frameBounds?.[frame] || sprite.referenceBounds || {
+      left: frameWidth * .2,
+      top: frameHeight * .08,
+      right: frameWidth * .8,
+      bottom: frameHeight * .94,
+      centerX: frameWidth * .5,
+      bottomY: frameHeight * .94
+    };
+    const visibleWidth = Math.max(1, bounds.right - bounds.left + 1);
+    const visibleHeight = Math.max(1, bounds.bottom - bounds.top + 1);
+    const { context, width, height } = setupSpritePreviewCanvas(canvas);
+    const fill = options.fill ?? .9;
+    const maxWidthScale = width * fill / visibleWidth;
+    const maxHeightScale = height * fill / visibleHeight;
+    const scale = options.scale || Math.min(maxWidthScale, maxHeightScale);
+    let drawX = width * (options.centerX ?? .5) - bounds.centerX * scale;
+    let drawY;
+    if (options.center) {
+      drawY = height * (options.centerY ?? .5) - (bounds.top + visibleHeight / 2) * scale;
+    } else {
+      drawY = height * (options.alignY ?? .95) - bounds.bottomY * scale;
+    }
+    drawX += (options.offsetX || 0) * width;
+    drawY += (options.offsetY || 0) * height;
+    context.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, drawX, drawY, frameWidth * scale, frameHeight * scale);
+    return true;
+  }
+
+  function captainSpriteCanvasHtml(level, gender, variant = "portrait") {
+    return `<canvas class="captain-sprite-canvas ${variant}" data-captain-preview-level="${level}" data-captain-preview-gender="${normalizeCaptainGender(gender) || "male"}" data-captain-preview-variant="${variant}" aria-hidden="true"></canvas>`;
+  }
+
+  function drawCaptainPreviewCanvas(canvas) {
+    const level = Number(canvas.dataset.captainPreviewLevel || 1);
+    const gender = canvas.dataset.captainPreviewGender || "male";
+    const variant = canvas.dataset.captainPreviewVariant || "portrait";
+    const sprite = getCaptainCharacterSpritesheet(level, gender);
+    const options = variant === "topbar"
+      ? { fill: 1.75, alignY: 1.2, offsetY: .02 }
+      : variant === "next"
+        ? { fill: .86, alignY: .96 }
+        : { fill: .92, alignY: .98 };
+    return drawSpritesheetPreview(canvas, sprite, options);
+  }
+
+  function renderCaptainPreviewCanvases(root = document) {
+    root.querySelectorAll?.("canvas[data-captain-preview-level]").forEach(drawCaptainPreviewCanvas);
+  }
+
+  function drawPetPreviewCanvas(canvas) {
+    const visual = canvas.dataset.petPreview;
+    const sprite = getPetSprite(visual);
+    return drawSpritesheetPreview(canvas, sprite, { fill: .86, center: true, centerY: .5 });
+  }
+
+  function renderPetPreviewCanvases(root = document) {
+    root.querySelectorAll?.("canvas[data-pet-preview]").forEach(drawPetPreviewCanvas);
   }
 
   const TODAY_KEY = () => new Date().toLocaleDateString("sv-SE");
@@ -2738,10 +2838,14 @@
       const sprite = getPetSprite(pet.visual);
       const image = sprite?.image;
       if (!image?.complete || !image.naturalWidth) return false;
+      if (!sprite.ready && !sprite.processing) preparePetSpritesheet(sprite);
+      const source = sprite.canvas || image;
       const bob = Math.sin(this.time * 1.75 + pet.id) * (sprite.bob ?? 4) * baseScale;
       const frameCount = sprite.frames || 3;
-      const frameWidth = Math.floor(image.naturalWidth / frameCount);
-      const frameHeight = image.naturalHeight;
+      const sourceWidth = source.width || image.naturalWidth;
+      const sourceHeight = source.height || image.naturalHeight;
+      const frameWidth = Math.floor(sourceWidth / frameCount);
+      const frameHeight = sourceHeight;
       const attackFrame = frameCount - 1;
       const frame = this.petLunge > .06 ? attackFrame : 0;
       const targetWidth = sprite.width * baseScale;
@@ -2781,7 +2885,7 @@
       ctx.imageSmoothingEnabled = false;
       ctx.shadowColor = "rgba(0,0,0,.34)";
       ctx.shadowBlur = 8 * baseScale;
-      ctx.drawImage(image, frame * frameWidth, 0, frameWidth, frameHeight, drawX, drawY, targetWidth, targetHeight);
+      ctx.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, drawX, drawY, targetWidth, targetHeight);
       ctx.restore();
       return true;
     }
@@ -2909,6 +3013,10 @@
       const frameX = frame * frameWidth;
 
       ctx.save();
+      const clipBottom = footY - visualHeight * .1;
+      ctx.beginPath();
+      ctx.rect(-targetWidth, -targetHeight * 1.4, targetWidth * 2, clipBottom + targetHeight * 1.4);
+      ctx.clip();
       ctx.globalAlpha = .24;
       ctx.fillStyle = "rgba(0,0,0,.72)";
       ctx.beginPath();
@@ -2960,9 +3068,9 @@
         ctx.globalAlpha = baseAlpha * alpha;
         ctx.drawImage(source, frameX, frameY, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
       };
+      if (pose.stateName !== "death") this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
       drawFrame(pose.frame, 1 - pose.blend);
       if (pose.blend > 0 && pose.nextFrame !== pose.frame) drawFrame(pose.nextFrame, pose.blend);
-      if (pose.stateName !== "death") this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
       ctx.restore();
       return true;
     }
@@ -3862,7 +3970,10 @@
     const title = captain?.name || "Capitão aguardando";
     if (topCaptain) topCaptain.title = captain ? `${title} - Nv. ${state.captainRuntimeLevel}` : "Escolher Capitão";
     if (avatar) {
-      if (captain) avatar.innerHTML = `<img src="${captain.image}" alt="">`;
+      if (captain) {
+        avatar.innerHTML = captainSpriteCanvasHtml(captain.level, captain.gender, "topbar");
+        renderCaptainPreviewCanvases(avatar);
+      }
       else avatar.textContent = "★";
     }
     $("#top-captain-title").textContent = title;
@@ -3927,11 +4038,12 @@
     $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
     const pet = getEquippedPet();
     const petCard = $("#home-pet-card");
-    $("#home-pet-icon").innerHTML = pet ? petSpriteHtml() : "🐾";
+    $("#home-pet-icon").innerHTML = pet ? petSpriteHtml(pet.visual) : "🐾";
     $("#home-pet-name").textContent = pet?.name || "Nenhum pet equipado";
     petCard.classList.toggle("equipped", Boolean(pet));
     petCard.setAttribute("style", pet ? getPetAuraStyle(pet) : "");
     $("#home-pet-stats").innerHTML = pet ? `<span>NV <strong>${pet.level}/${PET_MAX_LEVEL}</strong></span><span>DPS <strong>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>PODER <strong>+${formatNumber(pet.power)}</strong></span>` : "Automático";
+    renderPetPreviewCanvases(petCard);
     renderSkillDock();
   }
 
@@ -3950,7 +4062,7 @@
     const banner = $("#pet-current-banner");
     banner.className = `pet-current-banner${current ? " equipped" : ""}`;
     banner.setAttribute("style", current ? getPetAuraStyle(current) : "");
-    banner.innerHTML = current ? `<div class="pet-current-icon">${petSpriteHtml()}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
+    banner.innerHTML = current ? `<div class="pet-current-icon">${petSpriteHtml(current.visual)}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Equipe seu primeiro pet</h2><p>Pets atacam automaticamente e aumentam seu Poder Naval.</p></div>`;
     $("#pets-grid").innerHTML = PETS.map(basePet => {
       const owned = state.ownedPets.includes(basePet.id);
       const level = owned ? getPetLevel(basePet.id) : 1;
@@ -3974,8 +4086,9 @@
       const requirement = owned
         ? `<div class="pet-requirements ready"><strong>Upgrade permanente</strong><br>${upgradeCost ? state.pirateCoins >= upgradeCost ? "Moedas Pirata disponíveis para evoluir." : `Faltam ${formatNumber(upgradeCost - state.pirateCoins)} Moedas Pirata para evoluir.` : "Este pet já atingiu o nível máximo."}</div>`
         : issues.length ? `<div class="pet-requirements"><strong>${prestigeLine}</strong><br>Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready"><strong>${prestigeLine}</strong><br>${state.pirateCoins >= pirateCoinCost ? "Moedas e requisitos disponíveis" : `Faltam ${pirateCoinCost - state.pirateCoins} Moedas Pirata`}</div>`;
-      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-visual">${petSpriteHtml()}<i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
+      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-visual">${petSpriteHtml(pet.visual)}<i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
     }).join("");
+    renderPetPreviewCanvases($("#pets-screen") || document);
   }
 
   function captainBonusRowsHtml(bonuses) {
@@ -4082,19 +4195,20 @@
     if (!current) {
       content.innerHTML = `<div class="captain-choice-grid">${Object.entries(CAPTAIN_GENDERS).map(([gender, meta]) => {
         const level = getCaptainLevelData(1);
-        return `<article class="captain-choice"><div class="captain-choice-image"><img src="${getCaptainImageUrl(1, gender)}" alt=""></div><div><span class="eyebrow">VISUAL INICIAL</span><h2>${meta.choice}</h2><p>${getCaptainName(1, gender)}</p><div class="captain-choice-bonuses">${captainLevelBonusText(level)}</div></div><button class="button primary" data-select-captain-gender="${gender}">Escolher</button></article>`;
+        return `<article class="captain-choice"><div class="captain-choice-image">${captainSpriteCanvasHtml(1, gender, "choice")}</div><div><span class="eyebrow">VISUAL INICIAL</span><h2>${meta.choice}</h2><p>${getCaptainName(1, gender)}</p><div class="captain-choice-bonuses">${captainLevelBonusText(level)}</div></div><button class="button primary" data-select-captain-gender="${gender}">Escolher</button></article>`;
       }).join("")}</div>${renderCaptainEquipmentSection(true)}`;
+      renderCaptainPreviewCanvases(content);
       return;
     }
     const next = getNextCaptain();
     const cost = getCaptainUpgradeCost();
     const canUpgrade = next && state.pirateCoins >= cost;
     const nextPreview = next
-      ? `<div class="captain-next"><div class="captain-next-image"><img src="${next.image}" alt=""></div><div><span class="eyebrow">PRÓXIMO NÍVEL</span><h3>${next.name}</h3><p>${captainLevelBonusText(next)}</p><strong>☠ ${formatNumber(cost)} Moedas Pirata</strong></div></div>`
+      ? `<div class="captain-next"><div class="captain-next-image">${captainSpriteCanvasHtml(next.level, next.gender, "next")}</div><div><span class="eyebrow">PRÓXIMO NÍVEL</span><h3>${next.name}</h3><p>${captainLevelBonusText(next)}</p><strong>☠ ${formatNumber(cost)} Moedas Pirata</strong></div></div>`
       : `<div class="captain-next max"><div><span class="eyebrow">NÍVEL MÁXIMO</span><h3>Pirata lendário completo</h3><p>Todos os bônus permanentes do Capitão estão ativos.</p></div></div>`;
     content.innerHTML = `<div class="captain-layout">
       <section class="captain-hero-panel">
-        <div class="captain-portrait"><img src="${current.image}" alt=""></div>
+        <div class="captain-portrait">${captainSpriteCanvasHtml(current.level, current.gender, "portrait")}</div>
         <div class="captain-hero-copy">
           <span class="eyebrow">NÍVEL ATUAL</span>
           <h2>${current.name}</h2>
@@ -4111,6 +4225,7 @@
         <div class="captain-mutiny-panel"><div><span class="eyebrow">MOTIM</span><strong>Trocar escolha visual</strong><p>Reseta Capitão, Pontos de Nível e equipamentos. Moedas gastas não voltam.</p></div><button class="button danger" data-open-captain-mutiny>Iniciar um Motim</button></div>
       </section>
     </div>${renderCaptainEquipmentSection()}`;
+    renderCaptainPreviewCanvases(content);
   }
 
   function renderSkillDock() {
@@ -5072,6 +5187,10 @@
   $("#captain-mutiny-confirm").addEventListener("click", confirmCaptainMutiny);
 
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("resize", () => {
+    renderCaptainPreviewCanvases();
+    renderPetPreviewCanvases();
+  });
   window.addEventListener("beforeunload", saveGame);
 
   const offlineSeconds = (Date.now() - Number(state.lastSeen || Date.now())) / 1000;

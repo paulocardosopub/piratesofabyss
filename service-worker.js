@@ -1,4 +1,4 @@
-const CACHE = "pirates-abyss-v59-captain-sprites";
+const CACHE = "pirates-abyss-v63-captain-in-boat";
 const ENEMY_ASSET_FILES = [
   "baleeiro_sombrio.png",
   "barco_costeiro.png",
@@ -147,12 +147,7 @@ const PLAYER_SHIP_SPRITESHEET_ASSET_FILES = [
   "PLAYER-02_07_Galeota_sprite_9frames.png",
   "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png"
 ];
-const ISLAND_ASSET_FILES = [
-  "12_mar_imperial.png",
-  "13_arquipelago_vulcanico.png",
-  "14_reino_congelado.png",
-  "15_abismo_do_kraken.png"
-];
+const ISLAND_ASSET_FILES = [];
 const FIXED_BACKGROUND_ASSET_FILES = [
   "01 - Lagoa dos Remadores.png",
   "02 - Manguezal dos Ancestrais.png",
@@ -164,7 +159,11 @@ const FIXED_BACKGROUND_ASSET_FILES = [
   "08 - Mar das Tempestades.png",
   "09 - Baía dos Corsários.png",
   "10 - Oceano Profundo.png",
-  "11 - Triangulo Maldito.png"
+  "11 - Triangulo Maldito.png",
+  "12 - Mar Imperial.png",
+  "13 - Arquipelago Vulcanico.png",
+  "14 - Reino Congelado.png",
+  "15 - Abismo do Kraken.png"
 ];
 const OCEAN_ASSET_FILES = [
   "16_fundo_do_mar_oceano.png"
@@ -180,28 +179,6 @@ const PET_ASSET_FILES = [
   "baleia_assassina.png",
   "megalodon.png",
   "kraken.png"
-];
-const CAPTAIN_ASSET_FILES = [
-  "01 - Pirata Recruta Masculino.png",
-  "01 - Pirata Recruta Feminino.png",
-  "02 - Pirata Aventureiro Masculino.png",
-  "02 - Pirata Aventureira Feminina.png",
-  "03 - Pirata Corsário Masculino.png",
-  "03 - Pirata Corsária Feminina.png",
-  "04 - Pirata Saqueador Masculino.png",
-  "04 - Pirata Saqueadora Feminina.png",
-  "05 - Capitão Pirata Masculino.png",
-  "05 - Capitã Pirata Feminina.png",
-  "06 - Almirante Corsário Masculino.png",
-  "06 - Almirante Corsária Feminina.png",
-  "07 - Capitão do Abismo Masculino.png",
-  "07 - Capitã do Abismo Feminina.png",
-  "08 - Senhor dos Mares Sombrios Masculino.png",
-  "08 - Senhora dos Mares Sombrios Feminina.png",
-  "09 - Rei Pirata Abissal Masculino.png",
-  "09 - Rainha Pirata Abissal Feminina.png",
-  "10 - Pirata Lendário Masculino.png",
-  "10 - Pirata Lendário Feminino.png"
 ];
 const CAPTAIN_CHARACTER_ASSET_FILES = [
   "pirata_masculino_tier_01_3sprites.png",
@@ -228,8 +205,8 @@ const CAPTAIN_CHARACTER_ASSET_FILES = [
 const ASSETS = [
   "./",
   "index.html",
-  "styles.css?v=43",
-  "game.js?v=69",
+  "styles.css?v=44",
+  "game.js?v=73",
   "icon.svg",
   "manifest.webmanifest",
   "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif",
@@ -243,7 +220,6 @@ const ASSETS = [
   ...ISLAND_ASSET_FILES.map(file => `assets/backgrounds/islands/${file}`),
   ...OCEAN_ASSET_FILES.map(file => `assets/backgrounds/ocean/${file}`),
   ...PET_ASSET_FILES.map(file => `assets/pets/${file}`),
-  ...CAPTAIN_ASSET_FILES.map(file => `assets/pirates/${file}`),
   ...CAPTAIN_CHARACTER_ASSET_FILES.map(file => `assets/newpirates/${file}`)
 ];
 
