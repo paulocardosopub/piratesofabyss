@@ -3,6 +3,7 @@
 
   const SAVE_KEY = "pirates-of-the-abyss-save-v1";
   const OFFLINE_REWARD_RATE = .3;
+  const OFFLINE_MODAL_AUTO_HIDE_MS = 5000;
   const PRESTIGE_REGION_NAME = "Oceano Profundo";
   const PRESTIGE_BOSS_NAME = "Megalodon Ancestral";
   const PET_PIRATE_COIN_COSTS = [10, 18, 30, 45, 65, 90, 120, 155, 200, 260];
@@ -16,6 +17,48 @@
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const randomBetween = (min, max) => min + Math.random() * (max - min);
   const integerBetween = (min, max) => Math.floor(randomBetween(min, max + 1));
+  const nonPassiveListener = { passive: false };
+
+  function preventCancelableDefault(event) {
+    if (event.cancelable) event.preventDefault();
+  }
+
+  function installMobileGestureGuards() {
+    let lastTouchEnd = 0;
+    document.addEventListener("touchend", event => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) preventCancelableDefault(event);
+      lastTouchEnd = now;
+    }, nonPassiveListener);
+    ["gesturestart", "gesturechange", "gestureend", "dblclick"].forEach(type => {
+      document.addEventListener(type, preventCancelableDefault, nonPassiveListener);
+    });
+    ["touchstart", "touchmove"].forEach(type => {
+      document.addEventListener(type, event => {
+        if (event.touches && event.touches.length > 1) preventCancelableDefault(event);
+      }, nonPassiveListener);
+    });
+  }
+
+  installMobileGestureGuards();
+
+  function createLazyImage() {
+    const image = new Image();
+    image.decoding = "async";
+    return image;
+  }
+
+  function requestSpriteImage(sprite, src, onLoad) {
+    if (!sprite || sprite.loadFailed) return null;
+    if (!sprite.image) sprite.image = createLazyImage();
+    if (!sprite.requested) {
+      sprite.requested = true;
+      sprite.image.onload = () => onLoad?.(sprite);
+      sprite.image.onerror = () => { sprite.loadFailed = true; };
+      sprite.image.src = src;
+    }
+    return sprite.image;
+  }
 
   const RESOURCE_META = {
     ouro: { name: "Ouro", icon: "●", rarity: "Comum", rarityKey: "common", regions: "Todas as regiões", chance: "100%", uses: "Todos os upgrades e navios" },
@@ -164,37 +207,10 @@
     }
   ];
 
-  const ISLAND_SPRITE_PATH = "assets/backgrounds/islands/";
-  const ISLAND_ASSET_FILES = [
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null
-  ];
-  const OCEAN_SPRITE_PATH = "assets/backgrounds/ocean/";
-  const OCEAN_ASSET_FILES = ["16_fundo_do_mar_oceano.png"];
   const loadSceneSprite = src => {
-    const image = new Image();
-    image.decoding = "async";
-    image.src = src;
-    return image;
+    return { image: createLazyImage(), src, requested: false, loadFailed: false };
   };
-  const FIXED_BACKGROUND_SPRITES = FIXED_BACKGROUND_ASSET_FILES.map(file => ({ file, image: loadSceneSprite(`${FIXED_BACKGROUND_PATH}${file}`) }));
-  const ISLAND_SPRITES = ISLAND_ASSET_FILES.map((file, index) => (
-    !file || REGIONS[index]?.fixedBackground ? null : { file, image: loadSceneSprite(`${ISLAND_SPRITE_PATH}${file}`) }
-  ));
-  const OCEAN_SPRITE = { file: OCEAN_ASSET_FILES[0], image: loadSceneSprite(`${OCEAN_SPRITE_PATH}${OCEAN_ASSET_FILES[0]}`) };
+  const FIXED_BACKGROUND_SPRITES = FIXED_BACKGROUND_ASSET_FILES.map(file => ({ file, ...loadSceneSprite(`${FIXED_BACKGROUND_PATH}${file}`) }));
 
   function regionUsesFixedBackground(index) {
     const region = REGIONS[index];
@@ -203,16 +219,9 @@
 
   function getFixedBackgroundSprite(region) {
     const index = FIXED_BACKGROUND_ASSET_FILES.indexOf(region?.fixedBackgroundFile);
-    return index >= 0 ? FIXED_BACKGROUND_SPRITES[index] : null;
-  }
-
-  function getRegionIslandSprite(index) {
-    return ISLAND_SPRITES[index];
-  }
-
-  function getRegionIslandUrl(index) {
-    const file = ISLAND_ASSET_FILES[index];
-    return file ? `${ISLAND_SPRITE_PATH}${file}` : "";
+    const sprite = index >= 0 ? FIXED_BACKGROUND_SPRITES[index] : null;
+    if (sprite) requestSpriteImage(sprite, sprite.src);
+    return sprite;
   }
 
   const ISLAND_COMPOSITIONS = [
@@ -247,17 +256,12 @@
       height: clamp((primary.height || .26) * 1.14, .30, .38),
       sea: clamp((primary.sea || .052) + .028, .075, .105),
       alpha: 1,
-      spriteIndex: clamp(index + (primary.spriteOffset || 0), 0, ISLAND_ASSET_FILES.length - 1)
+      spriteIndex: index + (primary.spriteOffset || 0)
     }];
   }
 
   function mapIslandLayersHtml(index) {
-    return getIslandComposition(index).map((layer, order) => {
-      const islandUrl = getRegionIslandUrl(layer.spriteIndex);
-      const width = `${Math.round(layer.width * 120)}%`;
-      const height = `${Math.round((layer.height || .30) * 350)}px`;
-      return `<span class="map-island" style="--island-image:url('${islandUrl}');--island-left:${Math.round(layer.x * 100)}%;--island-width:${width};--island-height:${height};--island-bottom:-8px;--island-order:${order};"></span>`;
-    }).join("");
+    return "";
   }
 
   const PRIMITIVE_SHIPS = [
@@ -366,16 +370,16 @@
   };
 
   const CAPTAIN_LEVELS = [
-    { names: { male: "Recruta Pirata", female: "Recruta Pirata" }, cost: 0, files: { male: "01 - Pirata Recruta Masculino.png", female: "01 - Pirata Recruta Feminino.png" }, bonuses: { spawnBonus: .05, birdAutoCollect: .2, hpRegenPercentPerSecond: .01 } },
-    { names: { male: "Corsário Iniciante", female: "Corsária Iniciante" }, cost: 100, files: { male: "02 - Pirata Aventureiro Masculino.png", female: "02 - Pirata Aventureira Feminina.png" }, bonuses: { spawnBonus: .08, birdAutoCollect: .2, hpRegenPercentPerSecond: .005 } },
-    { names: { male: "Saqueador dos Mares", female: "Saqueadora dos Mares" }, cost: 300, files: { male: "03 - Pirata Corsário Masculino.png", female: "03 - Pirata Corsária Feminina.png" }, bonuses: { spawnBonus: .1, sharkAutoCollect: .25, hpRegenPercentPerSecond: .005 } },
-    { names: { male: "Capitão de Convés", female: "Capitã de Convés" }, cost: 750, files: { male: "04 - Pirata Saqueador Masculino.png", female: "04 - Pirata Saqueadora Feminina.png" }, bonuses: { spawnBonus: .12, birdAutoCollect: .2, hpRegenPercentPerSecond: .01 } },
-    { names: { male: "Capitão Pirata", female: "Capitã Pirata" }, cost: 1500, files: { male: "05 - Capitão Pirata Masculino.png", female: "05 - Capitã Pirata Feminina.png" }, bonuses: { spawnBonus: .15, sharkAutoCollect: .25, hpRegenPercentPerSecond: .01 } },
-    { names: { male: "Comandante Corsário", female: "Comandante Corsária" }, cost: 3000, files: { male: "06 - Almirante Corsário Masculino.png", female: "06 - Almirante Corsária Feminina.png" }, bonuses: { spawnBonus: .18, birdAutoCollect: .2, hpRegenPercentPerSecond: .01 } },
-    { names: { male: "Senhor dos Mares", female: "Senhora dos Mares" }, cost: 6000, files: { male: "07 - Capitão do Abismo Masculino.png", female: "07 - Capitã do Abismo Feminina.png" }, bonuses: { spawnBonus: .2, sharkAutoCollect: .25, hpRegenPercentPerSecond: .015 } },
-    { names: { male: "Almirante Pirata", female: "Almirante Pirata" }, cost: 12000, files: { male: "08 - Senhor dos Mares Sombrios Masculino.png", female: "08 - Senhora dos Mares Sombrios Feminina.png" }, bonuses: { spawnBonus: .25, birdAutoCollect: .2, hpRegenPercentPerSecond: .015 } },
-    { names: { male: "Soberano do Abismo", female: "Soberana do Abismo" }, cost: 25000, files: { male: "09 - Rei Pirata Abissal Masculino.png", female: "09 - Rainha Pirata Abissal Feminina.png" }, bonuses: { spawnBonus: .3, sharkAutoCollect: .25, hpRegenPercentPerSecond: .02 } },
-    { names: { male: "Pirata Lendário", female: "Pirata Lendária" }, cost: 60000, files: { male: "10 - Pirata Lendário Masculino.png", female: "10 - Pirata Lendário Feminino.png" }, bonuses: { spawnBonus: .4, autoFoodBonus: .5, hpRegenPercentPerSecond: .03 } }
+    { names: { male: "Recruta Pirata", female: "Recruta Pirata" }, cost: 0, bonuses: { spawnBonus: .05, birdAutoCollect: .2, hpRegenPercentPerSecond: .01 } },
+    { names: { male: "Corsário Iniciante", female: "Corsária Iniciante" }, cost: 100, bonuses: { spawnBonus: .08, birdAutoCollect: .2, hpRegenPercentPerSecond: .005 } },
+    { names: { male: "Saqueador dos Mares", female: "Saqueadora dos Mares" }, cost: 300, bonuses: { spawnBonus: .1, sharkAutoCollect: .25, hpRegenPercentPerSecond: .005 } },
+    { names: { male: "Capitão de Convés", female: "Capitã de Convés" }, cost: 750, bonuses: { spawnBonus: .12, birdAutoCollect: .2, hpRegenPercentPerSecond: .01 } },
+    { names: { male: "Capitão Pirata", female: "Capitã Pirata" }, cost: 1500, bonuses: { spawnBonus: .15, sharkAutoCollect: .25, hpRegenPercentPerSecond: .01 } },
+    { names: { male: "Comandante Corsário", female: "Comandante Corsária" }, cost: 3000, bonuses: { spawnBonus: .18, birdAutoCollect: .2, hpRegenPercentPerSecond: .01 } },
+    { names: { male: "Senhor dos Mares", female: "Senhora dos Mares" }, cost: 6000, bonuses: { spawnBonus: .2, sharkAutoCollect: .25, hpRegenPercentPerSecond: .015 } },
+    { names: { male: "Almirante Pirata", female: "Almirante Pirata" }, cost: 12000, bonuses: { spawnBonus: .25, birdAutoCollect: .2, hpRegenPercentPerSecond: .015 } },
+    { names: { male: "Soberano do Abismo", female: "Soberana do Abismo" }, cost: 25000, bonuses: { spawnBonus: .3, sharkAutoCollect: .25, hpRegenPercentPerSecond: .02 } },
+    { names: { male: "Pirata Lendário", female: "Pirata Lendária" }, cost: 60000, bonuses: { spawnBonus: .4, autoFoodBonus: .5, hpRegenPercentPerSecond: .03 } }
   ].map((entry, index) => ({ level: index + 1, ...entry }));
 
   const CAPTAIN_EQUIPMENT_MAX_TIER = 10;
@@ -442,30 +446,31 @@
     { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 5000, interval: 3, power: 35000, levelReq: 75, regionReq: 15, bossReq: 14, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários com +15% de dano contra bosses.", bonus: "+15% contra bosses", bossBonus: .15, color: "#c485ff", visual: "kraken" }
   ].map((pet, id) => ({ id, dps: pet.damage / pet.interval, ...pet }));
 
-  const PET_SPRITE_PATH = "assets/pets/";
+  const PET_SPRITE_PATH = "assets/newpets/";
   const PET_SPRITE_CONFIG = {
-    fish: { file: "peixe_palhaco.png", width: 66, cardWidth: 86, anchorX: .42, anchorY: .58, offsetY: 2 },
-    jelly: { file: "agua_viva.png", width: 70, cardWidth: 88, anchorX: .44, anchorY: .57, offsetY: -3 },
-    turtle: { file: "tartaruga_marinha.png", width: 76, cardWidth: 92, anchorX: .42, anchorY: .57, offsetY: 2 },
-    seal: { file: "foca.png", width: 78, cardWidth: 94, anchorX: .42, anchorY: .6, offsetY: 4, bob: 7 },
-    dolphin: { file: "golfinho.png", width: 88, cardWidth: 98, anchorX: .42, anchorY: .57, offsetY: -2, bob: 7 },
-    ray: { file: "arraia_eletrica.png", width: 92, cardWidth: 100, anchorX: .43, anchorY: .57, offsetY: 1 },
-    shark: { file: "tubarao.png", width: 98, cardWidth: 104, anchorX: .42, anchorY: .57, offsetY: 1 },
-    orca: { file: "baleia_assassina.png", width: 106, cardWidth: 108, anchorX: .42, anchorY: .57, offsetY: 0 },
-    megalodon: { file: "megalodon.png", width: 114, cardWidth: 112, anchorX: .42, anchorY: .57, offsetY: 1 },
-    kraken: { file: "kraken.png", width: 120, cardWidth: 116, anchorX: .44, anchorY: .6, offsetY: -3, bob: 5 }
+    fish: { file: "PET-01_Peixe-Palhaço_sprite_3frames.png", width: 66, cardWidth: 86, anchorX: .42, anchorY: .58, offsetY: 2 },
+    jelly: { file: "PET-02_Água-viva_sprite_3frames.png", width: 70, cardWidth: 88, anchorX: .44, anchorY: .57, offsetY: -3 },
+    turtle: { file: "PET-03_Tartaruga_Marinha_sprite_3frames.png", width: 76, cardWidth: 92, anchorX: .42, anchorY: .57, offsetY: 2 },
+    seal: { file: "PET-04_Foca_sprite_3frames.png", width: 78, cardWidth: 94, anchorX: .42, anchorY: .6, offsetY: 4, bob: 7 },
+    dolphin: { file: "PET-05_Golfinho_sprite_3frames.png", width: 88, cardWidth: 98, anchorX: .42, anchorY: .57, offsetY: -2, bob: 7 },
+    ray: { file: "PET-06_Arraia_Elétrica_sprite_3frames.png", width: 92, cardWidth: 100, anchorX: .43, anchorY: .57, offsetY: 1 },
+    shark: { file: "PET-07_Tubarão_sprite_3frames.png", width: 98, cardWidth: 104, anchorX: .42, anchorY: .57, offsetY: 1 },
+    orca: { file: "PET-08_Baleia_Assassina_sprite_3frames.png", width: 106, cardWidth: 108, anchorX: .42, anchorY: .57, offsetY: 0 },
+    megalodon: { file: "PET-09_Megalodon_sprite_3frames.png", width: 114, cardWidth: 112, anchorX: .42, anchorY: .57, offsetY: 1 },
+    kraken: { file: "PET-10_Kraken_sprite_3frames.png", width: 120, cardWidth: 116, anchorX: .44, anchorY: .6, offsetY: -3, bob: 5 }
   };
   const PET_SPRITES = Object.fromEntries(Object.entries(PET_SPRITE_CONFIG).map(([visual, config]) => {
-    const image = new Image();
-    image.decoding = "async";
-    const sprite = { key: visual, canvas: null, columns: 3, frames: 3, ready: false, processing: false, frameBounds: null, referenceBounds: null, ...config, image };
-    image.onload = () => {
-      preparePetSpritesheet(sprite);
-      requestAnimationFrame(() => renderPetPreviewCanvases());
-    };
-    image.src = `${PET_SPRITE_PATH}${config.file}`;
+    const sprite = { key: visual, image: createLazyImage(), canvas: null, columns: 3, frames: 3, ready: false, processing: false, requested: false, loadFailed: false, frameBounds: null, referenceBounds: null, ...config };
     return [visual, sprite];
   }));
+
+  function requestPetSprite(sprite) {
+    if (!sprite) return null;
+    return requestSpriteImage(sprite, `${PET_SPRITE_PATH}${sprite.file}`, () => {
+      preparePetSpritesheet(sprite);
+      requestAnimationFrame(() => renderPetPreviewCanvases());
+    });
+  }
 
   function getPetSprite(visual) {
     return PET_SPRITES[visual];
@@ -680,22 +685,20 @@
   function createCaptainCharacterSpritesheet(level, gender) {
     const cleanGender = normalizeCaptainGender(gender) || "male";
     const file = getCaptainCharacterFile(level, cleanGender);
-    const image = new Image();
     const sprite = {
       key: `${cleanGender}:${level}`,
-      image,
+      image: createLazyImage(),
       canvas: null,
       file,
       columns: 3,
       frames: 3,
       ready: false,
       processing: false,
+      requested: false,
+      loadFailed: false,
       frameBounds: null,
       referenceBounds: null
     };
-    image.decoding = "async";
-    image.onload = () => prepareCaptainCharacterSpritesheet(sprite);
-    image.src = `${CAPTAIN_CHARACTER_ASSET_PATH}${file}`;
     return sprite;
   }
 
@@ -714,6 +717,13 @@
 
   function getActiveCaptainCharacterSpritesheet() {
     return getCaptainCharacterSpritesheet(getCaptainLevel() || 1, getCaptainGender() || "male");
+  }
+
+  function requestCaptainCharacterSprite(sprite) {
+    return requestSpriteImage(sprite, `${CAPTAIN_CHARACTER_ASSET_PATH}${sprite.file}`, item => {
+      prepareCaptainCharacterSpritesheet(item);
+      requestAnimationFrame(() => renderCaptainPreviewCanvases());
+    });
   }
 
   function isCaptainCharacterBackgroundPixel(r, g, b, backgroundSamples) {
@@ -876,11 +886,49 @@
     return `<canvas class="captain-sprite-canvas ${variant}" data-captain-preview-level="${level}" data-captain-preview-gender="${normalizeCaptainGender(gender) || "male"}" data-captain-preview-variant="${variant}" aria-hidden="true"></canvas>`;
   }
 
+  function drawPreviewCanvas(canvas) {
+    if (canvas.dataset.captainPreviewLevel) return drawCaptainPreviewCanvas(canvas);
+    if (canvas.dataset.petPreview !== undefined) return drawPetPreviewCanvas(canvas);
+    return false;
+  }
+
+  const previewCanvasObserver = "IntersectionObserver" in window
+    ? new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const canvas = entry.target;
+          previewCanvasObserver.unobserve(canvas);
+          delete canvas.dataset.previewObserved;
+          drawPreviewCanvas(canvas);
+        });
+      }, { root: $("#app"), rootMargin: "180px 0px" })
+    : null;
+
+  function queuePreviewCanvas(canvas) {
+    if (!previewCanvasObserver) {
+      drawPreviewCanvas(canvas);
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const visibleSoon = rect.width > 0 && rect.height > 0 && rect.bottom >= -180 && rect.top <= window.innerHeight + 180;
+    if (visibleSoon) {
+      previewCanvasObserver.unobserve(canvas);
+      delete canvas.dataset.previewObserved;
+      drawPreviewCanvas(canvas);
+      return;
+    }
+    if (!canvas.dataset.previewObserved) {
+      canvas.dataset.previewObserved = "1";
+      previewCanvasObserver.observe(canvas);
+    }
+  }
+
   function drawCaptainPreviewCanvas(canvas) {
     const level = Number(canvas.dataset.captainPreviewLevel || 1);
     const gender = canvas.dataset.captainPreviewGender || "male";
     const variant = canvas.dataset.captainPreviewVariant || "portrait";
     const sprite = getCaptainCharacterSpritesheet(level, gender);
+    requestCaptainCharacterSprite(sprite);
     const options = variant === "topbar"
       ? { fill: 1.75, alignY: 1.2, offsetY: .02 }
       : variant === "next"
@@ -890,17 +938,18 @@
   }
 
   function renderCaptainPreviewCanvases(root = document) {
-    root.querySelectorAll?.("canvas[data-captain-preview-level]").forEach(drawCaptainPreviewCanvas);
+    root.querySelectorAll?.("canvas[data-captain-preview-level]").forEach(queuePreviewCanvas);
   }
 
   function drawPetPreviewCanvas(canvas) {
     const visual = canvas.dataset.petPreview;
     const sprite = getPetSprite(visual);
+    requestPetSprite(sprite);
     return drawSpritesheetPreview(canvas, sprite, { fill: .86, center: true, centerY: .5 });
   }
 
   function renderPetPreviewCanvases(root = document) {
-    root.querySelectorAll?.("canvas[data-pet-preview]").forEach(drawPetPreviewCanvas);
+    root.querySelectorAll?.("canvas[data-pet-preview]").forEach(queuePreviewCanvas);
   }
 
   const TODAY_KEY = () => new Date().toLocaleDateString("sv-SE");
@@ -1110,6 +1159,7 @@
   let lastUiRefresh = 0;
   let lastSave = performance.now();
   let hiddenAt = 0;
+  let offlineModalAutoHideTimer = 0;
   const tradeQuantities = Object.fromEntries(Object.keys(TRADE_PRICES).map(key => [key, 1]));
   let pendingTrade = null;
   let pendingMissingPurchase = null;
@@ -1469,6 +1519,20 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (error) { console.warn("Não foi possível salvar.", error); }
   }
 
+  function closeOfflineModal() {
+    clearTimeout(offlineModalAutoHideTimer);
+    offlineModalAutoHideTimer = 0;
+    $("#offline-modal")?.classList.add("hidden");
+  }
+
+  function showOfflineModal() {
+    const modal = $("#offline-modal");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    clearTimeout(offlineModalAutoHideTimer);
+    offlineModalAutoHideTimer = window.setTimeout(closeOfflineModal, OFFLINE_MODAL_AUTO_HIDE_MS);
+  }
+
   function commitGame(expensive = true) {
     renderAll(expensive);
     saveGame();
@@ -1659,54 +1723,6 @@
     return normalizeText(value).replace(/[_\-.:"']/g, " ").replace(/\s+/g, " ").trim();
   }
 
-  const SHIP_SPRITE_PATH = "assets/ships/";
-  const SHIP_SPRITES = [
-    ["Bote de Tronco", "bote_de_tronco.png", { width: 230, anchorY: .63 }],
-    ["Jangada de Cipo", "jangada_de_cipo.png", { width: 245, anchorY: .66 }],
-    ["Canoa de Caca", "canoa_de_caca.png", { width: 240, anchorY: .58 }],
-    ["Jangada Reforcada Primitiva", "jangada_reforcada_primitiva.png", { width: 255, anchorY: .64 }],
-    ["Canoa do Tita", "canoa_do_tita.png", { width: 265, anchorY: .63 }],
-    ["Bote Armado", "bote_armado.png", { width: 260, anchorY: .66 }],
-    ["Jangada Reforcada", "jangada_reforcada.png", { width: 270, anchorY: .66 }],
-    ["Barco de Pesca Adaptado", "barco_de_pesca_adaptado.png", { width: 275, anchorY: .64 }],
-    ["Escuna Leve", "escuna_leve.png", { width: 285, anchorY: .66 }],
-    ["Escuna Mercante", "escuna_mercante.png", { width: 295, anchorY: .66 }],
-    ["Cutter Real", "cutter_real.png", { width: 300, anchorY: .64 }],
-    ["Brigantina Pequena", "brigantina_pequena.png", { width: 305, anchorY: .64 }],
-    ["Corveta Simples", "corveta_simples.png", { width: 310, anchorY: .66 }],
-    ["Brigantina Pirata", "brigantina_pirata.png", { width: 320, anchorY: .64 }],
-    ["Corveta Armada", "corveta_armada.png", { width: 320, anchorY: .64 }],
-    ["Galeota", "galeota.png", { width: 310, anchorY: .61 }],
-    ["Navio Mercante Armado", "navio_mercante_armado.png", { width: 330, anchorY: .64 }],
-    ["Galeao Mercante", "galeao_mercante.png", { width: 335, anchorY: .64 }],
-    ["Galeao Pirata", "galeao_pirata.png", { width: 335, anchorY: .63 }],
-    ["Fragata Real", "fragata_real.png", { width: 340, anchorY: .63 }],
-    ["Fragata Corsaria", "fragata_corsaria.png", { width: 345, anchorY: .66 }],
-    ["Galeao de Guerra", "galeao_de_guerra.png", { width: 350, anchorY: .66 }],
-    ["Encouracado Imperial", "encouracado_imperial.png", { width: 355, anchorY: .63 }],
-    ["Fragata Fantasma", "fragata_fantasma.png", { width: 355, anchorY: .63 }],
-    ["Kraken Hunter", "kraken_hunter.png", { width: 365, anchorY: .64 }],
-    ["Black Abyss", "black_abyss.png", { width: 370, anchorY: .64 }]
-  ].reduce((sprites, [name, file, options]) => {
-    const image = new Image();
-    image.decoding = "async";
-    image.src = `${SHIP_SPRITE_PATH}${file}`;
-    sprites[normalizeText(name)] = {
-      image,
-      file,
-      width: options.width,
-      anchorX: options.anchorX ?? .5,
-      anchorY: options.anchorY ?? .64,
-      offsetX: options.offsetX || 0,
-      offsetY: options.offsetY || 0
-    };
-    return sprites;
-  }, {});
-
-  function getShipSprite(name) {
-    return SHIP_SPRITES[normalizeText(name)];
-  }
-
   const PLAYER_SHIP_SPRITESHEET_PATH = "assets/spritesships/";
   const PLAYER_SHIP_SPRITESHEET_FILES = [
     "PLAYER-01_01_Bote_de_Tronco_sprite_9frames.png",
@@ -1796,10 +1812,9 @@
     const options = PLAYER_SHIP_SPRITESHEET_OPTIONS[name] || {};
     const fileFrameCount = getPlayerShipSpritesheetFrameCountFromFile(file);
     const usesNineFrameLayout = fileFrameCount === 9;
-    const image = new Image();
     const sprite = {
       key: name,
-      image,
+      image: createLazyImage(),
       canvas: null,
       file,
       frames: fileFrameCount || options.frames || 9,
@@ -1814,11 +1829,10 @@
       offsetX: options.offsetX || 0,
       offsetY: options.offsetY || 0,
       ready: false,
-      processing: false
+      processing: false,
+      requested: false,
+      loadFailed: false
     };
-    image.decoding = "async";
-    image.onload = () => prepareEnemySpritesheet(sprite);
-    image.src = `${PLAYER_SHIP_SPRITESHEET_PATH}${file}`;
     sprites[normalizeSpriteKey(name)] = sprite;
     return sprites;
   }, {});
@@ -1862,113 +1876,97 @@
     return null;
   }
 
-  const ENEMY_SPRITE_PATH = "assets/enemies/";
-  const ENEMY_SPRITES = [
-    ["Remador Rival", "remador_rival.png", { width: 250, anchorY: .68 }],
-    ["Pescador Primitivo", "pescador_primitivo.png", { width: 265, anchorY: .7 }],
-    ["Jacare da Lagoa", "jacare_da_lagoa.png", { width: 270, anchorY: .58 }],
-    ["Crocomar Anciao", "boss_crocomar_anciao.png", { width: 380, anchorY: .58 }],
-    ["Canoa Tribal", "canoa_tribal.png", { width: 275, anchorY: .64 }],
-    ["Cacador do Mangue", "cacador_do_mangue.png", { width: 275, anchorY: .67 }],
-    ["Reptil das Raizes", "reptil_das_raizes.png", { width: 315, anchorY: .6 }],
-    ["Deinosuchus do Mangue", "boss_deinosuchus_do_mangue.png", { width: 390, anchorY: .59 }],
-    ["Canoa de Couro", "canoa_de_couro.png", { width: 260, anchorY: .58 }],
-    ["Pterodactilo Cacador", "pterodactilo_cacador.png", { width: 300, anchorY: .56, offsetY: -52 }],
-    ["Remador das Ilhas", "remador_das_ilhas.png", { width: 255, anchorY: .65 }],
-    ["Rei Pteranodonte", "boss_rei_pteranodonte.png", { width: 330, anchorY: .55, offsetY: -55 }],
-    ["Jangada de Caca", "jangada_de_caca.png", { width: 285, anchorY: .65 }],
-    ["Ictiossauro", "ictiossauro.png", { width: 315, anchorY: .56 }],
-    ["Saqueador da Selva", "saqueador_da_selva.png", { width: 285, anchorY: .66 }],
-    ["Mosasaurus Jovem", "boss_mosasaurus_jovem.png", { width: 380, anchorY: .56 }],
-    ["Canoa de Guerra", "canoa_de_guerra.png", { width: 290, anchorY: .61 }],
-    ["Plesiossauro", "plesiossauro.png", { width: 310, anchorY: .58 }],
-    ["Guardiao do Canal", "guardiao_do_canal.png", { width: 300, anchorY: .66 }],
-    ["Leviata Jurassico", "boss_leviata_jurassico.png", { width: 390, anchorY: .56 }],
-    ["Jangada de Pescador", "jangada_de_pescador.png", { width: 285, anchorY: .68 }],
-    ["Barco Costeiro", "barco_costeiro.png", { width: 310, anchorY: .62 }],
-    ["Bote Pirata", "bote_pirata.png", { width: 315, anchorY: .62 }],
-    ["Pequeno Contrabandista", "pequeno_contrabandista.png", { width: 270, anchorY: .62 }],
-    ["Escuna Pirata", "escuna_pirata.png", { width: 335, anchorY: .62 }],
-    ["Capitao Barba de Ferro", "boss_capitao_barba_de_ferro.png", { width: 350, anchorY: .58 }],
-    ["Bote de Pesca Hostil", "bote_de_pesca_hostil.png", { width: 310, anchorY: .64 }],
-    ["Traineira Saqueadora", "traineira_saqueadora.png", { width: 330, anchorY: .62 }],
-    ["Barco Mercante Pequeno", "barco_mercante_pequeno.png", { width: 315, anchorY: .64 }],
-    ["Navio de Carga", "navio_de_carga.png", { width: 330, anchorY: .62 }],
-    ["Escuna Rapida", "escuna_rapida.png", { width: 330, anchorY: .6 }],
-    ["Patrulha Naval", "patrulha_naval.png", { width: 330, anchorY: .6 }],
-    ["Transporte de Ouro", "transporte_de_ouro.png", { width: 335, anchorY: .6 }],
-    ["Rainha Corsaria Scarlet", "boss_rainha_corsaria_scarlet.png", { width: 360, anchorY: .58 }],
-    ["Brigantina Pirata", "brigantina_pirata.png", { width: 340, anchorY: .6 }],
-    ["Corveta da Marinha", "corveta_da_marinha.png", { width: 360, anchorY: .6 }],
-    ["Navio Quebra-Bloqueio", "navio_quebra_bloqueio.png", { width: 345, anchorY: .58 }],
-    ["Navio Danificado", "navio_danificado.png", { width: 345, anchorY: .6 }],
-    ["Cacador da Tormenta", "cacador_da_tormenta.png", { width: 335, anchorY: .62 }],
-    ["Tempestade Viva", "boss_tempestade_viva.png", { width: 330, anchorY: .56, offsetY: -15 }],
-    ["Corsario Disfarcado", "barco_mercante_pequeno.png", { width: 315, anchorY: .64 }],
-    ["Transporte Ilegal", "transporte_ilegal.png", { width: 330, anchorY: .62 }],
-    ["Fragata Pirata", "fragata_pirata.png", { width: 350, anchorY: .61 }],
-    ["Almirante Negro", "boss_almirante_negro.png", { width: 380, anchorY: .58 }],
-    ["Baleeiro Sombrio", "baleeiro_sombrio.png", { width: 340, anchorY: .6 }],
-    ["Navio de Suprimentos", "navio_de_suprimentos.png", { width: 345, anchorY: .62 }],
-    ["Contrabandista Abissal", "contrabandista_abissal.png", { width: 335, anchorY: .62 }],
-    ["Serpente Marinha", "serpente_marinha.png", { width: 360, anchorY: .58 }],
-    ["Galeao Pirata", "galeao_pirata.png", { width: 350, anchorY: .6 }],
-    ["Megalodon Ancestral", "boss_megalodon_ancestral.png", { width: 400, anchorY: .56 }],
-    ["Escuna Fantasma", "escuna_fantasma.png", { width: 350, anchorY: .62 }],
-    ["Nau Espectral", "nau_espectral.png", { width: 355, anchorY: .61 }],
-    ["Navio Amaldicoado", "navio_amaldicoado.png", { width: 355, anchorY: .61 }],
-    ["Corsario Perdido", "corsario_perdido.png", { width: 345, anchorY: .6 }],
-    ["Vulto do Triangulo", "vulto_do_triangulo.png", { width: 345, anchorY: .62 }],
-    ["Holandes Voador", "boss_holandes_voador.png", { width: 390, anchorY: .6 }],
-    ["Bote da Marinha", "bote_da_marinha.png", { width: 330, anchorY: .6 }],
-    ["Cutter Real", "cutter_real.png", { width: 340, anchorY: .6 }],
-    ["Fragata Imperial", "fragata_imperial.png", { width: 365, anchorY: .62 }],
-    ["Galeao Real", "galeao_real.png", { width: 365, anchorY: .62 }],
-    ["Navio de Linha", "navio_de_linha.png", { width: 365, anchorY: .62 }],
-    ["Navio Almirante", "navio_almirante.png", { width: 370, anchorY: .62 }],
-    ["Grande Armada Imperial", "boss_grande_armada_imperial.png", { width: 410, anchorY: .62 }],
-    ["Saqueador de Cinzas", "saqueador_de_cinzas.png", { width: 340, anchorY: .62 }],
-    ["Transporte de Obsidiana", "transporte_de_obsidiana.png", { width: 345, anchorY: .6 }],
-    ["Corveta Vulcanica", "corveta_vulcanica.png", { width: 350, anchorY: .62 }],
-    ["Carapaca Vulcanica", "carapaca_vulcanica.png", { width: 360, anchorY: .6 }],
-    ["Dragao Marinho Jovem", "dragao_marinho_jovem.png", { width: 360, anchorY: .62 }],
-    ["Dragao Marinho Vulcanico", "boss_dragao_marinho_vulcanico.png", { width: 405, anchorY: .58 }],
-    ["Barco Costeiro Congelado", "barco_costeiro_congelado.png", { width: 345, anchorY: .62 }],
-    ["Corsario Boreal", "corsario_boreal.png", { width: 340, anchorY: .62 }],
-    ["Fragata Congelada", "fragata_congelada.png", { width: 365, anchorY: .62 }],
-    ["Navio Fantasma do Gelo", "navio_fantasma_do_gelo.png", { width: 355, anchorY: .62 }],
-    ["Serpente de Gelo", "serpente_de_gelo.png", { width: 360, anchorY: .58 }],
-    ["Jormungandr de Gelo", "boss_jormungandr_de_gelo.png", { width: 410, anchorY: .58 }],
-    ["Cultista do Kraken", "cultista_do_kraken.png", { width: 345, anchorY: .62 }],
-    ["Dreadnought Afundado", "dreadnought_afundado.png", { width: 365, anchorY: .62 }],
-    ["Frota Imperial Perdida", "frota_imperial_perdida.png", { width: 360, anchorY: .58 }],
-    ["Leviata Menor", "leviata_menor.png", { width: 360, anchorY: .58 }],
-    ["Navio Fantasma Lendario", "navio_fantasma_lendario.png", { width: 365, anchorY: .62 }],
-    ["Kraken Primordial", "boss_kraken_primordial.png", { width: 405, anchorY: .6 }]
-  ].reduce((sprites, [name, file, options]) => {
-    const image = new Image();
-    image.decoding = "async";
-    const sprite = {
-      image,
-      canvas: null,
-      file,
-      width: options.width,
-      anchorX: options.anchorX ?? .5,
-      anchorY: options.anchorY ?? .64,
-      offsetX: options.offsetX || 0,
-      offsetY: options.offsetY || 0,
-      ready: false,
-      processing: false
-    };
-    image.onload = () => prepareEnemyImage(sprite);
-    image.src = `${ENEMY_SPRITE_PATH}${file}`;
-    sprites[normalizeText(name)] = sprite;
-    return sprites;
-  }, {});
-
-  function getEnemySprite(name) {
-    return ENEMY_SPRITES[normalizeText(name)];
+  function requestPlayerShipSpritesheet(sprite) {
+    return requestSpriteImage(sprite, `${PLAYER_SHIP_SPRITESHEET_PATH}${sprite.file}`, prepareEnemySpritesheet);
   }
+
+  const ENEMY_SPRITE_LAYOUTS = [
+    ["Remador Rival", { width: 250, anchorY: .68 }],
+    ["Pescador Primitivo", { width: 265, anchorY: .7 }],
+    ["Jacare da Lagoa", { width: 270, anchorY: .58 }],
+    ["Crocomar Anciao", { width: 380, anchorY: .58 }],
+    ["Canoa Tribal", { width: 275, anchorY: .64 }],
+    ["Cacador do Mangue", { width: 275, anchorY: .67 }],
+    ["Reptil das Raizes", { width: 315, anchorY: .6 }],
+    ["Deinosuchus do Mangue", { width: 390, anchorY: .59 }],
+    ["Canoa de Couro", { width: 260, anchorY: .58 }],
+    ["Pterodactilo Cacador", { width: 300, anchorY: .56, offsetY: -52 }],
+    ["Remador das Ilhas", { width: 255, anchorY: .65 }],
+    ["Rei Pteranodonte", { width: 330, anchorY: .55, offsetY: -55 }],
+    ["Jangada de Caca", { width: 285, anchorY: .65 }],
+    ["Ictiossauro", { width: 315, anchorY: .56 }],
+    ["Saqueador da Selva", { width: 285, anchorY: .66 }],
+    ["Mosasaurus Jovem", { width: 380, anchorY: .56 }],
+    ["Canoa de Guerra", { width: 290, anchorY: .61 }],
+    ["Plesiossauro", { width: 310, anchorY: .58 }],
+    ["Guardiao do Canal", { width: 300, anchorY: .66 }],
+    ["Leviata Jurassico", { width: 390, anchorY: .56 }],
+    ["Jangada de Pescador", { width: 285, anchorY: .68 }],
+    ["Barco Costeiro", { width: 310, anchorY: .62 }],
+    ["Bote Pirata", { width: 315, anchorY: .62 }],
+    ["Pequeno Contrabandista", { width: 270, anchorY: .62 }],
+    ["Escuna Pirata", { width: 335, anchorY: .62 }],
+    ["Capitao Barba de Ferro", { width: 350, anchorY: .58 }],
+    ["Bote de Pesca Hostil", { width: 310, anchorY: .64 }],
+    ["Traineira Saqueadora", { width: 330, anchorY: .62 }],
+    ["Barco Mercante Pequeno", { width: 315, anchorY: .64 }],
+    ["Navio de Carga", { width: 330, anchorY: .62 }],
+    ["Escuna Rapida", { width: 330, anchorY: .6 }],
+    ["Patrulha Naval", { width: 330, anchorY: .6 }],
+    ["Transporte de Ouro", { width: 335, anchorY: .6 }],
+    ["Rainha Corsaria Scarlet", { width: 360, anchorY: .58 }],
+    ["Brigantina Pirata", { width: 340, anchorY: .6 }],
+    ["Corveta da Marinha", { width: 360, anchorY: .6 }],
+    ["Navio Quebra-Bloqueio", { width: 345, anchorY: .58 }],
+    ["Navio Danificado", { width: 345, anchorY: .6 }],
+    ["Cacador da Tormenta", { width: 335, anchorY: .62 }],
+    ["Tempestade Viva", { width: 330, anchorY: .56, offsetY: -15 }],
+    ["Corsario Disfarcado", { width: 315, anchorY: .64 }],
+    ["Transporte Ilegal", { width: 330, anchorY: .62 }],
+    ["Fragata Pirata", { width: 350, anchorY: .61 }],
+    ["Almirante Negro", { width: 380, anchorY: .58 }],
+    ["Baleeiro Sombrio", { width: 340, anchorY: .6 }],
+    ["Navio de Suprimentos", { width: 345, anchorY: .62 }],
+    ["Contrabandista Abissal", { width: 335, anchorY: .62 }],
+    ["Serpente Marinha", { width: 360, anchorY: .58 }],
+    ["Galeao Pirata", { width: 350, anchorY: .6 }],
+    ["Megalodon Ancestral", { width: 400, anchorY: .56 }],
+    ["Escuna Fantasma", { width: 350, anchorY: .62 }],
+    ["Nau Espectral", { width: 355, anchorY: .61 }],
+    ["Navio Amaldicoado", { width: 355, anchorY: .61 }],
+    ["Corsario Perdido", { width: 345, anchorY: .6 }],
+    ["Vulto do Triangulo", { width: 345, anchorY: .62 }],
+    ["Holandes Voador", { width: 390, anchorY: .6 }],
+    ["Bote da Marinha", { width: 330, anchorY: .6 }],
+    ["Cutter Real", { width: 340, anchorY: .6 }],
+    ["Fragata Imperial", { width: 365, anchorY: .62 }],
+    ["Galeao Real", { width: 365, anchorY: .62 }],
+    ["Navio de Linha", { width: 365, anchorY: .62 }],
+    ["Navio Almirante", { width: 370, anchorY: .62 }],
+    ["Grande Armada Imperial", { width: 410, anchorY: .62 }],
+    ["Saqueador de Cinzas", { width: 340, anchorY: .62 }],
+    ["Transporte de Obsidiana", { width: 345, anchorY: .6 }],
+    ["Corveta Vulcanica", { width: 350, anchorY: .62 }],
+    ["Carapaca Vulcanica", { width: 360, anchorY: .6 }],
+    ["Dragao Marinho Jovem", { width: 360, anchorY: .62 }],
+    ["Dragao Marinho Vulcanico", { width: 405, anchorY: .58 }],
+    ["Barco Costeiro Congelado", { width: 345, anchorY: .62 }],
+    ["Corsario Boreal", { width: 340, anchorY: .62 }],
+    ["Fragata Congelada", { width: 365, anchorY: .62 }],
+    ["Navio Fantasma do Gelo", { width: 355, anchorY: .62 }],
+    ["Serpente de Gelo", { width: 360, anchorY: .58 }],
+    ["Jormungandr de Gelo", { width: 410, anchorY: .58 }],
+    ["Cultista do Kraken", { width: 345, anchorY: .62 }],
+    ["Dreadnought Afundado", { width: 365, anchorY: .62 }],
+    ["Frota Imperial Perdida", { width: 360, anchorY: .58 }],
+    ["Leviata Menor", { width: 360, anchorY: .58 }],
+    ["Navio Fantasma Lendario", { width: 365, anchorY: .62 }],
+    ["Kraken Primordial", { width: 405, anchorY: .6 }]
+  ].reduce((layouts, [name, options]) => {
+    layouts[normalizeText(name)] = options;
+    layouts[normalizeEnemySpriteKey(name)] = options;
+    return layouts;
+  }, {});
 
   const ENEMY_SPRITESHEET_PATH = "assets/spritesenemies/";
   const ENEMY_SPRITESHEET_FILES = [
@@ -2191,7 +2189,7 @@
   function getEnemySpritesheetOptions(name) {
     const key = normalizeEnemySpriteKey(name);
     const legacyKey = normalizeText(name).replace(/_/g, " ").replace(/\s+/g, " ").trim();
-    const base = ENEMY_SPRITES[key] || ENEMY_SPRITES[legacyKey] || {};
+    const base = ENEMY_SPRITE_LAYOUTS[key] || ENEMY_SPRITE_LAYOUTS[legacyKey] || {};
     const override = ENEMY_SPRITESHEET_OPTIONS_BY_KEY[key] || {};
     return {
       width: base.width,
@@ -2327,29 +2325,6 @@
     cleanupSpritesheetLightArtifacts(data, width, height);
   }
 
-  function prepareEnemyImage(sprite) {
-    const image = sprite.image;
-    if (!image?.complete || !image.naturalWidth || sprite.ready || sprite.processing) return;
-    sprite.processing = true;
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-      cleanSpriteTransparency(pixels.data, canvas.width, canvas.height);
-      context.putImageData(pixels, 0, 0);
-      sprite.canvas = canvas;
-      sprite.ready = true;
-    } catch (error) {
-      sprite.canvas = null;
-      sprite.ready = true;
-    } finally {
-      sprite.processing = false;
-    }
-  }
-
   function prepareEnemySpritesheet(sprite) {
     const image = sprite.image;
     if (!image?.complete || !image.naturalWidth || sprite.ready || sprite.processing) return;
@@ -2381,11 +2356,10 @@
     const options = getEnemySpritesheetOptions(name);
     const key = normalizeEnemySpriteKey(name);
     const regionalKey = alias?.regionIndex != null ? getEnemyRegionalSpritesheetKey(key, alias.regionIndex) : key;
-    const image = new Image();
     const sprite = {
       key: name,
       sheetKey: regionalKey,
-      image,
+      image: createLazyImage(),
       canvas: null,
       file,
       regionIndex: alias?.regionIndex ?? null,
@@ -2401,11 +2375,10 @@
       frameBounds: null,
       referenceBounds: null,
       ready: false,
-      processing: false
+      processing: false,
+      requested: false,
+      loadFailed: false
     };
-    image.decoding = "async";
-    image.onload = () => prepareEnemySpritesheet(sprite);
-    image.src = `${ENEMY_SPRITESHEET_PATH}${file}`;
     if (!sprites[key]) sprites[key] = sprite;
     sprites[regionalKey] = sprite;
     return sprites;
@@ -2452,6 +2425,10 @@
       console.warn(`[Pirates of Abyss] Sprite sheet de inimigo nao encontrada para: ${name}`);
     }
     return null;
+  }
+
+  function requestEnemySpritesheet(sprite) {
+    return requestSpriteImage(sprite, `${ENEMY_SPRITESHEET_PATH}${sprite.file}`, prepareEnemySpritesheet);
   }
 
   function createEnemySpriteAnimation(name, regionIndex = state.regionIndex) {
@@ -2930,59 +2907,11 @@
     }
 
     drawOceanTexture(ctx, horizon, w, h, darkness = 0) {
-      const image = OCEAN_SPRITE.image;
-      if (!image?.complete || !image.naturalWidth) return false;
-      const waterHeight = h - horizon;
-      const scale = Math.max(w / image.naturalWidth, waterHeight / image.naturalHeight);
-      const targetWidth = image.naturalWidth * scale;
-      const targetHeight = image.naturalHeight * scale;
-      const driftRange = Math.max(0, (targetWidth - w) * .5);
-      const drawX = (w - targetWidth) * .5 + Math.sin(this.time * .045) * Math.min(42, driftRange);
-      const drawY = horizon + waterHeight - targetHeight;
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, horizon, w, waterHeight);
-      ctx.clip();
-      ctx.globalAlpha = clamp(.58 - darkness * .22, .28, .58);
-      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
-      if (darkness > .05) {
-        ctx.globalAlpha = darkness * .34;
-        ctx.fillStyle = "#031525";
-        ctx.fillRect(0, horizon, w, waterHeight);
-      }
-      ctx.restore();
-      return true;
+      return false;
     }
 
     drawRegionIslandSprite(ctx, w, h, horizon, regionIndex) {
-      if (regionUsesFixedBackground(regionIndex)) return false;
-      let drew = false;
-      getIslandComposition(regionIndex).forEach((layer, order) => {
-        const sprite = getRegionIslandSprite(layer.spriteIndex);
-        const image = sprite?.image;
-        if (!image?.complete || !image.naturalWidth) return;
-        const mobileScale = w < 620 ? .78 : 1;
-        const maxWidth = w * layer.width * mobileScale;
-        const maxHeight = h * layer.height;
-        const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
-        const targetWidth = image.naturalWidth * scale;
-        const targetHeight = image.naturalHeight * scale;
-        const drift = Math.sin(this.time * (.045 + order * .011) + regionIndex + order) * w * .006;
-        const drawX = w * layer.x - targetWidth * .5 + drift;
-        const drawY = horizon + h * layer.sea - targetHeight;
-        ctx.save();
-        ctx.globalAlpha = 1;
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-        ctx.filter = "saturate(.96) contrast(.97)";
-        ctx.shadowColor = "rgba(0,0,0,.34)";
-        ctx.shadowBlur = 10 + order * 2;
-        ctx.shadowOffsetY = 6;
-        ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
-        ctx.restore();
-        drew = true;
-      });
-      return drew;
+      return false;
     }
 
     drawCloud(ctx, x, y, scale, darkness = 0) {
@@ -3185,6 +3114,7 @@
 
     drawPetSprite(ctx, x, y, pet, baseScale = 1) {
       const sprite = getPetSprite(pet.visual);
+      requestPetSprite(sprite);
       const image = sprite?.image;
       if (!image?.complete || !image.naturalWidth) return false;
       if (!sprite.ready && !sprite.processing) preparePetSpritesheet(sprite);
@@ -3268,6 +3198,7 @@
     }
 
     drawEnemySpritesheet(ctx, x, y, scale, enemy, sprite) {
+      requestEnemySpritesheet(sprite);
       const image = sprite.image;
       if (!image?.complete || !image.naturalWidth) return false;
       const pose = this.getEnemySpritesheetPose(enemy, sprite);
@@ -3351,6 +3282,7 @@
         maxHeight: 98
       };
       const sprite = getActiveCaptainCharacterSpritesheet();
+      requestCaptainCharacterSprite(sprite);
       const image = sprite?.image;
       if (!image?.complete || !image.naturalWidth) return false;
       if (!sprite.ready && !sprite.processing) prepareCaptainCharacterSpritesheet(sprite);
@@ -3396,6 +3328,7 @@
     }
 
     drawPlayerShipSpritesheet(ctx, x, y, scale, ship, sprite, options = {}) {
+      requestPlayerShipSpritesheet(sprite);
       const image = sprite.image;
       if (!image?.complete || !image.naturalWidth) return false;
       const pose = this.getPlayerShipSpritesheetPose(ship, sprite, options);
@@ -3438,41 +3371,9 @@
       return true;
     }
 
-    drawEnemySprite(ctx, x, y, scale, sprite) {
-      const image = sprite.image;
-      if (!image?.complete || !image.naturalWidth) return false;
-      if (!sprite.ready && !sprite.processing) prepareEnemyImage(sprite);
-      const source = sprite.canvas || image;
-      const targetWidth = sprite.width * scale;
-      const targetHeight = targetWidth * ((source.height || image.naturalHeight) / (source.width || image.naturalWidth));
-      const drawX = -targetWidth * sprite.anchorX;
-      const drawY = -targetHeight * sprite.anchorY;
-      ctx.save();
-      ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
-      ctx.drawImage(source, drawX, drawY, targetWidth, targetHeight);
-      ctx.restore();
-      return true;
-    }
-
-    drawShipSprite(ctx, x, y, scale, sprite) {
-      const image = sprite.image;
-      if (!image?.complete || !image.naturalWidth) return false;
-      const targetWidth = sprite.width * scale;
-      const targetHeight = targetWidth * (image.naturalHeight / image.naturalWidth);
-      const drawX = -targetWidth * sprite.anchorX;
-      const drawY = -targetHeight * sprite.anchorY;
-      ctx.save();
-      ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
-      ctx.drawImage(image, drawX, drawY, targetWidth, targetHeight);
-      ctx.restore();
-      return true;
-    }
-
     drawPlayerShip(ctx, x, y, scale, ship, options = {}) {
       const animatedSprite = getPlayerShipSpritesheet(ship.name);
       if (animatedSprite && this.drawPlayerShipSpritesheet(ctx, x, y, scale, ship, animatedSprite, options)) return;
-      const sprite = getShipSprite(ship.name);
-      if (sprite && this.drawShipSprite(ctx, x, y, scale, sprite)) return;
       this.drawShip(ctx, x, y, scale, false, ship.tier, false, ship.id, ship.type);
     }
 
@@ -3491,7 +3392,7 @@
     enemySceneScale(baseScale, enemy, sourceWidth = 280) {
       const sizedScale = baseScale * this.enemySizeFactor(enemy);
       if (enemy.isBoss) return sizedScale;
-      const playerSprite = getShipSprite(SHIPS[state.shipId].name);
+      const playerSprite = getPlayerShipSpritesheet(SHIPS[state.shipId].name);
       const playerSceneScale = Math.min(1.15, this.width / 950);
       const playerWidth = (playerSprite?.width || 250) * playerSceneScale;
       const maxEnemyWidth = playerWidth * .82;
@@ -3502,8 +3403,6 @@
     drawEnemy(ctx, x, y, scale, enemy) {
       const animatedSprite = getEnemyAnimatedSpritesheet(enemy);
       if (animatedSprite && this.drawEnemySpritesheet(ctx, x, y, this.enemySceneScale(scale, enemy, animatedSprite.width), enemy, animatedSprite)) return;
-      const sprite = getEnemySprite(enemy.name);
-      if (sprite && this.drawEnemySprite(ctx, x, y, this.enemySceneScale(scale, enemy, sprite.width), sprite)) return;
       const visual = enemy.visual || inferEnemyVisual(enemy.name, REGIONS[state.regionIndex], enemy.category, enemy.visualTier, enemy.isBoss);
       const finalScale = this.enemySceneScale(scale * (visual.scale || 1), enemy, 250 * (visual.scale || 1));
       const type = visual.type;
@@ -4177,7 +4076,7 @@
     if (showModal) {
       $("#offline-time").textContent = `Sua frota navegou por ${formatDuration(capped)} (limite de 24 horas). Eficiência offline: ${Math.round(OFFLINE_REWARD_RATE * (1 + prestigeIdle) * 100)}% do combate ativo.`;
       $("#offline-rewards").innerHTML = rewards.map(item => `<div><span>${item.name}</span><strong>+${formatNumber(item.amount)}</strong></div>`).join("");
-      $("#offline-modal").classList.remove("hidden");
+      showOfflineModal();
     }
     addLog(`Progresso idle recolhido após ${formatDuration(capped)} com 30% de eficiência.`, "loot");
   }
@@ -5158,11 +5057,15 @@
     $$("[data-screen-target]").forEach(node => node.classList.toggle("active", node.dataset.screenTarget === screen));
   }
 
-  function renderAll(expensive = true) {
+  function shouldRenderInactiveScreens() {
+    return window.innerWidth > 980 && window.innerHeight > 650;
+  }
+
+  function renderAll(expensive = false) {
     renderTopbar();
     renderHome();
     renderCombatHud();
-    if (expensive) Object.values(SCREEN_RENDERERS).forEach(render => render());
+    if (expensive && shouldRenderInactiveScreens()) Object.values(SCREEN_RENDERERS).forEach(render => render());
     else renderScreen();
   }
 
@@ -5361,7 +5264,7 @@
     currentScreen = screen;
     setActiveScreen(screen);
     renderScreen(screen);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    ($("#app") || document.scrollingElement)?.scrollTo?.({ top: 0, behavior: "smooth" });
   }
 
   function handleTradeQuantityButton(target) {
@@ -5542,7 +5445,7 @@
   $("#start-button").addEventListener("click", toggleAutoCombat);
   $("#reset-button").addEventListener("click", repairShipFromButton);
   $("#boss-button").addEventListener("click", challengeBoss);
-  $("#offline-close").addEventListener("click", () => $("#offline-modal").classList.add("hidden"));
+  $("#offline-close").addEventListener("click", closeOfflineModal);
   $("#wipe-button").addEventListener("click", () => $("#confirm-modal").classList.remove("hidden"));
   $("#confirm-cancel").addEventListener("click", () => $("#confirm-modal").classList.add("hidden"));
   $("#confirm-wipe").addEventListener("click", wipeProgress);

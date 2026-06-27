@@ -1,329 +1,15 @@
-const CACHE = "pirates-abyss-v67-player-ship-sprites";
-const ENEMY_ASSET_FILES = [
-  "baleeiro_sombrio.png",
-  "barco_costeiro.png",
-  "barco_costeiro_congelado.png",
-  "barco_mercante_pequeno.png",
-  "boss_almirante_negro.png",
-  "boss_capitao_barba_de_ferro.png",
-  "boss_crocomar_anciao.png",
-  "boss_deinosuchus_do_mangue.png",
-  "boss_dragao_marinho_vulcanico.png",
-  "boss_grande_armada_imperial.png",
-  "boss_holandes_voador.png",
-  "boss_jormungandr_de_gelo.png",
-  "boss_kraken_primordial.png",
-  "boss_leviata_jurassico.png",
-  "boss_megalodon_ancestral.png",
-  "boss_mosasaurus_jovem.png",
-  "boss_rainha_corsaria_scarlet.png",
-  "boss_rei_pteranodonte.png",
-  "boss_tempestade_viva.png",
-  "bote_da_marinha.png",
-  "bote_de_pesca_hostil.png",
-  "bote_pirata.png",
-  "brigantina_pirata.png",
-  "cacador_da_tormenta.png",
-  "cacador_do_mangue.png",
-  "canoa_de_couro.png",
-  "canoa_de_guerra.png",
-  "canoa_tribal.png",
-  "carapaca_vulcanica.png",
-  "contrabandista_abissal.png",
-  "corsario_boreal.png",
-  "corsario_disfarcado.png",
-  "corsario_perdido.png",
-  "corveta_da_marinha.png",
-  "corveta_vulcanica.png",
-  "cultista_do_kraken.png",
-  "cutter_real.png",
-  "dragao_marinho_jovem.png",
-  "dreadnought_afundado.png",
-  "escuna_fantasma.png",
-  "escuna_pirata.png",
-  "escuna_rapida.png",
-  "fragata_congelada.png",
-  "fragata_imperial.png",
-  "fragata_pirata.png",
-  "frota_imperial_perdida.png",
-  "galeao_pirata.png",
-  "galeao_real.png",
-  "guardiao_do_canal.png",
-  "ictiossauro.png",
-  "jacare_da_lagoa.png",
-  "jangada_de_caca.png",
-  "jangada_de_pescador.png",
-  "leviata_menor.png",
-  "nau_espectral.png",
-  "navio_almirante.png",
-  "navio_amaldicoado.png",
-  "navio_danificado.png",
-  "navio_de_carga.png",
-  "navio_de_linha.png",
-  "navio_de_suprimentos.png",
-  "navio_fantasma_do_gelo.png",
-  "navio_fantasma_lendario.png",
-  "navio_quebra_bloqueio.png",
-  "patrulha_naval.png",
-  "pequeno_contrabandista.png",
-  "pescador_primitivo.png",
-  "plesiossauro.png",
-  "pterodactilo_cacador.png",
-  "remador_das_ilhas.png",
-  "remador_rival.png",
-  "reptil_das_raizes.png",
-  "saqueador_da_selva.png",
-  "saqueador_de_cinzas.png",
-  "serpente_de_gelo.png",
-  "serpente_marinha.png",
-  "traineira_saqueadora.png",
-  "transporte_de_obsidiana.png",
-  "transporte_de_ouro.png",
-  "transporte_ilegal.png",
-  "vulto_do_triangulo.png"
-];
-const ENEMY_SPRITESHEET_ASSET_FILES = [
-  "01_Canoa_de_Couro_sprite_9frames.png",
-  "01_Remador_Rival_sprite_9frames.png",
-  "02_Pescador_Primitivo_sprite_9frames.png",
-  "02_Pterodactilo_Cacador_sprite_9frames.png",
-  "03_Jacare_da_Lagoa_sprite_9frames.png",
-  "03_Remador_das_Ilhas_sprite_9frames.png",
-  "04_Boss_Crocomar_Anciao_sprite_9frames.png",
-  "04_Boss_Rei_Pteranodonte_sprite_9frames.png",
-  "05_Canoa_Tribal_sprite_9frames.png",
-  "05_Jangada_de_Caca_sprite_9frames.png",
-  "06_Cacador_do_Mangue_sprite_9frames.png",
-  "06_Ictiossauro_sprite_9frames.png",
-  "07_Reptil_das_Raizes_sprite_9frames.png",
-  "07_Saqueador_da_Selva_sprite_9frames.png",
-  "08_Boss_Deinosuchus_do_Mangue_sprite_9frames.png",
-  "08_Boss_Mosasaurus_Jovem_sprite_9frames.png",
-  "MAP-03_01_Canoa_de_Guerra_sprite_9frames.png",
-  "MAP-03_02_Plesiossauro_sprite_9frames.png",
-  "MAP-03_03_Guardiao_do_Canal_sprite_9frames.png",
-  "MAP-03_04_Boss_Leviata_Jurassico_sprite_9frames.png",
-  "MAP-03_05_Jangada_de_Pescador_sprite_9frames.png",
-  "MAP-03_06_Barco_Costeiro_sprite_9frames.png",
-  "MAP-03_07_Bote_Pirata_sprite_9frames.png",
-  "MAP-03_08_Pequeno_Contrabandista_sprite_9frames.png",
-  "MAP-03_09_Escuna_Pirata_sprite_9frames.png",
-  "MAP-03_10_Boss_Capitao_Barba_de_Ferro_sprite_9frames.png",
-  "MAP-04_01_Bote_de_Pesca_Hostil_sprite_9frames.png",
-  "MAP-04_02_Traineira_Saqueadora_sprite_9frames.png",
-  "MAP-04_03_Barco_Mercante_Pequeno_sprite_9frames.png",
-  "MAP-04_04_Navio_de_Carga_sprite_9frames.png",
-  "MAP-04_05_Escuna_Rapida_sprite_9frames.png",
-  "MAP-04_06_Patrulha_Naval_sprite_9frames.png",
-  "MAP-04_07_Transporte_de_Ouro_sprite_9frames.png",
-  "MAP-04_08_Boss_Rainha_Corsaria_Scarlet_sprite_9frames.png",
-  "MAP-05_01_Canoinha_Saqueadora_sprite_9frames.png",
-  "MAP-05_02_Jangada_de_Ferro_sprite_9frames.png",
-  "MAP-05_03_Canoa_dos_Saqueadores_sprite_9frames.png",
-  "MAP-05_04_Jangada_Espinhosa_sprite_9frames.png",
-  "MAP-05_05_Canoa_do_Carnical_sprite_9frames.png",
-  "MAP-05_06_Bote_de_Guerra_sprite_9frames.png",
-  "MAP-05_07_Jangada_Blindada_sprite_9frames.png",
-  "MAP-05_08_Barco_de_Assalto_sprite_9frames.png",
-  "MAP-05_09_Galeao_Sombrio_sprite_9frames.png",
-  "MAP-06_01_Canoa_Corrompida_sprite_9frames.png",
-  "MAP-06_02_Jangada_Abissal_sprite_9frames.png",
-  "MAP-06_03_Canoa_dos_Devoradores_sprite_9frames.png",
-  "MAP-06_04_Jangada_Fantasma_sprite_9frames.png",
-  "MAP-06_05_Canoa_das_Almas_Perdidas_sprite_9frames.png",
-  "MAP-06_06_Bote_do_Executor_sprite_9frames.png",
-  "MAP-06_07_Jangada_Necromante_sprite_9frames.png",
-  "MAP-06_08_Barco_do_Leviata_sprite_9frames.png",
-  "MAP-06_09_Galeao_Profano_sprite_9frames.png",
-  "MAP-07_01_Baleeiro_Sombrio_sprite_9frames.png",
-  "MAP-07_02_Navio_de_Suprimentos_sprite_9frames.png",
-  "MAP-07_03_Contrabandista_Abissal_sprite_9frames.png",
-  "MAP-07_04_Serpente_Marinha_sprite_9frames.png",
-  "MAP-07_05_Galeao_Pirata_sprite_9frames.png",
-  "MAP-07_06_Bote_de_Caca_Abissal_sprite_9frames.png",
-  "MAP-07_07_Carcaca_Flutuante_sprite_9frames.png",
-  "MAP-07_08_Corveta_do_Abismo_sprite_9frames.png",
-  "MAP-07_09_Boss_Megalodon_Ancestral_sprite_9frames.png",
-  "MAP-08_01_Escuna_Fantasma_sprite_9frames.png",
-  "MAP-08_02_Nau_Espectral_sprite_9frames.png",
-  "MAP-08_03_Navio_Amaldicoado_sprite_9frames.png",
-  "MAP-08_04_Corsario_Perdido_sprite_9frames.png",
-  "MAP-08_05_Vulto_do_Triangulo_sprite_9frames.png",
-  "MAP-08_06_Barca_Condenada_sprite_9frames.png",
-  "MAP-08_07_Fragata_Nebulosa_sprite_9frames.png",
-  "MAP-08_08_Ceifador_das_Brumas_sprite_9frames.png",
-  "MAP-08_09_Boss_Holandes_Voador_sprite_9frames.png",
-  "MAP-09_01_Bote_da_Marinha_sprite_9frames.png",
-  "MAP-09_02_Cutter_Real_sprite_9frames.png",
-  "MAP-09_03_Corveta_Real_sprite_9frames.png",
-  "MAP-09_04_Fragata_Imperial_sprite_9frames.png",
-  "MAP-09_05_Galeao_Real_sprite_9frames.png",
-  "MAP-09_06_Navio_de_Linha_sprite_9frames.png",
-  "MAP-09_07_Navio_Almirante_sprite_9frames.png",
-  "MAP-09_08_Patrulha_Imperial_sprite_9frames.png",
-  "MAP-09_09_Boss_Grande_Armada_Imperial_sprite_9frames.png",
-  "MAP-10_01_Saqueador_de_Cinzas_sprite_9frames.png",
-  "MAP-10_02_Transporte_de_Obsidiana_sprite_9frames.png",
-  "MAP-10_03_Corveta_Vulcanica_sprite_9frames.png",
-  "MAP-10_04_Carapaca_Vulcanica_sprite_9frames.png",
-  "MAP-10_05_Dragao_Marinho_Jovem_sprite_9frames.png",
-  "MAP-10_06_Barca_de_Lava_sprite_9frames.png",
-  "MAP-10_07_Monitor_de_Basalto_sprite_9frames.png",
-  "MAP-10_08_Fragata_das_Cinzas_sprite_9frames.png",
-  "MAP-10_09_Boss_Dragao_Marinho_Vulcanico_sprite_9frames.png",
-  "MAP-11_01_Barco_Costeiro_Congelado_sprite_9frames.png",
-  "MAP-11_02_Corsario_Boreal_sprite_9frames.png",
-  "MAP-11_03_Fragata_Congelada_sprite_9frames.png",
-  "MAP-11_04_Navio_Fantasma_do_Gelo_sprite_9frames.png",
-  "MAP-11_05_Serpente_de_Gelo_sprite_9frames.png",
-  "MAP-11_06_Drakkar_Boreal_sprite_9frames.png",
-  "MAP-11_07_Baleeiro_Glacial_sprite_9frames.png",
-  "MAP-11_08_Patrulha_Polar_sprite_9frames.png",
-  "MAP-11_09_Boss_Jormungandr_de_Gelo_sprite_9frames.png",
-  "MAP-12_01_Cultista_do_Kraken_sprite_9frames.png",
-  "MAP-12_02_Dreadnought_Afundado_sprite_9frames.png",
-  "MAP-12_03_Frota_Imperial_Perdida_sprite_9frames.png",
-  "MAP-12_04_Leviata_Menor_sprite_9frames.png",
-  "MAP-12_05_Navio_Fantasma_Lendario_sprite_9frames.png",
-  "MAP-12_06_Barca_Ritualista_sprite_9frames.png",
-  "MAP-12_07_Nau_dos_Condenados_sprite_9frames.png",
-  "MAP-12_08_Tentaculo_Guardiao_sprite_9frames.png",
-  "MAP-12_09_Boss_Kraken_Primordial_sprite_9frames.png"
-];
-const SHIP_ASSET_FILES = [
-  "barco_de_pesca_adaptado.png",
-  "black_abyss.png",
-  "bote_armado.png",
-  "bote_de_tronco.png",
-  "brigantina_pequena.png",
-  "brigantina_pirata.png",
-  "canoa_de_caca.png",
-  "canoa_do_tita.png",
-  "corveta_armada.png",
-  "corveta_simples.png",
-  "cutter_real.png",
-  "encouracado_imperial.png",
-  "escuna_leve.png",
-  "escuna_mercante.png",
-  "fragata_corsaria.png",
-  "fragata_fantasma.png",
-  "fragata_real.png",
-  "galeao_de_guerra.png",
-  "galeao_mercante.png",
-  "galeao_pirata.png",
-  "galeota.png",
-  "jangada_de_cipo.png",
-  "jangada_reforcada.png",
-  "jangada_reforcada_primitiva.png",
-  "kraken_hunter.png",
-  "navio_mercante_armado.png"
-];
-const PLAYER_SHIP_SPRITESHEET_ASSET_FILES = [
-  "PLAYER-01_01_Bote_de_Tronco_sprite_9frames.png",
-  "PLAYER-01_02_Jangada_de_Cipó_sprite_9frames.png",
-  "PLAYER-01_03_Canoa_de_Caça_sprite_9frames.png",
-  "PLAYER-01_04_Jangada_Reforçada_Primitiva_sprite_9frames.png",
-  "PLAYER-01_05_Canoa_do_Titã_sprite_9frames.png",
-  "PLAYER-01_06_Bote_Armado_sprite_9frames.png",
-  "PLAYER-01_07_Jangada_Reforçada_sprite_9frames.png",
-  "PLAYER-01_08_Barco_de_Pesca_Adaptado_sprite_9frames.png",
-  "PLAYER-01_09_Escuna_Leve_sprite_9frames.png",
-  "PLAYER-02_01_Escuna_Mercante_sprite_9frames.png",
-  "PLAYER-02_02_Cutter_Real_sprite_9frames.png",
-  "PLAYER-02_03_Brigantina_Pequena_sprite_9frames.png",
-  "PLAYER-02_04_Corveta_Simples_sprite_9frames.png",
-  "PLAYER-02_05_Brigantina_Pirata_sprite_9frames.png",
-  "PLAYER-02_06_Corveta_Armada_sprite_9frames.png",
-  "PLAYER-02_07_Galeota_sprite_9frames.png",
-  "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png",
-  "PLAYER-03_01_Galeao_Mercante_sprite_9frames.png",
-  "PLAYER-03_02_Galeao_Pirata_sprite_9frames.png",
-  "PLAYER-03_03_Fragata_Real_sprite_9frames.png",
-  "PLAYER-03_04_Fragata_Corsaria_sprite_9frames.png",
-  "PLAYER-03_05_Galeao_de_Guerra_sprite_9frames.png",
-  "PLAYER-03_06_Encouracado_Imperial_sprite_9frames.png",
-  "PLAYER-03_07_Fragata_Fantasma_sprite_9frames.png",
-  "PLAYER-03_08_Kraken_Hunter_sprite_9frames.png",
-  "PLAYER-03_09_Black_Abyss_sprite_9frames.png"
-];
-const ISLAND_ASSET_FILES = [];
-const FIXED_BACKGROUND_ASSET_FILES = [
-  "01 - Lagoa dos Remadores.png",
-  "02 - Manguezal dos Ancestrais.png",
-  "03 - Ilha dos Pterodactilos.png",
-  "04 - Selva dos Repteis Marinhos.png",
-  "05 - Canal Ancestral.png",
-  "06 - Costa dos Náufragos.png",
-  "07 - Ilhas Comerciais (fortes da marinha).png",
-  "08 - Mar das Tempestades.png",
-  "09 - Baía dos Corsários.png",
-  "10 - Oceano Profundo.png",
-  "11 - Triangulo Maldito.png",
-  "12 - Mar Imperial.png",
-  "13 - Arquipelago Vulcanico.png",
-  "14 - Reino Congelado.png",
-  "15 - Abismo do Kraken.png"
-];
-const OCEAN_ASSET_FILES = [
-  "16_fundo_do_mar_oceano.png"
-];
-const PET_ASSET_FILES = [
-  "peixe_palhaco.png",
-  "agua_viva.png",
-  "tartaruga_marinha.png",
-  "foca.png",
-  "golfinho.png",
-  "arraia_eletrica.png",
-  "tubarao.png",
-  "baleia_assassina.png",
-  "megalodon.png",
-  "kraken.png"
-];
-const CAPTAIN_CHARACTER_ASSET_FILES = [
-  "pirata_masculino_tier_01_3sprites.png",
-  "pirata_masculino_tier_02_3sprites.png",
-  "pirata_masculino_tier_03_3sprites.png",
-  "pirata_masculino_tier_04_3sprites.png",
-  "pirata_masculino_tier_05_3sprites.png",
-  "pirata_masculino_tier_06_3sprites.png",
-  "pirata_masculino_tier_07_3sprites.png",
-  "pirata_masculino_tier_08_3sprites.png",
-  "pirata_masculino_tier_09_3sprites.png",
-  "pirata_masculino_tier_10_3sprites.png",
-  "pirata_feminino_tier_01_3sprites.png",
-  "pirata_feminino_tier_02_3sprites.png",
-  "pirata_feminino_tier_03_3sprites.png",
-  "pirata_feminino_tier_04_3sprites.png",
-  "pirata_feminino_tier_05_3sprites.png",
-  "pirata_feminino_tier_06_3sprites.png",
-  "pirata_feminino_tier_07_3sprites.png",
-  "pirata_feminino_tier_08_3sprites.png",
-  "pirata_feminino_tier_09_3sprites.png",
-  "pirata_feminino_tier_10_3sprites.png"
-];
-const ASSETS = [
+const CACHE = "pirates-abyss-v68-mobile-lean";
+const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=44",
-  "game.js?v=76",
+  "styles.css?v=46",
+  "game.js?v=78",
   "icon.svg",
-  "manifest.webmanifest",
-  "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif",
-  "assets/maps/jornada_pirata_parte1_animado.gif",
-  "assets/maps/jornada_pirata_parte2_animado.gif",
-  ...FIXED_BACKGROUND_ASSET_FILES.map(file => `assets/newbackgrounds/${file}`),
-  ...ENEMY_ASSET_FILES.map(file => `assets/enemies/${file}`),
-  ...ENEMY_SPRITESHEET_ASSET_FILES.map(file => `assets/spritesenemies/${file}`),
-  ...SHIP_ASSET_FILES.map(file => `assets/ships/${file}`),
-  ...PLAYER_SHIP_SPRITESHEET_ASSET_FILES.map(file => `assets/spritesships/${file}`),
-  ...ISLAND_ASSET_FILES.map(file => `assets/backgrounds/islands/${file}`),
-  ...OCEAN_ASSET_FILES.map(file => `assets/backgrounds/ocean/${file}`),
-  ...PET_ASSET_FILES.map(file => `assets/pets/${file}`),
-  ...CAPTAIN_CHARACTER_ASSET_FILES.map(file => `assets/newpirates/${file}`)
+  "manifest.webmanifest"
 ];
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)));
   self.skipWaiting();
 });
 
@@ -334,8 +20,11 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
+
   const url = new URL(event.request.url);
+  const isSameOrigin = url.origin === self.location.origin;
   const isNavigation = event.request.mode === "navigate" || url.pathname.endsWith("/") || url.pathname.endsWith("/index.html");
+
   if (isNavigation) {
     event.respondWith(fetch(event.request).then(response => {
       const copy = response.clone();
@@ -344,9 +33,15 @@ self.addEventListener("fetch", event => {
     }).catch(() => caches.match("index.html")));
     return;
   }
-  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
-    const copy = response.clone();
-    caches.open(CACHE).then(cache => cache.put(event.request, copy));
-    return response;
-  }).catch(() => caches.match("index.html"))));
+
+  if (!isSameOrigin) return;
+
+  event.respondWith(caches.match(event.request).then(cached => {
+    if (cached) return cached;
+    return fetch(event.request).then(response => {
+      const copy = response.clone();
+      if (response.ok) caches.open(CACHE).then(cache => cache.put(event.request, copy));
+      return response;
+    });
+  }));
 });
