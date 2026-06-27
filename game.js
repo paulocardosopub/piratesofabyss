@@ -1453,7 +1453,8 @@
     const progressScore = (state.maxRegionReached - prestigeRegionIndex()) * 3 + bossesCount() * .8 + state.pirateLevel * .12;
     const strengthScore = Math.sqrt(stats.power) / 14 + Math.sqrt(stats.dps) / 18 + Math.sqrt(stats.maxHp) / 30;
     const journeyScore = upgradeScore * .12 + Math.log10(1 + state.lifetime.enemies) * 1.5 + resourceScore * .08 + state.ownedPets.length;
-    return Math.max(nextPetCost, Math.floor(nextPetCost + Math.max(0, progressScore + strengthScore + journeyScore - 8)));
+    const baseReward = Math.max(nextPetCost, Math.floor(nextPetCost + Math.max(0, progressScore + strengthScore + journeyScore - 8)));
+    return Math.floor(baseReward * PRESTIGE_PIRATE_COIN_REWARD_MULTIPLIER);
   }
 
   function getSkillCooldown(key, level = state.skills[key].level, speed = getStats().speed) {
@@ -1894,6 +1895,7 @@
   const ENEMY_STATE_SPRITES = { normal: 0, damaged: 6, defeated: 8 };
   const PLAYER_SHIP_STATE_SPRITES = { normal: 0, damaged: 0, defeated: 8 };
   const PET_STATE_SPRITES = { normal: 0, damaged: 1, defeated: 2 };
+  const PRESTIGE_PIRATE_COIN_REWARD_MULTIPLIER = 1.5;
   const SPRITE_STATE_SPRITES = {
     enemy: ENEMY_STATE_SPRITES,
     playerShip: PLAYER_SHIP_STATE_SPRITES,
@@ -2001,6 +2003,7 @@
     const usesNineFrameLayout = fileFrameCount === 9;
     const sprite = {
       key: name,
+      role: "playerShip",
       image: createLazyImage(),
       canvas: null,
       file,
@@ -2015,6 +2018,7 @@
       captainAnchorY: options.captainAnchorY ?? .67,
       offsetX: options.offsetX || 0,
       offsetY: options.offsetY || 0,
+      stateFrames: { ...PLAYER_SHIP_STATE_SPRITES },
       ready: false,
       processing: false,
       requested: false,
@@ -2386,15 +2390,23 @@
   function measureEnemyFrameBounds(sprite, data, width, height) {
     const frameWidth = Math.floor(width / sprite.columns);
     const frameHeight = Math.floor(height / sprite.rows);
+    sprite.frameWidth = frameWidth;
+    sprite.frameHeight = frameHeight;
     const bounds = [];
     for (let frame = 0; frame < sprite.frames; frame++) {
       const frameX = (frame % sprite.columns) * frameWidth;
       const frameY = Math.floor(frame / sprite.columns) * frameHeight;
       let left = frameWidth, top = frameHeight, right = -1, bottom = -1;
+      let area = 0, sumX = 0, sumY = 0, upperArea = 0, lowerArea = 0;
       for (let y = 0; y < frameHeight; y++) {
         for (let x = 0; x < frameWidth; x++) {
           const index = ((frameY + y) * width + frameX + x) * 4;
           if (data[index + 3] <= 8) continue;
+          area += 1;
+          sumX += x;
+          sumY += y;
+          if (y < frameHeight * .4) upperArea += 1;
+          if (y > frameHeight * .62) lowerArea += 1;
           if (x < left) left = x;
           if (x > right) right = x;
           if (y < top) top = y;
@@ -2402,13 +2414,110 @@
         }
       }
       bounds[frame] = right >= left && bottom >= top
-        ? { left, top, right, bottom, centerX: (left + right) / 2, bottomY: bottom }
-        : { left: 0, top: 0, right: frameWidth, bottom: frameHeight, centerX: frameWidth / 2, bottomY: frameHeight };
+        ? {
+          left,
+          top,
+          right,
+          bottom,
+          area,
+          width: right - left + 1,
+          height: bottom - top + 1,
+          centerX: sumX / area,
+          centerY: sumY / area,
+          bottomY: bottom,
+          upperRatio: upperArea / area,
+          lowerRatio: lowerArea / area
+        }
+        : {
+          left: 0,
+          top: 0,
+          right: frameWidth,
+          bottom: frameHeight,
+          area: 0,
+          width: frameWidth,
+          height: frameHeight,
+          centerX: frameWidth / 2,
+          centerY: frameHeight / 2,
+          bottomY: frameHeight,
+          upperRatio: 0,
+          lowerRatio: 0
+        };
     }
     const referenceFrames = [0, 1, 2].map(frame => bounds[frame]).filter(Boolean);
     const average = key => referenceFrames.reduce((sum, item) => sum + item[key], 0) / Math.max(1, referenceFrames.length);
     sprite.frameBounds = bounds;
-    sprite.referenceBounds = { centerX: average("centerX"), bottomY: average("bottomY") };
+    sprite.referenceBounds = {
+      area: average("area"),
+      width: average("width"),
+      height: average("height"),
+      top: average("top"),
+      bottom: average("bottom"),
+      centerX: average("centerX"),
+      centerY: average("centerY"),
+      bottomY: average("bottomY"),
+      upperRatio: average("upperRatio"),
+      lowerRatio: average("lowerRatio")
+    };
+  }
+
+  function frameFeatureDistance(a, b, frameWidth, frameHeight) {
+    if (!a || !b) return Number.POSITIVE_INFINITY;
+    const safeArea = Math.max(1, b.area || a.area || 1);
+    const safeWidth = Math.max(1, b.width || a.width || 1);
+    const safeHeight = Math.max(1, b.height || a.height || 1);
+    return Math.abs((a.area - b.area) / safeArea) * .8 +
+      Math.abs((a.width - b.width) / safeWidth) * .65 +
+      Math.abs((a.height - b.height) / safeHeight) * .85 +
+      Math.abs((a.centerX - b.centerX) / Math.max(1, frameWidth)) * 1.2 +
+      Math.abs((a.centerY - b.centerY) / Math.max(1, frameHeight)) * 1.25 +
+      Math.abs((a.bottomY - b.bottomY) / Math.max(1, frameHeight)) * 1.35 +
+      Math.abs((a.upperRatio || 0) - (b.upperRatio || 0)) * .8 +
+      Math.abs((a.lowerRatio || 0) - (b.lowerRatio || 0)) * .8;
+  }
+
+  function isAliveDamagedFrame(sprite, frame, normalFrame, defeatedFrame) {
+    const frameWidth = sprite.frameWidth || 1;
+    const frameHeight = sprite.frameHeight || 1;
+    const normal = sprite.referenceBounds || sprite.frameBounds?.[normalFrame];
+    const candidate = sprite.frameBounds?.[frame];
+    const defeated = sprite.frameBounds?.[defeatedFrame];
+    if (!normal || !candidate || !candidate.area || frame === defeatedFrame) return false;
+    const areaRatio = candidate.area / Math.max(1, normal.area || candidate.area);
+    const heightRatio = candidate.height / Math.max(1, normal.height || candidate.height);
+    const widthRatio = candidate.width / Math.max(1, normal.width || candidate.width);
+    const centerShift = Math.abs(candidate.centerX - normal.centerX) / Math.max(1, frameWidth);
+    const bottomShift = Math.abs(candidate.bottomY - normal.bottomY) / Math.max(1, frameHeight);
+    const topShift = Math.abs(candidate.top - normal.top) / Math.max(1, frameHeight);
+    const normalDistance = frameFeatureDistance(candidate, normal, frameWidth, frameHeight);
+    const defeatedDistance = defeated ? frameFeatureDistance(candidate, defeated, frameWidth, frameHeight) : Number.POSITIVE_INFINITY;
+    if (areaRatio < .58 || areaRatio > 1.35) return false;
+    if (heightRatio < .72 || heightRatio > 1.32) return false;
+    if (widthRatio < .72 || widthRatio > 1.22) return false;
+    if (centerShift > .15 || bottomShift > .2 || topShift > .22) return false;
+    if (candidate.top > normal.top + frameHeight * .12 && heightRatio < .94) return false;
+    if (defeated && defeated.area && defeatedDistance < normalDistance * .92) return false;
+    return true;
+  }
+
+  function configureSpritesheetStateFrames(sprite) {
+    const role = sprite.role || "enemy";
+    const defaults = SPRITE_STATE_SPRITES[role] || ENEMY_STATE_SPRITES;
+    const maxFrame = Math.max(0, (sprite.frames || 1) - 1);
+    const normalFrame = clamp(Math.floor(defaults.normal || 0), 0, maxFrame);
+    const defeatedFrame = clamp(Math.floor(defaults.defeated ?? normalFrame), 0, maxFrame);
+    if (role !== "enemy") {
+      sprite.stateFrames = {
+        normal: normalFrame,
+        damaged: clamp(Math.floor(defaults.damaged ?? normalFrame), 0, maxFrame),
+        defeated: defeatedFrame
+      };
+      return;
+    }
+    const damagedCandidates = [defaults.damaged, 7, 6]
+      .map(frame => clamp(Math.floor(Number(frame) || 0), 0, maxFrame))
+      .filter((frame, index, list) => frame !== normalFrame && frame !== defeatedFrame && list.indexOf(frame) === index);
+    const damagedFrame = damagedCandidates.find(frame => isAliveDamagedFrame(sprite, frame, normalFrame, defeatedFrame)) ?? normalFrame;
+    sprite.stateFrames = { normal: normalFrame, damaged: damagedFrame, defeated: defeatedFrame };
   }
 
   function normalizeSpritesheetGrid(sprite, width, height) {
@@ -2561,6 +2670,66 @@
     }
   }
 
+  function removeConnectedSpritesheetBackground(sprite, data, width, height, bg, bgIsLightNeutral) {
+    const visited = new Uint8Array(width * height);
+    const queue = [];
+    let head = 0;
+    const preserveNeutralDetails = Boolean(sprite?.preserveNeutralDetails);
+    const columns = Math.max(1, sprite?.columns || 1);
+    const rows = Math.max(1, sprite?.rows || 1);
+    const frameWidth = Math.floor(width / columns);
+    const frameHeight = Math.floor(height / rows);
+    const isConnectedBackground = index => {
+      if (data[index + 3] <= 8) return true;
+      const r = data[index], g = data[index + 1], b = data[index + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const saturation = max - min;
+      const average = (r + g + b) / 3;
+      const distance = Math.hypot(r - bg.r, g - bg.g, b - bg.b);
+      return distance < (preserveNeutralDetails ? 58 : 50) ||
+        (saturation < 9 && average > 88 && average < 190 && distance < (preserveNeutralDetails ? 96 : 82)) ||
+        (bgIsLightNeutral && saturation < 16 && average > 176 && distance < (preserveNeutralDetails ? 92 : 78));
+    };
+    const push = (x, y) => {
+      if (x < 0 || y < 0 || x >= width || y >= height) return;
+      const point = y * width + x;
+      if (visited[point]) return;
+      const index = point * 4;
+      if (!isConnectedBackground(index)) return;
+      visited[point] = 1;
+      data[index + 3] = 0;
+      queue.push(point);
+    };
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < columns; column++) {
+        const left = column * frameWidth;
+        const top = row * frameHeight;
+        const right = column === columns - 1 ? width - 1 : left + frameWidth - 1;
+        const bottom = row === rows - 1 ? height - 1 : top + frameHeight - 1;
+        for (let x = left; x <= right; x++) {
+          push(x, top);
+          push(x, bottom);
+        }
+        for (let y = top + 1; y < bottom; y++) {
+          push(left, y);
+          push(right, y);
+        }
+      }
+    }
+    while (head < queue.length) {
+      const point = queue[head++];
+      const x = point % width;
+      const y = Math.floor(point / width);
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          if (!ox && !oy) continue;
+          push(x + ox, y + oy);
+        }
+      }
+    }
+  }
+
   function cleanSpriteTransparency(sprite, data, width, height) {
     const samplePoints = [
       0,
@@ -2584,52 +2753,8 @@
     const bgMin = Math.min(bg.r, bg.g, bg.b);
     const bgAverage = (bg.r + bg.g + bg.b) / 3;
     const bgIsLightNeutral = bgMax - bgMin < 36 && bgAverage > 196;
-    const preserveNeutralDetails = Boolean(sprite?.preserveNeutralDetails);
-    if (preserveNeutralDetails && hasOpaqueBackground) {
-      const visited = new Uint8Array(width * height);
-      const queue = [];
-      let head = 0;
-      const isConnectedBackground = index => {
-        if (data[index + 3] <= 8) return true;
-        const r = data[index], g = data[index + 1], b = data[index + 2];
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        const saturation = max - min;
-        const average = (r + g + b) / 3;
-        const distance = Math.hypot(r - bg.r, g - bg.g, b - bg.b);
-        return distance < 58 ||
-          (saturation < 9 && average > 88 && average < 190 && distance < 96) ||
-          (bgIsLightNeutral && saturation < 16 && average > 176 && distance < 92);
-      };
-      const push = (x, y) => {
-        if (x < 0 || y < 0 || x >= width || y >= height) return;
-        const point = y * width + x;
-        if (visited[point]) return;
-        const index = point * 4;
-        if (!isConnectedBackground(index)) return;
-        visited[point] = 1;
-        data[index + 3] = 0;
-        queue.push(point);
-      };
-      for (let x = 0; x < width; x++) {
-        push(x, 0);
-        push(x, height - 1);
-      }
-      for (let y = 1; y < height - 1; y++) {
-        push(0, y);
-        push(width - 1, y);
-      }
-      while (head < queue.length) {
-        const point = queue[head++];
-        const x = point % width;
-        const y = Math.floor(point / width);
-        for (let oy = -1; oy <= 1; oy++) {
-          for (let ox = -1; ox <= 1; ox++) {
-            if (!ox && !oy) continue;
-            push(x + ox, y + oy);
-          }
-        }
-      }
+    if (hasOpaqueBackground) {
+      removeConnectedSpritesheetBackground(sprite, data, width, height, bg, bgIsLightNeutral);
       cleanupSpritesheetLightArtifacts(data, width, height);
       return;
     }
@@ -2642,7 +2767,7 @@
       const distance = Math.hypot(r - bg.r, g - bg.g, b - bg.b);
       if (
         (hasOpaqueBackground && distance < 44) ||
-        (hasOpaqueBackground && !preserveNeutralDetails && saturation < 9 && average > 88 && average < 190) ||
+        (hasOpaqueBackground && saturation < 9 && average > 88 && average < 190) ||
         (bgIsLightNeutral && saturation < 16 && average > 176 && distance < 92)
       ) data[i + 3] = 0;
     }
@@ -2665,6 +2790,7 @@
       cleanSpriteTransparency(sprite, data, canvas.width, canvas.height);
       cleanupSpritesheetDetachedFrameArtifacts(sprite, data, canvas.width, canvas.height);
       measureEnemyFrameBounds(sprite, data, canvas.width, canvas.height);
+      configureSpritesheetStateFrames(sprite);
       context.putImageData(pixels, 0, 0);
       sprite.canvas = canvas;
       sprite.ready = true;
@@ -2687,6 +2813,7 @@
     const sprite = {
       key: name,
       sheetKey: regionalKey,
+      role: "enemy",
       image: createLazyImage(),
       canvas: null,
       file,
@@ -2700,6 +2827,7 @@
       anchorY: options.anchorY ?? .64,
       offsetX: options.offsetX || 0,
       offsetY: options.offsetY || 0,
+      stateFrames: null,
       frameBounds: null,
       referenceBounds: null,
       ready: false,
@@ -3536,7 +3664,7 @@
     }
 
     getStateSpriteFrame(sprite, stateName, role = "enemy") {
-      const frames = SPRITE_STATE_SPRITES[role] || ENEMY_STATE_SPRITES;
+      const frames = sprite?.stateFrames || SPRITE_STATE_SPRITES[role] || ENEMY_STATE_SPRITES;
       const selected = frames[stateName] ?? frames.normal ?? 0;
       return clamp(Math.floor(Number(selected) || 0), 0, Math.max(0, (sprite?.frames || 1) - 1));
     }
@@ -3614,12 +3742,14 @@
       if (sprite.image?.complete && sprite.image.naturalWidth && !sprite.ready && !sprite.processing) prepareEnemySpritesheet(sprite);
       const maxHp = Math.max(1, Number(enemy.maxHp) || Number(enemy.hp) || 1);
       const hp = enemy.defeated ? 0 : Math.max(0, Number(enemy.hp ?? maxHp) || 0);
-      const stateName = this.getSpriteHpState(hp, maxHp, enemy.defeated || Boolean(animation.deathStartedAt));
+      const isDefeated = enemy.defeated || hp <= 0;
+      const stateName = this.getSpriteHpState(hp, maxHp, isDefeated);
+      if (!isDefeated && animation.deathStartedAt) animation.deathStartedAt = 0;
       return {
         stateName,
         frame: this.getStateSpriteFrame(sprite, stateName, "enemy"),
         blend: 0,
-        elapsed: animation.deathStartedAt ? Math.max(0, this.time - animation.deathStartedAt) : this.time + (animation.frameSeed || 0),
+        elapsed: stateName === SPRITE_HP_STATES.defeated && animation.deathStartedAt ? Math.max(0, this.time - animation.deathStartedAt) : this.time + (animation.frameSeed || 0),
         seed: animation.frameSeed || 0
       };
     }
