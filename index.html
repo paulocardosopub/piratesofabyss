@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=78">
+  <link rel="stylesheet" href="styles.css?v=79">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -212,15 +212,18 @@
         </div>
         <div class="stats-accordion" id="stats-accordion">
           <section class="stats-panel" data-stats-panel="quests">
-            <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="quests" aria-expanded="false">
-              <span><span class="eyebrow">ROTAS DO CAPITÃO</span><strong>Quests</strong><small id="stats-quests-summary">0 prontas • 0 / 100</small></span>
-              <i class="stats-panel-indicator" aria-hidden="true">+</i>
-            </button>
+            <div class="stats-panel-bar stats-quests-bar">
+              <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="quests" aria-expanded="false">
+                <span><span class="eyebrow">ROTAS DO CAPITÃO</span><strong>Quests</strong><small id="stats-quests-summary">0 prontas • 0 / 100</small></span>
+                <i class="stats-panel-indicator" aria-hidden="true">+</i>
+              </button>
+              <button class="button primary stats-quick-claim-button" type="button" data-claim-all-missions disabled>Coletar tudo</button>
+            </div>
             <div class="stats-panel-body" data-stats-panel-body="quests">
               <div class="stats-quests-head">
                 <p>Objetivos guiados para evoluir seu navio, abrir mapas, derrotar bosses e manter a frota sempre com um rumo claro.</p>
                 <div class="mission-heading-actions">
-                  <button class="button primary" id="missions-claim-all" data-claim-all-missions disabled>Coletar tudo</button>
+                  <button class="button primary" type="button" data-claim-all-missions disabled>Coletar tudo</button>
                   <div class="codex-counter"><span>MISSÕES</span><strong id="missions-summary">0 / 100</strong></div>
                 </div>
               </div>
@@ -340,6 +343,6 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=152"></script>
+  <script src="game.js?v=153"></script>
 </body>
 </html>

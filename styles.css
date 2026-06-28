@@ -2024,6 +2024,33 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   border-radius: 10px;
   background: linear-gradient(145deg, rgba(13,42,59,.9), rgba(7,27,40,.98));
 }
+.stats-panel-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+}
+.stats-panel-bar .stats-panel-toggle {
+  min-height: 58px;
+  padding: 9px 11px;
+  border-radius: 8px;
+}
+.stats-quick-claim-button {
+  min-width: 132px;
+  min-height: 58px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+.stats-quick-claim-button:disabled {
+  color: rgba(238, 248, 245, .68);
+  border-color: rgba(255,255,255,.18);
+  background: rgba(255,255,255,.065);
+  box-shadow: none;
+}
 .stats-panel-toggle {
   width: 100%;
   min-height: 66px;
@@ -2345,6 +2372,8 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .mission-row-reward { grid-column: auto; }
   .mission-row p { white-space: normal; }
   .stats-quests-head { align-items: stretch; flex-direction: column; }
+  .stats-panel-bar { grid-template-columns: 1fr; }
+  .stats-quick-claim-button { width: 100%; min-height: 40px; }
   .stats-panel-toggle { min-height: 58px; padding: 10px 12px; }
   .upgrade-card, .equipment-card, .skill-card, .ship-card, .resource-card { padding: 14px; }
   .ship-visual { margin: -14px -14px 11px; }

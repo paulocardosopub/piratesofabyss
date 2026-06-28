@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v141-arena-manual-lock";
+const CACHE = "pirates-abyss-v142-quick-quest-claim";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=78",
-  "game.js?v=152",
+  "styles.css?v=79",
+  "game.js?v=153",
   "icon.svg",
   "manifest.webmanifest"
 ];

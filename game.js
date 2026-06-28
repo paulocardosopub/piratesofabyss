@@ -8691,14 +8691,14 @@
     renderProgressionFilters("mission-filters", MISSION_FILTERS, activeMissionFilter);
     const complete = completedCount(state.quests, missionDefinitions);
     const readyCount = missionDefinitions.filter(item => progressionStatus(item, state.quests, "quests") === "ready").length;
-    const claimAllButton = $("#missions-claim-all");
+    const claimAllButtons = $$("[data-claim-all-missions]");
     summary.textContent = `${complete} / ${missionDefinitions.length}`;
     const panelSummary = $("#stats-quests-summary");
     if (panelSummary) panelSummary.textContent = `${readyCount} pronta${readyCount === 1 ? "" : "s"} • ${complete} / ${missionDefinitions.length}`;
-    if (claimAllButton) {
-      claimAllButton.disabled = readyCount === 0;
-      claimAllButton.textContent = readyCount ? `Coletar tudo (${readyCount})` : "Coletar tudo";
-    }
+    claimAllButtons.forEach(button => {
+      button.disabled = readyCount === 0;
+      button.textContent = readyCount ? `Coletar tudo (${readyCount})` : "Coletar tudo";
+    });
     const cards = progressionList(missionDefinitions, state.quests, "quests", "mission")
       .filter(entry => shouldShowProgression(entry, activeMissionFilter, "mission"))
       .sort((a, b) => b.score - a.score)
