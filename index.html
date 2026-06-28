@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=70">
+  <link rel="stylesheet" href="styles.css?v=71">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -225,6 +225,14 @@
           <article class="card stats-card"><span class="eyebrow">PROGRESSÃO</span><div class="stats-list" id="progression-stats"></div></article>
           <article class="card stats-card wide"><span class="eyebrow">CARREIRA</span><div class="career-grid" id="career-stats"></div></article>
         </div>
+        <article class="card arena-card">
+          <div class="arena-heading">
+            <div><span class="eyebrow">ARENA PVP ASSÍNCRONA</span><h2>Arena dos Piratas</h2><p>Desafie navios de outros jogadores que já realizaram Prestígio.</p></div>
+            <button class="button primary" id="arena-toggle" type="button">Desafiar Jogador</button>
+          </div>
+          <div class="arena-status" id="arena-status">Clique para buscar inimigos da Arena.</div>
+          <div class="arena-list hidden" id="arena-list"></div>
+        </article>
         <div class="danger-zone">
           <div><strong>Novo começo</strong><span>Apaga todo o progresso salvo neste dispositivo.</span></div>
           <button class="button danger" id="wipe-button">Apagar progresso</button>
@@ -286,7 +294,17 @@
     </div>
   </div>
 
+  <div class="modal-backdrop hidden" id="arena-result-modal" role="dialog" aria-modal="true" aria-labelledby="arena-result-title">
+    <div class="modal arena-result-modal">
+      <div class="modal-icon" id="arena-result-icon">☠</div><span class="eyebrow">ARENA DOS PIRATAS</span>
+      <h2 id="arena-result-title">Resultado da Arena</h2>
+      <p id="arena-result-message">Duelo concluído.</p>
+      <div class="arena-result-summary" id="arena-result-summary"></div>
+      <div class="modal-actions"><button class="button primary" id="arena-result-close">Voltar ao mapa normal</button></div>
+    </div>
+  </div>
+
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=138"></script>
+  <script src="game.js?v=143"></script>
 </body>
 </html>

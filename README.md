@@ -29,6 +29,7 @@ window.PIRATES_ONLINE_CONFIG = {
   supabaseAnonKey: "SUA_CHAVE_PUBLICA_DO_SUPABASE",
   tableName: "pirate_leaderboard",
   readRelationName: "pirate_leaderboard_public",
+  arenaRelationName: "pirate_arena_public",
   limit: 50
 };
 ```

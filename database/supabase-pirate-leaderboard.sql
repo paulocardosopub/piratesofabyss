@@ -41,6 +41,24 @@ where best_prestige_level >= 1;
 
 grant select on public.pirate_leaderboard_public to anon, authenticated;
 
+create or replace view public.pirate_arena_public as
+select
+  player_id,
+  pirate_name,
+  selected_pirate_id,
+  selected_pirate_name,
+  prestige_count,
+  best_prestige_level,
+  best_prestige_power,
+  pvp_snapshot,
+  last_prestige_at,
+  updated_at
+from public.pirate_leaderboard
+where best_prestige_level >= 1
+  and pvp_snapshot is not null;
+
+grant select on public.pirate_arena_public to anon, authenticated;
+
 create or replace function public.upsert_pirate_leaderboard(
   p_player_id text,
   p_pirate_name text,

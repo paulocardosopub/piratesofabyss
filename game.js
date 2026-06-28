@@ -4,6 +4,11 @@
   const SAVE_KEY = "pirates-of-the-abyss-save-v1";
   const COMBAT_MINIMIZED_KEY = "pirates-of-the-abyss-combat-minimized";
   const LEADERBOARD_LIMIT = 50;
+  const ARENA_OPPONENT_LIMIT = 10;
+  const ARENA_MIN_OPPONENTS = 5;
+  const ARENA_ATTACK_INTERVAL_DEFAULT_MS = 1500;
+  const ARENA_ATTACK_INTERVAL_MIN_MS = 300;
+  const ARENA_ATTACK_INTERVAL_MAX_MS = 5000;
   const PIRATE_NAME_MIN_LENGTH = 3;
   const PIRATE_NAME_MAX_LENGTH = 20;
   const PVP_SNAPSHOT_VERSION = 1;
@@ -78,6 +83,17 @@
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, PIRATE_NAME_MAX_LENGTH);
+  }
+
+  function sanitizeArenaDisplayName(value = "", fallback = "Pirata da Arena") {
+    const text = String(value || "");
+    const normalized = text.normalize ? text.normalize("NFKC") : text;
+    const clean = normalized
+      .replace(/[\u0000-\u001f\u007f<>`"'&]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 48);
+    return clean || fallback;
   }
 
   function isValidPirateName(value = state?.pirateName) {
@@ -284,6 +300,7 @@
     { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Criatura Abissal", "Navio Amaldiçoado", "Tentáculo Menor", "Leviatã Jovem", "Guardião do Abismo", "Frota Fantasma"], drops: { fragmentos: .008, gema: .05, cristal: .13 }, baseHp: 320000, baseDamage: 18000, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 18000, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
   ];
   const FIXED_BACKGROUND_PATH = "assets/newbackgrounds/";
+  const ARENA_BACKGROUND_FILE = "00 - Arena.png";
   const FIXED_BACKGROUND_ASSET_FILES = [
     "01 - Lagoa dos Remadores.png",
     "02 - Manguezal dos Ancestrais.png",
@@ -397,6 +414,7 @@
     return { image: createLazyImage(), src, requested: false, loadFailed: false };
   };
   const FIXED_BACKGROUND_SPRITES = FIXED_BACKGROUND_ASSET_FILES.map(file => ({ file, ...loadSceneSprite(`${FIXED_BACKGROUND_PATH}${file}`) }));
+  const ARENA_BACKGROUND_SPRITE = { file: ARENA_BACKGROUND_FILE, ...loadSceneSprite(`${FIXED_BACKGROUND_PATH}${ARENA_BACKGROUND_FILE}`) };
 
   function regionUsesFixedBackground(index) {
     const region = REGIONS[index];
@@ -404,6 +422,10 @@
   }
 
   function getFixedBackgroundSprite(region) {
+    if (region?.fixedBackgroundFile === ARENA_BACKGROUND_FILE) {
+      requestSpriteImage(ARENA_BACKGROUND_SPRITE, ARENA_BACKGROUND_SPRITE.src);
+      return ARENA_BACKGROUND_SPRITE;
+    }
     const index = FIXED_BACKGROUND_ASSET_FILES.indexOf(region?.fixedBackgroundFile);
     const sprite = index >= 0 ? FIXED_BACKGROUND_SPRITES[index] : null;
     if (sprite) requestSpriteImage(sprite, sprite.src);
@@ -499,6 +521,19 @@
     14: 23,
     15: 26
   });
+
+  const ARENA_BOT_DEFINITIONS = [
+    ["bot_arena_001", "Tonico Pé-de-Pano", "iniciante fraco", "Jangada Reforçada", 1, 6, 12000, 350, 1.6, 5000],
+    ["bot_arena_002", "Capitão Dente de Ouro", "iniciante agressivo", "Escuna Saqueadora", 1, 12, 28000, 850, 1.4, 18000],
+    ["bot_arena_003", "Marina Corte-Vento", "rápida e frágil", "Veleiro Corsário", 2, 20, 55000, 1600, .9, 45000],
+    ["bot_arena_004", "Barba de Coral", "tanque defensivo", "Barcaça Blindada", 3, 30, 140000, 3200, 1.8, 120000],
+    ["bot_arena_005", "Anne Tempestade", "equilibrada", "Fragata Rebelde", 5, 45, 320000, 8500, 1.2, 280000],
+    ["bot_arena_006", "Corsário Vitorino", "canhão pesado", "Galeão Pirata", 8, 65, 720000, 18000, 1.5, 620000],
+    ["bot_arena_007", "Morgana Maré-Negra", "dano alto", "Galeão de Guerra", 12, 85, 1450000, 42000, 1.3, 1100000],
+    ["bot_arena_008", "Almirante Ossos Frios", "tanque de elite", "Encouraçado Imperial", 16, 110, 2800000, 68000, 1.7, 1800000],
+    ["bot_arena_009", "Capitã Espectral Nyra", "elite fantasma", "Fragata Fantasma", 22, 140, 4500000, 115000, 1.1, 2600000],
+    ["bot_arena_010", "Lorde Abissal Krakenzinho", "boss máximo", "Black Abyss", 30, 180, 8000000, 220000, 1.25, 3600000]
+  ];
 
   const ENEMY_CATEGORIES = {
     PESCADOR: { label: "PESCADOR", visual: "PESCADOR", hp: .66, damage: .48, armor: .45, gold: .72, xp: .78, attackSpeed: 1.12, evasion: .01, drops: { comida: .34, tecido: .18, madeira: .22 } },
@@ -1960,6 +1995,7 @@
   let pendingMissingPurchase = null;
   let prestigeConfirmationStage = 0;
   const leaderboardState = { status: "idle", entries: [], error: "", loadingPromise: null, lastLoadedAt: 0 };
+  const arenaState = { expanded: false, status: "idle", opponents: [], error: "", loadingPromise: null, lastLoadedAt: 0, battle: null, previousCombat: null, result: null };
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
   let lastCaptainEquipmentUpgrade = null;
@@ -2367,8 +2403,12 @@
 
   function saveGame() {
     if (VISUAL_AUDIT_CONFIG) return;
-    state.lastSeen = Date.now();
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (error) { console.warn("Não foi possível salvar.", error); }
+    const lastSeen = Date.now();
+    state.lastSeen = lastSeen;
+    const saveState = isArenaSceneActive() && arenaState.previousCombat?.combat
+      ? { ...state, combat: JSON.parse(JSON.stringify(arenaState.previousCombat.combat)), lastSeen }
+      : state;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(saveState)); } catch (error) { console.warn("Não foi possível salvar.", error); }
   }
 
   function closeOfflineModal() {
@@ -2412,6 +2452,7 @@
       apiBaseUrl,
       tableName: String(raw.tableName || "pirate_leaderboard").trim() || "pirate_leaderboard",
       readRelationName: String(raw.readRelationName || raw.readTableName || "pirate_leaderboard_public").trim() || "pirate_leaderboard_public",
+      arenaRelationName: String(raw.arenaRelationName || raw.arenaReadRelationName || "pirate_arena_public").trim() || "pirate_arena_public",
       limit: clamp(Math.floor(Number(raw.limit || LEADERBOARD_LIMIT)), 1, 100)
     };
   }
@@ -2580,6 +2621,238 @@
     return leaderboardState.loadingPromise;
   }
 
+  function getArenaSelectColumns() {
+    return [
+      "player_id",
+      "pirate_name",
+      "selected_pirate_id",
+      "selected_pirate_name",
+      "prestige_count",
+      "best_prestige_level",
+      "best_prestige_power",
+      "pvp_snapshot",
+      "last_prestige_at",
+      "updated_at"
+    ].join(",");
+  }
+
+  async function requestArenaRows(config) {
+    if (config.provider === "supabase") {
+      const params = new URLSearchParams({
+        select: getArenaSelectColumns(),
+        best_prestige_level: "gte.1",
+        order: "best_prestige_power.desc,best_prestige_level.desc,prestige_count.desc,last_prestige_at.desc",
+        limit: String(ARENA_OPPONENT_LIMIT * 2)
+      });
+      const response = await fetch(`${config.supabaseUrl}/rest/v1/${config.arenaRelationName}?${params}`, {
+        headers: leaderboardHeaders(config)
+      });
+      if (!response.ok) throw new Error(`Arena indisponível (${response.status})`);
+      return response.json();
+    }
+    const response = await fetch(`${config.apiBaseUrl}/arena/opponents?limit=${ARENA_OPPONENT_LIMIT * 2}`);
+    if (!response.ok) throw new Error(`Arena indisponível (${response.status})`);
+    return response.json();
+  }
+
+  function findShipByName(name = "") {
+    const normalized = normalizeText(name);
+    return SHIPS.find(ship => normalizeText(ship.name) === normalized)
+      || SHIPS.find(ship => normalized && normalizeText(ship.name).includes(normalized))
+      || SHIPS.find(ship => normalized && normalized.includes(normalizeText(ship.name)))
+      || null;
+  }
+
+  function parseShipId(value, fallbackName = "") {
+    if (Number.isFinite(Number(value))) return clamp(Math.floor(Number(value)), 0, SHIPS.length - 1);
+    const match = String(value || "").match(/(\d+)/);
+    if (match) return clamp(Math.floor(Number(match[1])), 0, SHIPS.length - 1);
+    return findShipByName(fallbackName)?.id ?? null;
+  }
+
+  function normalizeArenaAttackIntervalMs(source = {}) {
+    const combat = source.combat || {};
+    const ship = source.ship || {};
+    const explicit = Number(source.attack_interval_ms ?? combat.attack_interval_ms ?? ship.attack_interval_ms);
+    if (Number.isFinite(explicit) && explicit > 0) return clamp(Math.round(explicit), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+    const speed = Number(source.attack_speed ?? combat.attack_speed ?? ship.attack_speed);
+    if (Number.isFinite(speed) && speed > 0) {
+      const interval = speed <= 20 ? speed * 1000 : ARENA_ATTACK_INTERVAL_DEFAULT_MS / speed;
+      return clamp(Math.round(interval), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+    }
+    return ARENA_ATTACK_INTERVAL_DEFAULT_MS;
+  }
+
+  function createArenaBotSnapshot([playerId, pirateName, botType, shipName, prestigeCount, shipLevel, maxHp, damage, attackSpeed, combatPower]) {
+    const ship = findShipByName(shipName);
+    const attackIntervalMs = clamp(Math.round(attackSpeed * 1000), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+    return {
+      snapshot_version: PVP_SNAPSHOT_VERSION,
+      player_id: playerId,
+      pirate_name: pirateName,
+      is_bot: true,
+      bot_type: botType,
+      prestige: {
+        prestige_count: prestigeCount,
+        best_prestige_level: prestigeCount,
+        best_prestige_power: combatPower
+      },
+      captain: {
+        selected_pirate_id: `arena_${playerId}`,
+        selected_pirate_name: pirateName,
+        pirate_level: Math.max(1, Math.round(shipLevel / 4)),
+        captain_title: botType
+      },
+      ship: {
+        ship_id: ship ? `ship_${ship.id}` : playerId.replace("bot_arena_", "arena_ship_"),
+        ship_name: shipName,
+        ship_level: shipLevel,
+        tier: ship?.tier ?? Math.min(5, Math.max(1, Math.ceil(shipLevel / 35))),
+        max_hp: maxHp,
+        damage,
+        dps: Math.round(damage / Math.max(.3, attackIntervalMs / 1000)),
+        combat_power: combatPower,
+        attack_speed: attackIntervalMs / 1000,
+        attack_interval_ms: attackIntervalMs
+      },
+      combat: {
+        max_hp: maxHp,
+        damage,
+        dps: Math.round(damage / Math.max(.3, attackIntervalMs / 1000)),
+        combat_power: combatPower,
+        attack_speed: attackIntervalMs / 1000,
+        attack_interval_ms: attackIntervalMs
+      },
+      upgrades: {
+        ship_level: shipLevel,
+        cannons_level: Math.max(1, Math.round(shipLevel * .55)),
+        hull_level: Math.max(1, Math.round(shipLevel * .52)),
+        sails_level: Math.max(1, Math.round(shipLevel * .45))
+      },
+      equipments: { ship_equipment: {}, captain_equipment_levels: {} },
+      skills: { sabotage_enemy_level: Math.max(1, Math.min(20, Math.round(prestigeCount / 2))), sabotage_enemy_multiplier: 1 + prestigeCount * .08, ship_skill_levels: {} },
+      pet: null,
+      progression: { highest_map_unlocked: Math.min(15, Math.max(1, Math.ceil(prestigeCount / 2))), highest_map_name: null },
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  function normalizeArenaOpponent(row = {}, index = 0) {
+    const snapshot = row.pvp_snapshot || row.snapshot || row;
+    const ship = snapshot.ship || {};
+    const combat = snapshot.combat || {};
+    const prestige = snapshot.prestige || {};
+    const pirateName = sanitizeArenaDisplayName(snapshot.pirate_name || row.pirate_name || "Pirata da Arena");
+    const shipName = String(ship.ship_name || snapshot.ship_name || row.ship_name || "Navio Pirata").trim() || "Navio Pirata";
+    const shipId = ship.ship_id || snapshot.ship_id || row.ship_id || null;
+    const parsedShipId = parseShipId(shipId, shipName);
+    const matchedShip = parsedShipId !== null ? SHIPS[parsedShipId] : findShipByName(shipName);
+    const maxHp = Math.max(1, Math.round(Number(combat.max_hp ?? ship.max_hp ?? snapshot.max_hp ?? 10000) || 10000));
+    const damage = Math.max(1, Math.round(Number(combat.damage ?? ship.damage ?? snapshot.damage ?? 500) || 500));
+    const attackIntervalMs = normalizeArenaAttackIntervalMs(snapshot);
+    const dps = Math.max(1, Math.round(Number(combat.dps ?? ship.dps ?? snapshot.dps ?? damage / (attackIntervalMs / 1000)) || damage));
+    const combatPower = Math.max(1, Math.round(Number(combat.combat_power ?? ship.combat_power ?? snapshot.combat_power ?? row.best_prestige_power ?? dps * 8 + maxHp * .2) || 1));
+    const prestigeCount = Math.max(1, Math.floor(Number(prestige.prestige_count ?? row.prestige_count ?? row.best_prestige_level ?? 1) || 1));
+    return {
+      id: String(snapshot.player_id || row.player_id || `arena_${index}`),
+      player_id: String(snapshot.player_id || row.player_id || `arena_${index}`),
+      pirate_name: pirateName,
+      selected_pirate_id: snapshot.captain?.selected_pirate_id || row.selected_pirate_id || null,
+      selected_pirate_name: snapshot.captain?.selected_pirate_name || row.selected_pirate_name || null,
+      ship_id: shipId || (matchedShip ? `ship_${matchedShip.id}` : null),
+      ship_name: shipName,
+      ship_level: Math.max(1, Math.floor(Number(ship.ship_level ?? snapshot.ship_level ?? 1) || 1)),
+      ship_tier: Math.max(0, Math.floor(Number(ship.tier ?? matchedShip?.tier ?? 1) || 1)),
+      max_hp: maxHp,
+      damage,
+      dps,
+      combat_power: combatPower,
+      attack_speed: attackIntervalMs / 1000,
+      attack_interval_ms: attackIntervalMs,
+      prestige_count: prestigeCount,
+      best_prestige_level: Math.max(prestigeCount, Math.floor(Number(prestige.best_prestige_level ?? row.best_prestige_level ?? prestigeCount) || prestigeCount)),
+      best_prestige_power: Math.max(combatPower, Math.round(Number(prestige.best_prestige_power ?? row.best_prestige_power ?? combatPower) || combatPower)),
+      snapshot_version: Number(snapshot.snapshot_version || PVP_SNAPSHOT_VERSION),
+      is_bot: Boolean(snapshot.is_bot || row.is_bot),
+      source_snapshot: snapshot,
+      sort_jitter: randomBetween(-.015, .015)
+    };
+  }
+
+  function getArenaBotOpponents() {
+    return ARENA_BOT_DEFINITIONS.map((definition, index) => normalizeArenaOpponent(createArenaBotSnapshot(definition), index));
+  }
+
+  function pickArenaBotOpponents(count) {
+    const bots = getArenaBotOpponents();
+    if (count <= 0) return [];
+    if (count >= bots.length) return bots;
+    if (count === 1) return [bots[bots.length - 1]];
+    const selected = [];
+    const used = new Set();
+    for (let i = 0; i < count; i += 1) {
+      const index = Math.round(i * (bots.length - 1) / (count - 1));
+      const bot = bots[index];
+      if (bot && !used.has(bot.player_id)) {
+        selected.push(bot);
+        used.add(bot.player_id);
+      }
+    }
+    for (let i = bots.length - 1; selected.length < count && i >= 0; i -= 1) {
+      if (!used.has(bots[i].player_id)) selected.push(bots[i]);
+    }
+    return selected;
+  }
+
+  function buildArenaOpponentList(rows = []) {
+    const seen = new Set();
+    const real = (Array.isArray(rows) ? rows : rows?.entries || [])
+      .map((row, index) => normalizeArenaOpponent(row, index))
+      .filter(opponent => opponent.player_id && opponent.player_id !== state.playerId && !opponent.is_bot)
+      .filter(opponent => {
+        if (seen.has(opponent.player_id)) return false;
+        seen.add(opponent.player_id);
+        return true;
+      })
+      .slice(0, ARENA_OPPONENT_LIMIT);
+    const bots = pickArenaBotOpponents(Math.max(0, ARENA_OPPONENT_LIMIT - real.length)).filter(bot => !seen.has(bot.player_id));
+    const combined = [...real, ...bots];
+    return combined
+      .sort((a, b) => (a.combat_power * (1 + a.sort_jitter)) - (b.combat_power * (1 + b.sort_jitter)))
+      .slice(0, Math.max(ARENA_MIN_OPPONENTS, ARENA_OPPONENT_LIMIT));
+  }
+
+  async function refreshArenaOpponents(options = {}) {
+    if (arenaState.loadingPromise) return arenaState.loadingPromise;
+    if (!options.force && arenaState.status === "ready" && Date.now() - arenaState.lastLoadedAt < 30000) {
+      renderArenaPanel();
+      return arenaState.opponents;
+    }
+    const config = getOnlineConfig();
+    arenaState.status = "loading";
+    arenaState.error = "";
+    renderArenaPanel();
+    arenaState.loadingPromise = (async () => {
+      try {
+        const rows = isLeaderboardConfigured(config) ? await requestArenaRows(config) : [];
+        arenaState.opponents = buildArenaOpponentList(rows);
+        arenaState.status = "ready";
+        arenaState.lastLoadedAt = Date.now();
+      } catch (error) {
+        console.warn("Arena online indisponível. Usando bots.", error);
+        arenaState.opponents = buildArenaOpponentList([]);
+        arenaState.status = "ready";
+        arenaState.error = "Ranking online indisponível. Exibindo inimigos da Arena.";
+        arenaState.lastLoadedAt = Date.now();
+      } finally {
+        arenaState.loadingPromise = null;
+        renderArenaPanel();
+      }
+      return arenaState.opponents;
+    })();
+    return arenaState.loadingPromise;
+  }
+
   function buildCaptainEquipmentSnapshot() {
     return Object.fromEntries(Object.entries(CAPTAIN_EQUIPMENT_META).map(([key, meta]) => [
       `${key}_level`,
@@ -2625,8 +2898,18 @@
         skill_dps: stats.skillDps,
         pet_dps: stats.petDps,
         combat_power: stats.power,
+        attack_speed: Math.round(stats.attackInterval) / 1000,
+        attack_interval_ms: Math.round(stats.attackInterval),
         speed: stats.speed,
         armor: stats.armor
+      },
+      combat: {
+        max_hp: stats.maxHp,
+        damage: stats.damage,
+        dps: stats.dps,
+        combat_power: stats.power,
+        attack_speed: Math.round(stats.attackInterval) / 1000,
+        attack_interval_ms: Math.round(stats.attackInterval)
       },
       upgrades: {
         ship_level: state.levels.ship,
@@ -4915,7 +5198,7 @@
       const ctx = this.ctx;
       const w = this.width;
       const h = this.height;
-      const region = REGIONS[state.regionIndex];
+      const region = getActiveCombatRegion();
       const horizon = h * .42;
       const day = this.getDayState(region);
       if (isCaptainEditorEnabled()) this.captainEditorInfo = null;
@@ -4985,7 +5268,7 @@
         const petWaterlineY = maximumWaterline > minimumWaterline ? clamp(desiredWaterline, minimumWaterline, maximumWaterline) : maximumWaterline;
         this.drawPet(ctx, w * .43 + attackAdvance, petWaterlineY, pet, petScale);
       }
-      this.drawChests(ctx);
+      if (!isArenaSceneActive()) this.drawChests(ctx);
       this.enemyDeathAnimations.forEach(item => {
         if (item.age < 0) return;
         this.drawEnemy(ctx, w * .71, enemyY, enemyScale, item.enemy);
@@ -5629,9 +5912,9 @@
       if (!animation) return null;
       if (sprite.image?.complete && sprite.image.naturalWidth && !sprite.ready && !sprite.processing) prepareEnemySpritesheet(sprite);
       if (!options.preview && state.combat.repairing && state.combat.playerHp <= 0 && !animation.deathStartedAt) animation.deathStartedAt = this.time;
-      const maxHp = Math.max(1, getStats().maxHp || 1);
-      const hp = options.preview ? maxHp : Math.max(0, Number(state.combat.playerHp) || 0);
-      const stateName = this.getPlayerShipHpState(hp, maxHp, !options.preview && Boolean(animation.deathStartedAt) && hp <= maxHp * .01);
+      const maxHp = Math.max(1, Number(options.maxHp ?? getStats().maxHp) || 1);
+      const hp = options.preview ? Math.max(0, Number(options.hp ?? maxHp) || 0) : Math.max(0, Number(state.combat.playerHp) || 0);
+      const stateName = this.getPlayerShipHpState(hp, maxHp, Boolean(options.defeated) || (!options.preview && Boolean(animation.deathStartedAt) && hp <= maxHp * .01));
       if (!options.preview && animation.deathStartedAt && stateName !== SPRITE_HP_STATES.defeated) animation.deathStartedAt = 0;
       return {
         stateName,
@@ -5765,8 +6048,8 @@
       const drawY = -targetHeight * sprite.anchorY;
       const breath = this.getBreathingIdleTransform("playerShip", pose.stateName, pose.seed || 0);
       ctx.save();
-      ctx.translate(x + sprite.offsetX * scale, y + sprite.offsetY * scale);
-      ctx.scale(breath.scaleX, breath.scaleY);
+      ctx.translate(x + sprite.offsetX * scale * (options.flipX ? -1 : 1), y + sprite.offsetY * scale);
+      ctx.scale((options.flipX ? -1 : 1) * breath.scaleX, breath.scaleY);
       let baseAlpha = 1;
       if (pose.stateName === SPRITE_HP_STATES.defeated) {
         const fadeStart = 1.05;
@@ -5804,10 +6087,11 @@
     drawPlayerShip(ctx, x, y, scale, ship, options = {}) {
       const animatedSprite = getPlayerShipSpritesheet(ship.name);
       if (animatedSprite && this.drawPlayerShipSpritesheet(ctx, x, y, scale, ship, animatedSprite, options)) return;
-      this.drawShip(ctx, x, y, scale, false, ship.tier, false, ship.id, ship.type);
+      this.drawShip(ctx, x, y, scale, Boolean(options.flipX), ship.tier, false, ship.id, ship.type);
     }
 
     enemySizeFactor(enemy) {
+      if (enemy.isArena) return .94;
       if (enemy.isBoss) return 1.06;
       const text = normalizeText(`${enemy.name} ${enemy.category || ""}`);
       if (/canoa|jangada|remador|pescador|bote|tribal|cacador|saqueador|contrabandista pequeno|pequeno contrabandista/.test(text)) return .62;
@@ -5831,6 +6115,14 @@
     }
 
     drawEnemy(ctx, x, y, scale, enemy) {
+      if (enemy.isArena) {
+        const ship = getArenaEnemyShip(enemy) || { id: 0, name: enemy.ship_name || "Navio Pirata", tier: enemy.visualTier || 3, type: enemy.visualKind || "Pirata" };
+        const sprite = getPlayerShipSpritesheet(ship.name);
+        const arenaScale = Math.min(1.04, scale * 1.02);
+        if (sprite && this.drawPlayerShipSpritesheet(ctx, x, y, arenaScale, ship, sprite, { preview: true, flipX: true, hp: enemy.hp, maxHp: enemy.maxHp, defeated: enemy.defeated })) return;
+        this.drawShip(ctx, x, y, arenaScale, true, ship.tier || enemy.visualTier || 3, false, ship.id || 0, ship.type || enemy.visualKind || "Pirata");
+        return;
+      }
       const animatedSprite = getEnemyAnimatedSpritesheet(enemy);
       if (animatedSprite && this.drawEnemySpritesheet(ctx, x, y, this.enemySceneScale(scale, enemy, animatedSprite.width), enemy, animatedSprite)) return;
       const visual = enemy.visual || inferEnemyVisual(enemy.name, REGIONS[state.regionIndex], enemy.category, enemy.visualTier, enemy.isBoss);
@@ -6295,7 +6587,7 @@
   }
 
   function spawnEnemy(isBoss = false, options = {}) {
-    const region = REGIONS[state.regionIndex];
+    const region = getActiveCombatRegion();
     const variation = randomBetween(.9, 1.14);
     const roster = REGION_ENCOUNTERS[state.regionIndex] || [];
     const encounter = isBoss ? null : pickEncounter(roster);
@@ -6395,6 +6687,7 @@
     const skillPenalty = options.skill ? 1 - (enemy.skillResist || 0) : 1;
     const damage = Math.max(1, Math.round(rawDamage * mitigation * skillPenalty));
     enemy.hp = Math.max(0, enemy.hp - damage);
+    if (enemy.isArena && arenaState.battle) arenaState.battle.damageDealt += damage;
     state.lifetime.highestDamage = Math.max(state.lifetime.highestDamage, damage);
     const hitTarget = enemy;
     const markHit = () => {
@@ -6449,6 +6742,7 @@
       trackAction("firstCombat");
     }
     if (!state.combat.enemy) {
+      if (isArenaSceneActive()) return false;
       state.combat.spawnTimer = 0;
       spawnEnemy(false);
     }
@@ -6524,18 +6818,26 @@
     }
     const damage = Math.max(1, Math.round(applyShipDamageReduction(enemy.damage * randomBetween(.87, 1.12), stats)));
     state.combat.playerHp = Math.max(0, state.combat.playerHp - damage);
+    let totalDamage = damage;
     if (enemy.special && state.combat.playerHp > 0 && Math.random() < (enemy.isBoss ? .36 : .18)) {
       const extra = enemy.special.includes("chamas") ? Math.round(enemy.damage * .18) : enemy.special.includes("glacial") ? Math.round(enemy.damage * .12) : enemy.special.includes("abissal") ? Math.round(enemy.damage * .22) : Math.round(enemy.damage * .1);
-      state.combat.playerHp = Math.max(0, state.combat.playerHp - Math.max(1, Math.round(applyShipDamageReduction(extra, stats))));
+      const extraDamage = Math.max(1, Math.round(applyShipDamageReduction(extra, stats)));
+      state.combat.playerHp = Math.max(0, state.combat.playerHp - extraDamage);
+      totalDamage += extraDamage;
       if (enemy.special.includes("glacial")) state.combat.attackTimer = Math.max(0, state.combat.attackTimer - 450);
       if (enemy.special.includes("abissal")) state.combat.petAttackTimer = Math.max(0, state.combat.petAttackTimer - 650);
       addLog(`${enemy.name} aplica ${enemy.special}.`, "danger-text");
     }
+    if (enemy.isArena && arenaState.battle) arenaState.battle.damageReceived += totalDamage;
     if (state.combat.playerHp > 0) scene.markPlayerShipHit();
     const attackColor = enemy.visual?.attack === "ghost" ? "#9ff4e9" : enemy.visual?.attack === "ice" ? "#8ee8ff" : enemy.visual?.attack === "fire" ? "#ff7048" : enemy.visual?.attack === "abyss" ? "#b18cff" : enemy.visual?.attack === "wave" || enemy.visual?.attack === "splash" ? "#7bdfff" : enemy.visual?.attack === "arrow" || enemy.visual?.attack === "harpoon" ? "#e3c06f" : "#ff8c68";
     scene.fire(false, attackColor);
     setTimeout(() => { scene.burst(false, attackColor); scene.floatDamage(damage, false, attackColor); }, 340);
     if (state.combat.playerHp <= 0) {
+      if (enemy.isArena) {
+        finishArenaBattle(false);
+        return;
+      }
       if (enemy.isBoss) cancelBossBattle();
       else { scene.markPlayerShipDeath(); beginRepair(); }
     }
@@ -6637,6 +6939,12 @@
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
     enemy.defeated = true;
+    if (enemy.isArena) {
+      scene.queueEnemyDeath(enemy);
+      scene.celebrateCaptain(1.8);
+      finishArenaBattle(true);
+      return;
+    }
     scene.queueEnemyDeath(enemy);
     scene.celebrateCaptain(enemy.isBoss ? 2.8 : 1.65);
     const region = REGIONS[state.regionIndex];
@@ -6684,6 +6992,10 @@
   }
 
   function resetShip() {
+    if (isArenaBattleActive()) {
+      toast("Conclua ou aguarde o resultado da Arena antes de reparar o navio.", "danger-toast");
+      return;
+    }
     state.combat.repairing = false;
     state.combat.repairStarted = 0;
     state.combat.playerHp = getStats().maxHp;
@@ -6697,10 +7009,17 @@
     toast("Navio restaurado. O combate foi reiniciado.");
   }
 
+  function getEnemyAttackInterval(enemy) {
+    if (enemy?.isArena) return clamp(Math.round(Number(enemy.attackIntervalMs) || ARENA_ATTACK_INTERVAL_DEFAULT_MS), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS) * (enemy.slowed > 0 ? 1.65 : 1);
+    return (enemy?.isBoss ? 1450 : 1900) * (enemy?.attackSpeed || 1) * (enemy?.slowed > 0 ? 1.65 : 1);
+  }
+
   function combatTick(dt, now) {
     if (!state.combat.running) return;
-    state.lifetime.playSeconds += dt;
-    state.totalActivePlaySeconds = Math.max(0, Number(state.totalActivePlaySeconds) || 0) + dt;
+    if (!isArenaBattleActive()) {
+      state.lifetime.playSeconds += dt;
+      state.totalActivePlaySeconds = Math.max(0, Number(state.totalActivePlaySeconds) || 0) + dt;
+    }
     if (state.combat.repairing) {
       const elapsed = now - state.combat.repairStarted;
       if (elapsed >= 4000 || elapsed > 6000) finishRepair(elapsed > 6000);
@@ -6713,6 +7032,7 @@
       if (state.combat.playerHp < maxHp) state.combat.playerHp = Math.min(maxHp, state.combat.playerHp + maxHp * hpRegenPerSecond * dt);
     }
     if (!state.combat.enemy) {
+      if (isArenaSceneActive()) return;
       state.combat.spawnTimer += dt * 1000;
       if (state.combat.spawnTimer >= getSpawnDelay()) { state.combat.spawnTimer = 0; spawnEnemy(false); }
       return;
@@ -6742,7 +7062,7 @@
       while (state.combat.petAttackTimer >= pet.interval * 1000 && petStrikes < 3 && state.combat.enemy) { state.combat.petAttackTimer -= pet.interval * 1000; petAttack(); petStrikes++; }
     }
     if (!state.combat.enemy) return;
-    const enemyInterval = (state.combat.enemy.isBoss ? 1450 : 1900) * (enemy.attackSpeed || 1) * (enemy.slowed > 0 ? 1.65 : 1);
+    const enemyInterval = getEnemyAttackInterval(enemy);
     state.combat.enemyAttackTimer += dt * 1000;
     if (state.combat.enemyAttackTimer >= enemyInterval) { state.combat.enemyAttackTimer -= enemyInterval; enemyAttack(); }
     Object.entries(SKILL_META).forEach(([key, meta]) => {
@@ -6811,6 +7131,16 @@
     const minutes = Math.floor((seconds % 3600) / 60);
     if (hours) return `${hours}h ${minutes}min`;
     return `${Math.max(1, minutes)}min`;
+  }
+
+  function formatArenaDuration(seconds) {
+    const total = Math.max(1, Math.round(seconds || 0));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const remainingSeconds = total % 60;
+    if (hours) return `${hours}h ${minutes}min`;
+    if (minutes) return remainingSeconds ? `${minutes}min ${remainingSeconds}s` : `${minutes}min`;
+    return `${remainingSeconds || total}s`;
   }
 
   // Renderização da interface
@@ -6944,7 +7274,9 @@
     const enemy = state.combat.enemy;
 
     if (enemy) {
-      const enemySprite = getEnemyAnimatedSpritesheet(enemy);
+      const arenaShip = enemy.isArena ? getArenaEnemyShip(enemy) : null;
+      const arenaSprite = arenaShip ? getPlayerShipSpritesheet(arenaShip.name) : null;
+      const enemySprite = enemy.isArena ? arenaSprite : getEnemyAnimatedSpritesheet(enemy);
       if (enemySprite) {
         const scale = scene.enemySceneScale(enemyBaseScale, enemy, enemySprite.width);
         const enemyHeight = enemySprite.width * scale * getSpritesheetFrameAspect(enemySprite, .72);
@@ -7009,8 +7341,8 @@
     const enemy = state.combat.enemy;
     const region = REGIONS[state.regionIndex];
     const maxHp = stats.maxHp;
-    $("#battle-stage")?.classList.toggle("fixed-background", regionUsesFixedBackground(state.regionIndex));
-    $("#scene-region").textContent = getCombatRegionLabel(region);
+    $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(state.regionIndex));
+    $("#scene-region").textContent = getActiveCombatRegionLabel();
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
     $("#player-health-fill").style.width = `${state.combat.playerHp / Math.max(1, maxHp) * 100}%`;
     $("#player-health-text").textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(maxHp)}`;
@@ -7021,6 +7353,7 @@
       $("#enemy-health-fill").style.width = `${Math.max(0, enemy.hp / Math.max(1, enemy.maxHp) * 100)}%`;
       $("#enemy-health-text").textContent = `${formatNumber(enemy.hp)} / ${formatNumber(enemy.maxHp)}`;
     } else {
+      $("#enemy-name").textContent = "Sem inimigo";
       $("#enemy-health-fill").style.width = "0%";
       $("#enemy-health-text").textContent = "";
     }
@@ -7083,11 +7416,11 @@
   }
 
   function renderHome() {
-    const region = REGIONS[state.regionIndex];
+    const region = getActiveCombatRegion();
     const stats = getStats();
     const kills = state.regionKills[state.regionIndex];
-    $("#battle-stage")?.classList.toggle("fixed-background", regionUsesFixedBackground(state.regionIndex));
-    $("#scene-region").textContent = getCombatRegionLabel(region);
+    $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(state.regionIndex));
+    $("#scene-region").textContent = getActiveCombatRegionLabel();
     $("#metric-damage").textContent = formatNumber(stats.damage);
     $("#metric-dps").textContent = formatNumber(stats.dps);
     const speedMetric = $("#metric-speed");
@@ -8189,6 +8522,214 @@
     toast(`Prestígio concluído! +${formatNumber(reward)} Moedas Pirata.`, "gold-toast");
   }
 
+  function arenaOpponentCardHtml(opponent) {
+    return `<article class="arena-opponent-card">
+      <div class="arena-opponent-top">
+        <div><span class="eyebrow">PRESTÍGIO ${formatNumber(opponent.prestige_count)}</span><h3>${escapeHtml(opponent.pirate_name)}</h3><p>Barco: ${escapeHtml(opponent.ship_name)} • Nv. ${formatNumber(opponent.ship_level)}</p></div>
+        ${opponent.is_bot ? `<span class="arena-bot-badge">Bot</span>` : ""}
+      </div>
+      <div class="arena-opponent-stats">
+        <span>HP<strong>${formatNumber(opponent.max_hp)}</strong></span>
+        <span>Dano<strong>${formatNumber(opponent.damage)}</strong></span>
+        <span>Ataque<strong>${(opponent.attack_interval_ms / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}s</strong></span>
+        <span>Poder<strong>${formatNumber(opponent.combat_power)}</strong></span>
+      </div>
+      <button class="button primary" type="button" data-arena-challenge="${escapeHtml(opponent.player_id)}">Desafiar</button>
+    </article>`;
+  }
+
+  function renderArenaPanel() {
+    const toggle = $("#arena-toggle");
+    const status = $("#arena-status");
+    const list = $("#arena-list");
+    if (!toggle || !status || !list) return;
+    toggle.textContent = arenaState.expanded ? "Ocultar Arena" : "Desafiar Jogador";
+    toggle.disabled = arenaState.status === "loading";
+    list.classList.toggle("hidden", !arenaState.expanded);
+    if (!arenaState.expanded) {
+      status.textContent = "Clique para buscar inimigos da Arena.";
+      list.innerHTML = "";
+      return;
+    }
+    if (arenaState.status === "loading") {
+      status.textContent = "Buscando jogadores e preparando bots da Arena...";
+      list.innerHTML = "";
+      return;
+    }
+    const opponents = arenaState.opponents.length ? arenaState.opponents : getArenaBotOpponents();
+    status.textContent = arenaState.error || `${opponents.length} inimigos disponíveis para duelo assíncrono.`;
+    list.innerHTML = opponents.map(arenaOpponentCardHtml).join("");
+  }
+
+  function toggleArenaPanel() {
+    arenaState.expanded = !arenaState.expanded;
+    renderArenaPanel();
+    if (arenaState.expanded) refreshArenaOpponents({ force: arenaState.status === "idle" });
+  }
+
+  function isArenaSceneActive() {
+    return Boolean(arenaState.battle || arenaState.result);
+  }
+
+  function isArenaBattleActive() {
+    return Boolean(arenaState.battle?.active && !arenaState.battle.finished);
+  }
+
+  function getArenaSceneRegion() {
+    return {
+      name: "Arena - Duelo Pirata",
+      weather: "Duelo Pirata",
+      description: "Arena assíncrona entre navios salvos.",
+      boss: "Arena",
+      sky: "#23354c",
+      sea: "#132e43",
+      land: "#2e3340",
+      kind: "ARENA",
+      fixedBackground: true,
+      fixedBackgroundFile: ARENA_BACKGROUND_FILE
+    };
+  }
+
+  function getActiveCombatRegion() {
+    return isArenaSceneActive() ? getArenaSceneRegion() : REGIONS[state.regionIndex];
+  }
+
+  function getActiveCombatRegionLabel() {
+    return isArenaSceneActive() ? "Arena - Duelo Pirata" : getCombatRegionLabel(REGIONS[state.regionIndex]);
+  }
+
+  function getArenaOpponentById(id) {
+    const opponents = arenaState.opponents.length ? arenaState.opponents : getArenaBotOpponents();
+    return opponents.find(opponent => opponent.player_id === id) || null;
+  }
+
+  function getArenaEnemyShip(opponentOrEnemy = {}) {
+    const shipName = opponentOrEnemy.ship_name || opponentOrEnemy.shipName || opponentOrEnemy.name || "";
+    const parsedShipId = parseShipId(opponentOrEnemy.ship_id || opponentOrEnemy.shipId, shipName);
+    return parsedShipId !== null ? SHIPS[parsedShipId] : findShipByName(shipName);
+  }
+
+  function createArenaEnemy(opponent) {
+    const ship = getArenaEnemyShip(opponent);
+    return {
+      id: `arena_${opponent.player_id}`,
+      name: opponent.pirate_name,
+      category: "ARENA",
+      kind: "ARENA",
+      hp: opponent.max_hp,
+      maxHp: opponent.max_hp,
+      damage: opponent.damage,
+      armor: 0,
+      evasion: 0,
+      skillResist: 0,
+      attackSpeed: 1,
+      attackIntervalMs: opponent.attack_interval_ms,
+      visualTier: opponent.ship_tier || ship?.tier || 3,
+      visualKind: ship?.type || "Pirata",
+      ship_id: opponent.ship_id,
+      ship_name: opponent.ship_name,
+      ship_level: opponent.ship_level,
+      combat_power: opponent.combat_power,
+      prestige_count: opponent.prestige_count,
+      isArena: true,
+      isBot: opponent.is_bot,
+      burnTime: 0,
+      burnDps: 0,
+      slowed: 0,
+      defeated: false
+    };
+  }
+
+  function startArenaChallenge(playerId) {
+    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer) return toast("Aguarde o evento atual terminar antes de entrar na Arena.", "danger-toast");
+    if (isArenaSceneActive()) return toast("Um duelo da Arena já está em andamento.", "danger-toast");
+    const opponent = getArenaOpponentById(playerId);
+    if (!opponent) return toast("Esse inimigo da Arena não está mais disponível.", "danger-toast");
+    arenaState.previousCombat = {
+      screen: currentScreen,
+      hasStarted: state.hasStarted,
+      combat: JSON.parse(JSON.stringify(state.combat))
+    };
+    arenaState.battle = {
+      active: true,
+      finished: false,
+      opponent,
+      startedAt: Date.now(),
+      damageDealt: 0,
+      damageReceived: 0
+    };
+    state.combat.running = true;
+    state.combat.repairing = false;
+    state.combat.repairStarted = 0;
+    state.combat.playerHp = getStats().maxHp;
+    state.combat.enemy = createArenaEnemy(opponent);
+    state.combat.attackTimer = 0;
+    state.combat.petAttackTimer = 0;
+    state.combat.enemyAttackTimer = 0;
+    state.combat.spawnTimer = 0;
+    state.hasStarted = true;
+    scene.resetPlayerShipAnimation();
+    navigate("home");
+    addLog(`Arena iniciada contra ${opponent.pirate_name}.`, "danger-text");
+    toast(`Arena iniciada: ${opponent.pirate_name}.`, "gold-toast");
+    renderAll(false);
+  }
+
+  function renderArenaResultModal() {
+    const result = arenaState.result;
+    if (!result) return;
+    $("#arena-result-icon").textContent = result.victory ? "⚑" : "☠";
+    $("#arena-result-title").textContent = result.victory ? "Vitória na Arena!" : "Derrota na Arena!";
+    $("#arena-result-message").textContent = `${result.enemyName} ${result.victory ? "foi derrotado em duelo assíncrono." : "venceu este duelo da Arena."}`;
+    $("#arena-result-summary").innerHTML = [
+      ["Inimigo", escapeHtml(result.enemyName)],
+      ["Dano causado", formatNumber(result.damageDealt)],
+      ["Dano recebido", formatNumber(result.damageReceived)],
+      ["Duração", formatArenaDuration(result.durationSeconds)]
+    ].map(([label, value]) => `<span>${label}</span><strong>${value}</strong>`).join("");
+    $("#arena-result-modal").classList.remove("hidden");
+  }
+
+  function finishArenaBattle(victory) {
+    const battle = arenaState.battle;
+    if (!battle || battle.finished) return;
+    battle.active = false;
+    battle.finished = true;
+    const enemyName = battle.opponent?.pirate_name || state.combat.enemy?.name || "Inimigo da Arena";
+    const durationSeconds = Math.max(1, Math.round((Date.now() - battle.startedAt) / 1000));
+    arenaState.result = {
+      victory,
+      enemyName,
+      damageDealt: Math.round(battle.damageDealt || 0),
+      damageReceived: Math.round(battle.damageReceived || 0),
+      durationSeconds
+    };
+    state.combat.running = false;
+    state.combat.enemyAttackTimer = 0;
+    if (!victory) scene.markPlayerShipDeath();
+    addLog(`${victory ? "Vitória" : "Derrota"} na Arena contra ${enemyName}.`, victory ? "loot" : "danger-text");
+    toast(victory ? "Vitória na Arena!" : "Derrota na Arena!", victory ? "gold-toast" : "danger-toast");
+    renderArenaResultModal();
+    renderAll(false);
+  }
+
+  function closeArenaResultModal() {
+    $("#arena-result-modal")?.classList.add("hidden");
+    if (arenaState.previousCombat?.combat) {
+      state.combat = JSON.parse(JSON.stringify(arenaState.previousCombat.combat));
+      state.combat.playerHp = clamp(Number(state.combat.playerHp) || getStats().maxHp, 0, getStats().maxHp);
+      state.hasStarted = arenaState.previousCombat.hasStarted;
+    }
+    const returnScreen = arenaState.previousCombat?.screen || "home";
+    arenaState.battle = null;
+    arenaState.previousCombat = null;
+    arenaState.result = null;
+    scene.resetPlayerShipAnimation();
+    navigate(returnScreen === "stats" ? "home" : returnScreen);
+    renderAll(false);
+    saveGame();
+  }
+
   function renderStats() {
     syncCaptainRuntimeState(state);
     const stats = getStats();
@@ -8205,6 +8746,7 @@
       ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
     $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
+    renderArenaPanel();
   }
 
   const SCREEN_ALIASES = { trade: "upgrades", resources: "upgrades" };
@@ -8530,6 +9072,7 @@
   }
 
   function quickSelectRegionMap(index) {
+    if (isArenaSceneActive()) return toast("Volte ao mapa normal antes de trocar de rota.", "danger-toast");
     index = Math.floor(Number(index));
     if (!Number.isInteger(index) || index < 0 || index >= REGIONS.length) return;
     if (!(index < state.unlockedRegions)) {
@@ -8552,6 +9095,7 @@
 
   function handleMapSelection(target) {
     if (!target.dataset.selectMap) return;
+    if (isArenaSceneActive()) return toast("Volte ao mapa normal antes de trocar de rota.", "danger-toast");
     const index = Number(target.dataset.selectMap);
     if (!(index < state.unlockedRegions)) return;
     cancelPendingBossMapAdvance();
@@ -8595,6 +9139,14 @@
     }
     if (target.dataset.mapStep !== undefined) {
       quickSelectRegionMap(state.regionIndex + Number(target.dataset.mapStep));
+      return;
+    }
+    if (target.id === "arena-toggle") {
+      toggleArenaPanel();
+      return;
+    }
+    if (target.dataset.arenaChallenge) {
+      startArenaChallenge(target.dataset.arenaChallenge);
       return;
     }
     if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);
@@ -8701,6 +9253,7 @@
   }
 
   function challengeBoss() {
+    if (isArenaSceneActive()) return toast("Finalize a Arena antes de desafiar bosses do mapa.", "danger-toast");
     if (state.regionKills[state.regionIndex] < 100 || state.bossesDefeated[state.regionIndex]) return;
     const issues = endgameRequirementIssues(state.regionIndex);
     if (issues.length) toast("Seu Poder Naval está baixo para esse boss. Recomenda-se evoluir antes de avançar.", "danger-toast");
@@ -8756,6 +9309,7 @@
   $("#prestige-button").addEventListener("click", openPrestigeConfirmation);
   $("#prestige-cancel").addEventListener("click", closePrestigeConfirmation);
   $("#prestige-confirm").addEventListener("click", confirmPrestige);
+  $("#arena-result-close").addEventListener("click", closeArenaResultModal);
   $("#captain-mutiny-cancel").addEventListener("click", closeCaptainMutinyConfirmation);
   $("#captain-mutiny-confirm").addEventListener("click", confirmCaptainMutiny);
 
