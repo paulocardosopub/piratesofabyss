@@ -37,6 +37,12 @@
   const EMERGENCY_REPAIR_COOLDOWN_SECONDS = 10;
   const EMERGENCY_REPAIR_DURATION_MS = 5000;
   const AUTO_REPAIR_DURATION_MS = 4000;
+  const AUTO_REPAIR_FEES = [
+    { maxMap: 5, gold: 100 },
+    { maxMap: 10, gold: 500 },
+    { maxMap: 13, gold: 5000 },
+    { maxMap: 15, gold: 25000 }
+  ];
   const CAPTAIN_HP_REGEN_INTERVAL_SECONDS = 5;
   const AUTO_ATTACK_CAPTAIN_LEVEL_REQUIRED = 2;
   const MANUAL_ATTACK_TUTORIAL_DURATION_MS = 30000;
@@ -1637,7 +1643,7 @@
     const sprite = getCaptainCharacterSpritesheet(level, gender);
     requestCaptainCharacterSprite(sprite);
     const options = variant === "topbar"
-      ? { fill: 1.75, alignY: 1.2, offsetY: .02, useBodyBounds: true }
+      ? { fill: 1.28, alignY: .98, offsetY: 0, useBodyBounds: true }
       : variant === "next"
         ? { fill: .86, alignY: .96, useBodyBounds: true }
         : { fill: .92, alignY: .98, useBodyBounds: true };
@@ -1681,6 +1687,8 @@
   };
   let activeMissionFilter = "Próximas de concluir";
   let captainPetsExpanded = false;
+  let captainManualSkillsExpanded = false;
+  let captainEquipmentExpanded = false;
   const statsPanelsExpanded = { quests: false, combat: false, progression: false, career: false, reset: false };
 
   function rewardText(reward = {}) {
@@ -1885,7 +1893,7 @@
       progression: makeProgressionDefaults(),
       quests: { completed: {}, claimed: {} },
       titles: [],
-      combat: { running: false, repairing: false, repairStarted: 0, repairDuration: AUTO_REPAIR_DURATION_MS, repairStartHp: 0, repairTargetHp: 140, repairSource: "", playerHp: 140, enemy: null, attackTimer: 0, petAttackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
+      combat: { running: false, repairing: false, repairStarted: 0, repairDuration: AUTO_REPAIR_DURATION_MS, repairStartHp: 0, repairTargetHp: 140, repairSource: "", repairResumeRunning: false, pausedRegenTimer: 0, specialCombatResumeRunning: false, playerHp: 140, enemy: null, attackTimer: 0, petAttackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
       autoChallengeBoss: false,
       logs: [],
       hasStarted: false,
@@ -6904,6 +6912,7 @@
     if (!canLootKindTriggerSurpriseBoss(kind)) return false;
     if (Math.random() >= BOSS_SURPRISE_CHANCE) return false;
     if (!canTriggerSurpriseBoss()) return false;
+    state.combat.specialCombatResumeRunning = Boolean(state.combat.running);
     state.combat.running = true;
     state.hasStarted = true;
     state.combat.repairing = false;
@@ -7119,8 +7128,63 @@
     Object.entries(SKILL_META).forEach(([key, meta]) => { state.skills[key].remaining = getSkillCooldown(key, state.skills[key].level); });
   }
 
-  function cancelBossBattle() {
+  function getAutoRepairFee(regionIndex = state.regionIndex) {
+    const map = clamp(Math.floor(Number(regionIndex) || 0) + 1, 1, REGIONS.length);
+    return AUTO_REPAIR_FEES.find(entry => map <= entry.maxMap)?.gold || 25000;
+  }
+
+  function chargeAutoRepairFee(regionIndex = state.regionIndex) {
+    const fee = getAutoRepairFee(regionIndex);
+    if (state.resources.ouro >= fee) {
+      state.resources.ouro -= fee;
+      addLog(`Voce afundou: -${formatNumber(fee)} Ouro para recuperar o navio.`, "danger-text");
+      toast(`Voce afundou: -${formatNumber(fee)} Ouro.`, "danger-toast");
+      return true;
+    }
+    addLog("Voce afundou e esta pobre. Reparo automatico gratuito aplicado.", "danger-text");
+    toast("Voce afundou e esta pobre. Reparo gratuito aplicado.", "danger-toast");
+    return false;
+  }
+
+  function moveToPreviousMapAfterSinking() {
+    const previousRegion = state.regionIndex;
+    if (previousRegion <= 0) return false;
+    state.regionIndex = Math.max(0, previousRegion - 1);
+    state.combat.enemy = null;
+    state.combat.spawnTimer = 0;
+    addLog(`Navio recuou para ${getCombatRegionLabel(REGIONS[state.regionIndex])} apos afundar.`, "danger-text");
+    queueRegionPreload(state.regionIndex);
+    scheduleNearbyRegionPreload();
+    return true;
+  }
+
+  function applyPausedHpRegen(dt) {
+    if (state.combat.running || state.combat.repairing || isArenaSceneActive() || state.combat.playerHp <= 0) return;
+    const bonus = getCaptainBonuses().hpRegenPercentPerSecond || 0;
+    if (bonus <= 0) {
+      state.combat.pausedRegenTimer = 0;
+      return;
+    }
+    const maxHp = getStats().maxHp;
+    if (state.combat.playerHp >= maxHp) {
+      state.combat.pausedRegenTimer = 0;
+      return;
+    }
+    state.combat.pausedRegenTimer = Math.max(0, Number(state.combat.pausedRegenTimer || 0)) + dt;
+    let healed = false;
+    while (state.combat.pausedRegenTimer >= CAPTAIN_HP_REGEN_INTERVAL_SECONDS) {
+      state.combat.pausedRegenTimer -= CAPTAIN_HP_REGEN_INTERVAL_SECONDS;
+      state.combat.playerHp = Math.min(maxHp, state.combat.playerHp + maxHp * bonus);
+      healed = true;
+    }
+    if (healed) saveGame();
+  }
+
+  function cancelBossBattle(options = {}) {
     const bossName = state.combat.enemy?.name || "Boss";
+    const voluntary = Boolean(options.voluntary);
+    const disabledAuto = state.autoChallengeBoss;
+    state.autoChallengeBoss = false;
     state.combat.enemy = null;
     state.combat.repairing = false;
     state.combat.repairStarted = 0;
@@ -7128,10 +7192,19 @@
     state.combat.repairStartHp = 0;
     state.combat.repairTargetHp = getStats().maxHp;
     state.combat.repairSource = "";
+    state.combat.repairResumeRunning = false;
     state.combat.playerHp = getStats().maxHp;
     state.combat.spawnTimer = 0;
-    state.combat.running = true;
+    state.combat.running = voluntary ? Boolean(state.combat.specialCombatResumeRunning) : true;
+    state.combat.specialCombatResumeRunning = false;
     clearCombatTimers();
+    if (voluntary || disabledAuto) {
+      addLog(voluntary ? `Voce saiu do combate contra ${bossName}.` : `Derrota contra ${bossName}. Navio restaurado.`, "danger-text");
+      toast(voluntary ? "Combate contra boss encerrado." : "Derrota para o boss. Boss Auto foi desligado.", "danger-toast");
+      renderAll(false);
+      saveGame();
+      return;
+    }
     addLog(`Derrota contra ${bossName}. Navio restaurado.`, "danger-text");
     toast("Derrota para o boss — navio restaurado para uma nova tentativa.", "danger-toast");
     saveGame();
@@ -7139,14 +7212,21 @@
 
   function beginRepair() {
     const maxHp = getStats().maxHp;
+    const defeatedBy = state.combat.enemy?.name || "inimigo";
+    const defeatedRegionIndex = state.regionIndex;
+    const resumeRunning = Boolean(state.combat.running);
+    chargeAutoRepairFee(defeatedRegionIndex);
+    moveToPreviousMapAfterSinking();
     state.combat.repairing = true;
     state.combat.repairStarted = performance.now();
     state.combat.repairDuration = AUTO_REPAIR_DURATION_MS;
     state.combat.repairStartHp = Math.max(0, Number(state.combat.playerHp || 0));
     state.combat.repairTargetHp = maxHp;
     state.combat.repairSource = "auto";
+    state.combat.repairResumeRunning = resumeRunning;
+    state.combat.running = false;
     trackAction("repair");
-    addLog(`Derrota contra ${state.combat.enemy?.name || "inimigo"}. Reparo iniciado.`, "danger-text");
+    addLog(`Derrota contra ${defeatedBy}. Reparo iniciado.`, "danger-text");
     toast("Navio destruído — reparo automático em andamento.", "danger-toast");
   }
 
@@ -7155,13 +7235,16 @@
     const maxHp = getStats().maxHp;
     const targetHp = Math.max(1, Number(state.combat.repairTargetHp || maxHp) || maxHp);
     const repairSource = state.combat.repairSource || "auto";
+    const resumeRunning = Boolean(state.combat.repairResumeRunning);
     state.combat.playerHp = clamp(Math.round(targetHp), 1, maxHp);
     state.combat.repairStarted = 0;
     state.combat.repairDuration = AUTO_REPAIR_DURATION_MS;
     state.combat.repairStartHp = 0;
     state.combat.repairTargetHp = maxHp;
     state.combat.repairSource = "";
+    state.combat.repairResumeRunning = false;
     state.combat.attackTimer = 0;
+    state.combat.running = resumeRunning;
     scene.resetPlayerShipAnimation();
     addLog(forced ? "Protocolo de segurança concluiu o reparo." : repairSource === "manual" ? "Reparo de Emergência concluído." : "Reparo concluído. Retomando o combate.", "loot");
   }
@@ -7171,17 +7254,16 @@
     const currentHp = clamp(Number(state.combat.playerHp || 0), 0, maxHp);
     const repairPercent = getCaptainRepairPercent();
     const targetHp = Math.min(maxHp, currentHp + maxHp * repairPercent);
-    state.combat.enemy = null;
+    const resumeRunning = Boolean(state.combat.running);
     state.combat.repairing = true;
     state.combat.repairStarted = performance.now();
     state.combat.repairDuration = EMERGENCY_REPAIR_DURATION_MS;
     state.combat.repairStartHp = currentHp;
     state.combat.repairTargetHp = targetHp;
     state.combat.repairSource = "manual";
-    state.combat.spawnTimer = EMERGENCY_REPAIR_DURATION_MS;
-    state.combat.running = true;
+    state.combat.repairResumeRunning = resumeRunning;
+    state.combat.running = false;
     state.hasStarted = true;
-    clearCombatTimers();
     scene.resetPlayerShipAnimation();
     trackAction("repair");
     addLog(`Reparo de Emergência iniciado: ${Math.round(repairPercent * 100)}% da vida máxima em 5s.`, "loot");
@@ -7328,7 +7410,6 @@
   }
 
   function combatTick(dt, now) {
-    if (!state.combat.running) return;
     const arenaBattleActive = isArenaBattleActive();
     if (!arenaBattleActive) {
       state.lifetime.playSeconds += dt;
@@ -7345,6 +7426,11 @@
       if (elapsed >= duration || elapsed > duration + 2000) finishRepair(elapsed > duration + 2000);
       return;
     }
+    if (!state.combat.running) {
+      applyPausedHpRegen(dt);
+      return;
+    }
+    state.combat.pausedRegenTimer = 0;
     const captainBonuses = getCaptainBonuses();
     if (!arenaBattleActive && captainBonuses.hpRegenPercentPerSecond > 0 && state.combat.playerHp > 0) {
       const maxHp = getStats().maxHp;
@@ -7669,6 +7755,16 @@
     positionManualAttackTutorial(anchors);
   }
 
+  function updateSpecialCombatExitButton() {
+    const button = $("#combat-exit-button");
+    if (!button) return;
+    const enemy = state.combat.enemy;
+    const visible = Boolean(enemy?.isBoss || (enemy?.isArena && (isArenaBattleWaiting() || isArenaBattleActive())));
+    button.classList.toggle("hidden", !visible);
+    button.disabled = !visible;
+    button.title = enemy?.isArena ? "Sair do duelo PvP sem aplicar vitoria." : "Sair da batalha contra o boss.";
+  }
+
   function renderCombatHud() {
     const stats = getStats();
     const ship = SHIPS[state.shipId];
@@ -7704,6 +7800,7 @@
       $("#enemy-health-fill").style.width = "0%";
       $("#enemy-health-text").textContent = "";
     }
+    updateSpecialCombatExitButton();
     updateFloatingCombatHudPositions();
   }
 
@@ -7726,8 +7823,10 @@
     const runtimeRatio = clamp(state.captainCurrentXp / runtimeNeeded, 0, 1);
     const topCaptain = $("#top-captain");
     const avatar = $("#top-captain-avatar");
-    const title = captain?.name || "Capitão aguardando";
-    if (topCaptain) topCaptain.title = captain ? `${title} - Nv. ${state.captainRuntimeLevel}` : "Escolher Capitão";
+    const pirateName = sanitizePirateName(state.pirateName);
+    const title = isValidPirateName(pirateName) ? pirateName : captain?.name || "Capitão aguardando";
+    const titleHint = captain && isValidPirateName(pirateName) ? `${pirateName} - ${captain.name}` : title;
+    if (topCaptain) topCaptain.title = captain ? `${titleHint} - Nv. ${state.captainRuntimeLevel}` : "Escolher Capitão";
     if (avatar) {
       if (captain) {
         avatar.innerHTML = captainSpriteCanvasHtml(captain.level, captain.gender, "topbar");
@@ -7762,6 +7861,117 @@
     scene.drawPlayerShip(ctx, width * .5, height * .71, scale, ship, { preview: true });
   }
 
+  function estimateCostValue(cost = {}) {
+    return Object.entries(cost || {}).reduce((sum, [key, amount]) => sum + (key === "ouro" ? Number(amount) || 0 : convertResourceAmountToGold(key, amount || 0)), 0);
+  }
+
+  function recommendationScore(powerGain, costValue, canBuy, blocked = false) {
+    const base = Math.max(1, Number(powerGain) || 0) / Math.max(1, Number(costValue) || 1);
+    return base * (canBuy ? 100 : blocked ? .25 : 1);
+  }
+
+  function recommendationActionMatches(candidate, attr) {
+    return Boolean(candidate?.actionAttrs && candidate.actionAttrs.includes(attr));
+  }
+
+  function buildProgressRecommendationCandidates() {
+    const currentStats = getStats();
+    const candidates = [];
+    [["ship", "Convés e Estrutura", "Melhorias do Navio"], ["cannons", "Canhões", "Melhorias do Navio"], ["sails", "Velas", "Melhorias do Navio"], ["hull", "Casco", "Melhorias do Navio"]].forEach(([key, title, category]) => {
+      const cost = getUpgradeCost(key);
+      const nextStats = getStatsPreview({ [key]: state.levels[key] + 1 });
+      const powerGain = Math.max(1, nextStats.power - currentStats.power);
+      const action = upgradeTableActionState("upgrade", key, cost);
+      const canBuy = canAfford(cost);
+      candidates.push({ category, title: `${title} Nv. ${state.levels[key] + 1}`, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: `${formatNumber(currentStats.power)} -> ${formatNumber(nextStats.power)} poder`, score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
+    });
+    Object.entries(EQUIPMENT_META).forEach(([key, item]) => {
+      if (state.equipment[key]) return;
+      const cost = item.costs;
+      const nextStats = getStatsWithTemporaryState(() => { state.equipment[key] = true; });
+      const powerGain = Math.max(1, nextStats.power - currentStats.power);
+      const action = upgradeTableActionState("equipment", key, cost);
+      const canBuy = canAfford(cost);
+      candidates.push({ category: "Equipamento do Navio", title: item.name, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: item.effect, score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
+    });
+    Object.entries(SKILL_META).forEach(([key, meta]) => {
+      const unlocked = isSkillUnlocked(key);
+      const cost = getSkillCost(key);
+      const nextStats = unlocked ? getStatsWithTemporaryState(() => { state.skills[key].level += 1; }) : currentStats;
+      const powerGain = Math.max(1, unlocked ? nextStats.power - currentStats.power : 1);
+      const action = upgradeTableActionState("skill", key, cost, { blocked: !unlocked });
+      const canBuy = unlocked && canAfford(cost);
+      candidates.push({ category: "Skill do Navio", title: `${meta.name} Nv. ${state.skills[key].level + 1}`, cost, powerGain, canBuy, blocked: !unlocked, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: unlocked ? meta.effect : `Libera no nivel ${meta.unlock}`, score: recommendationScore(powerGain, estimateCostValue(cost), canBuy, !unlocked) });
+    });
+    const nextShip = getNextFleetShip();
+    if (nextShip) {
+      const issues = getShipProgressionIssues(nextShip);
+      const nextStats = getStats(nextShip.id);
+      const powerGain = Math.max(1, nextStats.power - currentStats.power);
+      const canBuy = issues.length === 0 && canAfford(nextShip.costs);
+      const action = upgradeTableActionState("ship", nextShip.id, nextShip.costs, { blocked: issues.length > 0 });
+      candidates.push({ category: "Frota", title: nextShip.name, cost: nextShip.costs, powerGain, canBuy, blocked: issues.length > 0, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: issues.length ? issues.join(" • ") : `Novo navio: +${formatNumber(powerGain)} poder`, score: recommendationScore(powerGain, estimateCostValue(nextShip.costs), canBuy, issues.length > 0) });
+    }
+    return candidates.sort((a, b) => Number(b.canBuy) - Number(a.canBuy) || b.score - a.score);
+  }
+
+  function buildCaptainRecommendationCandidates() {
+    if (!isCaptainSelected()) return [];
+    syncCaptainRuntimeState(state);
+    const available = getAvailableLevelPoints();
+    const currentStats = getStats();
+    const candidates = [];
+    Object.entries(CAPTAIN_EQUIPMENT_META).forEach(([key, meta]) => {
+      const next = getNextCaptainEquipmentTierData(key);
+      if (!next) return;
+      const nextStats = getStatsWithTemporaryState(() => {
+        state.captainEquipment[meta.tierKey] = next.level;
+        state.captainEquipmentBonuses = calculateCaptainEquipmentBonuses(state);
+      });
+      const powerGain = Math.max(1, nextStats.power - currentStats.power);
+      const canBuy = available >= next.pointCost;
+      candidates.push({ category: "Equipamento do Capitão", title: next.name, powerGain, canBuy, blocked: false, actionLabel: canBuy ? "Melhorar" : "Faltam pts", actionAttrs: `data-upgrade-captain-equipment="${key}"`, disabled: !canBuy, note: meta.category, costText: `${next.pointCost} Ponto${next.pointCost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, next.pointCost, canBuy) });
+    });
+    Object.entries(CAPTAIN_MANUAL_SKILL_META).forEach(([key, meta]) => {
+      const level = getCaptainManualSkillLevel(key);
+      const cost = getCaptainManualSkillCost(key, level);
+      if (cost === null) return;
+      const isRepair = key === CAPTAIN_REPAIR_SKILL_KEY;
+      const powerGain = isRepair ? Math.round(getStats().maxHp * (meta.repairStep || .1)) : Math.round(getStats().damage * (getCaptainManualSkillMultiplier(key, level + 1) - getCaptainManualSkillMultiplier(key, level)));
+      const canBuy = available >= cost;
+      candidates.push({ category: "Skill do Capitão", title: `${meta.name} Nv. ${level + 1}`, powerGain: Math.max(1, powerGain), canBuy, blocked: false, actionLabel: canBuy ? "Promover" : "Faltam pts", actionAttrs: `data-upgrade-captain-manual-skill="${key}"`, disabled: !canBuy, note: isRepair ? `Reparo ${Math.round(getCaptainRepairPercent(level + 1) * 100)}%` : "Dano manual maior", costText: `${cost} Ponto${cost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, cost, canBuy) });
+    });
+    return candidates.sort((a, b) => Number(b.canBuy) - Number(a.canBuy) || b.score - a.score);
+  }
+
+  function resourceCostText(cost = {}) {
+    const entries = Object.entries(cost || {}).filter(([, amount]) => Number(amount) > 0);
+    if (!entries.length) return "";
+    const text = entries.slice(0, 2).map(([key, amount]) => `${formatNumber(amount)} ${RESOURCE_META[key]?.name || key}`).join(" + ");
+    return entries.length > 2 ? `${text}...` : text;
+  }
+
+  function recommendationLineHtml(candidate, fallbackTitle) {
+    if (!candidate) return `<div class="home-recommendation-row empty"><div class="recommendation-main"><span>${fallbackTitle}</span><strong>Nenhuma recomendação disponível</strong><small>Continue progredindo para liberar novas opções.</small></div><button class="button" disabled>Aguardar</button></div>`;
+    const label = candidate.canBuy ? "Recomendado" : "Próxima recomendada";
+    const costText = candidate.costText || resourceCostText(candidate.cost || {});
+    return `<div class="home-recommendation-row ${candidate.canBuy ? "available" : "locked"}">
+      <div class="recommendation-main"><span>${label} • ${candidate.category}</span><strong>${candidate.title}</strong><small>${candidate.note || ""}</small></div>
+      <div class="recommendation-meta"><span>Ganho</span><strong>+${formatNumber(candidate.powerGain)}</strong></div>
+      <div class="recommendation-meta"><span>Custo</span><strong>${costText || "Sem custo"}</strong></div>
+      <button class="button ${candidate.canBuy ? "primary" : ""}" ${candidate.actionAttrs || ""} ${candidate.disabled ? "disabled" : ""}>${candidate.actionLabel || "Abrir"}</button>
+    </div>`;
+  }
+
+  function renderHomeRecommendations() {
+    const list = $("#home-recommendation-list");
+    if (!list) return;
+    list.innerHTML = [
+      recommendationLineHtml(buildProgressRecommendationCandidates()[0], "Melhoria geral"),
+      recommendationLineHtml(buildCaptainRecommendationCandidates()[0], "Capitão recomendado")
+    ].join("");
+  }
+
   function renderHome() {
     const region = getActiveCombatRegion();
     const stats = getStats();
@@ -7775,6 +7985,7 @@
     $("#metric-hp").textContent = formatNumber(stats.maxHp);
     const powerMetric = $("#metric-power");
     if (powerMetric) powerMetric.textContent = formatNumber(stats.power);
+    renderHomeRecommendations();
     $("#kill-progress-text").textContent = `${Math.min(100, kills)} / 100`;
     $("#boss-progress-fill").style.width = `${Math.min(100, kills)}%`;
     $("#boss-name").textContent = region.boss;
@@ -7857,18 +8068,42 @@
       const status = equipped ? "EQUIPADO" : owned ? `NÍVEL ${level}` : unlocked ? "DISPONÍVEL" : "BLOQUEADO";
       const deltaDamage = current ? pet.damage - current.damage : pet.damage;
       const deltaDps = current ? pet.dps - current.dps : pet.dps;
-      const comparison = equipped ? "Este é seu companheiro atual." : `<span class="${deltaDamage >= 0 ? "positive" : "negative"}">Dano ${deltaDamage >= 0 ? "+" : "-"}${formatNumber(Math.abs(deltaDamage))}</span><span class="${deltaDps >= 0 ? "positive" : "negative"}">DPS ${deltaDps >= 0 ? "+" : "-"}${Math.abs(deltaDps).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span>Ataque ${current && pet.interval > current.interval ? "mais lento" : current && pet.interval < current.interval ? "mais rápido" : "equivalente"}</span>`;
       const upgradeCost = owned ? getPetUpgradeCost(pet.id, level) : null;
       const nextPet = owned && level < PET_MAX_LEVEL ? getPetWithLevel(basePet, level + 1) : null;
-      const upgradePreview = nextPet ? `<span class="cost-chip">Próx. dano +${formatNumber(nextPet.damage - pet.damage)}</span><span class="cost-chip">Próx. poder +${formatNumber(nextPet.power - pet.power)}</span>` : `<span class="cost-chip">Nível máximo permanente</span>`;
-      const button = owned
-        ? `<div class="pet-actions"><button class="button ${equipped ? "" : "primary"}" data-equip-pet="${pet.id}">${equipped ? "Desequipar" : "Equipar"}</button><button class="button prestige-button" data-upgrade-pet="${pet.id}" ${upgradeCost && state.pirateCoins >= upgradeCost ? "" : "disabled"}>${upgradeCost ? `Upgrade ☠ ${formatNumber(upgradeCost)}` : "Nível máximo"}</button></div>`
-        : `<div class="pet-actions"><button class="button primary" data-buy-pet="${pet.id}" ${!unlocked || !affordable ? "disabled" : ""}>Comprar</button></div>`;
       const prestigeLine = `Prestígio necessário: ${state.prestiges} / ${pet.id + 1}`;
-      const requirement = owned
-        ? `<div class="pet-requirements ready"><strong>Upgrade permanente</strong><br>${upgradeCost ? state.pirateCoins >= upgradeCost ? "Moedas Pirata disponíveis para evoluir." : `Faltam ${formatNumber(upgradeCost - state.pirateCoins)} Moedas Pirata para evoluir.` : "Este pet já atingiu o nível máximo."}</div>`
-        : issues.length ? `<div class="pet-requirements"><strong>${prestigeLine}</strong><br>Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready"><strong>${prestigeLine}</strong><br>${state.pirateCoins >= pirateCoinCost ? "Moedas e requisitos disponíveis" : `Faltam ${pirateCoinCost - state.pirateCoins} Moedas Pirata`}</div>`;
-      return `<article class="pet-card pet-list-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
+      const summaryRows = [
+        { label: "Dano", value: formatNumber(pet.damage), delta: current && !equipped ? `${deltaDamage >= 0 ? "+" : "−"}${formatNumber(Math.abs(deltaDamage))}` : formatNumber(pet.damage) },
+        { label: "DPS", value: pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 }), delta: current && !equipped ? `${deltaDps >= 0 ? "+" : "−"}${Math.abs(deltaDps).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}` : pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) },
+        { label: "Ataque", value: `${pet.interval.toLocaleString("pt-BR")}s` },
+        ...(nextPet ? [{ label: "Próx. poder", delta: `+${formatNumber(nextPet.power - pet.power)}` }] : [])
+      ].slice(0, 4);
+      const costHtml = owned
+        ? upgradeCost ? `<span class="cost-chip pirate-coin-cost">☠ ${formatNumber(upgradeCost)}</span>` : `<span class="cost-chip">Nível máximo</span>`
+        : `<span class="cost-chip pirate-coin-cost">☠ ${formatNumber(pirateCoinCost)}</span>${resourceCostHtml(pet.costs)}`;
+      const actionHtml = owned
+        ? `${upgradeTableButtonHtml(equipped ? "Desequipar" : "Equipar", `data-equip-pet="${pet.id}"`, false, equipped ? "" : "primary")}${upgradeTableButtonHtml(upgradeCost ? "Melhorar" : "Máximo", `data-upgrade-pet="${pet.id}"`, !(upgradeCost && state.pirateCoins >= upgradeCost), "prestige-button")}`
+        : upgradeTableButtonHtml("Comprar", `data-buy-pet="${pet.id}"`, !unlocked || !affordable);
+      const value = owned ? `Nível ${level}/${PET_MAX_LEVEL}` : unlocked ? `Prestígio ${pet.id + 1}` : "Bloqueado";
+      const valueSub = owned ? (equipped ? "Equipado" : "Comprado") : issues.length ? issues.join(" • ") : prestigeLine;
+      const note = owned
+        ? pet.bonus || pet.description
+        : issues.length ? `Requer: ${issues.join(" • ")}` : state.pirateCoins >= pirateCoinCost ? "Pronto para adotar" : `Faltam ${formatNumber(pirateCoinCost - state.pirateCoins)} Moedas Pirata`;
+      return upgradeTableRowHtml({
+        classes: `pet-card pet-list-card pet-table-row ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}`,
+        style: getPetAuraStyle(pet),
+        icon: pet.icon,
+        eyebrow: `${pet.rarity} • ${status}`,
+        title: pet.name,
+        note,
+        power: `+${formatNumber(pet.power)}`,
+        powerSub: pet.type,
+        value,
+        valueSub,
+        summaryRows,
+        summaryFallback: pet.description,
+        costHtml,
+        actionHtml
+      });
     }).join("");
   }
 
@@ -7905,20 +8140,11 @@
   }
 
   function captainEquipmentPointActionHtml(key, next) {
-    if (!next) return `<div class="upgrade-row-action"><span class="upgrade-row-status">Tier máximo</span></div>`;
+    if (!next) return upgradeTableButtonHtml("Máximo", "", true, "");
     const available = getAvailableLevelPoints();
     const cost = next.pointCost;
     const canUpgrade = available >= cost;
-    const missing = Math.max(0, cost - available);
-    const after = Math.max(0, available - cost);
-    return `<div class="upgrade-row-action">
-      <button class="button primary" data-upgrade-captain-equipment="${key}" ${canUpgrade ? "" : "disabled"}>${canUpgrade ? "Evoluir" : "Pontos insuficientes"}</button>
-      <div class="upgrade-balance${canUpgrade ? "" : " danger"}">
-        <span>Custo: <strong>${cost} Ponto${cost === 1 ? "" : "s"}</strong></span>
-        <span>Disponíveis: <strong>${available}</strong></span>
-        <span>Após evolução: <strong>${canUpgrade ? after : `Faltam ${missing}`}</strong></span>
-      </div>
-    </div>`;
+    return upgradeTableButtonHtml(canUpgrade ? "Evoluir" : "Faltam pts", `data-upgrade-captain-equipment="${key}"`, !canUpgrade);
   }
 
   function captainEquipmentTabHtml([key, meta]) {
@@ -7943,30 +8169,58 @@
     const available = getAvailableLevelPoints();
     const affordable = Boolean(next && available >= next.pointCost);
     const upgraded = lastCaptainEquipmentUpgrade === key;
+    const recommendation = buildCaptainRecommendationCandidates()[0];
+    const recommended = next && recommendationActionMatches(recommendation, `data-upgrade-captain-equipment="${key}"`);
     const currentName = current?.name || "Ainda não comprado";
     const currentBonus = current ? captainEquipmentBonusText(key, current.bonuses) : "Sem bônus ativo";
     const nextBonus = next ? captainEquipmentBonusText(key, next.bonuses) : "Tier máximo alcançado";
-    return `<article class="upgrade-row captain-equipment-row captain-equipment-detail ${upgraded ? "recent-upgrade" : ""} ${next ? affordable ? "available" : "" : "completed"}">
-      <div class="upgrade-row-icon">${meta.icon}</div>
-      <div class="upgrade-row-main">
-        <span class="level-label">Categoria: ${meta.category}</span>
-        <h3>${currentName}</h3>
-        <div class="captain-equipment-summary">
-          <div><span>Tier atual</span><strong>${currentName} • Nível ${tier} / ${CAPTAIN_EQUIPMENT_MAX_TIER}</strong></div>
-          <div><span>Bônus atual</span><strong>${currentBonus}</strong></div>
-          <div><span>Próximo tier</span><strong>${next ? `${next.name} • Nível ${next.level} / ${CAPTAIN_EQUIPMENT_MAX_TIER}` : "Completo"}</strong></div>
-          <div><span>Próximo bônus</span><strong>${nextBonus}</strong></div>
-        </div>
-        ${next ? `<div class="resource-readiness ${affordable ? "ready" : "missing"}">${affordable ? "Pontos suficientes para evoluir" : `Faltam ${next.pointCost - available} Ponto${next.pointCost - available === 1 ? "" : "s"} de Nível`}</div>` : `<div class="resource-readiness ready">Todos os tiers foram comprados.</div>`}
-        ${upgraded ? `<div class="captain-equipment-feedback">Upgrade realizado!</div>` : ""}
-      </div>
-      ${captainEquipmentPointActionHtml(key, next)}
-    </article>`;
+    const summaryRows = [
+      { label: "Atual", value: currentBonus },
+      { label: "Próximo", value: nextBonus },
+      { label: "Disponível", value: `${available} pts` }
+    ];
+    return upgradeTableRowHtml({
+      classes: `captain-equipment-row captain-equipment-detail ${upgraded ? "recent-upgrade" : ""} ${next ? affordable ? "available" : "" : "completed"} ${recommended ? "recommended" : ""}`,
+      icon: meta.icon,
+      eyebrow: `NÍVEL ${tier} / ${CAPTAIN_EQUIPMENT_MAX_TIER}`,
+      title: `${meta.shortName || meta.category}: ${currentName}`,
+      note: upgraded ? "Upgrade realizado!" : currentBonus,
+      power: next ? `Nv. ${next.level}` : "Máx.",
+      powerSub: `Atual ${tier}/${CAPTAIN_EQUIPMENT_MAX_TIER}`,
+      value: next ? next.name : "Completo",
+      valueSub: next ? `Depois: ${nextBonus}` : "Todos os tiers",
+      summaryRows,
+      summaryFallback: currentBonus,
+      costHtml: next ? `<span class="cost-chip">${next.pointCost} Ponto${next.pointCost === 1 ? "" : "s"}</span><span class="cost-chip">Saldo ${available}</span>` : `<span class="cost-chip">Completo</span>`,
+      actionHtml: captainEquipmentPointActionHtml(key, next)
+    });
+  }
+
+  function captainCollapsibleToggleHtml({ expanded, attr, icon, eyebrow, title, summary, countLabel, countValue }) {
+    return `<button class="captain-pets-toggle captain-section-toggle" type="button" ${attr} aria-expanded="${expanded ? "true" : "false"}">
+      <span class="captain-pets-toggle-icon" aria-hidden="true">${icon}</span>
+      <span class="captain-pets-toggle-copy"><span class="eyebrow">${eyebrow}</span><strong>${title}</strong><small>${summary}</small></span>
+      <span class="captain-pets-toggle-count"><small>${countLabel}</small><strong>${countValue}</strong></span>
+      <i class="captain-pets-toggle-arrow" aria-hidden="true">${expanded ? "-" : "+"}</i>
+    </button>`;
   }
 
   function renderCaptainManualSkillSection(locked = false) {
+    const toggle = captainCollapsibleToggleHtml({
+      expanded: captainManualSkillsExpanded,
+      attr: "data-toggle-captain-manual-skills",
+      icon: "✦",
+      eyebrow: "HABILIDADES MANUAIS DO PIRATA",
+      title: "Skills de combate",
+      summary: locked ? "Escolha um Capitão para liberar Sabotar Inimigo e Reparo de Emergência." : `${Object.keys(CAPTAIN_MANUAL_SKILL_META).length} skills • pontos disponíveis ${getAvailableLevelPoints()}`,
+      countLabel: "SKILLS",
+      countValue: Object.keys(CAPTAIN_MANUAL_SKILL_META).length
+    });
     if (locked) {
-      return `<section class="captain-equipment-section captain-manual-skill-section locked"><div class="section-heading compact"><div><span class="eyebrow">HABILIDADES MANUAIS DO PIRATA</span><h2>Skills manuais bloqueadas</h2><p>Selecione um pirata inicial para liberar Sabotar Inimigo e Reparo de Emergência no combate.</p></div></div></section>`;
+      return `<section class="captain-equipment-section captain-manual-skill-section captain-collapsible-section ${captainManualSkillsExpanded ? "expanded" : ""} locked">
+        ${toggle}
+        <div class="captain-section-body"><div class="section-heading compact"><div><span class="eyebrow">BLOQUEADO</span><h2>Skills manuais bloqueadas</h2><p>Selecione um pirata inicial para liberar Sabotar Inimigo e Reparo de Emergência no combate.</p></div></div></div>
+      </section>`;
     }
     syncCaptainRuntimeState(state);
     const available = getAvailableLevelPoints();
@@ -7977,6 +8231,8 @@
       const cost = getCaptainManualSkillCost(key, level);
       const canUpgrade = cost !== null && available >= cost;
       const upgraded = lastCaptainManualSkillUpgrade === key;
+      const recommendation = buildCaptainRecommendationCandidates()[0];
+      const recommended = cost !== null && recommendationActionMatches(recommendation, `data-upgrade-captain-manual-skill="${key}"`);
       const isRepair = key === CAPTAIN_REPAIR_SKILL_KEY;
       const currentEffect = isRepair ? formatCaptainRepairPercent(level) : formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key, level));
       const nextEffect = cost === null ? "Máximo" : isRepair ? formatCaptainRepairPercent(nextLevel) : formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key, nextLevel));
@@ -7986,56 +8242,68 @@
       const currentEstimate = isRepair ? Math.round(stats.maxHp * getCaptainRepairPercent(level)) : getCaptainManualSkillDamage(key, stats);
       const nextEstimate = isRepair ? Math.round(stats.maxHp * getCaptainRepairPercent(nextLevel)) : Math.round(stats.damage * getCaptainManualSkillMultiplier(key, nextLevel));
       const completeText = isRepair ? "Reparo de Emergência está totalmente promovida." : "Sabotar Inimigo está totalmente promovida.";
-      return `<article class="upgrade-row captain-manual-skill-row ${isRepair ? "captain-repair-skill-row" : ""} ${upgraded ? "recent-upgrade" : ""} ${cost === null ? "completed" : canUpgrade ? "available" : ""}">
-        <div class="upgrade-row-icon">${meta.icon}</div>
-        <div class="upgrade-row-main">
-          <span class="level-label">NÍVEL ${level} / ${meta.maxLevel}</span>
-          <h3>${meta.name}</h3>
-          <p>${meta.description}</p>
-          <div class="captain-equipment-summary">
-            <div><span>Nível atual</span><strong>${level}</strong></div>
-            <div><span>${effectLabel}</span><strong>${currentEffect}</strong></div>
-            <div><span>${nextLabel}</span><strong>${nextEffect}</strong></div>
-            <div><span>${estimateLabel}</span><strong>${formatNumber(currentEstimate)}${cost === null ? "" : ` → ${formatNumber(nextEstimate)}`}</strong></div>
-          </div>
-          <div class="cost-list">${cost === null ? `<span class="cost-chip">Habilidade no nível máximo</span>` : `<span class="cost-chip">Custo: ${cost} Ponto${cost === 1 ? "" : "s"} de Nível</span><span class="cost-chip">Cooldown: ${formatSeconds(meta.cooldown)}</span>${isRepair ? `<span class="cost-chip">Duração: 5s</span>` : ""}`}</div>
-          ${cost === null ? `<div class="resource-readiness ready">${completeText}</div>` : `<div class="resource-readiness ${canUpgrade ? "ready" : "missing"}">${canUpgrade ? "Pontos suficientes para promover" : `Faltam ${cost - available} Ponto${cost - available === 1 ? "" : "s"} de Nível`}</div>`}
-          ${upgraded ? `<div class="captain-equipment-feedback">Habilidade promovida!</div>` : ""}
-        </div>
-        <div class="upgrade-row-action">
-          <button class="button primary" data-upgrade-captain-manual-skill="${key}" ${canUpgrade ? "" : "disabled"}>${cost === null ? "Nível máximo" : canUpgrade ? "Promover" : "Pontos insuficientes"}</button>
-          <div class="upgrade-balance${canUpgrade || cost === null ? "" : " danger"}">
-            <span>Custo: <strong>${cost === null ? "Completo" : `${cost} Ponto${cost === 1 ? "" : "s"}`}</strong></span>
-            <span>Disponíveis: <strong>${available}</strong></span>
-            <span>Após upgrade: <strong>${cost === null ? "Máximo" : canUpgrade ? available - cost : `Faltam ${cost - available}`}</strong></span>
-          </div>
-        </div>
-      </article>`;
+      const summaryRows = [
+        { label: effectLabel, value: currentEffect },
+        { label: nextLabel, value: nextEffect },
+        { label: estimateLabel, value: `${formatNumber(currentEstimate)}${cost === null ? "" : ` → ${formatNumber(nextEstimate)}`}` },
+        { label: "Cooldown", value: formatSeconds(meta.cooldown) }
+      ];
+      return upgradeTableRowHtml({
+        classes: `captain-manual-skill-row ${isRepair ? "captain-repair-skill-row" : ""} ${upgraded ? "recent-upgrade" : ""} ${cost === null ? "completed" : canUpgrade ? "available" : ""} ${recommended ? "recommended" : ""}`,
+        icon: meta.icon,
+        eyebrow: `NÍVEL ${level} / ${meta.maxLevel}`,
+        title: meta.name,
+        note: upgraded ? "Habilidade promovida!" : meta.description,
+        power: currentEffect,
+        powerSub: effectLabel,
+        value: cost === null ? "Máximo" : `Nível ${nextLevel}`,
+        valueSub: cost === null ? completeText : nextEffect,
+        summaryRows,
+        summaryFallback: meta.description,
+        costHtml: cost === null ? `<span class="cost-chip">Completo</span>` : `<span class="cost-chip">${cost} Ponto${cost === 1 ? "" : "s"}</span><span class="cost-chip">Saldo ${available}</span>`,
+        actionHtml: upgradeTableButtonHtml(cost === null ? "Máximo" : canUpgrade ? "Promover" : "Faltam pts", `data-upgrade-captain-manual-skill="${key}"`, !canUpgrade)
+      });
     }).join("");
-    return `<section class="captain-equipment-section captain-manual-skill-section">
-      <div class="section-heading compact"><div><span class="eyebrow">HABILIDADES MANUAIS DO PIRATA</span><h2>Skills de combate</h2></div><div class="captain-points-wallet"><span>PONTOS DE NÍVEL</span><strong>${available}</strong></div></div>
-      <div class="captain-manual-skill-list">${manualSkillRows}</div>
+    return `<section class="captain-equipment-section captain-manual-skill-section captain-collapsible-section ${captainManualSkillsExpanded ? "expanded" : ""}">
+      ${toggle}
+      <div class="captain-section-body"><div class="captain-manual-skill-list upgrade-feed-list">${manualSkillRows}</div></div>
     </section>`;
   }
 
   function renderCaptainEquipmentSection(locked = false) {
+    const equipmentTierTotal = Object.keys(CAPTAIN_EQUIPMENT_META).reduce((sum, key) => sum + getCaptainEquipmentTier(key), 0);
+    const equipmentTierMax = Object.keys(CAPTAIN_EQUIPMENT_META).length * CAPTAIN_EQUIPMENT_MAX_TIER;
+    const toggle = captainCollapsibleToggleHtml({
+      expanded: captainEquipmentExpanded,
+      attr: "data-toggle-captain-equipment",
+      icon: "◆",
+      eyebrow: "ARSENAL DO COMANDO",
+      title: "Equipamentos do Capitão",
+      summary: locked ? "Escolha um Capitão para liberar os upgrades de comando." : `${equipmentTierTotal}/${equipmentTierMax} níveis • pontos disponíveis ${getAvailableLevelPoints()}`,
+      countLabel: "NÍVEIS",
+      countValue: `${equipmentTierTotal}/${equipmentTierMax}`
+    });
     if (locked) {
-      return `<section class="captain-equipment-section locked"><div class="section-heading compact"><div><span class="eyebrow">EQUIPAMENTOS DO CAPITÃO</span><h2>Escolha um Capitão para liberar</h2></div></div></section>`;
+      return `<section class="captain-equipment-section captain-collapsible-section ${captainEquipmentExpanded ? "expanded" : ""} locked">
+        ${toggle}
+        <div class="captain-section-body"><div class="section-heading compact"><div><span class="eyebrow">BLOQUEADO</span><h2>Escolha um Capitão para liberar</h2><p>Os equipamentos do Capitão usam Pontos de Nível temporários e melhoram o desempenho do navio.</p></div></div></div>
+      </section>`;
     }
     syncCaptainRuntimeState(state);
-    if (!CAPTAIN_EQUIPMENT_META[activeCaptainEquipmentKey]) activeCaptainEquipmentKey = Object.keys(CAPTAIN_EQUIPMENT_META)[0];
     const runtimeNeeded = captainRuntimeXpNeeded(state.captainRuntimeLevel);
     const runtimeRatio = clamp(state.captainCurrentXp / runtimeNeeded, 0, 1);
-    return `<section class="captain-equipment-section">
-      <div class="section-heading compact"><div><span class="eyebrow">ARSENAL DO COMANDO</span><h2>Equipamentos do Capitão</h2></div><div class="captain-points-wallet"><span>PONTOS DE NÍVEL</span><strong>${getAvailableLevelPoints()}</strong></div></div>
+    const equipmentRows = Object.keys(CAPTAIN_EQUIPMENT_META).map(captainEquipmentDetailHtml).join("");
+    return `<section class="captain-equipment-section captain-collapsible-section ${captainEquipmentExpanded ? "expanded" : ""}">
+      ${toggle}
+      <div class="captain-section-body">
       <div class="captain-runtime-panel">
         <div><span>Nível temporário</span><strong>${state.captainRuntimeLevel}</strong></div>
         <div><span>XP do ciclo</span><strong>${formatNumber(state.captainCurrentXp)} / ${formatNumber(runtimeNeeded)}</strong><i><b style="width:${runtimeRatio * 100}%"></b></i></div>
         <div><span>Pontos ganhos</span><strong>${state.totalLevelPointsEarned}</strong></div>
         <div><span>Pontos gastos</span><strong>${state.spentLevelPoints}</strong></div>
       </div>
-      <div class="captain-equipment-tabs" role="tablist" aria-label="Equipamentos do Capitão">${Object.entries(CAPTAIN_EQUIPMENT_META).map(captainEquipmentTabHtml).join("")}</div>
-      ${captainEquipmentDetailHtml(activeCaptainEquipmentKey)}
+      <div class="captain-equipment-list upgrade-feed-list">${equipmentRows}</div>
+      </div>
     </section>`;
   }
 
@@ -8080,6 +8348,7 @@
     state.pirateName = cleanName;
     if (input) input.value = cleanName;
     saveGame();
+    renderTopbar();
     if (render) renderCaptain();
     else updateCaptainIdentityPreview(cleanName);
     if (feedback) toast("Nome de Pirata salvo.", "gold-toast");
@@ -8326,6 +8595,22 @@
     }
   }
 
+  function getStatsWithTemporaryState(mutator) {
+    const previousEquipment = { ...state.equipment };
+    const previousSkills = Object.fromEntries(Object.entries(state.skills).map(([key, value]) => [key, { ...value }]));
+    const previousCaptainEquipment = { ...state.captainEquipment };
+    const previousCaptainBonuses = { ...state.captainEquipmentBonuses };
+    try {
+      mutator();
+      return getStats();
+    } finally {
+      state.equipment = previousEquipment;
+      state.skills = previousSkills;
+      state.captainEquipment = previousCaptainEquipment;
+      state.captainEquipmentBonuses = previousCaptainBonuses;
+    }
+  }
+
   function getHighestOwnedShipId() {
     return state.ownedShips.reduce((highest, id) => SHIPS[id] ? Math.max(highest, Number(id)) : highest, 0);
   }
@@ -8422,10 +8707,118 @@
     return [row("Vida", "maxHp"), row("Defesa", "armor"), { label: "Poder", value: `${formatNumber(current.power)} → ${formatNumber(next.power)}`, delta: formatStatDelta(next.power - current.power) }];
   }
 
-  function upgradeLineHtml(item) {
+  function formatPercentDelta(value) {
+    const rounded = Math.round(Math.abs(value) * 100);
+    return `${value >= 0 ? "+" : "−"}${rounded}%`;
+  }
+
+  function getPositiveStatRows(current, next, keys = ["damage", "maxHp", "speed", "armor", "crit", "evasion", "shipDps", "dps"]) {
+    const meta = {
+      damage: ["Dano", value => formatNumber(value), value => formatStatDelta(value)],
+      maxHp: ["Vida", value => formatNumber(value), value => formatStatDelta(value)],
+      speed: ["Veloc.", value => formatNumber(value), value => formatStatDelta(value)],
+      armor: ["Defesa", value => formatNumber(value), value => formatStatDelta(value)],
+      precision: ["Precisão", value => `${Math.round(value * 100)}%`, value => formatPercentDelta(value)],
+      crit: ["Crítico", value => `${Math.round(value * 100)}%`, value => formatPercentDelta(value)],
+      evasion: ["Evasão", value => `${Math.round(value * 100)}%`, value => formatPercentDelta(value)],
+      shipDps: ["DPS navio", value => formatNumber(value), value => formatStatDelta(value)],
+      skillDps: ["DPS skill", value => formatNumber(value), value => formatStatDelta(value)],
+      dps: ["DPS", value => formatNumber(value), value => formatStatDelta(value)]
+    };
+    return keys
+      .map(key => {
+        const config = meta[key];
+        if (!config) return null;
+        const delta = (next[key] || 0) - (current[key] || 0);
+        if (Math.abs(delta) < .0001) return null;
+        const [label, formatValue, formatDelta] = config;
+        return { label, value: `${formatValue(current[key] || 0)} → ${formatValue(next[key] || 0)}`, delta: formatDelta(delta) };
+      })
+      .filter(Boolean)
+      .slice(0, 4);
+  }
+
+  function upgradeSummaryHtml(rows, fallback = "") {
+    const items = rows && rows.length ? rows : fallback ? [{ label: fallback, delta: "" }] : [];
+    return items.map(row => `<span>${row.label}${row.delta || row.value ? ` <strong>${row.delta || row.value}</strong>` : ""}</span>`).join("");
+  }
+
+  function upgradeSummaryText(rows, fallback = "") {
+    if (!rows?.length) return fallback;
+    return rows.slice(0, 3).map(row => `${row.label} ${row.delta || row.value}`).join(" • ");
+  }
+
+  function upgradeTableButtonHtml(label, attrs = "", disabled = false, className = "primary") {
+    return `<button class="button ${className}" ${attrs} ${disabled ? "disabled" : ""}>${label}</button>`;
+  }
+
+  function upgradeTableRowHtml({ classes = "", style = "", icon, eyebrow, title, note = "", power, powerSub = "", value, valueSub = "", summaryRows = [], summaryFallback = "", costHtml = "", actionHtml = "" }) {
+    const summaryText = upgradeSummaryText(summaryRows, summaryFallback);
+    const recommendedBadge = classes.includes("recommended") ? `<span class="recommendation-badge">Recomendado</span>` : "";
+    return `<article class="upgrade-row upgrade-table-row ${classes}" ${style ? `style="${style}"` : ""}>
+      <div class="upgrade-table-main"><div class="upgrade-row-icon">${icon}</div><div><span class="level-label">${eyebrow}</span><h3>${title}${recommendedBadge}</h3><p>${note || summaryText}</p></div></div>
+      <div class="upgrade-table-power"><strong>${power}</strong>${powerSub ? `<small>${powerSub}</small>` : ""}</div>
+      <div class="upgrade-table-value"><strong>${value}</strong>${valueSub ? `<small>${valueSub}</small>` : ""}</div>
+      <div class="upgrade-table-summary">${upgradeSummaryHtml(summaryRows, summaryFallback)}</div>
+      <div class="upgrade-table-cost">${costHtml}</div>
+      <div class="upgrade-table-action">${actionHtml}</div>
+    </article>`;
+  }
+
+  function legacyUpgradeLineHtml(item) {
     const cost = getUpgradeCost(item.key);
     const affordable = canAfford(cost);
     return `<article class="upgrade-row ${affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">NÍVEL ${state.levels[item.key]}</span><h3>${item.name}</h3><p>${item.desc}</p>${statRowsHtml(getImprovementRows(item.key))}<div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div></div>${upgradeActionHtml("upgrade", item.key, cost, affordable, { hint: `Próximo: nível ${state.levels[item.key] + 1}` })}</article>`;
+  }
+
+  function upgradeTableActionState(kind, id, cost, options = {}) {
+    const attrs = kind === "upgrade" ? `data-upgrade="${id}"` : kind === "ship" ? `data-buy-ship="${id}"` : kind === "equipment" ? `data-craft-equipment="${id}"` : `data-upgrade-skill="${id}"`;
+    const affordable = cost && canAfford(cost);
+    const info = cost && !affordable && !options.blocked ? getMissingPurchaseInfo(cost) : null;
+    const goldCost = cost?.ouro || 0;
+    const requiredGold = affordable ? goldCost : info ? info.total + goldCost : goldCost;
+    const missingGold = Math.max(0, requiredGold - state.resources.ouro);
+    const unavailableLabel = missingGold > 0 ? `Faltam ${formatNumber(missingGold)} Ouro` : "Faltam Gold";
+    const smartTotal = affordable ? goldCost : info?.canBuyAndExecute ? requiredGold : 0;
+    const afterGold = Math.max(0, state.resources.ouro - smartTotal);
+    const directLabel = kind === "upgrade" || kind === "skill" ? "Melhorar" : "Comprar";
+    const label = options.blocked ? "Bloqueado" : affordable ? directLabel : info?.canBuyAndExecute ? "Comprar tudo" : unavailableLabel;
+    const disabled = options.blocked || (!affordable && !info?.canBuyAndExecute);
+    const actionAttrs = affordable ? attrs : `data-smart-upgrade="${kind}" data-smart-upgrade-id="${id}"`;
+    const afterText = disabled && !options.blocked ? unavailableLabel : `${formatNumber(afterGold)} Ouro`;
+    return { actionAttrs, afterText, disabled, label };
+  }
+
+  function upgradeLineHtml(item) {
+    const cost = getUpgradeCost(item.key);
+    const affordable = canAfford(cost);
+    const rows = getImprovementRows(item.key);
+    const action = upgradeTableActionState("upgrade", item.key, cost);
+    const currentStats = getStats();
+    const nextStats = getStatsPreview({ [item.key]: state.levels[item.key] + 1 });
+    const powerGain = Math.max(0, nextStats.power - currentStats.power);
+    const summaryRows = rows
+      .filter(row => row.label !== "Poder")
+      .filter(row => row.delta && !["+0", "+0%"].includes(row.delta))
+      .slice(0, 3);
+    const visibleRows = summaryRows.length ? summaryRows : rows.filter(row => row.label !== "Poder").slice(0, 3);
+    const recommendation = buildProgressRecommendationCandidates()[0];
+    const recommended = recommendationActionMatches(recommendation, `data-upgrade="${item.key}"`) ||
+      (recommendationActionMatches(recommendation, `data-smart-upgrade="upgrade"`) && recommendationActionMatches(recommendation, `data-smart-upgrade-id="${item.key}"`));
+    return upgradeTableRowHtml({
+      classes: `${affordable ? "available" : ""} ${recommended ? "recommended" : ""}`,
+      icon: item.icon,
+      eyebrow: `NÍVEL ${state.levels[item.key]}`,
+      title: item.name,
+      power: `+${formatNumber(powerGain)}`,
+      powerSub: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`,
+      value: `Nível ${state.levels[item.key] + 1}`,
+      valueSub: `Atual ${state.levels[item.key]}`,
+      summaryRows: visibleRows,
+      summaryFallback: item.desc,
+      costHtml: resourceCostHtml(cost),
+      actionHtml: upgradeTableButtonHtml(action.label, action.actionAttrs, action.disabled)
+    });
   }
 
   function fleetSelectionLineHtml() {
@@ -8496,13 +8889,41 @@
       { label: "Poder", value: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`, delta: formatStatDelta(nextStats.power - currentStats.power) }
     ];
     const mapHint = getShipMapLockIssue(nextShip);
-    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${getOwnedShipIds().length}/${SHIPS.length}</span><h3>Frota: ${currentShip.name}</h3><p>Compre o próximo barco da sequência: ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${fleetPurchaseActionHtml(nextShip, progressionIssues.length > 0, mapHint || `Atual: ${currentShip.name}`)}</article>`;
+    const recommendation = buildProgressRecommendationCandidates()[0];
+    const recommended = recommendationActionMatches(recommendation, `data-buy-ship="${nextShip.id}"`) ||
+      (recommendationActionMatches(recommendation, `data-smart-upgrade="ship"`) && recommendationActionMatches(recommendation, `data-smart-upgrade-id="${nextShip.id}"`));
+    const recommendedBadge = recommended ? `<span class="recommendation-badge">Recomendado</span>` : "";
+    return `<article class="upgrade-row fleet-upgrade ${canBuy ? "available" : ""} ${recommended ? "recommended" : ""}"><div class="upgrade-row-icon ship-preview-icon"><canvas data-next-ship-preview="${nextShip.id}" aria-label="Próximo barco: ${nextShip.name}"></canvas></div><div class="upgrade-row-main"><span class="level-label">FROTA ${getOwnedShipIds().length}/${SHIPS.length}</span><h3>Frota: ${currentShip.name}${recommendedBadge}</h3><p>Compre o próximo barco da sequência: ${nextShip.name}.</p>${statRowsHtml(rows)}<div class="cost-list">${resourceCostHtml(nextShip.costs)}</div><div class="resource-readiness ${canBuy ? "ready" : "missing"}">${progressionIssues.length ? `Requisito: ${progressionIssues.join(" • ")}` : missingResourcesText(nextShip.costs)}</div></div>${fleetPurchaseActionHtml(nextShip, progressionIssues.length > 0, mapHint || `Atual: ${currentShip.name}`)}</article>`;
   }
 
   function equipmentLineHtml([key, item]) {
     const equipped = state.equipment[key];
     const affordable = canAfford(item.costs);
-    return `<article class="upgrade-row ${equipped ? "completed" : affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">${equipped ? "EQUIPAMENTO ATIVO" : "EQUIPAMENTO"}</span><h3>${item.name}</h3><p>${item.effect}</p>${statRowsHtml([{ label: "Bônus atual", value: equipped ? "Ativo" : "Não comprado" }, { label: "Ao comprar", value: item.effect }])}<div class="cost-list">${equipped ? "<span class=\"cost-chip\">Bônus ativo permanentemente</span>" : resourceCostHtml(item.costs)}</div>${equipped ? "" : `<div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(item.costs)}</div>`}</div>${upgradeActionHtml("equipment", key, item.costs, !equipped && affordable, { completed: equipped, completedText: "Comprado" })}</article>`;
+    const currentStats = getStats();
+    const nextStats = equipped ? currentStats : getStatsWithTemporaryState(() => { state.equipment[key] = true; });
+    const powerGain = Math.max(0, nextStats.power - currentStats.power);
+    const statRows = getPositiveStatRows(currentStats, nextStats, ["damage", "maxHp", "speed", "armor", "precision", "crit", "evasion", "shipDps", "dps"]);
+    if (!equipped && key === "compass") statRows.push({ label: "Loot", value: "Chance de loot", delta: "+8%" });
+    const action = equipped
+      ? { actionAttrs: "", disabled: true, label: "Comprado" }
+      : upgradeTableActionState("equipment", key, item.costs);
+    const recommendation = buildProgressRecommendationCandidates()[0];
+    const recommended = !equipped && (recommendationActionMatches(recommendation, `data-craft-equipment="${key}"`) ||
+      (recommendationActionMatches(recommendation, `data-smart-upgrade="equipment"`) && recommendationActionMatches(recommendation, `data-smart-upgrade-id="${key}"`)));
+    return upgradeTableRowHtml({
+      classes: `${equipped ? "completed" : affordable ? "available" : ""} ${recommended ? "recommended" : ""}`,
+      icon: item.icon,
+      eyebrow: equipped ? "EQUIPAMENTO ATIVO" : "EQUIPAMENTO",
+      title: item.name,
+      power: equipped ? "Ativo" : `+${formatNumber(powerGain)}`,
+      powerSub: equipped ? formatNumber(currentStats.power) : `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`,
+      value: equipped ? "Comprado" : "Permanente",
+      valueSub: equipped ? "Bônus ativo" : "Compra única",
+      summaryRows: statRows.slice(0, 4),
+      summaryFallback: item.effect,
+      costHtml: equipped ? `<span class="cost-chip">Ativo permanente</span>` : resourceCostHtml(item.costs),
+      actionHtml: upgradeTableButtonHtml(action.label, action.actionAttrs, action.disabled)
+    });
   }
 
   function skillLineHtml([key, meta]) {
@@ -8520,11 +8941,39 @@
           { label: "DPS skill", value: `${formatNumber(current.dps)} → ${formatNumber(next.dps)}`, delta: formatStatDelta(next.dps - current.dps) }
         ]
       : [{ label: "Bloqueada", value: `Libera no nível ${meta.unlock}` }, { label: "Efeito", value: meta.effect }];
-    return `<article class="upgrade-row skill-upgrade ${affordable ? "available" : ""} ${unlocked ? "" : "locked"}"><div class="upgrade-row-icon">${meta.icon}</div><div class="upgrade-row-main"><span class="level-label">${unlocked ? `NÍVEL ${skill.level}` : `LIBERA NO NÍVEL ${meta.unlock}`}</span><h3>${meta.name}</h3><p>${effectLine}</p>${statRowsHtml(rows)}${unlocked ? `<div class="auto-switch compact"><span>Lançamento automático</span><button class="toggle ${skill.auto ? "on" : ""}" data-toggle-skill="${key}" aria-label="Alternar lançamento automático"></button></div><div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div>` : ""}</div>${upgradeActionHtml("skill", key, cost, affordable, { blocked: !unlocked, hint: unlocked ? `Próximo: nível ${skill.level + 1}` : `Libera no nível ${meta.unlock}` })}</article>`;
+    const currentStats = getStats();
+    const nextStats = unlocked ? getStatsWithTemporaryState(() => { state.skills[key].level += 1; }) : currentStats;
+    const powerGain = Math.max(0, nextStats.power - currentStats.power);
+    const action = upgradeTableActionState("skill", key, cost, { blocked: !unlocked });
+    const recommendation = buildProgressRecommendationCandidates()[0];
+    const recommended = unlocked && (recommendationActionMatches(recommendation, `data-upgrade-skill="${key}"`) ||
+      (recommendationActionMatches(recommendation, `data-smart-upgrade="skill"`) && recommendationActionMatches(recommendation, `data-smart-upgrade-id="${key}"`)));
+    const toggle = unlocked ? `<button class="toggle table-toggle ${skill.auto ? "on" : ""}" data-toggle-skill="${key}" aria-label="Alternar lançamento automático de ${meta.name}" title="Auto ${skill.auto ? "ligado" : "desligado"}"></button>` : "";
+    return upgradeTableRowHtml({
+      classes: `${affordable ? "available" : ""} ${unlocked ? "" : "locked"} ${recommended ? "recommended" : ""}`,
+      icon: meta.icon,
+      eyebrow: unlocked ? `NÍVEL ${skill.level}` : `LIBERA NO NÍVEL ${meta.unlock}`,
+      title: meta.name,
+      note: effectLine,
+      power: unlocked ? `+${formatNumber(powerGain)}` : "Bloq.",
+      powerSub: unlocked ? `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}` : "Pirata",
+      value: unlocked ? `Nível ${skill.level + 1}` : `Nv. ${meta.unlock}`,
+      valueSub: unlocked ? `Auto ${skill.auto ? "ON" : "OFF"}` : "Bloqueada",
+      summaryRows: rows,
+      summaryFallback: meta.effect,
+      costHtml: unlocked ? resourceCostHtml(cost) : `<span class="cost-chip">Libera no Nv. ${meta.unlock}</span>`,
+      actionHtml: `${toggle}${upgradeTableButtonHtml(action.label, action.actionAttrs, action.disabled)}`
+    });
+  }
+
+  function legacyRenderUpgradeSection(title, rows) {
+    return `<section class="upgrade-feed-section"><h2>${title}</h2><div class="upgrade-feed-list">${rows.join("")}</div></section>`;
   }
 
   function renderUpgradeSection(title, rows) {
-    return `<section class="upgrade-feed-section"><h2>${title}</h2><div class="upgrade-feed-list">${rows.join("")}</div></section>`;
+    const isTable = ["Melhorias", "Equipamentos", "Skills"].includes(title);
+    const tableHead = isTable ? `<div class="upgrade-table-head"><span>Melhoria</span><span>Poder Naval</span><span>Valor</span><span>Status principais</span><span>Custo</span><span>Ação</span></div>` : "";
+    return `<section class="upgrade-feed-section ${isTable ? "upgrade-table-section" : ""}"><h2>${title}</h2>${tableHead}<div class="upgrade-feed-list">${rows.join("")}</div></section>`;
   }
 
   function shipUpgradeCategoryTabsHtml() {
@@ -8614,11 +9063,46 @@
       const drops = `<div class="map-drops prologue-map-modal-drops"><span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS.legendary}"><span>${RESOURCE_META.ouro.icon}</span>Ouro extra <b>${Math.round(extraChance * 100)}%</b></span><span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS.rare}"><span>Baú</span>Comum <b>${Math.round(CHEST_DROP_CHANCES.monster * 100)}%</b></span></div>`;
       return `<div class="prologue-map-modal-layer" data-close-map-info><article class="prologue-map-modal-card" role="dialog" aria-modal="true" aria-labelledby="map-info-title"><button class="prologue-map-close" data-close-map-info aria-label="Fechar">×</button><span class="map-number">${mapStepLabel(point)}</span><h3 id="map-info-title">${point.title || region.name}</h3><span class="map-status ${status.key}">${status.label}</span><p>${description}</p><div class="prologue-map-modal-meta"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div>${drops}<div class="prologue-map-modal-actions"><button class="button primary" data-select-map="${activeMapInfoIndex}" ${!status.unlocked || status.current ? "disabled" : ""}>${status.unlocked ? status.current ? "Atual" : "Viajar" : "Bloqueado"}</button><button class="button" data-close-map-info>Fechar</button></div></article></div>`;
     };
+    const mapCompactRowsHtml = () => REGIONS.map((region, index) => {
+      const status = mapStatus(index);
+      const point = mapPointByIndex(index);
+      const kills = Math.min(100, state.regionKills[index] || 0);
+      const progress = status.completed ? 100 : status.unlocked ? kills : 0;
+      const missingWins = Math.max(0, 100 - progress);
+      const subtitle = point ? mapStepLabel(point) : `MAPA ${index + 1}/${REGIONS.length}`;
+      const requirement = !status.unlocked
+        ? `Desbloqueie a região ${index} para viajar.`
+        : status.current
+          ? "Rota ativa agora."
+          : status.completed
+            ? "Boss derrotado. Rota liberada para farm."
+            : `Faltam ${missingWins} vitórias para chamar o boss.`;
+      const buttonText = status.current ? "Atual" : status.unlocked ? "Viajar" : "Bloqueado";
+      return `<article class="map-card ${status.key}" style="--map-accent:${status.current ? "var(--cyan-2)" : status.completed ? "var(--gold)" : status.unlocked ? "var(--green)" : "var(--red)"}">
+        <div class="map-row-main">
+          <div class="map-title-line"><span class="map-number">${subtitle}</span><span class="map-status ${status.key}">${status.label}</span></div>
+          <h3>${index + 1} - ${region.name}</h3>
+          <p class="map-requirement">${requirement}</p>
+        </div>
+        <div class="map-progress-cell">
+          <span>Progresso</span>
+          <strong>${progress} / 100</strong>
+          <div class="map-progress-bar"><i style="width:${progress}%"></i></div>
+        </div>
+        <div class="map-yields">
+          <span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span>
+          <span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span>
+        </div>
+        <div class="map-drops">${mapDropsHtml(region)}</div>
+        <div class="map-action"><button class="button ${status.unlocked && !status.current ? "primary" : ""}" data-select-map="${index}" ${!status.unlocked || status.current ? "disabled" : ""}>${buttonText}</button></div>
+      </article>`;
+    }).join("");
     const mapBoardHtml = ({ title, subtitle, asset, alt, points }, sectionClass = "") => `<section class="map-section ${sectionClass}"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="prologue-map-board"><img src="${asset}" alt="${alt}" class="prologue-map-image"><div class="prologue-map-points">${points.map(mapHotspotHtml).join("")}</div></div></section>`;
     const prologueMapHtml = () => mapBoardHtml({ title: "Prólogo Pré-Histórico", subtitle: "5 mapas iniciais", asset: PROLOGUE_MAP_ASSET, alt: "Mapa animado do prólogo", points: PROLOGUE_MAP_POINTS }, "prologue-map-section");
     $("#maps-grid").innerHTML = [
       prologueMapHtml(),
       ...JOURNEY_MAP_PARTS.map(part => mapBoardHtml(part, "journey-map-section")),
+      `<section class="map-section maps-compact-section"><div class="map-section-heading"><h2>Rotas e recompensas</h2><span>${state.unlockedRegions}/${REGIONS.length} disponíveis</span></div><div class="map-section-list compact-map-table">${mapCompactRowsHtml()}</div></section>`,
       mapInfoModalHtml()
     ].join("");
   }
@@ -9164,6 +9648,41 @@
     renderAll(false);
   }
 
+  function cancelArenaBattleFromExit() {
+    const battle = arenaState.battle;
+    if (!battle) return false;
+    const enemyName = battle.opponent?.pirate_name || state.combat.enemy?.name || "Inimigo da Arena";
+    addLog(`Voce saiu da Arena contra ${enemyName}.`, "danger-text");
+    toast("Voce saiu da Arena.", "danger-toast");
+    if (arenaState.previousCombat?.combat) {
+      state.combat = JSON.parse(JSON.stringify(arenaState.previousCombat.combat));
+      state.combat.playerHp = clamp(Number(state.combat.playerHp) || getStats().maxHp, 0, getStats().maxHp);
+      state.hasStarted = arenaState.previousCombat.hasStarted;
+    } else {
+      state.combat.enemy = null;
+      state.combat.running = false;
+    }
+    const returnScreen = arenaState.previousCombat?.screen || "home";
+    arenaState.battle = null;
+    arenaState.previousCombat = null;
+    arenaState.result = null;
+    scene.resetPlayerShipAnimation();
+    navigate(returnScreen === "stats" ? "home" : returnScreen);
+    renderAll(false);
+    saveGame();
+    return true;
+  }
+
+  function exitSpecialCombat() {
+    const enemy = state.combat.enemy;
+    if (enemy?.isArena || isArenaBattleActive() || isArenaBattleWaiting()) return cancelArenaBattleFromExit();
+    if (enemy?.isBoss) {
+      cancelBossBattle({ voluntary: true });
+      return true;
+    }
+    return false;
+  }
+
   function closeArenaResultModal() {
     $("#arena-result-modal")?.classList.add("hidden");
     if (arenaState.previousCombat?.combat) {
@@ -9177,6 +9696,9 @@
     arenaState.result = null;
     scene.resetPlayerShipAnimation();
     navigate(returnScreen === "stats" ? "home" : returnScreen);
+    renderAll(false);
+    if (voluntary) addLog(`Voce saiu do combate contra ${bossName}.`, "danger-text");
+    if (voluntary || disabledAuto) toast(voluntary ? "Combate contra boss encerrado." : "Derrota para o boss. Boss Auto foi desligado.", "danger-toast");
     renderAll(false);
     saveGame();
   }
@@ -9201,6 +9723,16 @@
 
   function toggleCaptainPetsPanel() {
     captainPetsExpanded = !captainPetsExpanded;
+    renderCaptain();
+  }
+
+  function toggleCaptainManualSkillsPanel() {
+    captainManualSkillsExpanded = !captainManualSkillsExpanded;
+    renderCaptain();
+  }
+
+  function toggleCaptainEquipmentPanel() {
+    captainEquipmentExpanded = !captainEquipmentExpanded;
     renderCaptain();
   }
 
@@ -9640,8 +10172,20 @@
       startArenaChallenge(target.dataset.arenaChallenge);
       return;
     }
+    if (target.dataset.exitSpecialCombat !== undefined) {
+      exitSpecialCombat();
+      return;
+    }
     if (target.dataset.toggleCaptainPets !== undefined) {
       toggleCaptainPetsPanel();
+      return;
+    }
+    if (target.dataset.toggleCaptainManualSkills !== undefined) {
+      toggleCaptainManualSkillsPanel();
+      return;
+    }
+    if (target.dataset.toggleCaptainEquipment !== undefined) {
+      toggleCaptainEquipmentPanel();
       return;
     }
     if (target.dataset.toggleStatsPanel) {
@@ -9762,6 +10306,7 @@
     }
     if (state.regionKills[state.regionIndex] < 100 || state.bossesDefeated[state.regionIndex]) return false;
     const issues = endgameRequirementIssues(state.regionIndex);
+    state.combat.specialCombatResumeRunning = Boolean(state.combat.running);
     if (issues.length && !automatic) toast("Seu Poder Naval está baixo para esse boss. Recomenda-se evoluir antes de avançar.", "danger-toast");
     state.combat.running = true;
     state.hasStarted = true;

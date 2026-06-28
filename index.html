@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=82">
+  <link rel="stylesheet" href="styles.css?v=94">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -62,6 +62,7 @@
             </span>
           </button>
           <div class="manual-skill-dock" id="manual-skill-dock" aria-label="Ataque manual"></div>
+          <button class="combat-exit-button hidden" id="combat-exit-button" type="button" data-exit-special-combat>Sair do combate</button>
           <div class="skill-dock" id="skill-dock" aria-label="Habilidades de combate"></div>
         </div>
 
@@ -88,6 +89,13 @@
               <button class="button primary" id="start-button">Combate Auto: OFF</button>
               <button class="button auto-boss-button" id="auto-boss-button" type="button" aria-pressed="false">Boss Auto: OFF</button>
             </div>
+          </article>
+
+          <article class="card home-recommendation-card" id="home-recommendation-card">
+            <div class="card-heading compact">
+              <div><span class="eyebrow">PROGRESSO</span><h2>Melhoria recomendada</h2></div>
+            </div>
+            <div class="home-recommendation-list" id="home-recommendation-list"></div>
           </article>
 
           <article class="card progression-card">
@@ -347,6 +355,6 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=156"></script>
+  <script src="game.js?v=164"></script>
 </body>
 </html>
