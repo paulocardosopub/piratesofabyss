@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=74">
+  <link rel="stylesheet" href="styles.css?v=78">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -65,9 +65,7 @@
           <button class="active" data-screen-target="home" aria-label="Combate"><span>⚔</span><strong>Combate</strong></button>
           <button data-screen-target="upgrades" aria-label="Navio"><span>⚒</span><strong>Navio</strong></button>
           <button data-screen-target="maps" aria-label="Mapas"><span>⌖</span><strong>Mapas</strong></button>
-          <button data-screen-target="missions" aria-label="Missões"><span>✦</span><strong>Missões</strong></button>
           <button data-screen-target="captain" aria-label="Capitão"><span>★</span><strong>Capitão</strong></button>
-          <button data-screen-target="pets" aria-label="Pets"><span>🐾</span><strong>Pets</strong></button>
           <button data-screen-target="prestige" aria-label="Prestígio"><span>☠</span><strong>Prestígio</strong></button>
           <button data-screen-target="stats" aria-label="Estatísticas"><span>▥</span><strong>Stats</strong></button>
         </nav>
@@ -154,19 +152,6 @@
         <div class="captain-page" id="captain-content"></div>
       </section>
 
-      <section class="screen" id="screen-pets" aria-labelledby="pets-title">
-        <div class="page-heading">
-          <div><span class="eyebrow">COMPANHEIROS MARÍTIMOS</span><h1 id="pets-title">Pets</h1><p>Adote uma criatura, equipe um companheiro e aumente seu poder nos mares.</p></div>
-          <div class="power-seal"><span>PETS COMPRADOS</span><strong id="pets-owned-count">0 / 10</strong></div>
-        </div>
-        <div class="pet-prestige-notice">
-          <div><span class="eyebrow">REQUISITO PERMANENTE</span><strong>Pets só liberam com Prestígio</strong><p>Cada pet exige Prestígios acumulados e Moedas Pirata. O primeiro pet exige 1 Prestígio, o segundo exige 2, e assim por diante.</p></div>
-          <button class="button prestige-button" data-screen-target="prestige">Ir para Prestígio</button>
-        </div>
-        <div class="pet-current-banner" id="pet-current-banner"></div>
-        <div class="pets-grid" id="pets-grid"></div>
-      </section>
-
       <section class="screen" id="screen-prestige" aria-labelledby="prestige-title">
         <div class="page-heading">
           <div><span class="eyebrow">CICLO DE RENASCIMENTO</span><h1 id="prestige-title">Prestígio</h1><p>Recomece sua jornada mais forte e transforme seu progresso em poder permanente.</p></div>
@@ -220,31 +205,72 @@
         </div>
       </section>
 
-      <section class="screen" id="screen-missions" aria-labelledby="missions-title">
-        <div class="page-heading">
-          <div><span class="eyebrow">ROTAS DO CAPITÃO</span><h1 id="missions-title">Missões</h1><p>Objetivos guiados para evoluir seu navio, abrir mapas, derrotar bosses e manter a frota sempre com um rumo claro.</p></div>
-          <div class="mission-heading-actions">
-            <button class="button primary" id="missions-claim-all" data-claim-all-missions disabled>Coletar tudo</button>
-            <div class="codex-counter"><span>MISSÕES</span><strong id="missions-summary">0 / 100</strong></div>
-          </div>
-        </div>
-        <div class="codex-tabs" id="mission-filters" aria-label="Filtros de missões"></div>
-        <div class="mission-list" id="missions-grid"></div>
-      </section>
-
       <section class="screen" id="screen-stats" aria-labelledby="stats-title">
         <div class="page-heading">
           <div><span class="eyebrow">LIVRO DO CAPITÃO</span><h1 id="stats-title">Estatísticas</h1><p>O retrato completo da sua jornada pelos mares.</p></div>
           <div class="rank-medallion"><span>POSTO</span><strong id="captain-rank">Marujo</strong></div>
         </div>
-        <div class="stats-layout">
-          <article class="card stats-card"><span class="eyebrow">COMBATE</span><div class="stats-list" id="combat-stats"></div></article>
-          <article class="card stats-card"><span class="eyebrow">PROGRESSÃO</span><div class="stats-list" id="progression-stats"></div></article>
-          <article class="card stats-card wide"><span class="eyebrow">CARREIRA</span><div class="career-grid" id="career-stats"></div></article>
-        </div>
-        <div class="danger-zone">
-          <div><strong>Novo começo</strong><span>Apaga todo o progresso salvo neste dispositivo.</span></div>
-          <button class="button danger" id="wipe-button">Apagar progresso</button>
+        <div class="stats-accordion" id="stats-accordion">
+          <section class="stats-panel" data-stats-panel="quests">
+            <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="quests" aria-expanded="false">
+              <span><span class="eyebrow">ROTAS DO CAPITÃO</span><strong>Quests</strong><small id="stats-quests-summary">0 prontas • 0 / 100</small></span>
+              <i class="stats-panel-indicator" aria-hidden="true">+</i>
+            </button>
+            <div class="stats-panel-body" data-stats-panel-body="quests">
+              <div class="stats-quests-head">
+                <p>Objetivos guiados para evoluir seu navio, abrir mapas, derrotar bosses e manter a frota sempre com um rumo claro.</p>
+                <div class="mission-heading-actions">
+                  <button class="button primary" id="missions-claim-all" data-claim-all-missions disabled>Coletar tudo</button>
+                  <div class="codex-counter"><span>MISSÕES</span><strong id="missions-summary">0 / 100</strong></div>
+                </div>
+              </div>
+              <div class="codex-tabs" id="mission-filters" aria-label="Filtros de quests"></div>
+              <div class="mission-list" id="missions-grid"></div>
+            </div>
+          </section>
+
+          <section class="stats-panel" data-stats-panel="combat">
+            <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="combat" aria-expanded="false">
+              <span><span class="eyebrow">COMBATE</span><strong>Combate</strong><small id="stats-combat-summary">Poder Naval 0</small></span>
+              <i class="stats-panel-indicator" aria-hidden="true">+</i>
+            </button>
+            <div class="stats-panel-body" data-stats-panel-body="combat">
+              <div class="stats-card"><div class="stats-list" id="combat-stats"></div></div>
+            </div>
+          </section>
+
+          <section class="stats-panel" data-stats-panel="progression">
+            <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="progression" aria-expanded="false">
+              <span><span class="eyebrow">PROGRESSÃO</span><strong>Progressão</strong><small id="stats-progression-summary">Nível 1</small></span>
+              <i class="stats-panel-indicator" aria-hidden="true">+</i>
+            </button>
+            <div class="stats-panel-body" data-stats-panel-body="progression">
+              <div class="stats-card"><div class="stats-list" id="progression-stats"></div></div>
+            </div>
+          </section>
+
+          <section class="stats-panel" data-stats-panel="career">
+            <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="career" aria-expanded="false">
+              <span><span class="eyebrow">CARREIRA</span><strong>Carreira</strong><small id="stats-career-summary">0 Prestígios</small></span>
+              <i class="stats-panel-indicator" aria-hidden="true">+</i>
+            </button>
+            <div class="stats-panel-body" data-stats-panel-body="career">
+              <div class="stats-card wide"><div class="career-grid" id="career-stats"></div></div>
+            </div>
+          </section>
+
+          <section class="stats-panel danger-stats-panel" data-stats-panel="reset">
+            <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="reset" aria-expanded="false">
+              <span><span class="eyebrow">NOVO COMEÇO</span><strong>Novo começo</strong><small>Apaga o progresso salvo neste dispositivo</small></span>
+              <i class="stats-panel-indicator" aria-hidden="true">+</i>
+            </button>
+            <div class="stats-panel-body" data-stats-panel-body="reset">
+              <div class="danger-zone">
+                <div><strong>Novo começo</strong><span>Apaga todo o progresso salvo neste dispositivo.</span></div>
+                <button class="button danger" id="wipe-button">Apagar progresso</button>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
     </main>
@@ -314,6 +340,6 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=147"></script>
+  <script src="game.js?v=152"></script>
 </body>
 </html>

@@ -6,13 +6,16 @@
   const LEADERBOARD_LIMIT = 50;
   const ARENA_OPPONENT_LIMIT = 10;
   const ARENA_MIN_OPPONENTS = 5;
-  const ARENA_ATTACK_INTERVAL_DEFAULT_MS = 1500;
-  const ARENA_ATTACK_INTERVAL_MIN_MS = 300;
-  const ARENA_ATTACK_INTERVAL_MAX_MS = 5000;
+  const ARENA_ATTACK_INTERVAL_DEFAULT_MS = 1400;
+  const ARENA_ATTACK_INTERVAL_MIN_MS = 900;
+  const ARENA_ATTACK_INTERVAL_MAX_MS = 2200;
+  const ARENA_BALANCED_ATTACK_INTERVAL_MS = ARENA_ATTACK_INTERVAL_DEFAULT_MS;
+  const ARENA_HP_MULTIPLIER = 10;
   const ARENA_START_DELAY_MS = 3000;
   const PIRATE_NAME_MIN_LENGTH = 3;
   const PIRATE_NAME_MAX_LENGTH = 20;
-  const PVP_SNAPSHOT_VERSION = 1;
+  const PVP_SNAPSHOT_VERSION = 2;
+  const POWER_FORMULA_VERSION = 2;
   const OFFLINE_REWARD_RATE = .3;
   const OFFLINE_MODAL_AUTO_HIDE_MS = 5000;
   const COMMON_MONSTER_BALANCE_LAST_REGION = 10;
@@ -524,16 +527,25 @@
   });
 
   const ARENA_BOT_DEFINITIONS = [
-    ["bot_arena_001", "Tonico Pé-de-Pano", "iniciante fraco", "Jangada Reforçada", 1, 6, 12000, 350, 1.6, 5000],
-    ["bot_arena_002", "Capitão Dente de Ouro", "iniciante agressivo", "Escuna Saqueadora", 1, 12, 28000, 850, 1.4, 18000],
-    ["bot_arena_003", "Marina Corte-Vento", "rápida e frágil", "Veleiro Corsário", 2, 20, 55000, 1600, .9, 45000],
-    ["bot_arena_004", "Barba de Coral", "tanque defensivo", "Barcaça Blindada", 3, 30, 140000, 3200, 1.8, 120000],
-    ["bot_arena_005", "Anne Tempestade", "equilibrada", "Fragata Rebelde", 5, 45, 320000, 8500, 1.2, 280000],
-    ["bot_arena_006", "Corsário Vitorino", "canhão pesado", "Galeão Pirata", 8, 65, 720000, 18000, 1.5, 620000],
-    ["bot_arena_007", "Morgana Maré-Negra", "dano alto", "Galeão de Guerra", 12, 85, 1450000, 42000, 1.3, 1100000],
-    ["bot_arena_008", "Almirante Ossos Frios", "tanque de elite", "Encouraçado Imperial", 16, 110, 2800000, 68000, 1.7, 1800000],
-    ["bot_arena_009", "Capitã Espectral Nyra", "elite fantasma", "Fragata Fantasma", 22, 140, 4500000, 115000, 1.1, 2600000],
-    ["bot_arena_010", "Lorde Abissal Krakenzinho", "boss máximo", "Black Abyss", 30, 180, 8000000, 220000, 1.25, 3600000]
+    ["bot_arena_001", "Tonico Pé-de-Pano", "iniciante fraco", "Jangada Reforçada", 1, 6, 76, 14, 260, 1450],
+    ["bot_arena_002", "Capitão Dente de Ouro", "iniciante agressivo", "Escuna Saqueadora", 1, 12, 90, 20, 580, 1250],
+    ["bot_arena_003", "Marina Corte-Vento", "rápida e frágil", "Veleiro Corsário", 2, 20, 120, 27, 1340, 1500],
+    ["bot_arena_004", "Barba de Coral", "tanque inicial", "Barcaça Blindada", 3, 30, 170, 40, 3120, 1300],
+    ["bot_arena_005", "Anne Tempestade", "equilibrada", "Fragata Rebelde", 5, 45, 260, 60, 6310, 1400],
+    ["bot_arena_006", "Corsário Vitorino", "canhão pesado", "Galeão Pirata", 8, 65, 470, 100, 13940, 1250],
+    ["bot_arena_007", "Morgana Maré-Negra", "dano alto", "Galeão de Guerra", 12, 85, 850, 180, 31830, 1350],
+    ["bot_arena_008", "Almirante Ossos Frios", "tanque de elite", "Encouraçado Imperial", 16, 110, 1600, 330, 63780, 1450],
+    ["bot_arena_009", "Capitã Espectral Nyra", "elite fantasma", "Fragata Fantasma", 22, 140, 3100, 620, 127480, 1200],
+    ["bot_arena_010", "Lorde Abissal Krakenzinho", "boss máximo", "Black Abyss", 30, 180, 5400, 1050, 229670, 1300]
+  ];
+  const ARENA_NORMALIZATION_BANDS = [
+    { min: 1000, max: 10000, hp: [70, 100], damage: [8, 22] },
+    { min: 10000, max: 50000, hp: [90, 170], damage: [18, 40] },
+    { min: 50000, max: 150000, hp: [170, 320], damage: [40, 75] },
+    { min: 150000, max: 500000, hp: [320, 850], damage: [75, 180] },
+    { min: 500000, max: 1000000, hp: [850, 1600], damage: [180, 330] },
+    { min: 1000000, max: 2000000, hp: [1600, 3100], damage: [330, 620] },
+    { min: 2000000, max: 4000000, hp: [3100, 5500], damage: [620, 1100] }
   ];
 
   const ENEMY_CATEGORIES = {
@@ -1647,6 +1659,8 @@
     14: { hp: 4.2, damage: 3.7, armor: 2.45, evasion: .04, attackSpeed: .68, skillResist: .4, bossHp: 5.4, bossDamage: 4.25, bossArmor: 2.6, special: "maldição abissal" }
   };
   let activeMissionFilter = "Próximas de concluir";
+  let captainPetsExpanded = false;
+  const statsPanelsExpanded = { quests: false, combat: false, progression: false, career: false, reset: false };
 
   function rewardText(reward = {}) {
     const parts = Object.entries(goldOnlyBundle(reward.resources || {})).filter(([, value]) => value > 0).map(([, value]) => `${formatNumber(calculateGoldReward(value))} Gold`);
@@ -2114,7 +2128,7 @@
   }
   function getEquippedPet() { return state.equippedPetId === null ? null : PETS[state.equippedPetId] ? getPetWithLevel(PETS[state.equippedPetId]) : null; }
   function isPetUnlocked(pet) {
-    return state.prestiges >= pet.id + 1 && state.pirateLevel >= pet.levelReq && (!pet.regionReq || state.unlockedRegions >= pet.regionReq) && (pet.bossReq === undefined || state.bossesDefeated[pet.bossReq]);
+    return state.prestiges >= pet.id + 1 && (!pet.regionReq || state.unlockedRegions >= pet.regionReq) && (pet.bossReq === undefined || state.bossesDefeated[pet.bossReq]);
   }
 
   function prestigeRegionIndex() { return REGIONS.findIndex(region => region.name === PRESTIGE_REGION_NAME); }
@@ -2176,6 +2190,44 @@
     return { damage: Math.round(damage), duration, extraDps: Math.round(extraDps), cooldown, dps: Math.round((damage + extraDps * duration) / cooldown) };
   }
 
+  function getNavalPowerV2Breakdown(stats = {}) {
+    const basePower = 700;
+    const dps = Math.max(0, Number(stats.dps) || 0);
+    const damage = Math.max(0, Number(stats.damage) || 0);
+    const maxHp = Math.max(0, Number(stats.maxHp ?? stats.max_hp ?? stats.hp) || 0);
+    const attackIntervalMs = clamp(Number(stats.attackIntervalMs ?? stats.attack_interval_ms ?? stats.attackInterval) || 1400, 700, 3000);
+    const attackSpeedFactor = clamp(1400 / attackIntervalMs, .6, 2);
+    const defense = Math.max(0, Number(stats.defense ?? stats.armor) || 0);
+    const damageReduction = clamp(Number(stats.damageReduction ?? stats.damage_reduction ?? stats.armorReduction) || 0, 0, .75);
+    const dodgeChance = clamp(Number(stats.dodgeChance ?? stats.dodge_chance ?? stats.evasion) || 0, 0, .5);
+    const critChance = clamp(Number(stats.critChance ?? stats.crit_chance ?? stats.crit) || 0, 0, 1);
+    const critMultiplier = Math.max(1, Number(stats.critMultiplier ?? stats.crit_multiplier) || 1);
+    const estimatedDpsFromHit = damage * (1000 / attackIntervalMs);
+    const effectiveDps = dps > 0 ? dps : estimatedDpsFromHit;
+    const defenseReduction = defense > 0 ? defense / (defense + 100) : 0;
+    const totalReduction = clamp(damageReduction + defenseReduction, 0, .85);
+    const effectiveHp = maxHp / Math.max(.15, 1 - totalReduction);
+    const effectiveHpWithDodge = effectiveHp / Math.max(.5, 1 - dodgeChance);
+    const critBonus = effectiveDps * critChance * Math.max(0, critMultiplier - 1);
+    const speedBonus = damage * (attackSpeedFactor - 1) * 6;
+    const offensePower = effectiveDps * 15.6;
+    const damagePower = damage * 8;
+    const survivalPower = effectiveHpWithDodge * 1.5;
+    const critPower = critBonus * 6;
+    const petPower = Math.max(0, Number(stats.petPower ?? stats.pet_power) || 0);
+    const skillPower = Math.max(0, Number(stats.skillPower ?? stats.skill_power) || 0);
+    const prestigePower = Math.max(0, Number(stats.prestigePower ?? stats.prestige_power) || 0);
+    const offense = Math.max(0, Math.round(offensePower + damagePower + speedBonus + critPower));
+    const survival = Math.max(0, Math.round(survivalPower));
+    const bonuses = Math.max(0, Math.round(basePower + petPower + skillPower + prestigePower));
+    const total = Math.max(0, Math.round(basePower + offensePower + damagePower + survivalPower + speedBonus + critPower + petPower + skillPower + prestigePower));
+    return { total, offense, survival, bonuses, formulaVersion: POWER_FORMULA_VERSION };
+  }
+
+  function calculateNavalPowerV2(stats = {}) {
+    return getNavalPowerV2Breakdown(stats).total;
+  }
+
   function getStats(shipId = state.shipId) {
     const ship = SHIPS[shipId];
     const overall = 1 + (state.levels.ship - 1) * .06;
@@ -2220,12 +2272,25 @@
     const navalDps = (shipDps + boostedSkillDps) * (1 + (pet?.dpsBonus || 0));
     const totalDps = Math.round(navalDps + petDps);
     const unlockedSkillLevels = Object.entries(state.skills).reduce((sum, [key, skill]) => sum + (isSkillUnlocked(key) ? skill.level : 0), 0);
-    const power = Math.round(maxHp * .2 + damage * 2 + totalDps * 3 + speed * 1.5 + armor * 4 + crit * 1000 + precision * 500 + evasion * 500 + armorReduction * 1500 + doubleAttackChance * 1200 + ship.tier * 150 + state.levels.ship * 35 + state.levels.cannons * 40 + state.levels.sails * 30 + state.levels.hull * 35 + unlockedSkillLevels * 55 + state.pirateLevel * 12 + (pet?.power || 0));
+    const powerBreakdown = getNavalPowerV2Breakdown({
+      dps: totalDps,
+      damage,
+      maxHp,
+      attackIntervalMs: attackInterval,
+      defense: armor,
+      damageReduction: armorReduction,
+      dodgeChance: evasion,
+      critChance: crit,
+      critMultiplier: 2,
+      petPower: pet?.power || 0,
+      skillPower: unlockedSkillLevels * 55
+    });
+    const power = powerBreakdown.total;
     return {
       damage: Math.round(damage), speed: Math.round(speed), maxHp: Math.round(maxHp), armor: Math.round(armor),
       precision, crit, evasion, armorReduction, attackSpeedBonus, doubleAttackChance, attackInterval,
       shipDps: Math.round(shipDps), skillDps: Math.round(boostedSkillDps), petDps: Math.round(petDps),
-      dps: totalDps, power
+      dps: totalDps, power, powerBreakdown
     };
   }
 
@@ -2245,7 +2310,7 @@
   }
 
   function shouldShowManualAttackTutorial(now = Date.now()) {
-    return state.pirateLevel < 2 && !manualAttackTutorialDismissed && now - manualAttackTutorialStartedAt <= MANUAL_ATTACK_TUTORIAL_DURATION_MS;
+    return !isArenaSceneActive() && state.pirateLevel < 2 && !manualAttackTutorialDismissed && now - manualAttackTutorialStartedAt <= MANUAL_ATTACK_TUTORIAL_DURATION_MS;
   }
 
   function completeManualAttackTutorial() {
@@ -2381,11 +2446,19 @@
     state.logs = state.logs.slice(0, 100);
   }
 
+  function shouldSuppressMobileToast() {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    return window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+  }
+
   function toast(message, type = "") {
+    if (shouldSuppressMobileToast()) return;
+    const region = $("#toast-region");
+    if (!region) return;
     const node = document.createElement("div");
     node.className = `toast ${type}`;
     node.textContent = message;
-    $("#toast-region").append(node);
+    region.append(node);
     setTimeout(() => node.remove(), 3300);
   }
 
@@ -2726,11 +2799,48 @@
     return ARENA_ATTACK_INTERVAL_DEFAULT_MS;
   }
 
-  function createArenaBotSnapshot([playerId, pirateName, botType, shipName, prestigeCount, shipLevel, maxHp, damage, attackSpeed, combatPower]) {
+  function arenaBandForPower(power = 0) {
+    const safePower = Math.max(0, Number(power) || 0);
+    const first = ARENA_NORMALIZATION_BANDS[0];
+    const last = ARENA_NORMALIZATION_BANDS[ARENA_NORMALIZATION_BANDS.length - 1];
+    const band = ARENA_NORMALIZATION_BANDS.find(item => safePower <= item.max) || last;
+    const ratio = band.max > band.min ? clamp((clamp(safePower, band.min, band.max) - band.min) / (band.max - band.min), 0, 1) : 0;
+    const lerp = ([min, max]) => Math.round(min + (max - min) * ratio);
+    return {
+      hp: band.hp,
+      damage: band.damage,
+      preferredHp: lerp(band.hp),
+      preferredDamage: lerp(band.damage),
+      minHp: first.hp[0],
+      maxHp: last.hp[1],
+      minDamage: first.damage[0],
+      maxDamage: last.damage[1]
+    };
+  }
+
+  function arenaNormalizedStat(value, [preferred, max], fallback) {
+    const numeric = Math.round(Number(value) || 0);
+    const safeFallback = Math.max(1, Math.round(Number(fallback) || preferred || 1));
+    if (numeric <= 0) return clamp(safeFallback, preferred, max);
+    return clamp(numeric, preferred, max);
+  }
+
+  function getArenaHp(value) {
+    return Math.max(1, Math.round((Number(value) || 1) * ARENA_HP_MULTIPLIER));
+  }
+
+  function createArenaBotSnapshot([playerId, pirateName, botType, shipName, prestigeCount, shipLevel, maxHp, damage, referenceDps, attackIntervalMs]) {
     const ship = findShipByName(shipName);
-    const attackIntervalMs = clamp(Math.round(attackSpeed * 1000), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+    const safeAttackIntervalMs = clamp(Math.round(attackIntervalMs), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+    const navalPower = calculateNavalPowerV2({
+      dps: referenceDps,
+      damage,
+      maxHp,
+      attackIntervalMs: safeAttackIntervalMs
+    });
     return {
       snapshot_version: PVP_SNAPSHOT_VERSION,
+      power_formula_version: POWER_FORMULA_VERSION,
       player_id: playerId,
       pirate_name: pirateName,
       is_bot: true,
@@ -2738,7 +2848,7 @@
       prestige: {
         prestige_count: prestigeCount,
         best_prestige_level: prestigeCount,
-        best_prestige_power: combatPower
+        best_prestige_power: navalPower
       },
       captain: {
         selected_pirate_id: `arena_${playerId}`,
@@ -2753,19 +2863,27 @@
         tier: ship?.tier ?? Math.min(5, Math.max(1, Math.ceil(shipLevel / 35))),
         max_hp: maxHp,
         damage,
-        dps: Math.round(damage / Math.max(.3, attackIntervalMs / 1000)),
-        combat_power: combatPower,
-        attack_speed: attackIntervalMs / 1000,
-        attack_interval_ms: attackIntervalMs
+        dps: referenceDps,
+        naval_power: navalPower,
+        combat_power: navalPower,
+        attack_speed: safeAttackIntervalMs / 1000,
+        attack_interval_ms: safeAttackIntervalMs
       },
       combat: {
         max_hp: maxHp,
         damage,
-        dps: Math.round(damage / Math.max(.3, attackIntervalMs / 1000)),
-        combat_power: combatPower,
-        attack_speed: attackIntervalMs / 1000,
-        attack_interval_ms: attackIntervalMs
+        dps: referenceDps,
+        naval_power: navalPower,
+        combat_power: navalPower,
+        attack_speed: safeAttackIntervalMs / 1000,
+        attack_interval_ms: safeAttackIntervalMs,
+        defense: 0,
+        damage_reduction: 0,
+        dodge_chance: 0,
+        crit_chance: 0,
+        crit_multiplier: 1
       },
+      bonuses: { pet_power: 0, skill_power: 0, prestige_power: 0 },
       upgrades: {
         ship_level: shipLevel,
         cannons_level: Math.max(1, Math.round(shipLevel * .55)),
@@ -2784,17 +2902,39 @@
     const snapshot = row.pvp_snapshot || row.snapshot || row;
     const ship = snapshot.ship || {};
     const combat = snapshot.combat || {};
+    const bonuses = snapshot.bonuses || {};
     const prestige = snapshot.prestige || {};
     const pirateName = sanitizeArenaDisplayName(snapshot.pirate_name || row.pirate_name || "Pirata da Arena");
     const shipName = String(ship.ship_name || snapshot.ship_name || row.ship_name || "Navio Pirata").trim() || "Navio Pirata";
     const shipId = ship.ship_id || snapshot.ship_id || row.ship_id || null;
     const parsedShipId = parseShipId(shipId, shipName);
     const matchedShip = parsedShipId !== null ? SHIPS[parsedShipId] : findShipByName(shipName);
-    const maxHp = Math.max(1, Math.round(Number(combat.max_hp ?? ship.max_hp ?? snapshot.max_hp ?? 10000) || 10000));
-    const damage = Math.max(1, Math.round(Number(combat.damage ?? ship.damage ?? snapshot.damage ?? 500) || 500));
     const attackIntervalMs = normalizeArenaAttackIntervalMs(snapshot);
-    const dps = Math.max(1, Math.round(Number(combat.dps ?? ship.dps ?? snapshot.dps ?? damage / (attackIntervalMs / 1000)) || damage));
-    const combatPower = Math.max(1, Math.round(Number(combat.combat_power ?? ship.combat_power ?? snapshot.combat_power ?? row.best_prestige_power ?? dps * 8 + maxHp * .2) || 1));
+    const rawMaxHp = Math.round(Number(combat.max_hp ?? ship.max_hp ?? snapshot.max_hp) || 0);
+    const rawDamage = Math.round(Number(combat.damage ?? ship.damage ?? snapshot.damage) || 0);
+    const dps = Math.max(1, Math.round(Number(combat.dps ?? ship.dps ?? snapshot.dps ?? rawDamage / (attackIntervalMs / 1000)) || rawDamage || 1));
+    const fallbackPower = Math.round(Number(combat.naval_power ?? combat.combat_power ?? ship.naval_power ?? ship.combat_power ?? snapshot.naval_power ?? snapshot.combat_power ?? row.best_prestige_power) || 0);
+    const recalculatedPower = calculateNavalPowerV2({
+      dps,
+      damage: rawDamage,
+      maxHp: rawMaxHp,
+      attackIntervalMs,
+      defense: combat.defense ?? combat.armor ?? ship.armor,
+      damageReduction: combat.damage_reduction ?? combat.damageReduction ?? combat.armorReduction,
+      dodgeChance: combat.dodge_chance ?? combat.dodgeChance ?? combat.evasion,
+      critChance: combat.crit_chance ?? combat.critChance ?? combat.crit,
+      critMultiplier: combat.crit_multiplier ?? combat.critMultiplier ?? 1,
+      petPower: bonuses.pet_power ?? snapshot.pet?.power,
+      skillPower: bonuses.skill_power,
+      prestigePower: bonuses.prestige_power
+    });
+    const hasPowerStats = rawMaxHp > 0 || rawDamage > 0 || dps > 1;
+    const combatPower = Math.max(1, hasPowerStats ? recalculatedPower : fallbackPower || recalculatedPower);
+    const arenaRange = arenaBandForPower(combatPower);
+    const baseArenaMaxHp = arenaNormalizedStat(rawMaxHp, arenaRange.hp, arenaRange.preferredHp);
+    const maxHp = getArenaHp(baseArenaMaxHp);
+    const damage = arenaNormalizedStat(rawDamage, arenaRange.damage, arenaRange.preferredDamage);
+    const arenaDps = Math.max(1, Math.round(damage * 1000 / ARENA_BALANCED_ATTACK_INTERVAL_MS));
     const prestigeCount = Math.max(1, Math.floor(Number(prestige.prestige_count ?? row.prestige_count ?? row.best_prestige_level ?? 1) || 1));
     return {
       id: String(snapshot.player_id || row.player_id || `arena_${index}`),
@@ -2808,13 +2948,16 @@
       ship_tier: Math.max(0, Math.floor(Number(ship.tier ?? matchedShip?.tier ?? 1) || 1)),
       max_hp: maxHp,
       damage,
-      dps,
+      dps: arenaDps,
+      source_dps: dps,
+      naval_power: combatPower,
       combat_power: combatPower,
-      attack_speed: attackIntervalMs / 1000,
-      attack_interval_ms: attackIntervalMs,
+      attack_speed: ARENA_BALANCED_ATTACK_INTERVAL_MS / 1000,
+      attack_interval_ms: ARENA_BALANCED_ATTACK_INTERVAL_MS,
+      source_attack_interval_ms: attackIntervalMs,
       prestige_count: prestigeCount,
       best_prestige_level: Math.max(prestigeCount, Math.floor(Number(prestige.best_prestige_level ?? row.best_prestige_level ?? prestigeCount) || prestigeCount)),
-      best_prestige_power: Math.max(combatPower, Math.round(Number(prestige.best_prestige_power ?? row.best_prestige_power ?? combatPower) || combatPower)),
+      best_prestige_power: combatPower,
       snapshot_version: Number(snapshot.snapshot_version || PVP_SNAPSHOT_VERSION),
       is_bot: Boolean(snapshot.is_bot || row.is_bot),
       source_snapshot: snapshot,
@@ -2918,6 +3061,7 @@
     const highestMap = getJourneyMaxUnlockedMap();
     return {
       snapshot_version: PVP_SNAPSHOT_VERSION,
+      power_formula_version: POWER_FORMULA_VERSION,
       player_id: state.playerId,
       pirate_name: sanitizePirateName(state.pirateName),
       prestige: {
@@ -2943,6 +3087,7 @@
         ship_dps: stats.shipDps,
         skill_dps: stats.skillDps,
         pet_dps: stats.petDps,
+        naval_power: stats.power,
         combat_power: stats.power,
         attack_speed: Math.round(stats.attackInterval) / 1000,
         attack_interval_ms: Math.round(stats.attackInterval),
@@ -2953,9 +3098,15 @@
         max_hp: stats.maxHp,
         damage: stats.damage,
         dps: stats.dps,
+        naval_power: stats.power,
         combat_power: stats.power,
         attack_speed: Math.round(stats.attackInterval) / 1000,
-        attack_interval_ms: Math.round(stats.attackInterval)
+        attack_interval_ms: Math.round(stats.attackInterval),
+        defense: stats.armor,
+        damage_reduction: stats.armorReduction,
+        dodge_chance: stats.evasion,
+        crit_chance: stats.crit,
+        crit_multiplier: 2
       },
       upgrades: {
         ship_level: state.levels.ship,
@@ -2979,6 +3130,11 @@
         dps: Math.round(pet.dps || 0),
         power: Math.round(pet.power || 0)
       } : null,
+      bonuses: {
+        pet_power: Math.round(pet?.power || 0),
+        skill_power: Math.max(0, Math.round(stats.powerBreakdown?.bonuses || 0) - 700 - Math.round(pet?.power || 0)),
+        prestige_power: 0
+      },
       permanent_bonuses: {
         prestige_bonuses: getPrestigeBonuses(),
         captain_bonuses: { ...state.captainBonuses },
@@ -5958,7 +6114,7 @@
       if (!animation) return null;
       if (sprite.image?.complete && sprite.image.naturalWidth && !sprite.ready && !sprite.processing) prepareEnemySpritesheet(sprite);
       if (!options.preview && state.combat.repairing && state.combat.playerHp <= 0 && !animation.deathStartedAt) animation.deathStartedAt = this.time;
-      const maxHp = Math.max(1, Number(options.maxHp ?? getStats().maxHp) || 1);
+      const maxHp = Math.max(1, Number(options.maxHp ?? getActivePlayerMaxHp()) || 1);
       const hp = options.preview ? Math.max(0, Number(options.hp ?? maxHp) || 0) : Math.max(0, Number(state.combat.playerHp) || 0);
       const stateName = this.getPlayerShipHpState(hp, maxHp, Boolean(options.defeated) || (!options.preview && Boolean(animation.deathStartedAt) && hp <= maxHp * .01));
       if (!options.preview && animation.deathStartedAt && stateName !== SPRITE_HP_STATES.defeated) animation.deathStartedAt = 0;
@@ -6794,6 +6950,7 @@
     }
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated || isBossIntroActive(enemy)) return false;
+    if (enemy.isArena || isArenaBattleActive()) return false;
     if (isArenaBattleWaiting()) {
       toast(`Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
       return false;
@@ -6825,6 +6982,7 @@
     if (!isCaptainSelected()) return toast("Selecione um pirata inicial para liberar Sabotar Inimigo.", "danger-toast");
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return toast("Sabotar Inimigo precisa de um alvo vivo.", "danger-toast");
+    if (enemy.isArena || isArenaBattleActive()) return;
     if (isArenaBattleWaiting()) return toast(`Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
     const remaining = getCaptainManualSkillCooldownRemaining(key);
     if (remaining > 0) return toast(`Sabotar Inimigo recarrega em ${formatSeconds(remaining)}.`, "danger-toast");
@@ -7061,13 +7219,14 @@
   }
 
   function getEnemyAttackInterval(enemy) {
-    if (enemy?.isArena) return clamp(Math.round(Number(enemy.attackIntervalMs) || ARENA_ATTACK_INTERVAL_DEFAULT_MS), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS) * (enemy.slowed > 0 ? 1.65 : 1);
+    if (enemy?.isArena) return ARENA_BALANCED_ATTACK_INTERVAL_MS;
     return (enemy?.isBoss ? 1450 : 1900) * (enemy?.attackSpeed || 1) * (enemy?.slowed > 0 ? 1.65 : 1);
   }
 
   function combatTick(dt, now) {
     if (!state.combat.running) return;
-    if (!isArenaBattleActive()) {
+    const arenaBattleActive = isArenaBattleActive();
+    if (!arenaBattleActive) {
       state.lifetime.playSeconds += dt;
       state.totalActivePlaySeconds = Math.max(0, Number(state.totalActivePlaySeconds) || 0) + dt;
     }
@@ -7077,7 +7236,7 @@
       return;
     }
     const captainBonuses = getCaptainBonuses();
-    if (captainBonuses.hpRegenPercentPerSecond > 0 && state.combat.playerHp > 0) {
+    if (!arenaBattleActive && captainBonuses.hpRegenPercentPerSecond > 0 && state.combat.playerHp > 0) {
       const maxHp = getStats().maxHp;
       const hpRegenPerSecond = captainBonuses.hpRegenPercentPerSecond / CAPTAIN_HP_REGEN_INTERVAL_SECONDS;
       if (state.combat.playerHp < maxHp) state.combat.playerHp = Math.min(maxHp, state.combat.playerHp + maxHp * hpRegenPerSecond * dt);
@@ -7091,6 +7250,7 @@
     const enemy = state.combat.enemy;
     if (enemy.defeated) return;
     if (isBossIntroActive(enemy)) return;
+    const arenaEnemyActive = Boolean(enemy.isArena && arenaBattleActive);
     if (isArenaBattleWaiting()) {
       state.combat.attackTimer = 0;
       state.combat.petAttackTimer = 0;
@@ -7104,16 +7264,21 @@
     }
     if (enemy.slowed > 0) enemy.slowed -= dt;
     const stats = getStats();
-    if (isAutoAttackUnlocked()) {
+    const playerAttackInterval = arenaEnemyActive ? ARENA_BALANCED_ATTACK_INTERVAL_MS : stats.attackInterval;
+    if (arenaEnemyActive || isAutoAttackUnlocked()) {
       state.combat.attackTimer += dt * 1000;
       let shots = 0;
-      while (state.combat.attackTimer >= stats.attackInterval && shots < 4 && state.combat.enemy) { state.combat.attackTimer -= stats.attackInterval; basicAttack(); shots++; }
+      while (state.combat.attackTimer >= playerAttackInterval && shots < 4 && state.combat.enemy) {
+        state.combat.attackTimer -= playerAttackInterval;
+        basicAttack({ allowDoubleStrike: !arenaEnemyActive });
+        shots++;
+      }
     } else {
       state.combat.attackTimer = 0;
     }
     if (!state.combat.enemy) return;
     const pet = getEquippedPet();
-    if (pet) {
+    if (!arenaEnemyActive && pet) {
       state.combat.petAttackTimer += dt * 1000;
       let petStrikes = 0;
       while (state.combat.petAttackTimer >= pet.interval * 1000 && petStrikes < 3 && state.combat.enemy) { state.combat.petAttackTimer -= pet.interval * 1000; petAttack(); petStrikes++; }
@@ -7122,6 +7287,7 @@
     const enemyInterval = getEnemyAttackInterval(enemy);
     state.combat.enemyAttackTimer += dt * 1000;
     if (state.combat.enemyAttackTimer >= enemyInterval) { state.combat.enemyAttackTimer -= enemyInterval; enemyAttack(); }
+    if (arenaEnemyActive) return;
     Object.entries(SKILL_META).forEach(([key, meta]) => {
       if (!isSkillUnlocked(key) || !state.skills[key].auto || !state.combat.enemy) return;
       state.skills[key].remaining -= dt;
@@ -7397,7 +7563,7 @@
     const ship = SHIPS[state.shipId];
     const enemy = state.combat.enemy;
     const region = REGIONS[state.regionIndex];
-    const maxHp = stats.maxHp;
+    const maxHp = getActivePlayerMaxHp(stats);
     $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(state.regionIndex));
     $("#scene-region").textContent = getActiveCombatRegionLabel();
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
@@ -7533,7 +7699,6 @@
   function getPetIssues(pet) {
     const issues = [];
     if (state.prestiges < pet.id + 1) issues.push(`${pet.id + 1} Prestígio${pet.id ? "s" : ""} realizado${pet.id ? "s" : ""}`);
-    if (state.pirateLevel < pet.levelReq) issues.push(`Nível ${pet.levelReq} do pirata`);
     if (pet.regionReq && state.unlockedRegions < pet.regionReq) issues.push(pet.id === 8 ? "Oceano Profundo desbloqueado" : "Abismo do Kraken desbloqueado");
     if (pet.bossReq !== undefined && !state.bossesDefeated[pet.bossReq]) issues.push("Kraken Primordial derrotado");
     return issues;
@@ -7541,12 +7706,15 @@
 
   function renderPets() {
     const current = getEquippedPet();
-    $("#pets-owned-count").textContent = `${state.ownedPets.length} / ${PETS.length}`;
+    const ownedCount = $("#pets-owned-count");
     const banner = $("#pet-current-banner");
+    const grid = $("#pets-grid");
+    if (!banner || !grid) return;
+    if (ownedCount) ownedCount.textContent = `${state.ownedPets.length} / ${PETS.length}`;
     banner.className = `pet-current-banner${current ? " equipped" : ""}`;
     banner.setAttribute("style", current ? getPetAuraStyle(current) : "");
     banner.innerHTML = current ? `<div class="pet-current-icon">${petSpriteHtml(current.visual)}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Nenhum pet equipado</h2><p>Você pode navegar sem pet ou escolher um companheiro quando quiser.</p></div>`;
-    $("#pets-grid").innerHTML = PETS.map(basePet => {
+    grid.innerHTML = PETS.map(basePet => {
       const owned = state.ownedPets.includes(basePet.id);
       const level = owned ? getPetLevel(basePet.id) : 1;
       const pet = getPetWithLevel(basePet, level);
@@ -7571,7 +7739,7 @@
         : issues.length ? `<div class="pet-requirements"><strong>${prestigeLine}</strong><br>Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready"><strong>${prestigeLine}</strong><br>${state.pirateCoins >= pirateCoinCost ? "Moedas e requisitos disponíveis" : `Faltam ${pirateCoinCost - state.pirateCoins} Moedas Pirata`}</div>`;
       return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-visual">${petSpriteHtml(pet.visual)}<i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
     }).join("");
-    renderPetPreviewCanvases($("#pets-screen") || document);
+    renderPetPreviewCanvases(grid.closest(".captain-pets-section") || document);
   }
 
   function captainBonusRowsHtml(bonuses) {
@@ -7806,6 +7974,36 @@
     });
   }
 
+  function renderCaptainPetsSection() {
+    const current = getEquippedPet();
+    const summary = current
+      ? `${current.name} Nv. ${current.level} • ${state.ownedPets.length} / ${PETS.length} comprados`
+      : `${state.ownedPets.length} / ${PETS.length} comprados • nenhum equipado`;
+    return `<section class="captain-pets-section ${captainPetsExpanded ? "expanded" : ""}">
+      <button class="captain-pets-toggle" type="button" data-toggle-captain-pets aria-expanded="${captainPetsExpanded ? "true" : "false"}">
+        <span class="captain-pets-toggle-icon" aria-hidden="true">🐾</span>
+        <span class="captain-pets-toggle-copy"><span class="eyebrow">COMPANHEIROS MARÍTIMOS</span><strong>Pets</strong><small>${summary}</small></span>
+        <span class="captain-pets-toggle-count"><small>PETS</small><strong id="pets-owned-count">${state.ownedPets.length} / ${PETS.length}</strong></span>
+        <i class="captain-pets-toggle-arrow" aria-hidden="true">${captainPetsExpanded ? "-" : "+"}</i>
+      </button>
+      <div class="captain-pets-body">
+        <div class="pet-prestige-notice">
+          <div><span class="eyebrow">REQUISITO PERMANENTE</span><strong>Pets só liberam com Prestígio</strong><p>Cada pet exige Prestígios acumulados e Moedas Pirata. O primeiro pet exige 1 Prestígio, o segundo exige 2, e assim por diante.</p></div>
+          <button class="button prestige-button" data-screen-target="prestige">Ir para Prestígio</button>
+        </div>
+        <div class="pet-current-banner" id="pet-current-banner"></div>
+        <div class="pets-grid captain-pets-list" id="pets-grid"></div>
+      </div>
+    </section>`;
+  }
+
+  function finalizeCaptainRender(content) {
+    bindCaptainIdentityControls(content);
+    renderCaptainPreviewCanvases(content);
+    renderPets();
+    decorateMissingPurchasePanels(content);
+  }
+
   function renderCaptain() {
     $("#captain-coins").textContent = formatNumber(state.pirateCoins);
     const content = $("#captain-content");
@@ -7814,9 +8012,8 @@
       content.innerHTML = `${captainIdentityHtml()}<div class="captain-choice-grid">${Object.entries(CAPTAIN_GENDERS).map(([gender, meta]) => {
         const level = getCaptainLevelData(1);
         return `<article class="captain-choice"><div class="captain-choice-image">${captainSpriteCanvasHtml(1, gender, "choice")}</div><div><span class="eyebrow">VISUAL INICIAL</span><h2>${meta.choice}</h2><p>${getCaptainName(1, gender)}</p><div class="captain-choice-bonuses">${captainLevelBonusText(level)}</div></div><button class="button primary" data-select-captain-gender="${gender}">Escolher</button></article>`;
-      }).join("")}</div>${renderCaptainManualSkillSection(true)}${renderCaptainEquipmentSection(true)}`;
-      bindCaptainIdentityControls(content);
-      renderCaptainPreviewCanvases(content);
+      }).join("")}</div>${renderCaptainPetsSection()}${renderCaptainManualSkillSection(true)}${renderCaptainEquipmentSection(true)}`;
+      finalizeCaptainRender(content);
       return;
     }
     const next = getNextCaptain();
@@ -7843,9 +8040,8 @@
         ${next && !canUpgrade ? `<p class="captain-upgrade-hint">Faltam ${formatNumber(cost - state.pirateCoins)} Moedas Pirata.</p>` : ""}
         <div class="captain-mutiny-panel"><div><span class="eyebrow">MOTIM</span><strong>Trocar escolha visual</strong><p>Reseta Capitão, Pontos de Nível e equipamentos. Moedas Pirata investidas no Capitão voltam.</p></div><button class="button danger" data-open-captain-mutiny>Iniciar um Motim</button></div>
       </section>
-    </div>${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
-    bindCaptainIdentityControls(content);
-    renderCaptainPreviewCanvases(content);
+    </div>${renderCaptainPetsSection()}${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
+    finalizeCaptainRender(content);
   }
 
   function captainManualSkillDockHtml() {
@@ -7859,9 +8055,9 @@
     const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_MANUAL_SKILL_KEY];
     const unlocked = isCaptainSelected();
     const hasTarget = Boolean(state.combat.enemy && !state.combat.enemy.defeated);
-    const waitingArena = isArenaBattleWaiting();
+    const arenaLocked = isArenaBattleWaiting() || isArenaBattleActive();
     const remaining = unlocked ? getCaptainManualSkillCooldownRemaining(CAPTAIN_MANUAL_SKILL_KEY) : meta.cooldown;
-    const ready = unlocked && hasTarget && !waitingArena && remaining <= 0;
+    const ready = unlocked && hasTarget && !arenaLocked && remaining <= 0;
     node.classList.toggle("locked", !unlocked);
     node.classList.toggle("off", unlocked && !ready);
     node.disabled = !ready;
@@ -7870,8 +8066,10 @@
     if (label) label.textContent = "";
     node.title = !unlocked
       ? "Selecione um pirata inicial para desbloquear Sabotar Inimigo"
-      : waitingArena
-        ? `Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}`
+      : arenaLocked
+        ? isArenaBattleWaiting()
+          ? `Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}`
+          : "Sabotar Inimigo indisponível durante a Arena"
         : remaining > 0
           ? `Sabotar Inimigo recarrega em ${formatSeconds(remaining)}`
           : hasTarget
@@ -8484,13 +8682,19 @@
   }
 
   function renderMissions() {
+    const filters = $("#mission-filters");
+    const grid = $("#missions-grid");
+    const summary = $("#missions-summary");
+    if (!filters || !grid || !summary) return;
     resetPeriodicProgressIfNeeded();
     checkProgressionUnlocks();
     renderProgressionFilters("mission-filters", MISSION_FILTERS, activeMissionFilter);
     const complete = completedCount(state.quests, missionDefinitions);
     const readyCount = missionDefinitions.filter(item => progressionStatus(item, state.quests, "quests") === "ready").length;
     const claimAllButton = $("#missions-claim-all");
-    $("#missions-summary").textContent = `${complete} / ${missionDefinitions.length}`;
+    summary.textContent = `${complete} / ${missionDefinitions.length}`;
+    const panelSummary = $("#stats-quests-summary");
+    if (panelSummary) panelSummary.textContent = `${readyCount} pronta${readyCount === 1 ? "" : "s"} • ${complete} / ${missionDefinitions.length}`;
     if (claimAllButton) {
       claimAllButton.disabled = readyCount === 0;
       claimAllButton.textContent = readyCount ? `Coletar tudo (${readyCount})` : "Coletar tudo";
@@ -8499,7 +8703,7 @@
       .filter(entry => shouldShowProgression(entry, activeMissionFilter, "mission"))
       .sort((a, b) => b.score - a.score)
       .slice(0, progressionLimit(activeMissionFilter, "mission"));
-    $("#missions-grid").innerHTML = cards.length ? cards.map(({ item, status }) => progressionCardHtml(item, state.quests, status, "mission")).join("") : `<p class="empty-state">Nenhuma missão relevante neste filtro por enquanto.</p>`;
+    grid.innerHTML = cards.length ? cards.map(({ item, status }) => progressionCardHtml(item, state.quests, status, "mission")).join("") : `<p class="empty-state">Nenhuma missão relevante neste filtro por enquanto.</p>`;
   }
 
   function openPrestigeConfirmation() {
@@ -8593,9 +8797,10 @@
         <p>Prestígio ${formatNumber(opponent.prestige_count)} • ${escapeHtml(opponent.ship_name)} • Nv. ${formatNumber(opponent.ship_level)}</p>
         <div class="arena-opponent-stats">
           <div><span>HP</span><strong>${formatNumber(opponent.max_hp)}</strong></div>
-          <div><span>Dano</span><strong>${formatNumber(opponent.damage)}</strong></div>
+          <div><span>Dano/ataque</span><strong>${formatNumber(opponent.damage)}</strong></div>
+          <div><span>DPS</span><strong>${formatNumber(opponent.dps)}</strong></div>
           <div><span>Ataque</span><strong>${attackSpeed}s</strong></div>
-          <div><span>Poder</span><strong>${formatNumber(opponent.combat_power)}</strong></div>
+          <div><span>Poder naval</span><strong>${formatNumber(opponent.combat_power)}</strong></div>
         </div>
       </div>
       <div class="arena-opponent-action">
@@ -8678,6 +8883,15 @@
     return isArenaSceneActive() ? "Arena - Duelo Pirata" : getCombatRegionLabel(REGIONS[state.regionIndex]);
   }
 
+  function getArenaPlayerMaxHp(stats = getStats()) {
+    return getArenaHp(stats.maxHp);
+  }
+
+  function getActivePlayerMaxHp(stats = getStats()) {
+    if (!isArenaSceneActive()) return stats.maxHp;
+    return Math.max(1, Math.round(Number(arenaState.battle?.playerMaxHp) || getArenaPlayerMaxHp(stats)));
+  }
+
   function getArenaOpponentById(id) {
     const opponents = arenaState.opponents.length ? arenaState.opponents : getArenaBotOpponents();
     return opponents.find(opponent => opponent.player_id === id) || null;
@@ -8703,7 +8917,7 @@
       evasion: 0,
       skillResist: 0,
       attackSpeed: 1,
-      attackIntervalMs: opponent.attack_interval_ms,
+      attackIntervalMs: ARENA_BALANCED_ATTACK_INTERVAL_MS,
       visualTier: opponent.ship_tier || ship?.tier || 3,
       visualKind: ship?.type || "Pirata",
       ship_id: opponent.ship_id,
@@ -8726,6 +8940,7 @@
     const opponent = getArenaOpponentById(playerId);
     if (!opponent) return toast("Esse inimigo da Arena não está mais disponível.", "danger-toast");
     const startsAt = Date.now() + ARENA_START_DELAY_MS;
+    const arenaPlayerMaxHp = getArenaPlayerMaxHp();
     arenaState.previousCombat = {
       screen: currentScreen,
       hasStarted: state.hasStarted,
@@ -8737,13 +8952,14 @@
       opponent,
       startsAt,
       startedAt: startsAt,
+      playerMaxHp: arenaPlayerMaxHp,
       damageDealt: 0,
       damageReceived: 0
     };
     state.combat.running = true;
     state.combat.repairing = false;
     state.combat.repairStarted = 0;
-    state.combat.playerHp = getStats().maxHp;
+    state.combat.playerHp = arenaPlayerMaxHp;
     state.combat.enemy = createArenaEnemy(opponent);
     state.combat.attackTimer = 0;
     state.combat.petAttackTimer = 0;
@@ -8812,6 +9028,29 @@
     saveGame();
   }
 
+  function syncStatsPanelExpansion(root = document) {
+    Object.entries(statsPanelsExpanded).forEach(([key, expanded]) => {
+      const panel = $(`[data-stats-panel="${key}"]`, root);
+      const toggle = $(`[data-toggle-stats-panel="${key}"]`, root);
+      const indicator = $(".stats-panel-indicator", toggle);
+      panel?.classList.toggle("expanded", expanded);
+      toggle?.setAttribute("aria-expanded", expanded ? "true" : "false");
+      if (indicator) indicator.textContent = expanded ? "-" : "+";
+    });
+  }
+
+  function toggleStatsPanel(key) {
+    if (!(key in statsPanelsExpanded)) return;
+    statsPanelsExpanded[key] = !statsPanelsExpanded[key];
+    syncStatsPanelExpansion();
+    if (key === "quests" && statsPanelsExpanded[key]) renderMissions();
+  }
+
+  function toggleCaptainPetsPanel() {
+    captainPetsExpanded = !captainPetsExpanded;
+    renderCaptain();
+  }
+
   function renderStats() {
     syncCaptainRuntimeState(state);
     const stats = getStats();
@@ -8820,27 +9059,28 @@
     const skillLevels = Object.values(state.skills).reduce((sum, item) => sum + item.level, 0);
     const rank = getPirateRankTitle(state);
     $("#captain-rank").textContent = rank;
+    $("#stats-combat-summary").textContent = `Poder ${formatNumber(stats.power)} • DPS ${formatNumber(stats.dps)}`;
+    $("#stats-progression-summary").textContent = `Nível ${state.pirateLevel} • ${REGIONS[state.regionIndex].name}`;
+    $("#stats-career-summary").textContent = `${formatNumber(state.prestiges)} Prestígio${state.prestiges === 1 ? "" : "s"} • ${formatNumber(state.lifetime.enemies)} vitórias`;
     const list = items => items.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+    const powerBreakdown = stats.powerBreakdown || getNavalPowerV2Breakdown(stats);
     $("#combat-stats").innerHTML = list([
-      ["Vida atual / máxima", `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`], ["Dano do navio", formatNumber(stats.damage)], ["DPS do navio", formatNumber(stats.shipDps)], ["DPS das skills", formatNumber(stats.skillDps)], ["DPS do pet", formatNumber(stats.petDps)], ["DPS total", formatNumber(stats.dps)], ["Poder Naval", formatNumber(stats.power)], ["Velocidade", formatNumber(stats.speed)], ["Intervalo ataque", `${Math.round(stats.attackInterval)}ms`], ["Bônus vel. ataque", `+${Math.round(stats.attackSpeedBonus * 100)}%`], ["Armadura", formatNumber(stats.armor)], ["Redução de dano", `${Math.round(stats.armorReduction * 100)}%`], ["Precisão", `${Math.round(stats.precision * 100)}%`], ["Crítico", `${Math.round(stats.crit * 100)}%`], ["Evasão", `${Math.round(stats.evasion * 100)}%`], ["Ataque duplo", `${Math.round(stats.doubleAttackChance * 100)}%`]
+      ["Poder Naval", formatNumber(stats.power)], ["Ofensiva", formatNumber(powerBreakdown.offense)], ["Resistência", formatNumber(powerBreakdown.survival)], ["Bônus", formatNumber(powerBreakdown.bonuses)], ["Vida atual / máxima", `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`], ["Dano do navio", formatNumber(stats.damage)], ["DPS do navio", formatNumber(stats.shipDps)], ["DPS das skills", formatNumber(stats.skillDps)], ["DPS do pet", formatNumber(stats.petDps)], ["DPS total", formatNumber(stats.dps)], ["Velocidade", formatNumber(stats.speed)], ["Intervalo ataque", `${Math.round(stats.attackInterval)}ms`], ["Bônus vel. ataque", `+${Math.round(stats.attackSpeedBonus * 100)}%`], ["Armadura", formatNumber(stats.armor)], ["Redução de dano", `${Math.round(stats.armorReduction * 100)}%`], ["Precisão", `${Math.round(stats.precision * 100)}%`], ["Crítico", `${Math.round(stats.crit * 100)}%`], ["Evasão", `${Math.round(stats.evasion * 100)}%`], ["Ataque duplo", `${Math.round(stats.doubleAttackChance * 100)}%`]
     ]);
     $("#progression-stats").innerHTML = list([
       ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
     $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
+    renderMissions();
+    syncStatsPanelExpansion($("#screen-stats"));
     renderArenaPanel();
   }
 
-  const SCREEN_ALIASES = { trade: "upgrades", resources: "upgrades" };
+  const SCREEN_ALIASES = { trade: "upgrades", resources: "upgrades", missions: "stats", pets: "captain" };
   const SCREEN_RENDERERS = {
     upgrades: renderUpgrades,
     maps: renderMaps,
-    missions: renderMissions,
     captain: renderCaptain,
-    pets: () => {
-      renderPets();
-      decorateMissingPurchasePanels($("#screen-pets"));
-    },
     prestige: renderPrestige,
     stats: renderStats
   };
@@ -9126,6 +9366,11 @@
     currentScreen = screen;
     setActiveScreen(screen);
     renderScreen(screen);
+    const appShell = $("#app") || $(".app-shell");
+    if (appShell) {
+      appShell.scrollTop = 0;
+      appShell.scrollTo?.({ top: 0, behavior: "auto" });
+    }
     window.scrollTo?.({ top: 0, behavior: "auto" });
     document.scrollingElement?.scrollTo?.({ top: 0, behavior: "auto" });
   }
@@ -9211,8 +9456,9 @@
       return;
     }
     if (target.dataset.manualBasicAttackTutorial !== undefined) {
-      if (!manualShipAttack()) toast("Toque no barco quando houver alvo vivo.", "danger-toast");
-      else commitGame(false);
+      const handled = manualShipAttack();
+      if (!handled && !isArenaSceneActive()) toast("Toque no barco quando houver alvo vivo.", "danger-toast");
+      else if (handled) commitGame(false);
       return;
     }
     if (target.dataset.closeMapInfo !== undefined) {
@@ -9239,6 +9485,14 @@
     }
     if (target.dataset.arenaChallenge) {
       startArenaChallenge(target.dataset.arenaChallenge);
+      return;
+    }
+    if (target.dataset.toggleCaptainPets !== undefined) {
+      toggleCaptainPetsPanel();
+      return;
+    }
+    if (target.dataset.toggleStatsPanel) {
+      toggleStatsPanel(target.dataset.toggleStatsPanel);
       return;
     }
     if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);
