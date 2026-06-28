@@ -167,7 +167,7 @@ button:focus-visible { outline: 3px solid rgba(53, 212, 207, .45); outline-offse
 .persistent-combat {
   position: sticky;
   top: 78px;
-  z-index: 24;
+  z-index: 29;
   margin-bottom: 18px;
 }
 .persistent-combat .battle-stage {
@@ -413,11 +413,41 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   background: rgba(5, 16, 24, .72);
   box-shadow: inset 0 1px 2px rgba(0,0,0,.64), 0 0 0 1px rgba(0,0,0,.28);
 }
-.health-bar i, .boss-progress i, .xp-bar i { display: block; width: 100%; height: 100%; border-radius: inherit; transition: width .25s ease-out; }
+.health-bar i, .repair-bar i, .boss-progress i, .xp-bar i { display: block; width: 100%; height: 100%; border-radius: inherit; transition: width .25s ease-out; }
 .enemy-health { border-color: rgba(255, 198, 143, .58); }
 .enemy-health i { background: linear-gradient(90deg, #d93634, #f1844c); box-shadow: 0 0 10px rgba(242,122,88,.44); }
 .player-health { border-color: rgba(116, 241, 225, .62); }
 .player-health i { background: linear-gradient(90deg, #22a8a6, #65f1dc); box-shadow: 0 0 10px rgba(89,226,212,.44); }
+.repair-status {
+  display: grid;
+  gap: 3px;
+  margin-top: 4px;
+  color: #d8dde1;
+  font-size: clamp(7px, .65vw, 9px);
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 2px 5px rgba(0,0,0,.92);
+}
+.repair-status span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.repair-bar {
+  height: clamp(4px, .55vw, 7px);
+  padding: 1px;
+  overflow: hidden;
+  border: 1px solid rgba(214, 222, 226, .42);
+  border-radius: 99px;
+  background: rgba(5, 12, 18, .72);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.68);
+}
+.repair-bar i {
+  width: 0;
+  background: linear-gradient(90deg, #727c86, #d6dde2);
+  box-shadow: 0 0 8px rgba(216,221,226,.34);
+}
 .health-numbers {
   margin-top: 4px;
   color: #f1f7f2;
@@ -519,9 +549,16 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .manual-skill-orb:not(:disabled) { box-shadow: 0 0 14px rgba(247,189,74,.28), 0 7px 15px rgba(0,0,0,.22); }
 .manual-skill-orb .icon { display: block; color: #ffe19a; font-size: 19px; text-shadow: 0 0 10px rgba(247,189,74,.72); }
 .manual-skill-orb .cooldown { background: rgba(17, 9, 25, .78); }
+.repair-skill-orb {
+  border-color: rgba(157, 225, 222, .72);
+  background: rgba(7, 34, 39, .75);
+}
+.repair-skill-orb:not(:disabled) { box-shadow: 0 0 14px rgba(116,241,225,.25), 0 7px 15px rgba(0,0,0,.22); }
+.repair-skill-orb .icon { color: #aef4ec; text-shadow: 0 0 10px rgba(116,241,225,.66); }
+.repair-skill-orb .cooldown { background: rgba(4, 20, 26, .78); }
 
 .dashboard-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 14px; margin-top: 14px; }
-.home-clean-grid { position: relative; z-index: 26; grid-template-columns: .8fr 1.2fr; grid-template-areas: "controls boss" "log leaderboard"; align-items: stretch; }
+.home-clean-grid { position: relative; z-index: 1; grid-template-columns: .8fr 1.2fr; grid-template-areas: "controls boss" "log leaderboard"; align-items: stretch; }
 .card { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(13, 42, 59, .92), rgba(7, 27, 40, .94)); box-shadow: 0 9px 28px rgba(0,0,0,.15); }
 .progression-card, .controls-card, .captain-card, .log-card { padding: 18px; }
 .quick-controls-card { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
@@ -559,6 +596,8 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .metric-grid strong { display: block; margin-top: 3px; color: var(--cyan-2); font-size: 18px; font-variant-numeric: tabular-nums; }
 .control-row { display: flex; gap: 8px; margin-top: 17px; }
 .control-row .button { flex: 1; }
+.control-row .auto-boss-button { flex: 0 0 112px; min-width: 112px; padding-inline: 8px; font-size: 10px; white-space: nowrap; }
+.auto-boss-button.on { color: #05202a; border-color: #ffd56f; background: linear-gradient(135deg, #ffe08a, #e89a37); box-shadow: 0 0 18px rgba(247,189,74,.18); }
 .captain-card { display: flex; align-items: center; gap: 15px; }
 .captain-avatar { width: 60px; height: 60px; display: grid; place-items: center; flex: 0 0 auto; border: 2px solid rgba(247,189,74,.38); border-radius: 50%; background: linear-gradient(135deg, #324655, #111e28); font-size: 25px; }
 .captain-info { flex: 1; }
@@ -884,44 +923,60 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .captain-pets-section.expanded .captain-pets-body { display: block; }
 .captain-pets-section .pet-prestige-notice { margin: 0 0 12px; border-radius: 10px; }
 .captain-pets-section .pet-current-banner {
+  grid-template-columns: minmax(0, 1fr) auto;
   min-height: 88px;
   margin-bottom: 11px;
   padding: 12px 14px;
   border-radius: 10px;
 }
-.captain-pets-section .pet-current-icon { width: 54px; height: 54px; font-size: 30px; }
+.captain-pets-section .pet-current-icon { display: none; }
 .captain-pets-section .pet-current-banner h2 { font-size: 19px; }
 .captain-pets-section .pet-current-stats { gap: 8px 12px; }
 .captain-pets-section .pet-current-stats strong { font-size: 13px; }
 .captain-pets-section .pets-grid {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 1px 1px 8px;
-  scroll-snap-type: x proximity;
-  scrollbar-width: thin;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  overflow: visible;
+  padding: 0;
+  scroll-snap-type: none;
 }
 .captain-pets-section .pet-card {
-  flex: 0 0 252px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(142px, .22fr);
+  gap: 7px 12px;
   min-height: 0;
-  padding: 12px;
+  padding: 11px 12px;
   border-radius: 8px;
-  scroll-snap-align: start;
+  scroll-snap-align: none;
 }
-.captain-pets-section .pet-visual { height: 96px; margin: -12px -12px 9px; }
+.captain-pets-section .pet-visual { display: none; }
+.captain-pets-section .pet-card-top,
+.captain-pets-section .pet-card > p,
+.captain-pets-section .pet-stats,
+.captain-pets-section .pet-level-row,
+.captain-pets-section .pet-bonus,
+.captain-pets-section .pet-comparison,
+.captain-pets-section .cost-list,
+.captain-pets-section .pet-requirements { grid-column: 1; }
+.captain-pets-section .pet-actions {
+  grid-column: 2;
+  grid-row: 1 / span 8;
+  align-self: center;
+  margin-top: 0;
+}
 .captain-pets-section .pet-card-top h3 { font-size: 16px; }
 .captain-pets-section .pet-card > p {
-  min-height: 30px;
-  display: -webkit-box;
-  margin: 7px 0;
+  min-height: 0;
+  margin: 0;
   overflow: hidden;
   line-height: 1.35;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.captain-pets-section .pet-stats { grid-template-columns: repeat(2, 1fr); }
+.captain-pets-section .pet-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .captain-pets-section .pet-stats span { padding: 5px 2px; font-size: 10px; }
-.captain-pets-section .pet-level-row { grid-template-columns: 1fr; gap: 6px; padding: 7px; }
+.captain-pets-section .pet-level-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding: 7px; }
 .captain-pets-section .pet-level-pips { flex-wrap: wrap; }
 .captain-pets-section .pet-comparison { min-height: 32px; margin: 7px 0; }
 .captain-pets-section .cost-list { min-height: 0; margin: 7px 0; }
@@ -1014,8 +1069,11 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .captain-equipment-row.recent-upgrade { animation: captainEquipmentGlow .85s ease-out; }
 .captain-manual-skill-section { margin-top: 2px; }
 .captain-manual-skill-section.locked p { margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.captain-manual-skill-list { display: grid; gap: 8px; }
 .captain-manual-skill-row { border-color: rgba(182,140,255,.24); background: linear-gradient(145deg, rgba(45,25,61,.72), rgba(7,27,40,.96)); }
 .captain-manual-skill-row .upgrade-row-icon { color: var(--gold); border-color: rgba(247,189,74,.3); background: rgba(247,189,74,.1); }
+.captain-repair-skill-row { border-color: rgba(116,241,225,.24); background: linear-gradient(145deg, rgba(13,52,55,.72), rgba(7,27,40,.96)); }
+.captain-repair-skill-row .upgrade-row-icon { color: #9ff4e9; border-color: rgba(116,241,225,.3); background: rgba(116,241,225,.09); }
 .captain-manual-skill-row.recent-upgrade { animation: captainEquipmentGlow .85s ease-out; }
 @keyframes captainEquipmentGlow {
   0% { box-shadow: inset 0 0 0 1px rgba(247,189,74,.55), 0 0 0 rgba(247,189,74,0); transform: translateY(0); }
@@ -2282,6 +2340,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .metric-grid, .compact-metrics { grid-template-columns: repeat(3, 1fr); }
   .control-row { flex-wrap: wrap; }
   .control-row .button { min-width: 42%; }
+  .control-row .auto-boss-button { flex: 0 0 112px; min-width: 112px; }
   .quick-controls-card .button { min-height: 46px; }
   .battle-log { height: 104px; max-height: 104px; }
   .bottom-nav { width: 100%; height: var(--bottom-nav-height); border-radius: 13px; }
@@ -2338,9 +2397,10 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .captain-pets-toggle { grid-template-columns: 38px minmax(0, 1fr) 28px; padding: 10px 12px; }
   .captain-pets-toggle-count { grid-column: 2 / 3; width: fit-content; min-width: 84px; padding: 6px 8px; }
   .captain-pets-toggle-arrow { grid-column: 3; grid-row: 1 / span 2; }
-  .captain-pets-section .pet-current-banner { grid-template-columns: auto 1fr; }
+  .captain-pets-section .pet-current-banner { grid-template-columns: 1fr; }
   .captain-pets-section .pet-current-stats { grid-column: 1 / -1; justify-content: space-between; }
-  .captain-pets-section .pet-card { flex-basis: min(76vw, 252px); }
+  .captain-pets-section .pet-card { grid-template-columns: 1fr; }
+  .captain-pets-section .pet-actions { grid-column: 1; grid-row: auto; }
   .captain-bonus-grid { grid-template-columns: repeat(2, 1fr); }
   .captain-level-row { grid-template-columns: 1fr; }
   .captain-points-wallet { width: 100%; }
@@ -2450,7 +2510,8 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .captain-pets-toggle { grid-template-columns: 34px minmax(0, 1fr) 28px; gap: 8px; }
   .captain-pets-toggle-icon { width: 34px; height: 34px; font-size: 18px; }
   .captain-pets-toggle-copy strong, .stats-panel-toggle strong { font-size: 18px; }
-  .captain-pets-section .pet-card { flex-basis: min(84vw, 244px); }
+  .captain-pets-section .pet-card { grid-template-columns: 1fr; }
+  .captain-pets-section .pet-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats-panel-body { padding-inline: 10px; }
   .upgrade-card p, .equipment-card p, .skill-card p { min-height: auto; }
   .ship-card { min-height: 420px; }

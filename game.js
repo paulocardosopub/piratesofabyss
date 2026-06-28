@@ -31,8 +31,12 @@
   const CAPTAIN_MAX_LEVEL = 10;
   const CAPTAIN_CHARACTER_ASSET_PATH = "assets/newpirates/";
   const CAPTAIN_MANUAL_SKILL_KEY = "sabotage";
+  const CAPTAIN_REPAIR_SKILL_KEY = "emergencyRepair";
   const CAPTAIN_MANUAL_SKILL_BASE_COOLDOWN = 10;
   const CAPTAIN_MANUAL_SKILL_MAX_LEVEL = 20;
+  const EMERGENCY_REPAIR_COOLDOWN_SECONDS = 10;
+  const EMERGENCY_REPAIR_DURATION_MS = 5000;
+  const AUTO_REPAIR_DURATION_MS = 4000;
   const CAPTAIN_HP_REGEN_INTERVAL_SECONDS = 5;
   const AUTO_ATTACK_CAPTAIN_LEVEL_REQUIRED = 2;
   const MANUAL_ATTACK_TUTORIAL_DURATION_MS = 30000;
@@ -596,6 +600,14 @@
       multiplierStep: 1.5,
       maxLevel: CAPTAIN_MANUAL_SKILL_MAX_LEVEL,
       description: "Golpe manual do pirata. Causa dano direto no inimigo atual e nunca dispara automaticamente."
+    },
+    emergencyRepair: {
+      name: "Reparo de Emergência",
+      icon: "+",
+      cooldown: EMERGENCY_REPAIR_COOLDOWN_SECONDS,
+      repairStep: .1,
+      maxLevel: 10,
+      description: "Skill manual do pirata. Repara parte da vida máxima do navio ao longo de 5 segundos."
     }
   };
 
@@ -773,7 +785,7 @@
   }
 
   function createCaptainManualSkillState() {
-    return { [CAPTAIN_MANUAL_SKILL_KEY]: { level: 1, nextReadyAt: 0 } };
+    return Object.fromEntries(Object.keys(CAPTAIN_MANUAL_SKILL_META).map(key => [key, { level: 1, nextReadyAt: 0 }]));
   }
 
   function getCaptainManualSkillState(key = CAPTAIN_MANUAL_SKILL_KEY, source = state) {
@@ -834,6 +846,15 @@
 
   function getCaptainManualSkillDamage(key = CAPTAIN_MANUAL_SKILL_KEY, stats = getStats()) {
     return Math.round(stats.damage * getCaptainManualSkillMultiplier(key));
+  }
+
+  function getCaptainRepairPercent(level = getCaptainManualSkillLevel(CAPTAIN_REPAIR_SKILL_KEY)) {
+    const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_REPAIR_SKILL_KEY];
+    return clamp(Math.max(1, Math.floor(Number(level) || 1)) * (meta?.repairStep || .1), 0, 1);
+  }
+
+  function formatCaptainRepairPercent(level = getCaptainManualSkillLevel(CAPTAIN_REPAIR_SKILL_KEY)) {
+    return `+${Math.round(getCaptainRepairPercent(level) * 100)}%`;
   }
 
   function createCaptainBonuses() {
@@ -1656,7 +1677,7 @@
     11: { hp: 1.75, damage: 1.45, armor: 1.55, evasion: .015, attackSpeed: .9, skillResist: .12, bossHp: 1.8, bossDamage: 1.45, bossArmor: 1.45, special: "blindagem imperial" },
     12: { hp: 2.25, damage: 2.05, armor: 1.25, evasion: .02, attackSpeed: .82, skillResist: .2, bossHp: 2.35, bossDamage: 2.1, bossArmor: 1.35, special: "chamas vulcânicas" },
     13: { hp: 2.85, damage: 2.35, armor: 1.85, evasion: .025, attackSpeed: .78, skillResist: .28, bossHp: 3.15, bossDamage: 2.55, bossArmor: 1.85, special: "controle glacial" },
-    14: { hp: 4.2, damage: 3.7, armor: 2.45, evasion: .04, attackSpeed: .68, skillResist: .4, bossHp: 5.4, bossDamage: 4.25, bossArmor: 2.6, special: "maldição abissal" }
+    14: { hp: 4.2, damage: 3.7, armor: 2.45, evasion: .04, attackSpeed: .68, skillResist: .4, bossHp: 7.02, bossDamage: 5.525, bossArmor: 2.6, special: "maldição abissal" }
   };
   let activeMissionFilter = "Próximas de concluir";
   let captainPetsExpanded = false;
@@ -1864,7 +1885,8 @@
       progression: makeProgressionDefaults(),
       quests: { completed: {}, claimed: {} },
       titles: [],
-      combat: { running: false, repairing: false, repairStarted: 0, playerHp: 140, enemy: null, attackTimer: 0, petAttackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
+      combat: { running: false, repairing: false, repairStarted: 0, repairDuration: AUTO_REPAIR_DURATION_MS, repairStartHp: 0, repairTargetHp: 140, repairSource: "", playerHp: 140, enemy: null, attackTimer: 0, petAttackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
+      autoChallengeBoss: false,
       logs: [],
       hasStarted: false,
       lastSeen: Date.now()
@@ -2309,6 +2331,15 @@
     return Math.floor(Number(source.captainRuntimeLevel || 1)) >= AUTO_ATTACK_CAPTAIN_LEVEL_REQUIRED;
   }
 
+  function isCurrentBossChallengeAvailable() {
+    return !isArenaSceneActive() && state.regionKills[state.regionIndex] >= 100 && !state.bossesDefeated[state.regionIndex] && !state.combat.enemy;
+  }
+
+  function maybeAutoChallengeBoss() {
+    if (!state.autoChallengeBoss || !state.combat.running || !isCurrentBossChallengeAvailable()) return false;
+    return challengeBoss({ automatic: true });
+  }
+
   function shouldShowManualAttackTutorial(now = Date.now()) {
     return !isArenaSceneActive() && state.pirateLevel < 2 && !manualAttackTutorialDismissed && now - manualAttackTutorialStartedAt <= MANUAL_ATTACK_TUTORIAL_DURATION_MS;
   }
@@ -2570,7 +2601,7 @@
       const params = new URLSearchParams({
         select: getLeaderboardSelectColumns(),
         best_prestige_level: "gte.1",
-        order: "best_prestige_level.desc,best_prestige_power.desc,prestige_count.desc,last_prestige_at.desc",
+        order: "best_prestige_power.desc,best_prestige_level.desc,prestige_count.desc,last_prestige_at.desc",
         limit: String(config.limit)
       });
       const response = await fetch(`${config.supabaseUrl}/rest/v1/${config.readRelationName}?${params}`, {
@@ -2619,13 +2650,22 @@
       selected_pirate_name: String(row.selected_pirate_name || row.selectedPirateName || ""),
       prestige_count: Math.max(0, Math.floor(Number(row.prestige_count ?? row.prestigeCount ?? 0))),
       best_prestige_level: Math.max(0, Math.floor(Number(row.best_prestige_level ?? row.bestPrestigeLevel ?? row.prestige_count ?? 0))),
-      best_prestige_power: Math.max(0, Math.floor(Number(row.best_prestige_power ?? row.bestPrestigePower ?? 0))),
+      best_prestige_power: Math.max(0, Math.floor(Number(row.best_prestige_power ?? row.bestPrestigePower ?? row.combat_power ?? row.combatPower ?? row.naval_power ?? row.navalPower ?? 0))),
       ship_name: String(row.ship_name || row.shipName || "").trim(),
       ship_level: Math.max(0, Math.floor(Number(row.ship_level ?? row.shipLevel ?? 0) || 0)),
       highest_map_unlocked: Math.max(0, Math.floor(Number(row.highest_map_unlocked ?? row.highestMapUnlocked ?? 0) || 0)),
       highest_map_name: String(row.highest_map_name || row.highestMapName || "").trim(),
       last_prestige_at: row.last_prestige_at || row.lastPrestigeAt || row.updated_at || row.updatedAt || ""
     };
+  }
+
+  function compareLeaderboardEntries(a = {}, b = {}) {
+    const dateA = Date.parse(a.last_prestige_at || "") || 0;
+    const dateB = Date.parse(b.last_prestige_at || "") || 0;
+    return Math.max(0, Number(b.best_prestige_power || 0)) - Math.max(0, Number(a.best_prestige_power || 0))
+      || Math.max(0, Number(b.best_prestige_level || b.prestige_count || 0)) - Math.max(0, Number(a.best_prestige_level || a.prestige_count || 0))
+      || Math.max(0, Number(b.prestige_count || 0)) - Math.max(0, Number(a.prestige_count || 0))
+      || dateB - dateA;
   }
 
   function formatLeaderboardDate(value) {
@@ -2689,12 +2729,14 @@
     status.textContent = "";
     list.innerHTML = leaderboardState.entries.map((entry, index) => {
       const prestige = entry.best_prestige_level || entry.prestige_count || 0;
+      const power = entry.best_prestige_power || 0;
+      const date = formatLeaderboardDate(entry.last_prestige_at);
       const isCurrentPlayer = entry.player_id && entry.player_id === state.playerId;
       return `<div class="leaderboard-row ${isCurrentPlayer ? "current-player" : ""}">
         <strong>#${index + 1}</strong>
         <div class="leaderboard-player"><span>${escapeHtml(entry.pirate_name)}</span><small>${escapeHtml(leaderboardProgressMeta(entry))}</small></div>
-        <span>Prestígio ${formatNumber(prestige)}</span>
-        <small class="leaderboard-date">${formatLeaderboardDate(entry.last_prestige_at)}</small>
+        <span class="leaderboard-score">Poder ${formatNumber(power)}</span>
+        <small class="leaderboard-date">Prestígio ${formatNumber(prestige)}${date ? ` • ${date}` : ""}</small>
       </div>`;
     }).join("");
   }
@@ -2717,7 +2759,7 @@
     renderLeaderboard();
     leaderboardState.loadingPromise = requestLeaderboardRows(config)
       .then(rows => {
-        const entries = (Array.isArray(rows) ? rows : rows?.entries || []).map(normalizeLeaderboardRow);
+        const entries = (Array.isArray(rows) ? rows : rows?.entries || []).map(normalizeLeaderboardRow).sort(compareLeaderboardEntries);
         leaderboardState.entries = entries;
         leaderboardState.status = "ready";
         leaderboardState.lastLoadedAt = Date.now();
@@ -6979,6 +7021,7 @@
   function castCaptainManualSkill(key = CAPTAIN_MANUAL_SKILL_KEY) {
     const meta = CAPTAIN_MANUAL_SKILL_META[key];
     if (!meta) return;
+    if (key === CAPTAIN_REPAIR_SKILL_KEY) return castEmergencyRepairSkill();
     if (!isCaptainSelected()) return toast("Selecione um pirata inicial para liberar Sabotar Inimigo.", "danger-toast");
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return toast("Sabotar Inimigo precisa de um alvo vivo.", "danger-toast");
@@ -6995,6 +7038,23 @@
     trackAction("skill", { key });
     addLog(`Sabotar Inimigo causou ${formatNumber(damage)} de dano direto.`, "loot");
     renderAll(false);
+    saveGame();
+  }
+
+  function castEmergencyRepairSkill() {
+    const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_REPAIR_SKILL_KEY];
+    if (!isCaptainSelected()) return toast("Selecione um pirata inicial para liberar Reparo de Emergência.", "danger-toast");
+    if (isArenaBattleActive()) return toast("Reparo de Emergência indisponível durante a Arena.", "danger-toast");
+    if (isArenaBattleWaiting()) return toast(`Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
+    if (state.combat.repairing) return toast("Reparo de Emergência já está em andamento.", "danger-toast");
+    if (state.combat.playerHp <= 0) return toast("O navio está destruído. Aguarde o reparo automático.", "danger-toast");
+    const maxHp = getStats().maxHp;
+    if (state.combat.playerHp >= maxHp) return toast("Navio já está com vida máxima.", "gold-toast");
+    const remaining = getCaptainManualSkillCooldownRemaining(CAPTAIN_REPAIR_SKILL_KEY);
+    if (remaining > 0) return toast(`Reparo de Emergência recarrega em ${formatSeconds(remaining)}.`, "danger-toast");
+    const skill = getCaptainManualSkillState(CAPTAIN_REPAIR_SKILL_KEY);
+    skill.nextReadyAt = Date.now() + meta.cooldown * 1000;
+    startEmergencyRepair();
     saveGame();
   }
 
@@ -7064,6 +7124,10 @@
     state.combat.enemy = null;
     state.combat.repairing = false;
     state.combat.repairStarted = 0;
+    state.combat.repairDuration = AUTO_REPAIR_DURATION_MS;
+    state.combat.repairStartHp = 0;
+    state.combat.repairTargetHp = getStats().maxHp;
+    state.combat.repairSource = "";
     state.combat.playerHp = getStats().maxHp;
     state.combat.spawnTimer = 0;
     state.combat.running = true;
@@ -7074,8 +7138,13 @@
   }
 
   function beginRepair() {
+    const maxHp = getStats().maxHp;
     state.combat.repairing = true;
     state.combat.repairStarted = performance.now();
+    state.combat.repairDuration = AUTO_REPAIR_DURATION_MS;
+    state.combat.repairStartHp = Math.max(0, Number(state.combat.playerHp || 0));
+    state.combat.repairTargetHp = maxHp;
+    state.combat.repairSource = "auto";
     trackAction("repair");
     addLog(`Derrota contra ${state.combat.enemy?.name || "inimigo"}. Reparo iniciado.`, "danger-text");
     toast("Navio destruído — reparo automático em andamento.", "danger-toast");
@@ -7083,10 +7152,41 @@
 
   function finishRepair(forced = false) {
     state.combat.repairing = false;
-    state.combat.playerHp = getStats().maxHp;
+    const maxHp = getStats().maxHp;
+    const targetHp = Math.max(1, Number(state.combat.repairTargetHp || maxHp) || maxHp);
+    const repairSource = state.combat.repairSource || "auto";
+    state.combat.playerHp = clamp(Math.round(targetHp), 1, maxHp);
+    state.combat.repairStarted = 0;
+    state.combat.repairDuration = AUTO_REPAIR_DURATION_MS;
+    state.combat.repairStartHp = 0;
+    state.combat.repairTargetHp = maxHp;
+    state.combat.repairSource = "";
     state.combat.attackTimer = 0;
     scene.resetPlayerShipAnimation();
-    addLog(forced ? "Protocolo de segurança concluiu o reparo." : "Reparo concluído. Retomando o combate.", "loot");
+    addLog(forced ? "Protocolo de segurança concluiu o reparo." : repairSource === "manual" ? "Reparo de Emergência concluído." : "Reparo concluído. Retomando o combate.", "loot");
+  }
+
+  function startEmergencyRepair() {
+    const maxHp = getStats().maxHp;
+    const currentHp = clamp(Number(state.combat.playerHp || 0), 0, maxHp);
+    const repairPercent = getCaptainRepairPercent();
+    const targetHp = Math.min(maxHp, currentHp + maxHp * repairPercent);
+    state.combat.enemy = null;
+    state.combat.repairing = true;
+    state.combat.repairStarted = performance.now();
+    state.combat.repairDuration = EMERGENCY_REPAIR_DURATION_MS;
+    state.combat.repairStartHp = currentHp;
+    state.combat.repairTargetHp = targetHp;
+    state.combat.repairSource = "manual";
+    state.combat.spawnTimer = EMERGENCY_REPAIR_DURATION_MS;
+    state.combat.running = true;
+    state.hasStarted = true;
+    clearCombatTimers();
+    scene.resetPlayerShipAnimation();
+    trackAction("repair");
+    addLog(`Reparo de Emergência iniciado: ${Math.round(repairPercent * 100)}% da vida máxima em 5s.`, "loot");
+    toast("Reparo de Emergência iniciado.", "gold-toast");
+    commitGame(false);
   }
 
   function rewardMaterials(multiplier = 1, enemy = state.combat.enemy) {
@@ -7207,6 +7307,10 @@
     }
     state.combat.repairing = false;
     state.combat.repairStarted = 0;
+    state.combat.repairDuration = AUTO_REPAIR_DURATION_MS;
+    state.combat.repairStartHp = 0;
+    state.combat.repairTargetHp = getStats().maxHp;
+    state.combat.repairSource = "";
     state.combat.playerHp = getStats().maxHp;
     state.combat.enemy = null;
     scene.resetPlayerShipAnimation();
@@ -7232,7 +7336,13 @@
     }
     if (state.combat.repairing) {
       const elapsed = now - state.combat.repairStarted;
-      if (elapsed >= 4000 || elapsed > 6000) finishRepair(elapsed > 6000);
+      const duration = Math.max(1, Number(state.combat.repairDuration || AUTO_REPAIR_DURATION_MS));
+      const progress = clamp(elapsed / duration, 0, 1);
+      const maxHp = getStats().maxHp;
+      const startHp = clamp(Number(state.combat.repairStartHp || 0), 0, maxHp);
+      const targetHp = clamp(Number(state.combat.repairTargetHp || maxHp), 1, maxHp);
+      state.combat.playerHp = Math.min(maxHp, startHp + (targetHp - startHp) * progress);
+      if (elapsed >= duration || elapsed > duration + 2000) finishRepair(elapsed > duration + 2000);
       return;
     }
     const captainBonuses = getCaptainBonuses();
@@ -7243,6 +7353,7 @@
     }
     if (!state.combat.enemy) {
       if (isArenaSceneActive()) return;
+      if (maybeAutoChallengeBoss()) return;
       state.combat.spawnTimer += dt * 1000;
       if (state.combat.spawnTimer >= getSpawnDelay()) { state.combat.spawnTimer = 0; spawnEnemy(false); }
       return;
@@ -7569,6 +7680,19 @@
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
     $("#player-health-fill").style.width = `${state.combat.playerHp / Math.max(1, maxHp) * 100}%`;
     $("#player-health-text").textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(maxHp)}`;
+    const repairStatus = $("#repair-status");
+    const repairProgressFill = $("#repair-progress-fill");
+    if (repairStatus && repairProgressFill) {
+      const manualRepairActive = Boolean(state.combat.repairing && state.combat.repairSource === "manual");
+      repairStatus.classList.toggle("hidden", !manualRepairActive);
+      if (manualRepairActive) {
+        const elapsed = Math.max(0, performance.now() - Number(state.combat.repairStarted || 0));
+        const duration = Math.max(1, Number(state.combat.repairDuration || EMERGENCY_REPAIR_DURATION_MS));
+        repairProgressFill.style.width = `${clamp(elapsed / duration, 0, 1) * 100}%`;
+      } else {
+        repairProgressFill.style.width = "0%";
+      }
+    }
     $("#ship-name").textContent = ship.name;
     $("#enemy-floating-health")?.classList.toggle("hidden", !enemy);
     if (enemy) {
@@ -7681,6 +7805,13 @@
       ? `Combate Auto: ${state.combat.running ? "ON" : "OFF"}`
       : state.combat.running ? "Combate: ON • Auto no Nv. 2" : "Iniciar combate manual";
     startButton.title = autoAttackUnlocked ? "Liga ou desliga o combate automático." : "Auto ataque libera no nível 2 do Capitão. Até lá, clique no barco para atacar.";
+    const autoBossButton = $("#auto-boss-button");
+    if (autoBossButton) {
+      autoBossButton.textContent = `Boss Auto: ${state.autoChallengeBoss ? "ON" : "OFF"}`;
+      autoBossButton.classList.toggle("on", Boolean(state.autoChallengeBoss));
+      autoBossButton.setAttribute("aria-pressed", state.autoChallengeBoss ? "true" : "false");
+      autoBossButton.title = state.autoChallengeBoss ? "Desafio automático de boss ligado." : "Desafia automaticamente o boss quando atingir 100 vitórias.";
+    }
     const needed = xpNeeded();
     const xpText = $("#xp-text");
     const pirateLevelText = $("#pirate-level-text");
@@ -7711,9 +7842,9 @@
     const grid = $("#pets-grid");
     if (!banner || !grid) return;
     if (ownedCount) ownedCount.textContent = `${state.ownedPets.length} / ${PETS.length}`;
-    banner.className = `pet-current-banner${current ? " equipped" : ""}`;
+    banner.className = `pet-current-banner pet-current-compact${current ? " equipped" : ""}`;
     banner.setAttribute("style", current ? getPetAuraStyle(current) : "");
-    banner.innerHTML = current ? `<div class="pet-current-icon">${petSpriteHtml(current.visual)}</div><div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div class="pet-current-icon">🐾</div><div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Nenhum pet equipado</h2><p>Você pode navegar sem pet ou escolher um companheiro quando quiser.</p></div>`;
+    banner.innerHTML = current ? `<div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Nenhum pet equipado</h2><p>Você pode navegar sem pet ou escolher um companheiro quando quiser.</p></div>`;
     grid.innerHTML = PETS.map(basePet => {
       const owned = state.ownedPets.includes(basePet.id);
       const level = owned ? getPetLevel(basePet.id) : 1;
@@ -7737,9 +7868,8 @@
       const requirement = owned
         ? `<div class="pet-requirements ready"><strong>Upgrade permanente</strong><br>${upgradeCost ? state.pirateCoins >= upgradeCost ? "Moedas Pirata disponíveis para evoluir." : `Faltam ${formatNumber(upgradeCost - state.pirateCoins)} Moedas Pirata para evoluir.` : "Este pet já atingiu o nível máximo."}</div>`
         : issues.length ? `<div class="pet-requirements"><strong>${prestigeLine}</strong><br>Requer: ${issues.join(" • ")}</div>` : `<div class="pet-requirements ready"><strong>${prestigeLine}</strong><br>${state.pirateCoins >= pirateCoinCost ? "Moedas e requisitos disponíveis" : `Faltam ${pirateCoinCost - state.pirateCoins} Moedas Pirata`}</div>`;
-      return `<article class="pet-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-visual">${petSpriteHtml(pet.visual)}<i></i></div><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
+      return `<article class="pet-card pet-list-card ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}" style="${getPetAuraStyle(pet)}"><div class="pet-card-top"><div><span class="pet-rarity">${pet.rarity}</span><h3>${pet.name}</h3><small>${pet.type}</small></div><b>${status}</b></div><p>${pet.description}</p><div class="pet-stats"><span><small>DANO</small>${formatNumber(pet.damage)}</span><span><small>ATAQUE</small>${pet.interval.toLocaleString("pt-BR")}s</span><span><small>DPS</small>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span><span><small>PODER</small>+${formatNumber(pet.power)}</span></div><div class="pet-level-row"><div><span>Nível do pet</span><strong>${level} / ${PET_MAX_LEVEL}</strong></div><div class="pet-level-pips">${petLevelPips(level)}</div></div>${pet.bonus ? `<div class="pet-bonus">✦ ${pet.bonus}</div>` : ""}<div class="pet-comparison">${comparison}</div><div class="cost-list">${owned ? `<span class="cost-chip">Adoção permanente</span>${upgradeCost ? `<span class="cost-chip pirate-coin-cost">Upgrade: ☠ ${formatNumber(upgradeCost)}</span>` : ""}${upgradePreview}` : `<span class="cost-chip pirate-coin-cost">☠ ${pirateCoinCost} Moedas Pirata</span>${resourceCostHtml(pet.costs)}`}</div>${requirement}${button}</article>`;
     }).join("");
-    renderPetPreviewCanvases(grid.closest(".captain-pets-section") || document);
   }
 
   function captainBonusRowsHtml(bonuses) {
@@ -7835,24 +7965,28 @@
   }
 
   function renderCaptainManualSkillSection(locked = false) {
-    const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_MANUAL_SKILL_KEY];
     if (locked) {
-      return `<section class="captain-equipment-section captain-manual-skill-section locked"><div class="section-heading compact"><div><span class="eyebrow">HABILIDADE MANUAL DO PIRATA</span><h2>Sabotar Inimigo bloqueado</h2><p>Selecione um pirata inicial para liberar esta habilidade manual no combate.</p></div></div></section>`;
+      return `<section class="captain-equipment-section captain-manual-skill-section locked"><div class="section-heading compact"><div><span class="eyebrow">HABILIDADES MANUAIS DO PIRATA</span><h2>Skills manuais bloqueadas</h2><p>Selecione um pirata inicial para liberar Sabotar Inimigo e Reparo de Emergência no combate.</p></div></div></section>`;
     }
     syncCaptainRuntimeState(state);
-    const level = getCaptainManualSkillLevel();
-    const nextLevel = Math.min(meta.maxLevel, level + 1);
-    const currentMultiplier = getCaptainManualSkillMultiplier(CAPTAIN_MANUAL_SKILL_KEY, level);
-    const nextMultiplier = level < meta.maxLevel ? getCaptainManualSkillMultiplier(CAPTAIN_MANUAL_SKILL_KEY, nextLevel) : currentMultiplier;
-    const currentDamage = getCaptainManualSkillDamage();
-    const nextDamage = Math.round(getStats().damage * nextMultiplier);
-    const cost = getCaptainManualSkillCost();
     const available = getAvailableLevelPoints();
-    const canUpgrade = cost !== null && available >= cost;
-    const upgraded = lastCaptainManualSkillUpgrade === CAPTAIN_MANUAL_SKILL_KEY;
-    return `<section class="captain-equipment-section captain-manual-skill-section">
-      <div class="section-heading compact"><div><span class="eyebrow">HABILIDADE MANUAL DO PIRATA</span><h2>${meta.name}</h2></div><div class="captain-points-wallet"><span>PONTOS DE NÍVEL</span><strong>${available}</strong></div></div>
-      <article class="upgrade-row captain-manual-skill-row ${upgraded ? "recent-upgrade" : ""} ${cost === null ? "completed" : canUpgrade ? "available" : ""}">
+    const stats = getStats();
+    const manualSkillRows = Object.entries(CAPTAIN_MANUAL_SKILL_META).map(([key, meta]) => {
+      const level = getCaptainManualSkillLevel(key);
+      const nextLevel = Math.min(meta.maxLevel, level + 1);
+      const cost = getCaptainManualSkillCost(key, level);
+      const canUpgrade = cost !== null && available >= cost;
+      const upgraded = lastCaptainManualSkillUpgrade === key;
+      const isRepair = key === CAPTAIN_REPAIR_SKILL_KEY;
+      const currentEffect = isRepair ? formatCaptainRepairPercent(level) : formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key, level));
+      const nextEffect = cost === null ? "Máximo" : isRepair ? formatCaptainRepairPercent(nextLevel) : formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key, nextLevel));
+      const effectLabel = isRepair ? "Reparo atual" : "Multiplicador atual";
+      const nextLabel = isRepair ? "Próximo reparo" : "Próximo multiplicador";
+      const estimateLabel = isRepair ? "Cura estimada" : "Dano estimado";
+      const currentEstimate = isRepair ? Math.round(stats.maxHp * getCaptainRepairPercent(level)) : getCaptainManualSkillDamage(key, stats);
+      const nextEstimate = isRepair ? Math.round(stats.maxHp * getCaptainRepairPercent(nextLevel)) : Math.round(stats.damage * getCaptainManualSkillMultiplier(key, nextLevel));
+      const completeText = isRepair ? "Reparo de Emergência está totalmente promovida." : "Sabotar Inimigo está totalmente promovida.";
+      return `<article class="upgrade-row captain-manual-skill-row ${isRepair ? "captain-repair-skill-row" : ""} ${upgraded ? "recent-upgrade" : ""} ${cost === null ? "completed" : canUpgrade ? "available" : ""}">
         <div class="upgrade-row-icon">${meta.icon}</div>
         <div class="upgrade-row-main">
           <span class="level-label">NÍVEL ${level} / ${meta.maxLevel}</span>
@@ -7860,23 +7994,27 @@
           <p>${meta.description}</p>
           <div class="captain-equipment-summary">
             <div><span>Nível atual</span><strong>${level}</strong></div>
-            <div><span>Multiplicador atual</span><strong>${formatCaptainManualMultiplier(currentMultiplier)}</strong></div>
-            <div><span>Próximo multiplicador</span><strong>${cost === null ? "Máximo" : formatCaptainManualMultiplier(nextMultiplier)}</strong></div>
-            <div><span>Dano estimado</span><strong>${formatNumber(currentDamage)}${cost === null ? "" : ` → ${formatNumber(nextDamage)}`}</strong></div>
+            <div><span>${effectLabel}</span><strong>${currentEffect}</strong></div>
+            <div><span>${nextLabel}</span><strong>${nextEffect}</strong></div>
+            <div><span>${estimateLabel}</span><strong>${formatNumber(currentEstimate)}${cost === null ? "" : ` → ${formatNumber(nextEstimate)}`}</strong></div>
           </div>
-          <div class="cost-list">${cost === null ? `<span class="cost-chip">Habilidade no nível máximo</span>` : `<span class="cost-chip">Custo: ${cost} Ponto${cost === 1 ? "" : "s"} de Nível</span><span class="cost-chip">Cooldown: ${formatSeconds(meta.cooldown)}</span>`}</div>
-          ${cost === null ? `<div class="resource-readiness ready">Sabotar Inimigo está totalmente promovida.</div>` : `<div class="resource-readiness ${canUpgrade ? "ready" : "missing"}">${canUpgrade ? "Pontos suficientes para promover" : `Faltam ${cost - available} Ponto${cost - available === 1 ? "" : "s"} de Nível`}</div>`}
+          <div class="cost-list">${cost === null ? `<span class="cost-chip">Habilidade no nível máximo</span>` : `<span class="cost-chip">Custo: ${cost} Ponto${cost === 1 ? "" : "s"} de Nível</span><span class="cost-chip">Cooldown: ${formatSeconds(meta.cooldown)}</span>${isRepair ? `<span class="cost-chip">Duração: 5s</span>` : ""}`}</div>
+          ${cost === null ? `<div class="resource-readiness ready">${completeText}</div>` : `<div class="resource-readiness ${canUpgrade ? "ready" : "missing"}">${canUpgrade ? "Pontos suficientes para promover" : `Faltam ${cost - available} Ponto${cost - available === 1 ? "" : "s"} de Nível`}</div>`}
           ${upgraded ? `<div class="captain-equipment-feedback">Habilidade promovida!</div>` : ""}
         </div>
         <div class="upgrade-row-action">
-          <button class="button primary" data-upgrade-captain-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}" ${canUpgrade ? "" : "disabled"}>${cost === null ? "Nível máximo" : canUpgrade ? "Promover" : "Pontos insuficientes"}</button>
+          <button class="button primary" data-upgrade-captain-manual-skill="${key}" ${canUpgrade ? "" : "disabled"}>${cost === null ? "Nível máximo" : canUpgrade ? "Promover" : "Pontos insuficientes"}</button>
           <div class="upgrade-balance${canUpgrade || cost === null ? "" : " danger"}">
             <span>Custo: <strong>${cost === null ? "Completo" : `${cost} Ponto${cost === 1 ? "" : "s"}`}</strong></span>
             <span>Disponíveis: <strong>${available}</strong></span>
             <span>Após upgrade: <strong>${cost === null ? "Máximo" : canUpgrade ? available - cost : `Faltam ${cost - available}`}</strong></span>
           </div>
         </div>
-      </article>
+      </article>`;
+    }).join("");
+    return `<section class="captain-equipment-section captain-manual-skill-section">
+      <div class="section-heading compact"><div><span class="eyebrow">HABILIDADES MANUAIS DO PIRATA</span><h2>Skills de combate</h2></div><div class="captain-points-wallet"><span>PONTOS DE NÍVEL</span><strong>${available}</strong></div></div>
+      <div class="captain-manual-skill-list">${manualSkillRows}</div>
     </section>`;
   }
 
@@ -8044,46 +8182,61 @@
     finalizeCaptainRender(content);
   }
 
+  function captainManualSkillDockButtonHtml([key, meta]) {
+    const repairClass = key === CAPTAIN_REPAIR_SKILL_KEY ? " repair-skill-orb" : "";
+    return `<button class="skill-orb manual-skill-orb${repairClass}" data-manual-skill="${key}" title="${meta.name}" aria-label="${meta.name}"><span class="cooldown"></span><span class="icon">${key === CAPTAIN_MANUAL_SKILL_KEY ? "✦" : meta.icon}</span><small></small></button>`;
+  }
+
   function captainManualSkillDockHtml() {
-    const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_MANUAL_SKILL_KEY];
-    return `<button class="skill-orb manual-skill-orb" data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}" title="${meta.name}" aria-label="${meta.name}"><span class="cooldown"></span><span class="icon">✦</span></button>`;
+    return Object.entries(CAPTAIN_MANUAL_SKILL_META).map(captainManualSkillDockButtonHtml).join("");
   }
 
   function updateCaptainManualSkillDock() {
-    const node = $(`[data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}"]`);
-    if (!node) return;
-    const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_MANUAL_SKILL_KEY];
-    const unlocked = isCaptainSelected();
-    const hasTarget = Boolean(state.combat.enemy && !state.combat.enemy.defeated);
-    const arenaLocked = isArenaBattleWaiting() || isArenaBattleActive();
-    const remaining = unlocked ? getCaptainManualSkillCooldownRemaining(CAPTAIN_MANUAL_SKILL_KEY) : meta.cooldown;
-    const ready = unlocked && hasTarget && !arenaLocked && remaining <= 0;
-    node.classList.toggle("locked", !unlocked);
-    node.classList.toggle("off", unlocked && !ready);
-    node.disabled = !ready;
-    node.querySelector(".cooldown").style.transform = `scaleY(${unlocked ? clamp(remaining / meta.cooldown, 0, 1) : 1})`;
-    const label = node.querySelector("small");
-    if (label) label.textContent = "";
-    node.title = !unlocked
-      ? "Selecione um pirata inicial para desbloquear Sabotar Inimigo"
-      : arenaLocked
-        ? isArenaBattleWaiting()
-          ? `Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}`
-          : "Sabotar Inimigo indisponível durante a Arena"
-        : remaining > 0
-          ? `Sabotar Inimigo recarrega em ${formatSeconds(remaining)}`
-          : hasTarget
-            ? `${meta.name} - manual - ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier())} do dano atual`
-            : "Sabotar Inimigo precisa de um alvo vivo";
+    Object.entries(CAPTAIN_MANUAL_SKILL_META).forEach(([key, meta]) => {
+      const node = $(`[data-manual-skill="${key}"]`);
+      if (!node) return;
+      const unlocked = isCaptainSelected();
+      const arenaLocked = isArenaBattleWaiting() || isArenaBattleActive();
+      const remaining = unlocked ? getCaptainManualSkillCooldownRemaining(key) : meta.cooldown;
+      const isRepair = key === CAPTAIN_REPAIR_SKILL_KEY;
+      const hasTarget = Boolean(state.combat.enemy && !state.combat.enemy.defeated);
+      const maxHp = getActivePlayerMaxHp();
+      const needsRepair = state.combat.playerHp > 0 && state.combat.playerHp < maxHp && !state.combat.repairing;
+      const ready = unlocked && !arenaLocked && remaining <= 0 && (isRepair ? needsRepair : hasTarget);
+      node.classList.toggle("locked", !unlocked);
+      node.classList.toggle("off", unlocked && !ready);
+      node.disabled = !ready;
+      node.querySelector(".cooldown").style.transform = `scaleY(${unlocked ? clamp(remaining / meta.cooldown, 0, 1) : 1})`;
+      const label = node.querySelector("small");
+      if (label) label.textContent = "";
+      node.title = !unlocked
+        ? `Selecione um pirata inicial para desbloquear ${meta.name}`
+        : arenaLocked
+          ? isArenaBattleWaiting()
+            ? `Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}`
+            : `${meta.name} indisponível durante a Arena`
+          : remaining > 0
+            ? `${meta.name} recarrega em ${formatSeconds(remaining)}`
+            : isRepair
+              ? needsRepair
+                ? `${meta.name} - repara ${Math.round(getCaptainRepairPercent() * 100)}% da vida máxima em 5s`
+                : state.combat.repairing
+                  ? "Reparo de Emergência já está em andamento"
+                  : "Navio já está com vida máxima"
+              : hasTarget
+                ? `${meta.name} - manual - ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key))} do dano atual`
+                : "Sabotar Inimigo precisa de um alvo vivo";
+    });
   }
 
   function renderSkillDock() {
     const dock = $("#skill-dock");
     const manualDock = $("#manual-skill-dock");
     const skillKeys = Object.keys(SKILL_META);
+    const manualSkillCount = Object.keys(CAPTAIN_MANUAL_SKILL_META).length;
     if (
       dock.childElementCount === skillKeys.length &&
-      (!manualDock || (manualDock.childElementCount === 1 && $(`[data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}"]`, manualDock)))
+      (!manualDock || (manualDock.childElementCount === manualSkillCount && $(`[data-manual-skill="${CAPTAIN_MANUAL_SKILL_KEY}"]`, manualDock) && $(`[data-manual-skill="${CAPTAIN_REPAIR_SKILL_KEY}"]`, manualDock)))
     ) {
       skillKeys.forEach(key => {
         const node = $(`[data-skill-dock="${key}"]`, dock);
@@ -8716,7 +8869,7 @@
     prestigeConfirmationStage = 1;
     $("#prestige-confirm-step").textContent = "CONFIRMAÇÃO 1 DE 2";
     $("#prestige-modal-title").textContent = "Reiniciar esta jornada?";
-    $("#prestige-modal-message").textContent = "Você manterá Prestígios, Moedas Pirata, estágio visual, título e bônus permanentes do Capitão, além dos pets. Level/XP temporário, Pontos de Nível, equipamentos e Sabotar Inimigo serão reiniciados.";
+    $("#prestige-modal-message").textContent = "Você manterá Prestígios, Moedas Pirata, estágio visual, título e bônus permanentes do Capitão, além dos pets. Level/XP temporário, Pontos de Nível, equipamentos e skills manuais serão reiniciados.";
     $("#prestige-modal-reward").innerHTML = `Você receberá <strong>+${formatNumber(getPrestigeReward())} Moedas Pirata</strong>`;
     $("#prestige-confirm").textContent = "Continuar";
     $("#prestige-modal").classList.remove("hidden");
@@ -9265,14 +9418,14 @@
 
   function upgradeCaptainManualSkill(key = CAPTAIN_MANUAL_SKILL_KEY) {
     const meta = CAPTAIN_MANUAL_SKILL_META[key];
-    if (!isCaptainSelected()) return toast("Selecione um pirata inicial antes de promover Sabotar Inimigo.", "danger-toast");
+    if (!isCaptainSelected()) return toast("Selecione um pirata inicial antes de promover skills manuais.", "danger-toast");
     if (!meta) return;
     syncCaptainRuntimeState(state);
     const level = getCaptainManualSkillLevel(key);
-    if (level >= meta.maxLevel) return toast("Sabotar Inimigo já está no nível máximo.", "gold-toast");
+    if (level >= meta.maxLevel) return toast(`${meta.name} já está no nível máximo.`, "gold-toast");
     const cost = getCaptainManualSkillCost(key, level);
     const available = getAvailableLevelPoints();
-    if (available < cost) return toast(`Faltam ${cost - available} Ponto${cost - available === 1 ? "" : "s"} de Nível para promover Sabotar Inimigo.`, "danger-toast");
+    if (available < cost) return toast(`Faltam ${cost - available} Ponto${cost - available === 1 ? "" : "s"} de Nível para promover ${meta.name}.`, "danger-toast");
     state.spentLevelPoints += cost;
     getCaptainManualSkillState(key).level = level + 1;
     syncCaptainManualSkillState(state);
@@ -9286,8 +9439,8 @@
         if (currentScreen === "captain") renderCaptain();
       }
     }, 900);
-    toast(`Sabotar Inimigo promovida para o nível ${level + 1}.`, "gold-toast");
-    addLog(`Sabotar Inimigo agora causa ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key))} do dano atual do navio.`, "loot");
+    toast(`${meta.name} promovida para o nível ${level + 1}.`, "gold-toast");
+    addLog(key === CAPTAIN_REPAIR_SKILL_KEY ? `${meta.name} agora repara ${Math.round(getCaptainRepairPercent(level + 1) * 100)}% da vida máxima.` : `${meta.name} agora causa ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key))} do dano atual do navio.`, "loot");
     commitGame(true);
   }
 
@@ -9589,20 +9742,27 @@
       if (state.combat.playerHp <= 0) finishRepair(true);
       if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay();
       if (!isAutoAttackUnlocked()) toast("Auto ataque libera no nível 2 do Capitão. Clique no barco para atacar.", "gold-toast");
+      maybeAutoChallengeBoss();
     }
     commitGame(false);
   }
 
-  function repairShipFromButton() {
-    resetShip();
-    renderAll(false);
+  function toggleAutoChallengeBoss() {
+    state.autoChallengeBoss = !state.autoChallengeBoss;
+    toast(`Boss automático ${state.autoChallengeBoss ? "ligado" : "desligado"}.`, state.autoChallengeBoss ? "gold-toast" : "");
+    if (maybeAutoChallengeBoss()) saveGame();
+    else commitGame(false);
   }
 
-  function challengeBoss() {
-    if (isArenaSceneActive()) return toast("Finalize a Arena antes de desafiar bosses do mapa.", "danger-toast");
-    if (state.regionKills[state.regionIndex] < 100 || state.bossesDefeated[state.regionIndex]) return;
+  function challengeBoss(options = {}) {
+    const automatic = Boolean(options?.automatic);
+    if (isArenaSceneActive()) {
+      if (!automatic) toast("Finalize a Arena antes de desafiar bosses do mapa.", "danger-toast");
+      return false;
+    }
+    if (state.regionKills[state.regionIndex] < 100 || state.bossesDefeated[state.regionIndex]) return false;
     const issues = endgameRequirementIssues(state.regionIndex);
-    if (issues.length) toast("Seu Poder Naval está baixo para esse boss. Recomenda-se evoluir antes de avançar.", "danger-toast");
+    if (issues.length && !automatic) toast("Seu Poder Naval está baixo para esse boss. Recomenda-se evoluir antes de avançar.", "danger-toast");
     state.combat.running = true;
     state.hasStarted = true;
     trackAction("firstCombat");
@@ -9610,6 +9770,7 @@
     scene.resetPlayerShipAnimation();
     spawnEnemy(true);
     renderAll(false);
+    return true;
   }
 
   function wipeProgress() {
@@ -9643,7 +9804,7 @@
   ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
 
   $("#start-button").addEventListener("click", toggleAutoCombat);
-  $("#reset-button").addEventListener("click", repairShipFromButton);
+  $("#auto-boss-button")?.addEventListener("click", toggleAutoChallengeBoss);
   $("#boss-button").addEventListener("click", challengeBoss);
   $("#combat-collapse-toggle")?.addEventListener("click", toggleCombatMinimized);
   $("#offline-close").addEventListener("click", closeOfflineModal);

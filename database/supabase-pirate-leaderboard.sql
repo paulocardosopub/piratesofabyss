@@ -12,10 +12,12 @@ create table if not exists public.pirate_leaderboard (
   updated_at timestamptz not null default now()
 );
 
+drop index if exists public.pirate_leaderboard_rank_idx;
+
 create index if not exists pirate_leaderboard_rank_idx
   on public.pirate_leaderboard (
-    best_prestige_level desc,
     best_prestige_power desc,
+    best_prestige_level desc,
     prestige_count desc,
     last_prestige_at desc
   );
