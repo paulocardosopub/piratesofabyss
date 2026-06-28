@@ -1,11 +1,17 @@
-const CACHE = "pirates-abyss-v165-tab-icons-ship-kills";
+const CACHE = "pirates-abyss-v166-mobile-icons-cleanup";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=100",
-  "game.js?v=169",
+  "styles.css?v=101",
+  "game.js?v=170",
   "icon.svg",
-  "manifest.webmanifest"
+  "manifest.webmanifest",
+  "assets/ui/tabs/mobile/icon_combate_square.png",
+  "assets/ui/tabs/mobile/icon_navio_square.png",
+  "assets/ui/tabs/mobile/icon_mapa_square.png",
+  "assets/ui/tabs/mobile/icon_capitao_square.png",
+  "assets/ui/tabs/mobile/icon_prestigio_square.png",
+  "assets/ui/tabs/mobile/icon_status_square.png"
 ];
 
 self.addEventListener("install", event => {

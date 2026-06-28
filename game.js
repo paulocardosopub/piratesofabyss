@@ -38,7 +38,7 @@
   const CAPTAIN_MANUAL_SKILL_MAX_LEVEL = 20;
   const RESTORE_SHIP_REPAIR_BY_LEVEL = { 1: .25, 2: .5, 3: .75, 4: 1 };
   const RESTORE_SHIP_UPGRADE_COSTS = { 2: 4, 3: 8, 4: 10 };
-  const EMERGENCY_REPAIR_COOLDOWN_SECONDS = 10;
+  const EMERGENCY_REPAIR_COOLDOWN_SECONDS = 15;
   const EMERGENCY_REPAIR_DURATION_MS = 5000;
   const AUTO_REPAIR_DURATION_MS = 4000;
   const AUTO_REPAIR_FEES = [
@@ -1691,6 +1691,7 @@
   };
   let activeMissionFilter = "Próximas de concluir";
   let captainPetsExpanded = false;
+  let captainOverviewExpanded = false;
   let captainManualSkillsExpanded = false;
   let captainEquipmentExpanded = false;
   const statsPanelsExpanded = { quests: false, combat: false, progression: false, career: false, reset: false };
@@ -8492,6 +8493,43 @@
     </section>`;
   }
 
+  function renderCaptainOverviewSection(current, next, cost, canUpgrade, nextPreview) {
+    const toggle = captainCollapsibleToggleHtml({
+      expanded: captainOverviewExpanded,
+      attr: "data-toggle-captain-overview",
+      icon: "★",
+      eyebrow: "CAPITÃO",
+      title: current.name,
+      summary: `Nível ${current.level}/${CAPTAIN_MAX_LEVEL} • ${formatNumber(state.pirateCoins)} moedas`,
+      countLabel: "MOEDAS",
+      countValue: formatNumber(state.pirateCoins)
+    });
+    return `<section class="captain-equipment-section captain-overview-section captain-collapsible-section ${captainOverviewExpanded ? "expanded" : ""}">
+      ${toggle}
+      <div class="captain-section-body">
+        <div class="captain-layout">
+          <section class="captain-hero-panel">
+            <div class="captain-portrait">${captainSpriteCanvasHtml(current.level, current.gender, "portrait")}</div>
+            <div class="captain-hero-copy">
+              <span class="eyebrow">NÍVEL ATUAL</span>
+              <h2>${current.name}</h2>
+              <div class="captain-level-row"><strong>${current.level} / ${CAPTAIN_MAX_LEVEL}</strong><div class="captain-level-pips">${captainLevelPips(current.level)}</div></div>
+              <div class="cost-list"><span class="cost-chip">Progresso permanente</span><span class="cost-chip">Visual salvo</span></div>
+            </div>
+          </section>
+          <section class="captain-detail-panel">
+            <div class="section-heading compact"><div><span class="eyebrow">BÔNUS ACUMULADOS</span><h2>Ativos agora</h2></div></div>
+            <div class="captain-bonus-grid">${captainBonusRowsHtml(current.bonuses)}</div>
+            ${nextPreview}
+            <button class="button prestige-button captain-upgrade-button" data-upgrade-captain ${!canUpgrade ? "disabled" : ""}>${next ? "Evoluir Capitão" : "Nível máximo"}</button>
+            ${next && !canUpgrade ? `<p class="captain-upgrade-hint">Faltam ${formatNumber(cost - state.pirateCoins)} Moedas Pirata.</p>` : ""}
+            <div class="captain-mutiny-panel"><div><span class="eyebrow">MOTIM</span><strong>Trocar escolha visual</strong><p>Reseta Capitão, Pontos de Nível e equipamentos. Moedas Pirata investidas no Capitão voltam.</p></div><button class="button danger" data-open-captain-mutiny>Iniciar um Motim</button></div>
+          </section>
+        </div>
+      </div>
+    </section>`;
+  }
+
   function finalizeCaptainRender(content) {
     bindCaptainIdentityControls(content);
     renderCaptainPreviewCanvases(content);
@@ -8517,25 +8555,7 @@
     const nextPreview = next
       ? `<div class="captain-next"><div class="captain-next-image">${captainSpriteCanvasHtml(next.level, next.gender, "next")}</div><div><span class="eyebrow">PRÓXIMO NÍVEL</span><h3>${next.name}</h3><p>${captainLevelBonusText(next)}</p><strong>☠ ${formatNumber(cost)} Moedas Pirata</strong></div></div>`
       : `<div class="captain-next max"><div><span class="eyebrow">NÍVEL MÁXIMO</span><h3>Pirata lendário completo</h3><p>Todos os bônus permanentes do Capitão estão ativos.</p></div></div>`;
-    content.innerHTML = `${captainIdentityHtml()}<div class="captain-layout">
-      <section class="captain-hero-panel">
-        <div class="captain-portrait">${captainSpriteCanvasHtml(current.level, current.gender, "portrait")}</div>
-        <div class="captain-hero-copy">
-          <span class="eyebrow">NÍVEL ATUAL</span>
-          <h2>${current.name}</h2>
-          <div class="captain-level-row"><strong>${current.level} / ${CAPTAIN_MAX_LEVEL}</strong><div class="captain-level-pips">${captainLevelPips(current.level)}</div></div>
-          <div class="cost-list"><span class="cost-chip">Progresso permanente</span><span class="cost-chip">Visual salvo</span></div>
-        </div>
-      </section>
-      <section class="captain-detail-panel">
-        <div class="section-heading compact"><div><span class="eyebrow">BÔNUS ACUMULADOS</span><h2>Ativos agora</h2></div></div>
-        <div class="captain-bonus-grid">${captainBonusRowsHtml(current.bonuses)}</div>
-        ${nextPreview}
-        <button class="button prestige-button captain-upgrade-button" data-upgrade-captain ${!canUpgrade ? "disabled" : ""}>${next ? "Evoluir Capitão" : "Nível máximo"}</button>
-        ${next && !canUpgrade ? `<p class="captain-upgrade-hint">Faltam ${formatNumber(cost - state.pirateCoins)} Moedas Pirata.</p>` : ""}
-        <div class="captain-mutiny-panel"><div><span class="eyebrow">MOTIM</span><strong>Trocar escolha visual</strong><p>Reseta Capitão, Pontos de Nível e equipamentos. Moedas Pirata investidas no Capitão voltam.</p></div><button class="button danger" data-open-captain-mutiny>Iniciar um Motim</button></div>
-      </section>
-    </div>${renderCaptainPetsSection()}${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
+    content.innerHTML = `${captainIdentityHtml()}${renderCaptainOverviewSection(current, next, cost, canUpgrade, nextPreview)}${renderCaptainPetsSection()}${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
     finalizeCaptainRender(content);
   }
 
@@ -9851,6 +9871,11 @@
     renderCaptain();
   }
 
+  function toggleCaptainOverviewPanel() {
+    captainOverviewExpanded = !captainOverviewExpanded;
+    renderCaptain();
+  }
+
   function toggleCaptainManualSkillsPanel() {
     captainManualSkillsExpanded = !captainManualSkillsExpanded;
     renderCaptain();
@@ -10313,6 +10338,10 @@
     }
     if (target.dataset.toggleCaptainPets !== undefined) {
       toggleCaptainPetsPanel();
+      return;
+    }
+    if (target.dataset.toggleCaptainOverview !== undefined) {
+      toggleCaptainOverviewPanel();
       return;
     }
     if (target.dataset.toggleCaptainManualSkills !== undefined) {

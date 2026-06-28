@@ -7,7 +7,13 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=100">
+  <link rel="preload" as="image" media="(max-width: 768px)" href="assets/ui/tabs/mobile/icon_combate_square.png">
+  <link rel="preload" as="image" media="(max-width: 768px)" href="assets/ui/tabs/mobile/icon_navio_square.png">
+  <link rel="preload" as="image" media="(max-width: 768px)" href="assets/ui/tabs/mobile/icon_mapa_square.png">
+  <link rel="preload" as="image" media="(max-width: 768px)" href="assets/ui/tabs/mobile/icon_capitao_square.png">
+  <link rel="preload" as="image" media="(max-width: 768px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
+  <link rel="preload" as="image" media="(max-width: 768px)" href="assets/ui/tabs/mobile/icon_status_square.png">
+  <link rel="stylesheet" href="styles.css?v=101">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -182,18 +188,14 @@
       </section>
 
       <section class="screen" id="screen-upgrades" aria-labelledby="upgrades-title">
-        <div class="page-heading">
-          <div><span class="eyebrow">ESTALEIRO DO ABISMO</span><h1 id="upgrades-title">Navios e Upgrades</h1><p>Melhore seu navio e compre a próxima embarcação da sequência.</p></div>
-          <div class="power-seal"><span>PODER NAVAL</span><strong id="naval-power">0</strong></div>
-        </div>
+        <h1 class="sr-only" id="upgrades-title">Navios e Upgrades</h1>
+        <strong class="sr-only" id="naval-power">0</strong>
         <div class="upgrade-feed" id="upgrade-feed"></div>
       </section>
 
       <section class="screen" id="screen-captain" aria-labelledby="captain-title">
-        <div class="page-heading">
-          <div><span class="eyebrow">COMANDO PERMANENTE</span><h1 id="captain-title">Capitão</h1><p>Um líder permanente para acelerar a jornada e automatizar parte da coleta no mar.</p></div>
-          <div class="prestige-wallet"><span>MOEDAS PIRATA</span><strong id="captain-coins">0</strong></div>
-        </div>
+        <h1 class="sr-only" id="captain-title">Capitão</h1>
+        <strong class="sr-only" id="captain-coins">0</strong>
         <div class="captain-page" id="captain-content"></div>
       </section>
 
@@ -218,10 +220,8 @@
       </section>
 
       <section class="screen" id="screen-maps" aria-labelledby="maps-title">
-        <div class="page-heading">
-          <div><span class="eyebrow">CARTA NÁUTICA</span><h1 id="maps-title">Mapas</h1><p>Retorne a regiões antigas para buscar os materiais certos.</p></div>
-          <div class="map-counter"><strong id="maps-unlocked">1</strong><span id="maps-total">de 15 regiões</span></div>
-        </div>
+        <h1 class="sr-only" id="maps-title">Mapas</h1>
+        <span class="sr-only"><strong id="maps-unlocked">1</strong><span id="maps-total">de 15 regiões</span></span>
         <div class="map-era-notice"><strong>Era Primitiva:</strong> as 5 primeiras regiões são o novo prólogo com navios Tier 0. Depois delas começa a jornada pirata original.</div>
         <div class="maps-list" id="maps-grid"></div>
       </section>
@@ -388,6 +388,6 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=169"></script>
+  <script src="game.js?v=170"></script>
 </body>
 </html>
