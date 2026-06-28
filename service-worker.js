@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v124-online-leaderboard";
+const CACHE = "pirates-abyss-v125-home-leaderboard";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=69",
-  "game.js?v=137",
+  "styles.css?v=70",
+  "game.js?v=138",
   "icon.svg",
   "manifest.webmanifest"
 ];

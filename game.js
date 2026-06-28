@@ -7134,14 +7134,8 @@
     if (xpFill) xpFill.style.width = `${state.xp / needed * 100}%`;
     const homeLogs = state.logs.slice(0, 5);
     $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
-    const pet = getEquippedPet();
-    const petCard = $("#home-pet-card");
-    $("#home-pet-icon").innerHTML = pet ? petSpriteHtml(pet.visual) : "🐾";
-    $("#home-pet-name").textContent = pet?.name || "Nenhum pet equipado";
-    petCard.classList.toggle("equipped", Boolean(pet));
-    petCard.setAttribute("style", pet ? getPetAuraStyle(pet) : "");
-    $("#home-pet-stats").innerHTML = pet ? `<span>NV <strong>${pet.level}/${PET_MAX_LEVEL}</strong></span><span>DPS <strong>${pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>PODER <strong>+${formatNumber(pet.power)}</strong></span>` : "Automático";
-    renderPetPreviewCanvases(petCard);
+    renderLeaderboard();
+    if (currentScreen === "home") refreshLeaderboard();
     renderSkillDock();
   }
 
@@ -8211,8 +8205,6 @@
       ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
     $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
-    renderLeaderboard();
-    if (currentScreen === "stats") refreshLeaderboard();
   }
 
   const SCREEN_ALIASES = { trade: "upgrades", resources: "upgrades" };

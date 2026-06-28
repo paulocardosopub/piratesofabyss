@@ -521,26 +521,14 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .manual-skill-orb .cooldown { background: rgba(17, 9, 25, .78); }
 
 .dashboard-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 14px; margin-top: 14px; }
-.home-clean-grid { grid-template-columns: .8fr 1.2fr; grid-template-areas: "controls boss" "log pet"; align-items: stretch; }
+.home-clean-grid { grid-template-columns: .8fr 1.2fr; grid-template-areas: "controls boss" "log leaderboard"; align-items: stretch; }
 .card { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(13, 42, 59, .92), rgba(7, 27, 40, .94)); box-shadow: 0 9px 28px rgba(0,0,0,.15); }
-.progression-card, .controls-card, .captain-card, .log-card, .home-pet-card { padding: 18px; }
+.progression-card, .controls-card, .captain-card, .log-card { padding: 18px; }
 .quick-controls-card { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
 .quick-controls-card { grid-area: controls; }
 .progression-card { grid-area: boss; }
-.home-pet-card { grid-area: pet; }
+.home-leaderboard-card { grid-area: leaderboard; }
 .log-card { grid-area: log; }
-.home-pet-card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 15px; }
-.home-pet-card { border-color: rgba(100,174,244,.2); }
-.home-pet-card.equipped { background: linear-gradient(135deg, rgba(33,113,143,.18), rgba(10,31,44,.92)); }
-.home-pet-visual { position: relative; width: 56px; height: 56px; display: grid; place-items: center; isolation: isolate; border-radius: 50%; font-size: 30px; }
-.home-pet-visual { border: 1px solid rgba(110,239,226,.25); background: rgba(29,117,143,.17); }
-.home-pet-visual .pet-sprite, .home-pet-visual .pet-sprite-canvas { width: min(96%, var(--pet-home-sprite-size, 58px)); height: min(96%, var(--pet-home-sprite-size, 58px)); filter: drop-shadow(0 5px 5px rgba(0,0,0,.34)); }
-.home-pet-card.equipped .home-pet-visual::before { content: ""; position: absolute; inset: 15%; z-index: -1; border-radius: 50%; opacity: var(--pet-aura-alpha, .08); background: radial-gradient(circle, color-mix(in srgb, var(--pet-color) 42%, transparent), transparent 70%); filter: blur(var(--pet-aura-glow, 8px)); animation: pet-aura-breathe 2.8s ease-in-out infinite; }
-.home-pet-card.equipped .home-pet-visual::after { content: ""; position: absolute; right: 9px; bottom: 10px; z-index: -1; width: 34%; height: 10%; border-radius: 50%; background: color-mix(in srgb, var(--pet-color) 28%, transparent); opacity: calc(var(--pet-aura-alpha, .08) * .9); filter: blur(4px); }
-.home-pet-info h2 { margin: 3px 0 7px; font: 700 19px Georgia, serif; }
-.home-pet-info > div { display: flex; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 10px; }
-.home-pet-info > div span { padding-right: 10px; border-right: 1px solid var(--line); }
-.home-pet-info strong { color: var(--cyan-2); }
 .card-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
 .card-heading h2 { margin: 3px 0 0; font: 700 20px Georgia, serif; }
 .card-heading.compact { align-items: center; }
@@ -1937,6 +1925,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .career-grid span { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; }
 .career-grid strong { display: block; margin-top: 5px; color: var(--gold); font-size: 22px; }
 .leaderboard-card { padding: 21px; }
+.home-leaderboard-card { min-height: 142px; }
 .leaderboard-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
 .leaderboard-heading h2 { margin: 4px 0 3px; font: 700 22px Georgia, serif; }
 .leaderboard-heading p { margin: 0; color: var(--muted); font-size: 11px; }
@@ -2057,10 +2046,8 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .skill-orb small { right: 2px; bottom: 1px; font-size: 6px; }
   .manual-skill-orb .icon { font-size: 14px; }
   .dashboard-grid, .home-clean-grid { grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
-  .home-clean-grid { grid-template-areas: "controls" "boss" "pet" "log"; }
-  .progression-card, .controls-card, .captain-card, .log-card, .home-pet-card { padding: 14px; }
-  .home-pet-card { grid-template-columns: auto 1fr; }
-  .home-pet-card .button { grid-column: 1 / -1; }
+  .home-clean-grid { grid-template-areas: "controls" "boss" "leaderboard" "log"; }
+  .progression-card, .controls-card, .captain-card, .log-card { padding: 14px; }
   .boss-row { grid-template-columns: auto 1fr; }
   .boss-map-controls { grid-column: 1 / -1; }
   .boss-map-button { flex: 1; }
