@@ -2089,6 +2089,7 @@
   let combatFullscreen = false;
   let combatFullscreenHistoryActive = false;
   let combatOrientationLocked = false;
+  let combatLandscapeFallback = false;
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
   let lastSave = performance.now();
@@ -3358,6 +3359,10 @@
     window.setTimeout(() => scene?.resize?.(), 180);
   }
 
+  function isLikelyMobileCombatViewport() {
+    return Boolean(window.matchMedia?.("(max-width: 768px), (pointer: coarse)")?.matches || Math.min(window.innerWidth, window.innerHeight) <= 768);
+  }
+
   function syncCombatFullscreenVisualState() {
     const app = $("#app");
     const shell = $(".persistent-combat");
@@ -3368,6 +3373,9 @@
     document.documentElement.classList.toggle("is-combat-fullscreen", combatFullscreen);
     document.body.classList.toggle("is-combat-fullscreen", combatFullscreen);
     app?.classList.toggle("is-combat-fullscreen", combatFullscreen);
+    document.documentElement.classList.toggle("combat-landscape-fallback", combatFullscreen && combatLandscapeFallback);
+    document.body.classList.toggle("combat-landscape-fallback", combatFullscreen && combatLandscapeFallback);
+    app?.classList.toggle("combat-landscape-fallback", combatFullscreen && combatLandscapeFallback);
     shell?.classList.toggle("combat-fullscreen-mode", combatFullscreen);
     stage?.classList.toggle("combat-fullscreen-stage", combatFullscreen);
     collapseButton?.classList.toggle("hidden", combatFullscreen);
@@ -3397,12 +3405,14 @@
 
   async function lockCombatOrientation() {
     const orientation = window.screen?.orientation;
-    if (!orientation?.lock) return;
+    if (!orientation?.lock) return false;
     try {
       await orientation.lock("landscape");
       combatOrientationLocked = true;
+      return true;
     } catch (error) {
       combatOrientationLocked = false;
+      return false;
     }
   }
 
@@ -3418,19 +3428,23 @@
     if (combatFullscreen) return;
     if (combatMinimized) setCombatMinimized(false);
     combatFullscreen = true;
+    combatLandscapeFallback = false;
     syncCombatFullscreenVisualState();
     pushCombatFullscreenHistoryState();
     const target = $("#app") || document.documentElement;
     try {
       await requestCombatFullscreen(target);
     } catch (error) {}
-    await lockCombatOrientation();
+    const orientationLocked = await lockCombatOrientation();
+    combatLandscapeFallback = !orientationLocked && isLikelyMobileCombatViewport();
+    syncCombatFullscreenVisualState();
     resizeCombatViewport();
   }
 
   async function exitCombatFullscreen(options = {}) {
     if (!combatFullscreen && !options.force) return;
     combatFullscreen = false;
+    combatLandscapeFallback = false;
     unlockCombatOrientation();
     syncCombatFullscreenVisualState();
     if (options.fromHistory) combatFullscreenHistoryActive = false;

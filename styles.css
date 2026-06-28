@@ -5434,7 +5434,12 @@ body {
   right: 46px;
   width: 30px;
   height: 30px;
+  z-index: 12;
+  display: grid !important;
+  visibility: visible;
+  opacity: 1;
   transform: translateY(-50%);
+  pointer-events: auto;
 }
 
 .persistent-combat.combat-minimized .combat-map-title {
@@ -5592,5 +5597,60 @@ body.is-combat-fullscreen .combat-next-map-button {
   body.is-combat-fullscreen .combat-fullscreen-exit {
     width: 34px;
     height: 34px;
+  }
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+  html.is-combat-fullscreen.combat-landscape-fallback,
+  body.is-combat-fullscreen.combat-landscape-fallback {
+    width: 100vw;
+    height: 100vh;
+    width: 100dvw;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  body.is-combat-fullscreen.combat-landscape-fallback .app-shell {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vh;
+    height: 100vw;
+    width: 100dvh;
+    height: 100dvw;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    max-height: none;
+    transform: rotate(90deg) translateY(-100%);
+    transform-origin: top left;
+  }
+
+  body.is-combat-fullscreen.combat-landscape-fallback .topbar {
+    height: 50px;
+    min-height: 50px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  body.is-combat-fullscreen.combat-landscape-fallback .topbar .top-power,
+  body.is-combat-fullscreen.combat-landscape-fallback .topbar .top-resources > div,
+  body.is-combat-fullscreen.combat-landscape-fallback .topbar .captain-topbar {
+    height: 40px;
+  }
+
+  body.is-combat-fullscreen.combat-landscape-fallback .main-content {
+    width: 100%;
+    height: auto;
+  }
+
+  body.is-combat-fullscreen.combat-landscape-fallback .persistent-combat .combat-status-strip {
+    min-height: 30px;
+    height: 30px;
+  }
+
+  body.is-combat-fullscreen.combat-landscape-fallback .combat-fullscreen-exit {
+    top: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-bottom));
   }
 }
