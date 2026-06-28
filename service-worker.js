@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v158-combat-recommendations";
+const CACHE = "pirates-abyss-v159-responsive-topbar";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=94",
-  "game.js?v=164",
+  "styles.css?v=95",
+  "game.js?v=165",
   "icon.svg",
   "manifest.webmanifest"
 ];

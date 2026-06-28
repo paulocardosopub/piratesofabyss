@@ -4564,6 +4564,205 @@ body {
   }
 }
 
+/* Final topbar contract: keep the desktop card pattern across every width. */
+.topbar {
+  height: 64px;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 42px minmax(104px, 142px) minmax(118px, 164px) minmax(118px, 164px) minmax(168px, 220px);
+  grid-template-areas: "brand power gold coins captain";
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.topbar .brand {
+  grid-area: brand;
+  justify-self: center;
+  width: 42px;
+  min-width: 42px;
+}
+
+.topbar .top-power { grid-area: power; }
+.topbar .top-resources { display: contents; }
+.topbar .top-resources > div:nth-child(1) { grid-area: gold; }
+.topbar .top-resources > div:nth-child(2) { grid-area: coins; }
+.topbar .captain-topbar { grid-area: captain; }
+
+.topbar .top-power,
+.topbar .top-resources > div,
+.topbar .captain-topbar {
+  height: 46px;
+  min-height: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  overflow: hidden;
+}
+
+.topbar .captain-topbar {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+}
+
+@media (max-width: 980px) {
+  .topbar {
+    height: 58px;
+    min-height: 58px;
+    grid-template-columns: 38px minmax(86px, 112px) minmax(102px, 1fr) minmax(102px, 1fr) minmax(150px, 1.18fr);
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  .topbar .brand {
+    grid-column: auto;
+    width: 38px;
+    min-width: 38px;
+  }
+
+  .topbar .brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .topbar .top-power,
+  .topbar .top-resources > div,
+  .topbar .captain-topbar {
+    height: 42px;
+    padding: 6px 7px;
+  }
+
+  .persistent-combat {
+    top: 66px;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    height: 100px;
+    min-height: 100px;
+    grid-template-columns: minmax(74px, .78fr) minmax(76px, .82fr) minmax(150px, 1.45fr);
+    grid-template-areas:
+      "brand power captain"
+      "gold coins captain";
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .topbar .brand {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    border: 1px solid rgba(210, 166, 77, .28);
+    border-radius: 8px;
+    background: rgba(8, 29, 42, .82);
+  }
+
+  .topbar .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .topbar .top-power,
+  .topbar .top-resources > div {
+    height: 42px;
+    padding: 5px 6px;
+  }
+
+  .topbar .captain-topbar {
+    height: 90px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-content: center;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .topbar .captain-topbar-avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .topbar .top-power span,
+  .topbar .top-resource-name {
+    font-size: 6px;
+    letter-spacing: .04em;
+  }
+
+  .topbar .top-power strong,
+  .topbar .top-resource-amount {
+    font-size: 11px;
+  }
+
+  .topbar .captain-topbar-copy > strong {
+    font-size: 11px;
+  }
+
+  .topbar .captain-topbar-meta small {
+    display: none;
+  }
+
+  .persistent-combat {
+    top: 108px;
+  }
+
+  .skill-dock .skill-orb.locked {
+    display: none;
+  }
+
+  .skill-orb small {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .topbar {
+    grid-template-columns: minmax(66px, .72fr) minmax(68px, .78fr) minmax(140px, 1.5fr);
+    gap: 5px;
+    padding-inline: 5px;
+  }
+
+  .topbar .top-power,
+  .topbar .top-resources > div {
+    padding-inline: 5px;
+  }
+
+  .topbar .resource-symbol {
+    display: none;
+  }
+
+  .topbar .captain-topbar {
+    grid-template-columns: 28px minmax(0, 1fr);
+    padding-inline: 6px;
+  }
+
+  .topbar .captain-topbar-avatar {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .toast-region {
+    top: calc(env(safe-area-inset-top, 0px) + 108px);
+    right: 10px;
+    left: 10px;
+    display: grid !important;
+    justify-items: stretch;
+  }
+
+  .toast-region .toast {
+    display: none;
+  }
+
+  .toast-region .toast.repair-cost-toast {
+    display: block;
+    max-width: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }

@@ -2485,13 +2485,14 @@
     state.logs = state.logs.slice(0, 100);
   }
 
-  function shouldSuppressMobileToast() {
+  function shouldSuppressMobileToast(options = {}) {
+    if (options.mobileAllowed) return false;
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
     return window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
   }
 
-  function toast(message, type = "") {
-    if (shouldSuppressMobileToast()) return;
+  function toast(message, type = "", options = {}) {
+    if (shouldSuppressMobileToast(options)) return;
     const region = $("#toast-region");
     if (!region) return;
     const node = document.createElement("div");
@@ -7138,11 +7139,11 @@
     if (state.resources.ouro >= fee) {
       state.resources.ouro -= fee;
       addLog(`Voce afundou: -${formatNumber(fee)} Ouro para recuperar o navio.`, "danger-text");
-      toast(`Voce afundou: -${formatNumber(fee)} Ouro.`, "danger-toast");
+      toast(`Voce afundou: -${formatNumber(fee)} Ouro.`, "danger-toast repair-cost-toast", { mobileAllowed: true });
       return true;
     }
     addLog("Voce afundou e esta pobre. Reparo automatico gratuito aplicado.", "danger-text");
-    toast("Voce afundou e esta pobre. Reparo gratuito aplicado.", "danger-toast");
+    toast("Voce afundou e esta pobre. Reparo gratuito aplicado.", "danger-toast repair-cost-toast", { mobileAllowed: true });
     return false;
   }
 
