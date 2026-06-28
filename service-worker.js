@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v170-combat-fullscreen-mobile";
+const CACHE = "pirates-abyss-v174-mobile-landscape-combat";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=105",
-  "game.js?v=173",
+  "styles.css?v=106",
+  "game.js?v=177",
   "icon.svg",
   "manifest.webmanifest",
   "assets/ui/tabs/mobile/icon_combate_square.png",

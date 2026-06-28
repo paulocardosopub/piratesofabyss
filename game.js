@@ -2087,9 +2087,10 @@
   let currentScreen = "home";
   let combatMinimized = loadCombatMinimizedPreference();
   let combatFullscreen = false;
+  let combatFullscreenSource = "";
   let combatFullscreenHistoryActive = false;
-  let combatOrientationLocked = false;
-  let combatLandscapeFallback = false;
+  let mobileCombatFullscreen = false;
+  let mobileCombatPreviousMinimized = false;
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
   let lastSave = performance.now();
@@ -3359,11 +3360,38 @@
     window.setTimeout(() => scene?.resize?.(), 180);
   }
 
-  function isLikelyMobileCombatViewport() {
-    return Boolean(window.matchMedia?.("(max-width: 768px), (pointer: coarse)")?.matches || Math.min(window.innerWidth, window.innerHeight) <= 768);
+  function getCombatViewportSize() {
+    const viewport = window.visualViewport;
+    const width = Math.round(viewport?.width || window.innerWidth || document.documentElement.clientWidth || 0);
+    const height = Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight || 0);
+    return { width, height };
+  }
+
+  function isMobileCombatDevice() {
+    const { width, height } = getCombatViewportSize();
+    const minSide = Math.min(width, height);
+    const maxSide = Math.max(width, height);
+    const touchDevice = Number(navigator.maxTouchPoints || 0) > 0;
+    const coarsePointer = Boolean(window.matchMedia?.("(pointer: coarse)")?.matches);
+    const mobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || "");
+    const compactMobileViewport = minSide <= 768 && maxSide <= 1024;
+    return Boolean(touchDevice || coarsePointer || mobileUa || compactMobileViewport);
+  }
+
+  function isCombatLandscapeOrientation() {
+    const { width, height } = getCombatViewportSize();
+    const mediaLandscape = Boolean(window.matchMedia?.("(orientation: landscape)")?.matches);
+    const screenLandscape = String(window.screen?.orientation?.type || "").includes("landscape");
+    if (Math.abs(width - height) > 8) return width > height;
+    return Boolean(mediaLandscape || screenLandscape);
+  }
+
+  function shouldUseMobileCombatFullscreen() {
+    return isMobileCombatDevice() && isCombatLandscapeOrientation();
   }
 
   function syncCombatFullscreenVisualState() {
+    const mobileDevice = isMobileCombatDevice();
     const app = $("#app");
     const shell = $(".persistent-combat");
     const stage = $("#battle-stage");
@@ -3373,14 +3401,20 @@
     document.documentElement.classList.toggle("is-combat-fullscreen", combatFullscreen);
     document.body.classList.toggle("is-combat-fullscreen", combatFullscreen);
     app?.classList.toggle("is-combat-fullscreen", combatFullscreen);
-    document.documentElement.classList.toggle("combat-landscape-fallback", combatFullscreen && combatLandscapeFallback);
-    document.body.classList.toggle("combat-landscape-fallback", combatFullscreen && combatLandscapeFallback);
-    app?.classList.toggle("combat-landscape-fallback", combatFullscreen && combatLandscapeFallback);
+    document.documentElement.classList.toggle("is-mobile-combat-device", mobileDevice);
+    document.body.classList.toggle("is-mobile-combat-device", mobileDevice);
+    app?.classList.toggle("is-mobile-combat-device", mobileDevice);
+    document.documentElement.classList.toggle("mobile-combat-fullscreen", mobileCombatFullscreen);
+    document.body.classList.toggle("mobile-combat-fullscreen", mobileCombatFullscreen);
+    app?.classList.toggle("mobile-combat-fullscreen", mobileCombatFullscreen);
+    document.documentElement.classList.toggle("is-mobile-landscape-combat", mobileCombatFullscreen);
+    document.body.classList.toggle("is-mobile-landscape-combat", mobileCombatFullscreen);
+    app?.classList.toggle("is-mobile-landscape-combat", mobileCombatFullscreen);
     shell?.classList.toggle("combat-fullscreen-mode", combatFullscreen);
     stage?.classList.toggle("combat-fullscreen-stage", combatFullscreen);
     collapseButton?.classList.toggle("hidden", combatFullscreen);
-    fullscreenButton?.classList.toggle("hidden", combatFullscreen);
-    exitButton?.classList.toggle("hidden", !combatFullscreen);
+    fullscreenButton?.classList.toggle("hidden", combatFullscreen || mobileDevice);
+    exitButton?.classList.toggle("hidden", !combatFullscreen || mobileCombatFullscreen);
     if (fullscreenButton) fullscreenButton.setAttribute("aria-pressed", String(combatFullscreen));
     resizeCombatViewport();
   }
@@ -3403,60 +3437,41 @@
     combatFullscreenHistoryActive = false;
   }
 
-  async function lockCombatOrientation() {
-    const orientation = window.screen?.orientation;
-    if (!orientation?.lock) return false;
-    try {
-      await orientation.lock("landscape");
-      combatOrientationLocked = true;
-      return true;
-    } catch (error) {
-      combatOrientationLocked = false;
-      return false;
-    }
-  }
-
-  function unlockCombatOrientation() {
-    const orientation = window.screen?.orientation;
-    if (combatOrientationLocked && orientation?.unlock) {
-      try { orientation.unlock(); } catch (error) {}
-    }
-    combatOrientationLocked = false;
-  }
-
   async function enterCombatFullscreen() {
+    if (isMobileCombatDevice()) {
+      updateMobileCombatFullscreen();
+      return;
+    }
     if (combatFullscreen) return;
     if (combatMinimized) setCombatMinimized(false);
     combatFullscreen = true;
-    combatLandscapeFallback = false;
+    combatFullscreenSource = "manual";
     syncCombatFullscreenVisualState();
     pushCombatFullscreenHistoryState();
     const target = $("#app") || document.documentElement;
     try {
       await requestCombatFullscreen(target);
     } catch (error) {}
-    const orientationLocked = await lockCombatOrientation();
-    combatLandscapeFallback = !orientationLocked && isLikelyMobileCombatViewport();
-    syncCombatFullscreenVisualState();
     resizeCombatViewport();
   }
 
   async function exitCombatFullscreen(options = {}) {
     if (!combatFullscreen && !options.force) return;
+    const wasManual = combatFullscreenSource === "manual";
     combatFullscreen = false;
-    combatLandscapeFallback = false;
-    unlockCombatOrientation();
+    combatFullscreenSource = "";
+    mobileCombatFullscreen = false;
     syncCombatFullscreenVisualState();
-    if (options.fromHistory) combatFullscreenHistoryActive = false;
-    else clearCombatFullscreenHistoryState();
-    if (!options.skipNative) {
+    if (wasManual && options.fromHistory) combatFullscreenHistoryActive = false;
+    else if (wasManual) clearCombatFullscreenHistoryState();
+    if (wasManual && !options.skipNative) {
       try { await exitNativeCombatFullscreen(); } catch (error) {}
     }
     resizeCombatViewport();
   }
 
   function handleCombatFullscreenChange() {
-    if (combatFullscreen && !getCombatFullscreenElement()) {
+    if (combatFullscreenSource === "manual" && !getCombatFullscreenElement()) {
       exitCombatFullscreen({ skipNative: true });
       return;
     }
@@ -3464,13 +3479,43 @@
   }
 
   function handleCombatFullscreenKeydown(event) {
-    if (event.key !== "Escape" || !combatFullscreen) return;
+    if (event.key !== "Escape" || combatFullscreenSource !== "manual") return;
     event.preventDefault();
     exitCombatFullscreen();
   }
 
   function handleCombatFullscreenPopState() {
-    if (combatFullscreen) exitCombatFullscreen({ fromHistory: true });
+    if (combatFullscreenSource === "manual") exitCombatFullscreen({ fromHistory: true });
+  }
+
+  function setMobileCombatFullscreen(active) {
+    active = Boolean(active);
+    if (active === mobileCombatFullscreen) {
+      syncCombatFullscreenVisualState();
+      return;
+    }
+    if (active) {
+      if (combatFullscreenSource === "manual") return;
+      mobileCombatPreviousMinimized = combatMinimized;
+      if (combatMinimized) setCombatMinimized(false, false);
+      mobileCombatFullscreen = true;
+      combatFullscreen = true;
+      combatFullscreenSource = "mobile";
+      syncCombatFullscreenVisualState();
+      return;
+    }
+    mobileCombatFullscreen = false;
+    if (combatFullscreenSource === "mobile") {
+      combatFullscreen = false;
+      combatFullscreenSource = "";
+    }
+    if (mobileCombatPreviousMinimized) setCombatMinimized(true, false);
+    mobileCombatPreviousMinimized = false;
+    syncCombatFullscreenVisualState();
+  }
+
+  function updateMobileCombatFullscreen() {
+    setMobileCombatFullscreen(shouldUseMobileCombatFullscreen());
   }
 
   function clearCurrentEnemy() {
@@ -8225,7 +8270,7 @@
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const action = upgradeTableActionState("upgrade", key, cost);
       const canBuy = canAfford(cost);
-      candidates.push({ category, title: `${title} Nv. ${state.levels[key] + 1}`, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: `${formatNumber(currentStats.power)} -> ${formatNumber(nextStats.power)} poder`, score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
+      candidates.push({ category, title: `${title} Nv. ${state.levels[key] + 1}`, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactText(getImprovementRows(key), `${formatNumber(currentStats.power)} -> ${formatNumber(nextStats.power)} poder`), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
     });
     Object.entries(EQUIPMENT_META).forEach(([key, item]) => {
       if (state.equipment[key]) return;
@@ -8234,7 +8279,7 @@
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const action = upgradeTableActionState("equipment", key, cost);
       const canBuy = canAfford(cost);
-      candidates.push({ category: "Equipamento do Navio", title: item.name, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: item.effect, score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
+      candidates.push({ category: "Equipamento do Navio", title: item.name, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, item.effect), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
     });
     Object.entries(SKILL_META).forEach(([key, meta]) => {
       const unlocked = isSkillUnlocked(key);
@@ -8243,7 +8288,7 @@
       const powerGain = Math.max(1, unlocked ? nextStats.power - currentStats.power : 1);
       const action = upgradeTableActionState("skill", key, cost, { blocked: !unlocked });
       const canBuy = unlocked && canAfford(cost);
-      candidates.push({ category: "Skill do Navio", title: `${meta.name} Nv. ${state.skills[key].level + 1}`, cost, powerGain, canBuy, blocked: !unlocked, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: unlocked ? meta.effect : `Libera no nivel ${meta.unlock}`, score: recommendationScore(powerGain, estimateCostValue(cost), canBuy, !unlocked) });
+      candidates.push({ category: "Skill do Navio", title: `${meta.name} Nv. ${state.skills[key].level + 1}`, cost, powerGain, canBuy, blocked: !unlocked, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: shipSkillRecommendationImpactText(key, state.skills[key].level), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy, !unlocked) });
     });
     const nextShip = getNextFleetShip();
     if (nextShip) {
@@ -8252,7 +8297,7 @@
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const canBuy = issues.length === 0 && canAfford(nextShip.costs);
       const action = upgradeTableActionState("ship", nextShip.id, nextShip.costs, { blocked: issues.length > 0 });
-      candidates.push({ category: "Frota", title: nextShip.name, cost: nextShip.costs, powerGain, canBuy, blocked: issues.length > 0, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: issues.length ? issues.join(" • ") : `Novo navio: +${formatNumber(powerGain)} poder`, score: recommendationScore(powerGain, estimateCostValue(nextShip.costs), canBuy, issues.length > 0) });
+      candidates.push({ category: "Frota", title: nextShip.name, cost: nextShip.costs, powerGain, canBuy, blocked: issues.length > 0, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, `Novo navio: +${formatNumber(powerGain)} poder`, ["damage", "maxHp", "dps", "speed", "armor"]), score: recommendationScore(powerGain, estimateCostValue(nextShip.costs), canBuy, issues.length > 0) });
     }
     return candidates.sort((a, b) => Number(b.canBuy) - Number(a.canBuy) || b.score - a.score);
   }
@@ -8266,13 +8311,14 @@
     Object.entries(CAPTAIN_EQUIPMENT_META).forEach(([key, meta]) => {
       const next = getNextCaptainEquipmentTierData(key);
       if (!next) return;
+      const current = getCaptainEquipmentTierData(key, getCaptainEquipmentTier(key));
       const nextStats = getStatsWithTemporaryState(() => {
         state.captainEquipment[meta.tierKey] = next.level;
         state.captainEquipmentBonuses = calculateCaptainEquipmentBonuses(state);
       });
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const canBuy = available >= next.pointCost;
-      candidates.push({ category: "Equipamento do Capitão", title: next.name, powerGain, canBuy, blocked: false, actionLabel: canBuy ? "Melhorar" : "Faltam pts", actionAttrs: `data-upgrade-captain-equipment="${key}"`, disabled: !canBuy, note: meta.category, costText: `${next.pointCost} Ponto${next.pointCost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, next.pointCost, canBuy) });
+      candidates.push({ category: "Equipamento do Capitão", title: next.name, powerGain, canBuy, blocked: false, actionLabel: canBuy ? "Melhorar" : "Faltam pts", actionAttrs: `data-upgrade-captain-equipment="${key}"`, disabled: !canBuy, note: captainEquipmentRecommendationImpactText(key, current, next), costText: `${next.pointCost} Ponto${next.pointCost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, next.pointCost, canBuy) });
     });
     Object.entries(CAPTAIN_MANUAL_SKILL_META).forEach(([key, meta]) => {
       const level = getCaptainManualSkillLevel(key);
@@ -8281,7 +8327,7 @@
       const isRepair = key === CAPTAIN_REPAIR_SKILL_KEY;
       const powerGain = isRepair ? Math.round(getStats().maxHp * (getCaptainRepairPercent(level + 1) - getCaptainRepairPercent(level))) : Math.round(getStats().damage * (getCaptainManualSkillMultiplier(key, level + 1) - getCaptainManualSkillMultiplier(key, level)));
       const canBuy = available >= cost;
-      candidates.push({ category: "Skill do Capitão", title: `${meta.name} Nv. ${level + 1}`, powerGain: Math.max(1, powerGain), canBuy, blocked: false, actionLabel: canBuy ? "Promover" : "Faltam pts", actionAttrs: `data-upgrade-captain-manual-skill="${key}"`, disabled: !canBuy, note: isRepair ? `Reparo ${Math.round(getCaptainRepairPercent(level + 1) * 100)}%` : "Dano manual maior", costText: `${cost} Ponto${cost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, cost, canBuy) });
+      candidates.push({ category: "Skill do Capitão", title: `${meta.name} Nv. ${level + 1}`, powerGain: Math.max(1, powerGain), canBuy, blocked: false, actionLabel: canBuy ? "Promover" : "Faltam pts", actionAttrs: `data-upgrade-captain-manual-skill="${key}"`, disabled: !canBuy, note: captainManualSkillRecommendationImpactText(key, level, currentStats), costText: `${cost} Ponto${cost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, cost, canBuy) });
     });
     return candidates.sort((a, b) => Number(b.canBuy) - Number(a.canBuy) || b.score - a.score);
   }
@@ -9176,6 +9222,79 @@
       })
       .filter(Boolean)
       .slice(0, 4);
+  }
+
+  function shortenRecommendationText(text, fallback = "") {
+    const clean = String(text || fallback || "").replace(/\s+/g, " ").trim();
+    return clean.length > 78 ? `${clean.slice(0, 75).trim()}...` : clean;
+  }
+
+  function recommendationImpactText(rows, fallback = "") {
+    const usefulRows = (rows || []).filter(row => {
+      if (!row) return false;
+      const delta = String(row.delta || "").trim();
+      if (delta && ["+0", "+0%", "-0", "-0%", "−0", "−0%"].includes(delta)) return false;
+      const value = String(row.value || delta || "").trim();
+      if (!value) return false;
+      const parts = value.split(/\s*(?:->|→)\s*/);
+      if (parts.length === 2 && parts[0] === parts[1]) return false;
+      return true;
+    });
+    const row = usefulRows.find(item => item.value) || usefulRows[0];
+    if (!row) return shortenRecommendationText(fallback);
+    return shortenRecommendationText(`${row.label}: ${row.value || row.delta}`, fallback);
+  }
+
+  function recommendationImpactFromStats(current, next, fallback = "", keys = ["damage", "maxHp", "speed", "armor", "crit", "evasion", "shipDps", "dps"]) {
+    return recommendationImpactText(getPositiveStatRows(current, next, keys), fallback);
+  }
+
+  function shipSkillRecommendationImpactText(key, level = state.skills[key]?.level || 1) {
+    const stats = getStats();
+    const current = getSkillValues(key, level, stats);
+    const next = getSkillValues(key, level + 1, stats);
+    return recommendationImpactText([
+      { label: "Dano da skill", value: `${formatNumber(current.damage)} -> ${formatNumber(next.damage)}`, delta: formatStatDelta(next.damage - current.damage) },
+      { label: "DPS da skill", value: `${formatNumber(current.dps)} -> ${formatNumber(next.dps)}`, delta: formatStatDelta(next.dps - current.dps) },
+      { label: "Cooldown", value: `${formatSeconds(current.cooldown)} -> ${formatSeconds(next.cooldown)}` }
+    ], SKILL_META[key]?.effect || "");
+  }
+
+  function recommendationBonusPercent(value) {
+    const amount = Math.round(Math.max(0, Number(value) || 0) * 100);
+    return `+${amount}%`;
+  }
+
+  function captainEquipmentRecommendationImpactText(key, currentTier, nextTier) {
+    const current = currentTier?.bonuses || {};
+    const next = nextTier?.bonuses || {};
+    if (key === "lightHands") {
+      return `Ouro e EXP ganhos: ${recommendationBonusPercent(current.goldGainBonus)} -> ${recommendationBonusPercent(next.goldGainBonus)}`;
+    }
+    const rows = [
+      ["Dano do navio", "shipDamageBonus"],
+      ["Velocidade de ataque", "shipAttackSpeedBonus"],
+      ["Vida do navio", "shipHpBonus"],
+      ["Defesa do navio", "shipArmorBonus"],
+      ["Esquiva", "dodgeChance"],
+      ["Critico", "critChance"],
+      ["Ataque duplo", "doubleAttackChance"],
+      ["Ouro ganho", "goldGainBonus"],
+      ["EXP ganho", "xpGainBonus"]
+    ]
+      .filter(([, bonusKey]) => Math.abs((next[bonusKey] || 0) - (current[bonusKey] || 0)) > .0001)
+      .map(([label, bonusKey]) => ({ label, value: `${recommendationBonusPercent(current[bonusKey])} -> ${recommendationBonusPercent(next[bonusKey])}` }));
+    return recommendationImpactText(rows, nextTier?.name || "");
+  }
+
+  function captainManualSkillRecommendationImpactText(key, level = getCaptainManualSkillLevel(key), stats = getStats()) {
+    const nextLevel = level + 1;
+    if (key === CAPTAIN_REPAIR_SKILL_KEY) {
+      return `Reparo do navio: ${formatCaptainRepairPercent(level)} -> ${formatCaptainRepairPercent(nextLevel)}`;
+    }
+    const currentDamage = Math.round(stats.damage * getCaptainManualSkillMultiplier(key, level));
+    const nextDamage = Math.round(stats.damage * getCaptainManualSkillMultiplier(key, nextLevel));
+    return `Dano manual: ${formatNumber(currentDamage)} -> ${formatNumber(nextDamage)}`;
   }
 
   function upgradeSummaryHtml(rows, fallback = "") {
@@ -10851,8 +10970,12 @@
   window.addEventListener("resize", () => {
     renderCaptainPreviewCanvases();
     renderPetPreviewCanvases();
+    updateMobileCombatFullscreen();
     if (combatFullscreen) resizeCombatViewport();
   });
+  window.addEventListener("orientationchange", updateMobileCombatFullscreen);
+  window.screen?.orientation?.addEventListener?.("change", updateMobileCombatFullscreen);
+  window.visualViewport?.addEventListener?.("resize", updateMobileCombatFullscreen);
   window.addEventListener("beforeunload", saveGame);
 
   setCombatMinimized(combatMinimized, false);
@@ -10861,6 +10984,7 @@
   state.combat.playerHp = clamp(state.combat.playerHp || getStats().maxHp, 1, getStats().maxHp);
   if (!state.logs.length) addLog(`${SHIPS[state.shipId].name} está pronto para sua primeira patrulha.`);
   renderAll(true);
+  updateMobileCombatFullscreen();
   refreshLeaderboard({ force: true });
   beginCombatAssetPreload();
   preloadMapBoardAssets();

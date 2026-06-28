@@ -5600,57 +5600,104 @@ body.is-combat-fullscreen .combat-next-map-button {
   }
 }
 
-@media (max-width: 768px) and (orientation: portrait) {
-  html.is-combat-fullscreen.combat-landscape-fallback,
-  body.is-combat-fullscreen.combat-landscape-fallback {
-    width: 100vw;
-    height: 100vh;
-    width: 100dvw;
-    height: 100dvh;
-    overflow: hidden;
-  }
+body.is-mobile-combat-device:not(.mobile-combat-fullscreen) .combat-fullscreen-toggle {
+  display: none !important;
+}
 
-  body.is-combat-fullscreen.combat-landscape-fallback .app-shell {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vh;
-    height: 100vw;
-    width: 100dvh;
-    height: 100dvw;
-    min-width: 0;
-    min-height: 0;
-    max-width: none;
-    max-height: none;
-    transform: rotate(90deg) translateY(-100%);
-    transform-origin: top left;
-  }
+html.mobile-combat-fullscreen,
+body.mobile-combat-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  width: 100dvw;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #061421;
+}
 
-  body.is-combat-fullscreen.combat-landscape-fallback .topbar {
-    height: 50px;
-    min-height: 50px;
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
+body.mobile-combat-fullscreen .app-shell {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  width: 100dvw;
+  height: 100dvh;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+  transform: none;
+  background: #061421 !important;
+}
 
-  body.is-combat-fullscreen.combat-landscape-fallback .topbar .top-power,
-  body.is-combat-fullscreen.combat-landscape-fallback .topbar .top-resources > div,
-  body.is-combat-fullscreen.combat-landscape-fallback .topbar .captain-topbar {
-    height: 40px;
-  }
+body.mobile-combat-fullscreen .topbar,
+body.mobile-combat-fullscreen .bottom-nav.main-tabs,
+body.mobile-combat-fullscreen .screen {
+  display: none !important;
+}
 
-  body.is-combat-fullscreen.combat-landscape-fallback .main-content {
-    width: 100%;
-    height: auto;
-  }
+body.mobile-combat-fullscreen .main-content {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  background: #061421;
+}
 
-  body.is-combat-fullscreen.combat-landscape-fallback .persistent-combat .combat-status-strip {
-    min-height: 30px;
-    height: 30px;
-  }
+body.mobile-combat-fullscreen .persistent-combat {
+  position: relative;
+  top: 0 !important;
+  z-index: 90;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  background: #061421;
+}
 
-  body.is-combat-fullscreen.combat-landscape-fallback .combat-fullscreen-exit {
-    top: max(8px, env(safe-area-inset-left));
-    right: max(8px, env(safe-area-inset-bottom));
-  }
+body.mobile-combat-fullscreen .persistent-combat .battle-stage,
+body.mobile-combat-fullscreen .persistent-combat .initial-captain-gate {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.mobile-combat-fullscreen .persistent-combat .combat-status-strip {
+  flex: 0 0 auto;
+  min-height: 30px;
+  height: 30px;
+  padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+}
+
+body.mobile-combat-fullscreen .combat-collapse-toggle,
+body.mobile-combat-fullscreen .combat-fullscreen-toggle,
+body.mobile-combat-fullscreen .combat-fullscreen-exit {
+  display: none !important;
+}
+
+body.mobile-combat-fullscreen .combat-map-title {
+  top: max(6px, env(safe-area-inset-top));
+  max-width: calc(100% - 24px - env(safe-area-inset-left) - env(safe-area-inset-right));
+}
+
+body.mobile-combat-fullscreen .combat-exit-button,
+body.mobile-combat-fullscreen .combat-next-map-button {
+  bottom: max(8px, env(safe-area-inset-bottom));
 }
