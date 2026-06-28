@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=97">
+  <link rel="stylesheet" href="styles.css?v=98">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -48,7 +48,7 @@
             <h2 id="ship-name">Bote de Tronco</h2>
             <div class="health-bar player-health"><i id="player-health-fill"></i></div>
             <div class="repair-status hidden" id="repair-status" aria-live="polite">
-              <span>reparo de emergencia</span>
+              <span>restaurar navio</span>
               <div class="repair-bar"><i id="repair-progress-fill"></i></div>
             </div>
             <div class="health-numbers" id="player-health-text">140 / 140</div>
@@ -63,10 +63,23 @@
           </button>
           <div class="manual-skill-dock" id="manual-skill-dock" aria-label="Ataque manual"></div>
           <button class="combat-exit-button hidden" id="combat-exit-button" type="button" data-exit-special-combat>Sair do combate</button>
+          <button class="combat-exit-button combat-next-map-button hidden" id="combat-next-map-button" type="button" data-map-step="1">Próximo mapa</button>
           <div class="skill-dock" id="skill-dock" aria-label="Habilidades de combate"></div>
         </div>
 
         <div class="initial-captain-gate hidden" id="initial-captain-gate" aria-live="polite"></div>
+
+        <div class="combat-status-strip" id="combat-status-strip" aria-label="Status do combate">
+          <div class="combat-status-metrics">
+            <span class="combat-status-item health"><b aria-hidden="true">❤</b><strong id="metric-hp">0 / 0</strong></span>
+            <span class="combat-status-item"><b aria-hidden="true">⚔</b><strong id="metric-damage">0</strong></span>
+            <span class="combat-status-item"><b>DPS</b><strong id="metric-dps">0</strong></span>
+          </div>
+          <div class="combat-status-actions">
+            <button class="combat-toggle-pill" id="start-button" type="button" aria-pressed="false">Auto OFF</button>
+            <button class="combat-toggle-pill auto-boss-button" id="auto-boss-button" type="button" aria-pressed="false">Boss OFF</button>
+          </div>
+        </div>
 
         <nav class="bottom-nav" aria-label="Navegação principal">
           <button class="active" data-screen-target="home" aria-label="Combate"><span>⚔</span><strong>Combate</strong></button>
@@ -81,18 +94,6 @@
       <section class="screen active" id="screen-home" aria-labelledby="home-title">
         <h1 class="sr-only" id="home-title">Combate naval</h1>
         <div class="dashboard-grid home-clean-grid">
-          <article class="card controls-card quick-controls-card">
-            <div class="metric-grid compact-metrics">
-              <div><span>DPS</span><strong id="metric-dps">0</strong></div>
-              <div><span>DANO</span><strong id="metric-damage">0</strong></div>
-              <div><span>VIDA</span><strong id="metric-hp">0</strong></div>
-            </div>
-            <div class="control-row">
-              <button class="button primary" id="start-button">Combate Auto: OFF</button>
-              <button class="button auto-boss-button" id="auto-boss-button" type="button" aria-pressed="false">Boss Auto: OFF</button>
-            </div>
-          </article>
-
           <article class="card home-recommendation-card" id="home-recommendation-card">
             <div class="card-heading compact">
               <div><span class="eyebrow">PROGRESSO</span><h2>Melhoria recomendada</h2></div>
@@ -357,6 +358,6 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=166"></script>
+  <script src="game.js?v=168"></script>
 </body>
 </html>

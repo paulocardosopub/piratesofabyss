@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v161-topbar-without-logo";
+const CACHE = "pirates-abyss-v163-compact-combat-hud";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=97",
-  "game.js?v=166",
+  "styles.css?v=98",
+  "game.js?v=168",
   "icon.svg",
   "manifest.webmanifest"
 ];

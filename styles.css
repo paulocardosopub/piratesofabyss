@@ -4990,6 +4990,233 @@ body {
   }
 }
 
+/* Compact combat HUD */
+.combat-status-strip {
+  min-height: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 4px 12px;
+  overflow: hidden;
+  border-block: 1px solid rgba(157, 211, 209, .16);
+  color: #eaf5f1;
+  background: rgba(4, 18, 28, .92);
+}
+
+.persistent-combat.captain-gate-active .combat-status-strip {
+  display: none;
+}
+
+.combat-status-metrics,
+.combat-status-actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.combat-status-item {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.combat-status-item b {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.combat-status-item.health b {
+  color: #6ef0df;
+}
+
+.combat-status-item strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff3c6;
+  text-overflow: ellipsis;
+}
+
+.combat-toggle-pill {
+  min-width: 68px;
+  min-height: 28px;
+  height: 28px;
+  padding: 3px 9px;
+  border: 1px solid rgba(169, 210, 209, .26);
+  border-radius: 999px;
+  color: #cfe7e4;
+  background: rgba(255, 255, 255, .055);
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.combat-toggle-pill.on,
+.combat-toggle-pill.auto-boss-button.on {
+  color: #041722;
+  border-color: rgba(110, 239, 226, .88);
+  background: linear-gradient(180deg, #7ff4e8, #30c8c3);
+  box-shadow: none;
+}
+
+.combat-toggle-pill:hover:not(:disabled) {
+  border-color: rgba(110, 239, 226, .55);
+  transform: none;
+}
+
+.combat-toggle-pill:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+.bottom-nav {
+  margin-top: 0;
+}
+
+.quick-controls-card {
+  display: none !important;
+}
+
+.home-clean-grid {
+  grid-template-columns: minmax(320px, .95fr) minmax(360px, 1.05fr);
+  grid-template-areas:
+    "boss recommendation"
+    "leaderboard log";
+}
+
+.home-recommendation-card {
+  border-bottom: 1px solid var(--line);
+}
+
+.progression-card {
+  border-right: 1px solid var(--line);
+}
+
+.leaderboard-card {
+  border-right: 1px solid var(--line);
+}
+
+.log-card {
+  border-right: 0;
+}
+
+.combat-exit-button,
+.combat-next-map-button {
+  min-height: 30px;
+  padding: 5px 11px;
+  border-radius: 999px;
+}
+
+.combat-next-map-button {
+  color: #05202a;
+  border-color: rgba(110, 239, 226, .72);
+  background: linear-gradient(135deg, #7ff4e8, #30c8c3);
+}
+
+.combat-next-map-button:hover {
+  border-color: rgba(255, 224, 128, .72);
+  background: linear-gradient(135deg, #ffe08a, #e8a33e);
+}
+
+@media (max-width: 980px) {
+  .combat-status-strip {
+    min-height: 32px;
+    height: 32px;
+    gap: 8px;
+    padding: 3px 8px;
+  }
+
+  .home-clean-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "recommendation"
+      "boss"
+      "leaderboard"
+      "log";
+  }
+
+  .home-recommendation-card,
+  .progression-card,
+  .leaderboard-card,
+  .log-card {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 560px) {
+  .combat-status-strip {
+    min-height: 30px;
+    height: 30px;
+    justify-content: space-between;
+    gap: 5px;
+    padding: 2px 6px;
+  }
+
+  .combat-status-metrics,
+  .combat-status-actions {
+    gap: 5px;
+  }
+
+  .combat-status-item {
+    gap: 3px;
+    font-size: 10px;
+  }
+
+  .combat-status-item b {
+    font-size: 9px;
+  }
+
+  .combat-toggle-pill {
+    min-width: 52px;
+    min-height: 24px;
+    height: 24px;
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+
+  .combat-exit-button,
+  .combat-next-map-button {
+    bottom: 8px;
+    min-height: 26px;
+    padding: 4px 9px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 380px) {
+  .combat-status-strip {
+    gap: 4px;
+    padding-inline: 4px;
+  }
+
+  .combat-status-metrics,
+  .combat-status-actions {
+    gap: 4px;
+  }
+
+  .combat-status-item {
+    font-size: 9px;
+  }
+
+  .combat-toggle-pill {
+    min-width: 48px;
+    padding-inline: 5px;
+    font-size: 8px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }

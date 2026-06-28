@@ -20,6 +20,7 @@
   const OFFLINE_MODAL_AUTO_HIDE_MS = 5000;
   const COMMON_MONSTER_BALANCE_LAST_REGION = 10;
   const COMMON_MONSTER_BALANCE_MULTIPLIER = 4;
+  const MAP_ONE_COMMON_MONSTER_DAMAGE_MULTIPLIER = .7;
   const EARLY_GAME_REWARD_MAP_COUNT = 5;
   const EARLY_GAME_REWARD_MULTIPLIER = .1;
   const PRESTIGE_REGION_NAME = "Oceano Profundo";
@@ -34,6 +35,8 @@
   const CAPTAIN_REPAIR_SKILL_KEY = "emergencyRepair";
   const CAPTAIN_MANUAL_SKILL_BASE_COOLDOWN = 10;
   const CAPTAIN_MANUAL_SKILL_MAX_LEVEL = 20;
+  const RESTORE_SHIP_REPAIR_BY_LEVEL = { 1: .25, 2: .5, 3: .75, 4: 1 };
+  const RESTORE_SHIP_UPGRADE_COSTS = { 2: 4, 3: 8, 4: 10 };
   const EMERGENCY_REPAIR_COOLDOWN_SECONDS = 10;
   const EMERGENCY_REPAIR_DURATION_MS = 5000;
   const AUTO_REPAIR_DURATION_MS = 4000;
@@ -609,12 +612,11 @@
       description: "Golpe manual do pirata. Causa dano direto no inimigo atual e nunca dispara automaticamente."
     },
     emergencyRepair: {
-      name: "Reparo de Emergência",
+      name: "Restaurar Navio",
       icon: "+",
       cooldown: EMERGENCY_REPAIR_COOLDOWN_SECONDS,
-      repairStep: .1,
-      maxLevel: 10,
-      description: "Skill manual do pirata. Repara parte da vida máxima do navio ao longo de 5 segundos."
+      maxLevel: 4,
+      description: "Skill manual do pirata. Restaura 25%, 50%, 75% ou 100% da vida máxima atual do navio."
     }
   };
 
@@ -830,6 +832,7 @@
   function getCaptainManualSkillCost(key = CAPTAIN_MANUAL_SKILL_KEY, level = getCaptainManualSkillLevel(key)) {
     const meta = CAPTAIN_MANUAL_SKILL_META[key];
     if (!meta || level >= meta.maxLevel) return null;
+    if (key === CAPTAIN_REPAIR_SKILL_KEY) return RESTORE_SHIP_UPGRADE_COSTS[level + 1] ?? null;
     return Math.ceil(level / 2);
   }
 
@@ -856,12 +859,12 @@
   }
 
   function getCaptainRepairPercent(level = getCaptainManualSkillLevel(CAPTAIN_REPAIR_SKILL_KEY)) {
-    const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_REPAIR_SKILL_KEY];
-    return clamp(Math.max(1, Math.floor(Number(level) || 1)) * (meta?.repairStep || .1), 0, 1);
+    const cleanLevel = clamp(Math.floor(Number(level) || 1), 1, CAPTAIN_MANUAL_SKILL_META[CAPTAIN_REPAIR_SKILL_KEY].maxLevel);
+    return RESTORE_SHIP_REPAIR_BY_LEVEL[cleanLevel] ?? RESTORE_SHIP_REPAIR_BY_LEVEL[1];
   }
 
   function formatCaptainRepairPercent(level = getCaptainManualSkillLevel(CAPTAIN_REPAIR_SKILL_KEY)) {
-    return `+${Math.round(getCaptainRepairPercent(level) * 100)}%`;
+    return `${Math.round(getCaptainRepairPercent(level) * 100)}%`;
   }
 
   function createCaptainBonuses() {
@@ -944,8 +947,7 @@
     const fallbackLevel = hasRuntimeSave ? 1 : Math.max(1, Math.floor(Number(target.pirateLevel || 1)));
     target.captainRuntimeLevel = Math.max(1, Math.floor(Number(saved.captainRuntimeLevel || fallbackLevel)));
     target.captainCurrentXp = Math.max(0, Number(saved.captainCurrentXp ?? (hasRuntimeSave ? 0 : target.xp || 0)) || 0);
-    const legacyPointSpend = saved.spentLevelPoints === undefined ? getCaptainEquipmentSpentPoints(target) + getCaptainManualSkillSpentPoints(target) : 0;
-    target.spentLevelPoints = Math.max(legacyPointSpend, Math.floor(Number(saved.spentLevelPoints || 0)));
+    target.spentLevelPoints = getCaptainEquipmentSpentPoints(target) + getCaptainManualSkillSpentPoints(target);
     target.totalLevelPointsEarned = Math.max(target.spentLevelPoints, Math.floor(Number(saved.totalLevelPointsEarned ?? Math.max(0, target.captainRuntimeLevel - 1)) || 0));
     const needed = captainRuntimeXpNeeded(target.captainRuntimeLevel);
     while (target.captainCurrentXp >= needed) target.captainCurrentXp = needed - 1;
@@ -6827,6 +6829,11 @@
     return index >= 0 && index <= COMMON_MONSTER_BALANCE_LAST_REGION ? COMMON_MONSTER_BALANCE_MULTIPLIER : 1;
   }
 
+  function getCommonMonsterDamageBalanceMultiplier(regionIndex, isBoss = false) {
+    const index = Math.floor(Number(regionIndex) || 0);
+    return !isBoss && index === 0 ? MAP_ONE_COMMON_MONSTER_DAMAGE_MULTIPLIER : 1;
+  }
+
   function endgameRequirementIssues(index) {
     const req = ENDGAME_REQUIREMENTS[index];
     if (!req) return [];
@@ -6853,6 +6860,7 @@
     const mod = ENDGAME_ENEMY_MODS[state.regionIndex] || {};
     const stage = getEndgameStageMultiplier(state.regionIndex);
     const commonBalance = isBoss ? 1 : getCommonMonsterBalanceMultiplier(state.regionIndex);
+    const damageBalance = getCommonMonsterDamageBalanceMultiplier(state.regionIndex, isBoss);
     const enemyName = isBoss ? region.boss : encounter.name;
     const visual = inferEnemyVisual(enemyName, region, isBoss ? "BOSS" : encounter.category, isBoss ? 5 : encounter.tier, isBoss);
     const hp = Math.round(region.baseHp * variation * (isBoss ? 34 * (mod.bossHp || 1) : profile.hp * stage * (mod.hp || 1) * commonBalance));
@@ -6870,7 +6878,7 @@
       spawnEndsAt,
       maxHp: hp,
       hp,
-      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 * (mod.bossDamage || 1) : profile.damage * stage * (mod.damage || 1) * commonBalance)),
+      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 * (mod.bossDamage || 1) : profile.damage * stage * (mod.damage || 1) * commonBalance * damageBalance)),
       armor: Math.round((isBoss ? 22 + state.regionIndex * 9 : (2 + state.regionIndex * 5) * profile.armor) * (isBoss ? (mod.bossArmor || 1) : (mod.armor || 1))),
       evasion: Math.min(.28, (isBoss ? .035 : profile.evasion) + (mod.evasion || 0)),
       attackSpeed: (isBoss ? .82 : profile.attackSpeed) * (mod.attackSpeed || 1),
@@ -7063,14 +7071,14 @@
   function castEmergencyRepairSkill() {
     const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_REPAIR_SKILL_KEY];
     if (!canUpgradeCaptainSystems()) return toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
-    if (isArenaBattleActive()) return toast("Reparo de Emergência indisponível durante a Arena.", "danger-toast");
+    if (isArenaBattleActive()) return toast("Restaurar Navio indisponível durante a Arena.", "danger-toast");
     if (isArenaBattleWaiting()) return toast(`Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
-    if (state.combat.repairing) return toast("Reparo de Emergência já está em andamento.", "danger-toast");
+    if (state.combat.repairing) return toast("Restaurar Navio já está em andamento.", "danger-toast");
     if (state.combat.playerHp <= 0) return toast("O navio está destruído. Aguarde o reparo automático.", "danger-toast");
     const maxHp = getStats().maxHp;
     if (state.combat.playerHp >= maxHp) return toast("Navio já está com vida máxima.", "gold-toast");
     const remaining = getCaptainManualSkillCooldownRemaining(CAPTAIN_REPAIR_SKILL_KEY);
-    if (remaining > 0) return toast(`Reparo de Emergência recarrega em ${formatSeconds(remaining)}.`, "danger-toast");
+    if (remaining > 0) return toast(`Restaurar Navio recarrega em ${formatSeconds(remaining)}.`, "danger-toast");
     const skill = getCaptainManualSkillState(CAPTAIN_REPAIR_SKILL_KEY);
     skill.nextReadyAt = Date.now() + meta.cooldown * 1000;
     startEmergencyRepair();
@@ -7143,16 +7151,17 @@
     return AUTO_REPAIR_FEES.find(entry => map <= entry.maxMap)?.gold || 25000;
   }
 
-  function chargeAutoRepairFee(regionIndex = state.regionIndex) {
+  function chargeAutoRepairFee(regionIndex = state.regionIndex, retreatedToPreviousMap = false) {
     const fee = getAutoRepairFee(regionIndex);
+    const retreatText = retreatedToPreviousMap ? " e retornando ao mapa anterior" : "";
     if (state.resources.ouro >= fee) {
       state.resources.ouro -= fee;
-      addLog(`Voce afundou: -${formatNumber(fee)} Ouro para recuperar o navio.`, "danger-text");
-      toast(`Voce afundou: -${formatNumber(fee)} Ouro.`, "danger-toast repair-cost-toast", { mobileAllowed: true });
+      addLog(`Voce afundou: -${formatNumber(fee)} Ouro para recuperar o navio${retreatText}.`, "danger-text");
+      toast(`Voce afundou: -${formatNumber(fee)} Ouro${retreatText}.`, "danger-toast repair-cost-toast", { mobileAllowed: true });
       return true;
     }
-    addLog("Voce afundou e esta pobre. Reparo automatico gratuito aplicado.", "danger-text");
-    toast("Voce afundou e esta pobre. Reparo gratuito aplicado.", "danger-toast repair-cost-toast", { mobileAllowed: true });
+    addLog(`Voce afundou, esta pobre${retreatText}. Reparo automatico gratuito aplicado.`, "danger-text");
+    toast(`Voce afundou, esta pobre${retreatText}. Reparo gratuito aplicado.`, "danger-toast repair-cost-toast", { mobileAllowed: true });
     return false;
   }
 
@@ -7225,7 +7234,8 @@
     const defeatedBy = state.combat.enemy?.name || "inimigo";
     const defeatedRegionIndex = state.regionIndex;
     const resumeRunning = Boolean(state.combat.running);
-    chargeAutoRepairFee(defeatedRegionIndex);
+    const willRetreat = defeatedRegionIndex > 0;
+    chargeAutoRepairFee(defeatedRegionIndex, willRetreat);
     moveToPreviousMapAfterSinking();
     state.combat.repairing = true;
     state.combat.repairStarted = performance.now();
@@ -7256,7 +7266,7 @@
     state.combat.attackTimer = 0;
     state.combat.running = resumeRunning;
     scene.resetPlayerShipAnimation();
-    addLog(forced ? "Protocolo de segurança concluiu o reparo." : repairSource === "manual" ? "Reparo de Emergência concluído." : "Reparo concluído. Retomando o combate.", "loot");
+    addLog(forced ? "Protocolo de segurança concluiu o reparo." : repairSource === "manual" ? "Restaurar Navio concluído." : "Reparo concluído. Retomando o combate.", "loot");
   }
 
   function startEmergencyRepair() {
@@ -7276,8 +7286,8 @@
     state.hasStarted = true;
     scene.resetPlayerShipAnimation();
     trackAction("repair");
-    addLog(`Reparo de Emergência iniciado: ${Math.round(repairPercent * 100)}% da vida máxima em 5s.`, "loot");
-    toast("Reparo de Emergência iniciado.", "gold-toast");
+    addLog(`Restaurar Navio iniciado: ${Math.round(repairPercent * 100)}% da vida máxima em 5s.`, "loot");
+    toast("Restaurar Navio iniciado.", "gold-toast");
     commitGame(false);
   }
 
@@ -7767,12 +7777,20 @@
 
   function updateSpecialCombatExitButton() {
     const button = $("#combat-exit-button");
-    if (!button) return;
+    const nextMapButton = $("#combat-next-map-button");
     const enemy = state.combat.enemy;
     const visible = Boolean(enemy?.isBoss || (enemy?.isArena && (isArenaBattleWaiting() || isArenaBattleActive())));
-    button.classList.toggle("hidden", !visible);
-    button.disabled = !visible;
-    button.title = enemy?.isArena ? "Sair do duelo PvP sem aplicar vitoria." : "Sair da batalha contra o boss.";
+    if (button) {
+      button.classList.toggle("hidden", !visible);
+      button.disabled = !visible;
+      button.title = enemy?.isArena ? "Sair do duelo PvP sem aplicar vitoria." : "Sair da batalha contra o boss.";
+    }
+    if (nextMapButton) {
+      const nextVisible = !visible && !isArenaSceneActive() && state.regionIndex + 1 < state.unlockedRegions;
+      nextMapButton.classList.toggle("hidden", !nextVisible);
+      nextMapButton.disabled = !nextVisible;
+      nextMapButton.title = nextVisible ? `Avançar para ${REGIONS[state.regionIndex + 1]?.name || "próximo mapa"}` : "Nenhum próximo mapa liberado.";
+    }
   }
 
   function renderCombatHud() {
@@ -7786,6 +7804,12 @@
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
     $("#player-health-fill").style.width = `${state.combat.playerHp / Math.max(1, maxHp) * 100}%`;
     $("#player-health-text").textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(maxHp)}`;
+    const hpMetric = $("#metric-hp");
+    const damageMetric = $("#metric-damage");
+    const dpsMetric = $("#metric-dps");
+    if (hpMetric) hpMetric.textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(maxHp)}`;
+    if (damageMetric) damageMetric.textContent = formatNumber(stats.damage);
+    if (dpsMetric) dpsMetric.textContent = formatNumber(stats.dps);
     const repairStatus = $("#repair-status");
     const repairProgressFill = $("#repair-progress-fill");
     if (repairStatus && repairProgressFill) {
@@ -7947,7 +7971,7 @@
       const cost = getCaptainManualSkillCost(key, level);
       if (cost === null) return;
       const isRepair = key === CAPTAIN_REPAIR_SKILL_KEY;
-      const powerGain = isRepair ? Math.round(getStats().maxHp * (meta.repairStep || .1)) : Math.round(getStats().damage * (getCaptainManualSkillMultiplier(key, level + 1) - getCaptainManualSkillMultiplier(key, level)));
+      const powerGain = isRepair ? Math.round(getStats().maxHp * (getCaptainRepairPercent(level + 1) - getCaptainRepairPercent(level))) : Math.round(getStats().damage * (getCaptainManualSkillMultiplier(key, level + 1) - getCaptainManualSkillMultiplier(key, level)));
       const canBuy = available >= cost;
       candidates.push({ category: "Skill do Capitão", title: `${meta.name} Nv. ${level + 1}`, powerGain: Math.max(1, powerGain), canBuy, blocked: false, actionLabel: canBuy ? "Promover" : "Faltam pts", actionAttrs: `data-upgrade-captain-manual-skill="${key}"`, disabled: !canBuy, note: isRepair ? `Reparo ${Math.round(getCaptainRepairPercent(level + 1) * 100)}%` : "Dano manual maior", costText: `${cost} Ponto${cost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, cost, canBuy) });
     });
@@ -8029,7 +8053,7 @@
     $("#metric-dps").textContent = formatNumber(stats.dps);
     const speedMetric = $("#metric-speed");
     if (speedMetric) speedMetric.textContent = formatNumber(stats.speed);
-    $("#metric-hp").textContent = formatNumber(stats.maxHp);
+    $("#metric-hp").textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`;
     const powerMetric = $("#metric-power");
     if (powerMetric) powerMetric.textContent = formatNumber(stats.power);
     renderHomeRecommendations();
@@ -8060,12 +8084,14 @@
     const autoAttackUnlocked = isAutoAttackUnlocked();
     const startButton = $("#start-button");
     startButton.textContent = autoAttackUnlocked
-      ? `Combate Auto: ${state.combat.running ? "ON" : "OFF"}`
-      : state.combat.running ? "Combate: ON • Auto no Nv. 2" : "Iniciar combate manual";
+      ? `Auto ${state.combat.running ? "ON" : "OFF"}`
+      : state.combat.running ? "Auto bloqueado" : "Atacar";
+    startButton.classList.toggle("on", Boolean(state.combat.running));
+    startButton.setAttribute("aria-pressed", state.combat.running ? "true" : "false");
     startButton.title = autoAttackUnlocked ? "Liga ou desliga o combate automático." : "Auto ataque libera no nível 2 do Capitão. Até lá, clique no barco para atacar.";
     const autoBossButton = $("#auto-boss-button");
     if (autoBossButton) {
-      autoBossButton.textContent = `Boss Auto: ${state.autoChallengeBoss ? "ON" : "OFF"}`;
+      autoBossButton.textContent = `Boss ${state.autoChallengeBoss ? "ON" : "OFF"}`;
       autoBossButton.classList.toggle("on", Boolean(state.autoChallengeBoss));
       autoBossButton.setAttribute("aria-pressed", state.autoChallengeBoss ? "true" : "false");
       autoBossButton.title = state.autoChallengeBoss ? "Desafio automático de boss ligado." : "Desafia automaticamente o boss quando atingir 100 vitórias.";
@@ -8266,7 +8292,7 @@
     if (locked) {
       return `<section class="captain-equipment-section captain-manual-skill-section captain-collapsible-section ${captainManualSkillsExpanded ? "expanded" : ""} locked">
         ${toggle}
-        <div class="captain-section-body"><div class="section-heading compact"><div><span class="eyebrow">BLOQUEADO</span><h2>${CAPTAIN_REQUIRED_MESSAGE}</h2><p>Escolha um dos capitães iniciais para liberar Sabotar Inimigo e Reparo de Emergência no combate.</p></div></div></div>
+        <div class="captain-section-body"><div class="section-heading compact"><div><span class="eyebrow">BLOQUEADO</span><h2>${CAPTAIN_REQUIRED_MESSAGE}</h2><p>Escolha um dos capitães iniciais para liberar Sabotar Inimigo e Restaurar Navio no combate.</p></div></div></div>
       </section>`;
     }
     syncCaptainRuntimeState(state);
@@ -8288,7 +8314,10 @@
       const estimateLabel = isRepair ? "Cura estimada" : "Dano estimado";
       const currentEstimate = isRepair ? Math.round(stats.maxHp * getCaptainRepairPercent(level)) : getCaptainManualSkillDamage(key, stats);
       const nextEstimate = isRepair ? Math.round(stats.maxHp * getCaptainRepairPercent(nextLevel)) : Math.round(stats.damage * getCaptainManualSkillMultiplier(key, nextLevel));
-      const completeText = isRepair ? "Reparo de Emergência está totalmente promovida." : "Sabotar Inimigo está totalmente promovida.";
+      const completeText = isRepair ? "Restaurar Navio está totalmente promovida." : "Sabotar Inimigo está totalmente promovida.";
+      const shortNote = isRepair
+        ? `Restaura ${currentEffect}${cost === null ? " da vida máxima" : ` → ${nextEffect}`}`
+        : meta.description;
       const summaryRows = [
         { label: effectLabel, value: currentEffect },
         { label: nextLabel, value: nextEffect },
@@ -8300,7 +8329,7 @@
         icon: meta.icon,
         eyebrow: `NÍVEL ${level} / ${meta.maxLevel}`,
         title: meta.name,
-        note: upgraded ? "Habilidade promovida!" : meta.description,
+        note: upgraded ? "Habilidade promovida!" : shortNote,
         power: currentEffect,
         powerSub: effectLabel,
         value: cost === null ? "Máximo" : `Nível ${nextLevel}`,
@@ -8537,7 +8566,7 @@
               ? needsRepair
                 ? `${meta.name} - repara ${Math.round(getCaptainRepairPercent() * 100)}% da vida máxima em 5s`
                 : state.combat.repairing
-                  ? "Reparo de Emergência já está em andamento"
+                  ? "Restaurar Navio já está em andamento"
                   : "Navio já está com vida máxima"
               : hasTarget
                 ? `${meta.name} - manual - ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key))} do dano atual`
