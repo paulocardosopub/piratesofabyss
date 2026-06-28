@@ -18,6 +18,7 @@
   const POWER_FORMULA_VERSION = 2;
   const OFFLINE_REWARD_RATE = .3;
   const OFFLINE_MODAL_AUTO_HIDE_MS = 5000;
+  const SHIP_UNLOCK_KILL_REQUIREMENT = 100;
   const COMMON_MONSTER_BALANCE_LAST_REGION = 10;
   const COMMON_MONSTER_BALANCE_MULTIPLIER = 4;
   const MAP_ONE_COMMON_MONSTER_DAMAGE_MULTIPLIER = .7;
@@ -1881,6 +1882,7 @@
       bossesDefeated: Array(REGIONS.length).fill(false),
       shipId: 0,
       ownedShips: [0],
+      shipEnemyKills: { 0: 0 },
       ownedPets: [],
       equippedPetId: null,
       petLevels: {},
@@ -1971,6 +1973,15 @@
       merged.ownedShips = [...new Set([0, ...migratedOwned])].filter(id => Number.isInteger(id) && id >= 0 && id < SHIPS.length);
       merged.shipId = (previousVersion < 2 && Number(saved.shipId) === 19 ? 20 : Number(saved.shipId || 0)) + shipOffset;
       if (!merged.ownedShips.includes(merged.shipId) || !SHIPS[merged.shipId]) merged.shipId = 0;
+      const savedShipEnemyKills = saved.shipEnemyKills && typeof saved.shipEnemyKills === "object" && !Array.isArray(saved.shipEnemyKills) ? saved.shipEnemyKills : {};
+      merged.shipEnemyKills = {};
+      Object.entries(savedShipEnemyKills).forEach(([rawId, value]) => {
+        const id = Number(rawId);
+        if (Number.isInteger(id) && id >= 0 && id < SHIPS.length) merged.shipEnemyKills[id] = Math.max(0, Math.floor(Number(value) || 0));
+      });
+      merged.ownedShips.forEach(id => {
+        if (merged.shipEnemyKills[id] === undefined) merged.shipEnemyKills[id] = 0;
+      });
       merged.ownedPets = [...new Set((saved.ownedPets || []).map(Number))].filter(id => Number.isInteger(id) && PETS[id]);
       merged.equippedPetId = saved.equippedPetId === null || saved.equippedPetId === undefined ? null : Number(saved.equippedPetId);
       if (!merged.ownedPets.includes(merged.equippedPetId) || !PETS[merged.equippedPetId]) merged.equippedPetId = null;
@@ -7388,6 +7399,7 @@
       state.resources.ouro += gold;
       state.lifetime.gold += gold;
       state.lifetime.enemies += 1;
+      addShipEnemyKills(state.shipId, 1);
       state.regionKills[state.regionIndex] += 1;
       trackAction("gold", { amount: gold });
       gainXp(Math.round(region.xp * (enemy.xpMultiplier || 1) * randomBetween(.92, 1.08)));
@@ -7540,6 +7552,7 @@
     state.resources.ouro += gold;
     state.lifetime.gold += gold;
     state.lifetime.enemies += kills;
+    addShipEnemyKills(state.shipId, kills);
     state.regionKills[state.regionIndex] += kills;
     trackAction("gold", { amount: gold });
     trackAction("enemy", { count: kills });
@@ -7624,8 +7637,7 @@
       const id = Number(button.dataset.buyShip);
       const ship = SHIPS[id];
       if (!ship || state.ownedShips.includes(id)) return;
-      const prestigeReq = Math.max(0, ship.tier - 1);
-      const progressionOk = isShipUnlockedInCurrentJourney(ship) && (ship.tier === 0 || state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) && state.prestiges >= prestigeReq && state.pirateLevel >= ship.levelReq;
+      const progressionOk = getShipProgressionIssues(ship).length === 0;
       insertMissingPurchasePanel(button, ship.costs, { kind: "ship", id }, progressionOk);
     });
     $$("[data-buy-pet]", root).forEach(button => {
@@ -7646,8 +7658,8 @@
     if (kind === "skill" && SKILL_META[id] && isSkillUnlocked(id)) return { cost: getSkillCost(id), label: `${SKILL_META[id].name} nivel ${state.skills[id].level + 1}`, execute: () => upgradeSkill(id) };
     if (kind === "equipment" && EQUIPMENT_META[id] && !state.equipment[id]) return { cost: EQUIPMENT_META[id].costs, label: EQUIPMENT_META[id].name, execute: () => craftEquipment(id) };
     if (kind === "ship" && SHIPS[id] && !state.ownedShips.includes(id)) {
-      const lockIssue = getShipMapLockIssue(SHIPS[id]);
-      return { cost: SHIPS[id].costs, label: SHIPS[id].name, blocked: Boolean(lockIssue), blockedMessage: lockIssue ? "Este barco ainda não foi desbloqueado nesta jornada." : "", execute: () => buyShip(id) };
+      const issues = getShipProgressionIssues(SHIPS[id]);
+      return { cost: SHIPS[id].costs, label: SHIPS[id].name, blocked: issues.length > 0, blockedMessage: issues.length ? `Compra bloqueada: ${issues.join(" • ")}.` : "", execute: () => buyShip(id) };
     }
     if (kind === "pet" && PETS[id] && !state.ownedPets.includes(id)) return { cost: PETS[id].costs, label: PETS[id].name, execute: () => buyPet(id) };
     return null;
@@ -8695,6 +8707,41 @@
     return SHIPS[getHighestOwnedShipId() + 1] || null;
   }
 
+  function getShipEnemyKills(shipId = state.shipId) {
+    return Math.max(0, Math.floor(Number(state.shipEnemyKills?.[shipId]) || 0));
+  }
+
+  function addShipEnemyKills(shipId = state.shipId, count = 1) {
+    const id = Math.floor(Number(shipId));
+    const amount = Math.max(0, Math.floor(Number(count) || 0));
+    if (!SHIPS[id] || amount <= 0) return;
+    if (!state.shipEnemyKills || typeof state.shipEnemyKills !== "object") state.shipEnemyKills = {};
+    state.shipEnemyKills[id] = getShipEnemyKills(id) + amount;
+  }
+
+  function getShipUnlockKillProgress(shipOrId) {
+    const targetId = typeof shipOrId === "object" ? Number(shipOrId?.id) : Number(shipOrId);
+    const sourceId = targetId - 1;
+    const count = getShipEnemyKills(sourceId);
+    return {
+      sourceId,
+      count,
+      required: SHIP_UNLOCK_KILL_REQUIREMENT,
+      remaining: Math.max(0, SHIP_UNLOCK_KILL_REQUIREMENT - count),
+      complete: count >= SHIP_UNLOCK_KILL_REQUIREMENT
+    };
+  }
+
+  function getShipKillLockIssue(ship) {
+    if (!ship || state.ownedShips.includes(ship.id)) return "";
+    const progress = getShipUnlockKillProgress(ship);
+    const sourceShip = SHIPS[progress.sourceId];
+    if (!sourceShip || !state.ownedShips.includes(progress.sourceId)) return "";
+    if (state.shipId !== progress.sourceId) return `Equipe ${sourceShip.name} para liberar o próximo navio`;
+    if (progress.complete) return "";
+    return `Vitórias com ${sourceShip.name}: ${Math.min(progress.required, progress.count)} / ${progress.required}`;
+  }
+
   function getOwnedShipIds() {
     return [...new Set(state.ownedShips)].filter(id => SHIPS[id]).sort((a, b) => a - b);
   }
@@ -8765,6 +8812,8 @@
     const issues = [];
     const mapLockIssue = getShipMapLockIssue(ship);
     if (mapLockIssue) issues.push(mapLockIssue);
+    const killLockIssue = getShipKillLockIssue(ship);
+    if (killLockIssue) issues.push(killLockIssue);
     const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
     if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
     const prestigeReq = Math.max(0, ship.tier - 1);
@@ -9895,12 +9944,14 @@
     if (!isShipUnlockedInCurrentJourney(ship)) return toast("Este barco ainda não foi desbloqueado nesta jornada.", "danger-toast");
     const nextShip = getNextFleetShip();
     if (!nextShip || ship.id !== nextShip.id) return toast("A frota evolui em sequência: compre o próximo barco da lista.", "danger-toast");
+    const killLockIssue = getShipKillLockIssue(ship);
+    if (killLockIssue) return toast(`Libere o próximo navio: ${killLockIssue}.`, "danger-toast");
     if (ship.tier >= 1 && !state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) return toast("Conclua o prólogo da Era Primitiva para acessar navios piratas.", "danger-toast");
     const prestigeReq = Math.max(0, ship.tier - 1);
     if (state.prestiges < prestigeReq) return toast(`Tier ${ship.tier} requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}.`, "danger-toast");
     if (state.pirateLevel < ship.levelReq) return toast(`Requer nível ${ship.levelReq} para comprar ${ship.name}.`, "danger-toast");
     if (!canAfford(ship.costs)) return toast("Ainda falta Gold para construir este navio.", "danger-toast");
-    spend(ship.costs); state.ownedShips.push(id); setActiveShip(id);
+    spend(ship.costs); state.ownedShips.push(id); state.shipEnemyKills[id] = getShipEnemyKills(id); setActiveShip(id);
     trackAction("shipSwitch");
     scene.celebrateCaptain(2.5);
     toast(`${ship.name} foi construído e equipado!`, "gold-toast"); addLog(`${ship.name} agora lidera sua frota.`, "loot"); commitGame(true);

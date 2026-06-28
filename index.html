@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=98">
+  <link rel="stylesheet" href="styles.css?v=100">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -81,13 +81,43 @@
           </div>
         </div>
 
-        <nav class="bottom-nav" aria-label="Navegação principal">
-          <button class="active" data-screen-target="home" aria-label="Combate"><span>⚔</span><strong>Combate</strong></button>
-          <button data-screen-target="upgrades" aria-label="Navio"><span>⚒</span><strong>Navio</strong></button>
-          <button data-screen-target="maps" aria-label="Mapas"><span>⌖</span><strong>Mapas</strong></button>
-          <button data-screen-target="captain" aria-label="Capitão"><span>★</span><strong>Capitão</strong></button>
-          <button data-screen-target="prestige" aria-label="Prestígio"><span>☠</span><strong>Prestígio</strong></button>
-          <button data-screen-target="stats" aria-label="Estatísticas"><span>▥</span><strong>Stats</strong></button>
+        <nav class="bottom-nav main-tabs" aria-label="Navegação principal">
+          <button class="tab-item active" data-screen-target="home" aria-label="Combate">
+            <picture>
+              <source media="(max-width: 768px)" srcset="assets/ui/tabs/mobile/icon_combate_square.png">
+              <img src="assets/ui/tabs/web/tab_combate.png" alt="" draggable="false">
+            </picture>
+          </button>
+          <button class="tab-item" data-screen-target="upgrades" aria-label="Navio">
+            <picture>
+              <source media="(max-width: 768px)" srcset="assets/ui/tabs/mobile/icon_navio_square.png">
+              <img src="assets/ui/tabs/web/tab_navio.png" alt="" draggable="false">
+            </picture>
+          </button>
+          <button class="tab-item" data-screen-target="maps" aria-label="Mapa">
+            <picture>
+              <source media="(max-width: 768px)" srcset="assets/ui/tabs/mobile/icon_mapa_square.png">
+              <img src="assets/ui/tabs/web/tab_mapa.png" alt="" draggable="false">
+            </picture>
+          </button>
+          <button class="tab-item" data-screen-target="captain" aria-label="Capitão">
+            <picture>
+              <source media="(max-width: 768px)" srcset="assets/ui/tabs/mobile/icon_capitao_square.png">
+              <img src="assets/ui/tabs/web/tab_capitao.png" alt="" draggable="false">
+            </picture>
+          </button>
+          <button class="tab-item" data-screen-target="prestige" aria-label="Prestígio">
+            <picture>
+              <source media="(max-width: 768px)" srcset="assets/ui/tabs/mobile/icon_prestigio_square.png">
+              <img src="assets/ui/tabs/web/tab_prestigio.png" alt="" draggable="false">
+            </picture>
+          </button>
+          <button class="tab-item" data-screen-target="stats" aria-label="Status">
+            <picture>
+              <source media="(max-width: 768px)" srcset="assets/ui/tabs/mobile/icon_status_square.png">
+              <img src="assets/ui/tabs/web/tab_status.png" alt="" draggable="false">
+            </picture>
+          </button>
         </nav>
       </section>
 
@@ -358,6 +388,6 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=168"></script>
+  <script src="game.js?v=169"></script>
 </body>
 </html>

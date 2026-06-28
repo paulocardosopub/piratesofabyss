@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v163-compact-combat-hud";
+const CACHE = "pirates-abyss-v165-tab-icons-ship-kills";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=98",
-  "game.js?v=168",
+  "styles.css?v=100",
+  "game.js?v=169",
   "icon.svg",
   "manifest.webmanifest"
 ];
