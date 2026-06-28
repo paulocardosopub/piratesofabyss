@@ -1996,6 +1996,7 @@
   let prestigeConfirmationStage = 0;
   const leaderboardState = { status: "idle", entries: [], error: "", loadingPromise: null, lastLoadedAt: 0 };
   const arenaState = { expanded: false, status: "idle", opponents: [], error: "", loadingPromise: null, lastLoadedAt: 0, battle: null, previousCombat: null, result: null };
+  let leaderboardActiveTab = "ranking";
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
   let lastCaptainEquipmentUpgrade = null;
@@ -2551,10 +2552,32 @@
     return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
   }
 
+  function renderLeaderboardTabs() {
+    const active = leaderboardActiveTab === "arena" ? "arena" : "ranking";
+    $$("[data-leaderboard-tab]").forEach(button => {
+      const selected = button.dataset.leaderboardTab === active;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-selected", selected ? "true" : "false");
+    });
+    $("#leaderboard-ranking-panel")?.classList.toggle("hidden", active !== "ranking");
+    $("#leaderboard-ranking-panel")?.classList.toggle("active", active === "ranking");
+    $("#leaderboard-arena-panel")?.classList.toggle("hidden", active !== "arena");
+    $("#leaderboard-arena-panel")?.classList.toggle("active", active === "arena");
+    $("#leaderboard-refresh")?.classList.toggle("hidden", active !== "ranking");
+  }
+
+  function selectLeaderboardTab(tab) {
+    leaderboardActiveTab = tab === "arena" ? "arena" : "ranking";
+    renderLeaderboardTabs();
+    renderLeaderboard();
+    renderArenaPanel();
+  }
+
   function renderLeaderboard() {
     const status = $("#leaderboard-status");
     const list = $("#leaderboard-list");
     if (!status || !list) return;
+    renderLeaderboardTabs();
     const refresh = $("#leaderboard-refresh");
     if (refresh) refresh.disabled = leaderboardState.status === "loading";
     list.innerHTML = "";
@@ -2783,6 +2806,10 @@
     return ARENA_BOT_DEFINITIONS.map((definition, index) => normalizeArenaOpponent(createArenaBotSnapshot(definition), index));
   }
 
+  function sortArenaOpponentsByPower(opponents = []) {
+    return [...opponents].sort((a, b) => (a.combat_power * (1 + a.sort_jitter)) - (b.combat_power * (1 + b.sort_jitter)));
+  }
+
   function pickArenaBotOpponents(count) {
     const bots = getArenaBotOpponents();
     if (count <= 0) return [];
@@ -2814,12 +2841,11 @@
         seen.add(opponent.player_id);
         return true;
       })
+      .sort((a, b) => (b.combat_power * (1 + b.sort_jitter)) - (a.combat_power * (1 + a.sort_jitter)))
       .slice(0, ARENA_OPPONENT_LIMIT);
     const bots = pickArenaBotOpponents(Math.max(0, ARENA_OPPONENT_LIMIT - real.length)).filter(bot => !seen.has(bot.player_id));
-    const combined = [...real, ...bots];
-    return combined
-      .sort((a, b) => (a.combat_power * (1 + a.sort_jitter)) - (b.combat_power * (1 + b.sort_jitter)))
-      .slice(0, Math.max(ARENA_MIN_OPPONENTS, ARENA_OPPONENT_LIMIT));
+    const combined = [...sortArenaOpponentsByPower(real), ...sortArenaOpponentsByPower(bots)];
+    return combined.slice(0, Math.max(ARENA_MIN_OPPONENTS, ARENA_OPPONENT_LIMIT));
   }
 
   async function refreshArenaOpponents(options = {}) {
@@ -7468,6 +7494,7 @@
     const homeLogs = state.logs.slice(0, 5);
     $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
     renderLeaderboard();
+    renderArenaPanel();
     if (currentScreen === "home") refreshLeaderboard();
     renderSkillDock();
   }
@@ -8523,28 +8550,38 @@
   }
 
   function arenaOpponentCardHtml(opponent) {
-    return `<article class="arena-opponent-card">
-      <div class="arena-opponent-top">
-        <div><span class="eyebrow">PRESTÍGIO ${formatNumber(opponent.prestige_count)}</span><h3>${escapeHtml(opponent.pirate_name)}</h3><p>Barco: ${escapeHtml(opponent.ship_name)} • Nv. ${formatNumber(opponent.ship_level)}</p></div>
-        ${opponent.is_bot ? `<span class="arena-bot-badge">Bot</span>` : ""}
+    const attackSpeed = (opponent.attack_interval_ms / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+    const badge = opponent.is_bot ? `<span class="arena-bot-badge">Bot</span>` : `<span class="arena-real-badge">Real</span>`;
+    return `<article class="arena-opponent-card arena-opponent-row ${opponent.is_bot ? "is-bot" : "is-real"}">
+      <div class="arena-opponent-icon" aria-hidden="true">${opponent.is_bot ? "☠" : "★"}</div>
+      <div class="arena-opponent-main">
+        <div class="arena-opponent-title"><h3>${escapeHtml(opponent.pirate_name)}</h3>${badge}</div>
+        <p>Prestígio ${formatNumber(opponent.prestige_count)} • ${escapeHtml(opponent.ship_name)} • Nv. ${formatNumber(opponent.ship_level)}</p>
+        <div class="arena-opponent-stats">
+          <div><span>HP</span><strong>${formatNumber(opponent.max_hp)}</strong></div>
+          <div><span>Dano</span><strong>${formatNumber(opponent.damage)}</strong></div>
+          <div><span>Ataque</span><strong>${attackSpeed}s</strong></div>
+          <div><span>Poder</span><strong>${formatNumber(opponent.combat_power)}</strong></div>
+        </div>
       </div>
-      <div class="arena-opponent-stats">
-        <span>HP<strong>${formatNumber(opponent.max_hp)}</strong></span>
-        <span>Dano<strong>${formatNumber(opponent.damage)}</strong></span>
-        <span>Ataque<strong>${(opponent.attack_interval_ms / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}s</strong></span>
-        <span>Poder<strong>${formatNumber(opponent.combat_power)}</strong></span>
+      <div class="arena-opponent-action">
+        <button class="button primary" type="button" data-arena-challenge="${escapeHtml(opponent.player_id)}">Desafiar</button>
       </div>
-      <button class="button primary" type="button" data-arena-challenge="${escapeHtml(opponent.player_id)}">Desafiar</button>
     </article>`;
   }
 
   function renderArenaPanel() {
     const toggle = $("#arena-toggle");
+    const refresh = $("#arena-refresh");
     const status = $("#arena-status");
     const list = $("#arena-list");
     if (!toggle || !status || !list) return;
     toggle.textContent = arenaState.expanded ? "Ocultar Arena" : "Desafiar Jogador";
     toggle.disabled = arenaState.status === "loading";
+    if (refresh) {
+      refresh.disabled = arenaState.status === "loading";
+      refresh.textContent = arenaState.status === "loading" ? "Atualizando..." : "Atualizar";
+    }
     list.classList.toggle("hidden", !arenaState.expanded);
     if (!arenaState.expanded) {
       status.textContent = "Clique para buscar inimigos da Arena.";
@@ -9124,6 +9161,10 @@
     }
     const target = event.target.closest("button");
     if (!target) return;
+    if (target.dataset.leaderboardTab) {
+      selectLeaderboardTab(target.dataset.leaderboardTab);
+      return;
+    }
     if (target.dataset.manualBasicAttackTutorial !== undefined) {
       if (!manualShipAttack()) toast("Toque no barco quando houver alvo vivo.", "danger-toast");
       else commitGame(false);
@@ -9143,6 +9184,12 @@
     }
     if (target.id === "arena-toggle") {
       toggleArenaPanel();
+      return;
+    }
+    if (target.id === "arena-refresh") {
+      arenaState.expanded = true;
+      renderArenaPanel();
+      refreshArenaOpponents({ force: true });
       return;
     }
     if (target.dataset.arenaChallenge) {

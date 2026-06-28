@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=71">
+  <link rel="stylesheet" href="styles.css?v=72">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -110,8 +110,25 @@
               <div><span class="eyebrow">RANKING ONLINE</span><h2>Ranking dos Piratas</h2><p>Jogadores que já realizaram Prestígio</p></div>
               <button class="button" id="leaderboard-refresh" type="button">Atualizar</button>
             </div>
-            <div class="leaderboard-status" id="leaderboard-status">Carregando ranking...</div>
-            <div class="leaderboard-list" id="leaderboard-list"></div>
+            <div class="leaderboard-tabs" role="tablist" aria-label="Ranking e Arena">
+              <button class="active" type="button" data-leaderboard-tab="ranking">Ranking</button>
+              <button type="button" data-leaderboard-tab="arena">Arena</button>
+            </div>
+            <div class="leaderboard-panel active" id="leaderboard-ranking-panel">
+              <div class="leaderboard-status" id="leaderboard-status">Carregando ranking...</div>
+              <div class="leaderboard-list" id="leaderboard-list"></div>
+            </div>
+            <div class="leaderboard-panel hidden" id="leaderboard-arena-panel">
+              <div class="arena-heading compact">
+                <div><span class="eyebrow">ARENA PVP ASSÍNCRONA</span><h3>Arena dos Piratas</h3><p>Desafie navios salvos no ranking.</p></div>
+                <div class="arena-actions">
+                  <button class="button primary" id="arena-toggle" type="button">Desafiar Jogador</button>
+                  <button class="button" id="arena-refresh" type="button">Atualizar</button>
+                </div>
+              </div>
+              <div class="arena-status" id="arena-status">Clique para buscar inimigos da Arena.</div>
+              <div class="arena-list hidden" id="arena-list"></div>
+            </div>
           </article>
 
           <article class="card log-card">
@@ -225,14 +242,6 @@
           <article class="card stats-card"><span class="eyebrow">PROGRESSÃO</span><div class="stats-list" id="progression-stats"></div></article>
           <article class="card stats-card wide"><span class="eyebrow">CARREIRA</span><div class="career-grid" id="career-stats"></div></article>
         </div>
-        <article class="card arena-card">
-          <div class="arena-heading">
-            <div><span class="eyebrow">ARENA PVP ASSÍNCRONA</span><h2>Arena dos Piratas</h2><p>Desafie navios de outros jogadores que já realizaram Prestígio.</p></div>
-            <button class="button primary" id="arena-toggle" type="button">Desafiar Jogador</button>
-          </div>
-          <div class="arena-status" id="arena-status">Clique para buscar inimigos da Arena.</div>
-          <div class="arena-list hidden" id="arena-list"></div>
-        </article>
         <div class="danger-zone">
           <div><strong>Novo começo</strong><span>Apaga todo o progresso salvo neste dispositivo.</span></div>
           <button class="button danger" id="wipe-button">Apagar progresso</button>
@@ -305,6 +314,6 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=143"></script>
+  <script src="game.js?v=144"></script>
 </body>
 </html>
