@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v166-mobile-icons-cleanup";
+const CACHE = "pirates-abyss-v169-combat-preload-mobile-maps";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=101",
-  "game.js?v=170",
+  "styles.css?v=104",
+  "game.js?v=172",
   "icon.svg",
   "manifest.webmanifest",
   "assets/ui/tabs/mobile/icon_combate_square.png",
@@ -11,7 +11,10 @@ const APP_SHELL = [
   "assets/ui/tabs/mobile/icon_mapa_square.png",
   "assets/ui/tabs/mobile/icon_capitao_square.png",
   "assets/ui/tabs/mobile/icon_prestigio_square.png",
-  "assets/ui/tabs/mobile/icon_status_square.png"
+  "assets/ui/tabs/mobile/icon_status_square.png",
+  "assets/maps/mapa_idle_mobile.jpg",
+  "assets/maps/jornada_pirata_parte1_mobile.jpg",
+  "assets/maps/jornada_pirata_parte2_mobile.jpg"
 ];
 
 self.addEventListener("install", event => {

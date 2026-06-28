@@ -135,11 +135,34 @@
     if (!sprite.image) sprite.image = createLazyImage();
     if (!sprite.requested) {
       sprite.requested = true;
-      sprite.image.onload = () => onLoad?.(sprite);
-      sprite.image.onerror = () => { sprite.loadFailed = true; };
+      sprite.loadPromise = new Promise(resolve => {
+        sprite.image.onload = () => {
+          sprite.loaded = true;
+          onLoad?.(sprite);
+          resolve(true);
+        };
+        sprite.image.onerror = () => {
+          sprite.loadFailed = true;
+          resolve(false);
+        };
+      });
       sprite.image.src = src;
     }
     return sprite.image;
+  }
+
+  const preloadedImages = new Map();
+  function preloadImageUrl(src) {
+    if (!src) return Promise.resolve(false);
+    if (preloadedImages.has(src)) return preloadedImages.get(src);
+    const promise = new Promise(resolve => {
+      const image = createLazyImage();
+      image.onload = () => resolve(true);
+      image.onerror = () => resolve(false);
+      image.src = src;
+    });
+    preloadedImages.set(src, promise);
+    return promise;
   }
 
   const RESOURCE_META = {
@@ -346,6 +369,7 @@
     region.fixedBackgroundFile = file;
   });
   const PROLOGUE_MAP_ASSET = "assets/maps/mapa_idle_animado_barquinho_agua_vento.gif";
+  const PROLOGUE_MAP_MOBILE_ASSET = "assets/maps/mapa_idle_mobile.jpg";
   const PROLOGUE_MAP_POINTS = [
     {
       id: "lagoa-primeiros-remadores",
@@ -404,6 +428,7 @@
       title: "Jornada Pirata - Parte 1",
       subtitle: "Mapas 6 a 10",
       asset: "assets/maps/jornada_pirata_parte1_animado.gif",
+      mobileAsset: "assets/maps/jornada_pirata_parte1_mobile.jpg",
       alt: "Mapa animado da Jornada Pirata parte 1",
       points: [
         { id: "costa-naufragos", mapIndex: 6, x: 0, y: 7, width: 36, height: 35, shape: "polygon(0 0, 77% 0, 100% 64%, 68% 100%, 12% 89%, 0 58%)" },
@@ -418,6 +443,7 @@
       title: "Jornada Pirata - Parte 2",
       subtitle: "Mapas 11 a 15",
       asset: "assets/maps/jornada_pirata_parte2_animado.gif",
+      mobileAsset: "assets/maps/jornada_pirata_parte2_mobile.jpg",
       alt: "Mapa animado da Jornada Pirata parte 2",
       points: [
         { id: "triangulo-maldito", mapIndex: 11, x: 0, y: 4, width: 38, height: 38, shape: "polygon(0 0, 76% 0, 100% 57%, 78% 100%, 8% 86%, 0 48%)" },
@@ -428,6 +454,21 @@
       ]
     }
   ];
+  const MAP_BOARD_ASSETS = [
+    { asset: PROLOGUE_MAP_ASSET, mobileAsset: PROLOGUE_MAP_MOBILE_ASSET },
+    ...JOURNEY_MAP_PARTS.map(({ asset, mobileAsset }) => ({ asset, mobileAsset }))
+  ];
+  const MOBILE_ASSET_MEDIA = "(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)";
+
+  function prefersMobileMapAssets() {
+    return window.matchMedia?.(MOBILE_ASSET_MEDIA)?.matches;
+  }
+
+  function preloadMapBoardAssets() {
+    const useMobileAssets = prefersMobileMapAssets();
+    const assets = MAP_BOARD_ASSETS.map(item => useMobileAssets ? item.mobileAsset || item.asset : item.asset);
+    return Promise.allSettled(assets.map(preloadImageUrl));
+  }
 
   const loadSceneSprite = src => {
     return { image: createLazyImage(), src, requested: false, loadFailed: false };
@@ -4767,9 +4808,16 @@
   }
 
   const PRELOAD_REGION_LOOKAHEAD = 1;
+  const COMBAT_ASSET_PRELOAD_TIMEOUT_MS = 6500;
   const preloadedRegionAssets = new Set();
   const pendingRegionPreloads = new Set();
   let regionPreloadScheduled = false;
+  const combatAssetPreload = {
+    key: "",
+    loading: false,
+    ready: false,
+    promise: null
+  };
 
   function preloadRegionAssets(regionIndex) {
     const index = Math.floor(Number(regionIndex));
@@ -4806,6 +4854,91 @@
   function scheduleNearbyRegionPreload() {
     const current = clamp(Math.floor(Number(state.regionIndex) || 0), 0, REGIONS.length - 1);
     for (let offset = 0; offset <= PRELOAD_REGION_LOOKAHEAD; offset += 1) queueRegionPreload(current + offset);
+  }
+
+  function getCombatAssetPreloadKey(regionIndex = state.regionIndex) {
+    return `${Math.floor(Number(regionIndex) || 0)}:${state.shipId}:${state.equippedPetId ?? "none"}`;
+  }
+
+  function collectCriticalCombatAssetSprites(regionIndex = state.regionIndex) {
+    const index = clamp(Math.floor(Number(regionIndex) || 0), 0, REGIONS.length - 1);
+    const sprites = [];
+    const addSprite = sprite => {
+      if (sprite && !sprites.includes(sprite)) sprites.push(sprite);
+    };
+
+    addSprite(getFixedBackgroundSprite(REGIONS[index]));
+
+    const shipSprite = getPlayerShipSpritesheet(SHIPS[state.shipId]?.name);
+    if (shipSprite) {
+      requestPlayerShipSpritesheet(shipSprite);
+      addSprite(shipSprite);
+    }
+
+    const enemyNames = new Set((REGION_ENCOUNTERS[index] || []).map(enemy => enemy.name).filter(Boolean));
+    if (REGIONS[index]?.boss) enemyNames.add(REGIONS[index].boss);
+    enemyNames.forEach(name => {
+      const sprite = getEnemyAnimatedSpritesheet(name, index);
+      if (sprite) {
+        requestEnemySpritesheet(sprite);
+        addSprite(sprite);
+      }
+    });
+
+    const pet = getEquippedPet();
+    const petSprite = pet ? getPetSprite(pet.visual) : null;
+    if (petSprite) {
+      requestPetSprite(petSprite);
+      addSprite(petSprite);
+    }
+
+    return sprites;
+  }
+
+  function waitForSpriteAsset(sprite) {
+    if (!sprite || sprite.loadFailed) return Promise.resolve(false);
+    const image = sprite.image;
+    if (image?.complete && image.naturalWidth) return Promise.resolve(true);
+    return sprite.loadPromise || Promise.resolve(Boolean(sprite.ready));
+  }
+
+  function waitForCriticalCombatAssets(sprites) {
+    const waits = sprites.map(waitForSpriteAsset);
+    const timeout = new Promise(resolve => window.setTimeout(resolve, COMBAT_ASSET_PRELOAD_TIMEOUT_MS));
+    return Promise.race([Promise.allSettled(waits), timeout]);
+  }
+
+  function areCriticalCombatAssetsReady() {
+    return combatAssetPreload.key === getCombatAssetPreloadKey() && combatAssetPreload.ready;
+  }
+
+  function beginCombatAssetPreload(options = {}) {
+    const key = getCombatAssetPreloadKey();
+    if (!options.force && combatAssetPreload.key === key && combatAssetPreload.promise) return combatAssetPreload.promise;
+    combatAssetPreload.key = key;
+    combatAssetPreload.loading = true;
+    combatAssetPreload.ready = false;
+    const sprites = collectCriticalCombatAssetSprites();
+    combatAssetPreload.promise = waitForCriticalCombatAssets(sprites).then(() => {
+      if (combatAssetPreload.key !== key) return false;
+      combatAssetPreload.loading = false;
+      combatAssetPreload.ready = true;
+      renderCombatHud();
+      return true;
+    });
+    renderCombatHud();
+    return combatAssetPreload.promise;
+  }
+
+  function ensureCriticalCombatAssetsReady() {
+    if (areCriticalCombatAssetsReady()) return true;
+    beginCombatAssetPreload();
+    return false;
+  }
+
+  function getCombatHudRegionLabel() {
+    const shouldShowLoading = combatAssetPreload.loading && !areCriticalCombatAssetsReady() && state.combat.running && !state.combat.enemy && !isArenaSceneActive();
+    return shouldShowLoading ? "Carregando imagens..." : getActiveCombatRegionLabel();
   }
 
   function createEnemySpriteAnimation(name, regionIndex = state.regionIndex) {
@@ -6948,13 +7081,18 @@
     scene.triggerBossSurpriseAlert();
     toast(BOSS_SURPRISE_MESSAGE, "danger-toast");
     addLog(BOSS_SURPRISE_MESSAGE, "danger-text");
-    pendingSurpriseBossTimer = window.setTimeout(() => {
+    const spawnSurpriseBossWhenReady = () => {
       pendingSurpriseBossTimer = 0;
       if (!canTriggerSurpriseBoss()) return;
+      if (!ensureCriticalCombatAssetsReady()) {
+        pendingSurpriseBossTimer = window.setTimeout(spawnSurpriseBossWhenReady, 350);
+        return;
+      }
       state.combat.spawnTimer = 0;
       spawnEnemy(true, { surprise: true });
       renderAll(false);
-    }, BOSS_SURPRISE_SPAWN_DELAY_MS);
+    };
+    pendingSurpriseBossTimer = window.setTimeout(spawnSurpriseBossWhenReady, BOSS_SURPRISE_SPAWN_DELAY_MS);
     return true;
   }
 
@@ -7026,6 +7164,10 @@
     }
     if (!state.combat.enemy) {
       if (isArenaSceneActive()) return false;
+      if (!ensureCriticalCombatAssetsReady()) {
+        renderCombatHud();
+        return false;
+      }
       state.combat.spawnTimer = 0;
       spawnEnemy(false);
     }
@@ -7472,6 +7614,10 @@
     }
     if (!state.combat.enemy) {
       if (isArenaSceneActive()) return;
+      if (!ensureCriticalCombatAssetsReady()) {
+        state.combat.spawnTimer = 0;
+        return;
+      }
       if (maybeAutoChallengeBoss()) return;
       state.combat.spawnTimer += dt * 1000;
       if (state.combat.spawnTimer >= getSpawnDelay()) { state.combat.spawnTimer = 0; spawnEnemy(false); }
@@ -7813,7 +7959,7 @@
     const region = REGIONS[state.regionIndex];
     const maxHp = getActivePlayerMaxHp(stats);
     $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(state.regionIndex));
-    $("#scene-region").textContent = getActiveCombatRegionLabel();
+    $("#scene-region").textContent = getCombatHudRegionLabel();
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
     $("#player-health-fill").style.width = `${state.combat.playerHp / Math.max(1, maxHp) * 100}%`;
     $("#player-health-text").textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(maxHp)}`;
@@ -8061,7 +8207,7 @@
     const stats = getStats();
     const kills = state.regionKills[state.regionIndex];
     $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(state.regionIndex));
-    $("#scene-region").textContent = getActiveCombatRegionLabel();
+    $("#scene-region").textContent = getCombatHudRegionLabel();
     $("#metric-damage").textContent = formatNumber(stats.damage);
     $("#metric-dps").textContent = formatNumber(stats.dps);
     const speedMetric = $("#metric-speed");
@@ -9170,6 +9316,7 @@
   }
 
   function renderMaps() {
+    preloadMapBoardAssets();
     $("#maps-unlocked").textContent = state.unlockedRegions;
     $("#maps-total").textContent = `de ${REGIONS.length} regiões`;
     const mapStatus = index => {
@@ -9242,8 +9389,8 @@
         <div class="map-action"><button class="button ${status.unlocked && !status.current ? "primary" : ""}" data-select-map="${index}" ${!status.unlocked || status.current ? "disabled" : ""}>${buttonText}</button></div>
       </article>`;
     }).join("");
-    const mapBoardHtml = ({ title, subtitle, asset, alt, points }, sectionClass = "") => `<section class="map-section ${sectionClass}"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="prologue-map-board"><img src="${asset}" alt="${alt}" class="prologue-map-image"><div class="prologue-map-points">${points.map(mapHotspotHtml).join("")}</div></div></section>`;
-    const prologueMapHtml = () => mapBoardHtml({ title: "Prólogo Pré-Histórico", subtitle: "5 mapas iniciais", asset: PROLOGUE_MAP_ASSET, alt: "Mapa animado do prólogo", points: PROLOGUE_MAP_POINTS }, "prologue-map-section");
+    const mapBoardHtml = ({ title, subtitle, asset, mobileAsset, alt, points }, sectionClass = "") => `<section class="map-section ${sectionClass}"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="prologue-map-board"><picture><source media="${MOBILE_ASSET_MEDIA}" srcset="${mobileAsset || asset}"><img src="${asset}" alt="${alt}" class="prologue-map-image" loading="eager" decoding="async" fetchpriority="high"></picture><div class="prologue-map-points">${points.map(mapHotspotHtml).join("")}</div></div></section>`;
+    const prologueMapHtml = () => mapBoardHtml({ title: "Prólogo Pré-Histórico", subtitle: "5 mapas iniciais", asset: PROLOGUE_MAP_ASSET, mobileAsset: PROLOGUE_MAP_MOBILE_ASSET, alt: "Mapa animado do prólogo", points: PROLOGUE_MAP_POINTS }, "prologue-map-section");
     $("#maps-grid").innerHTML = [
       prologueMapHtml(),
       ...JOURNEY_MAP_PARTS.map(part => mapBoardHtml(part, "journey-map-section")),
@@ -10456,6 +10603,7 @@
       trackAction("firstCombat");
       if (state.combat.playerHp <= 0) finishRepair(true);
       if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay();
+      beginCombatAssetPreload();
       if (!isAutoAttackUnlocked()) toast("Auto ataque libera no nível 2 do Capitão. Clique no barco para atacar.", "gold-toast");
       maybeAutoChallengeBoss();
     }
@@ -10483,6 +10631,11 @@
     const issues = endgameRequirementIssues(state.regionIndex);
     state.combat.specialCombatResumeRunning = Boolean(state.combat.running);
     if (issues.length && !automatic) toast("Seu Poder Naval está baixo para esse boss. Recomenda-se evoluir antes de avançar.", "danger-toast");
+    if (!ensureCriticalCombatAssetsReady()) {
+      if (!automatic) toast("Carregando imagens do combate...", "gold-toast");
+      renderAll(false);
+      return false;
+    }
     state.combat.running = true;
     state.hasStarted = true;
     trackAction("firstCombat");
@@ -10554,6 +10707,8 @@
   if (!state.logs.length) addLog(`${SHIPS[state.shipId].name} está pronto para sua primeira patrulha.`);
   renderAll(true);
   refreshLeaderboard({ force: true });
+  beginCombatAssetPreload();
+  preloadMapBoardAssets();
   scheduleNearbyRegionPreload();
   requestAnimationFrame(gameLoop);
 

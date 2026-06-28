@@ -1863,6 +1863,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .map-section-heading span { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .map-section-list { display: grid; gap: 8px; }
 .prologue-map-board { position: relative; overflow: hidden; border: 1px solid rgba(110,239,226,.2); border-radius: 12px; background: radial-gradient(circle at 50% 30%, rgba(53,212,207,.12), rgba(7,27,40,.96) 68%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.035); }
+.prologue-map-board picture { display: block; width: 100%; }
 .prologue-map-image { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: rgba(2,12,18,.62); }
 .prologue-map-points { position: absolute; inset: 0; pointer-events: none; }
 .prologue-map-marker { position: absolute; left: var(--point-x); top: var(--point-y); z-index: 2; width: var(--point-w); height: var(--point-h); padding: 0; border: 0; border-radius: 34% 42% 38% 36%; background: transparent; box-shadow: none; opacity: 1; pointer-events: auto; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent; clip-path: var(--point-shape, inset(0)); -webkit-clip-path: var(--point-shape, inset(0)); }
@@ -2313,7 +2314,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .persistent-combat { top: var(--mobile-combat-top); margin: 0 -2px 13px; }
   .persistent-combat .battle-stage { height: var(--mobile-combat-height); min-height: 0; max-height: none; }
   .battle-stage { height: 58vh; min-height: 430px; max-height: 580px; border-radius: 16px; }
-  .combat-map-title { top: 6px; max-width: calc(100% - 64px); padding: 3px 10px 5px; font-size: 12px; }
+  .combat-map-title { top: 6px; max-width: calc(100% - 64px); padding: 2px 8px 4px; font-size: 9.6px; }
   .combat-map-title::before,
   .combat-map-title::after { display: none; }
   .floating-health { width: clamp(96px, 28vw, 134px); }
@@ -2474,7 +2475,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .captain-topbar-meta small { display: block; font-size: 8px; }
   .captain-topbar-xp { height: 5px; }
   .persistent-combat .battle-stage { height: var(--mobile-combat-height); min-height: 0; }
-  .combat-map-title { max-width: calc(100% - 58px); padding-inline: 8px; font-size: 11px; }
+  .combat-map-title { max-width: calc(100% - 58px); padding-inline: 6px; font-size: 8.8px; }
   .floating-health { width: clamp(86px, 29vw, 118px); }
   .floating-health h2 { font-size: 9px; }
   .manual-attack-tutorial { min-height: 40px; width: min(166px, calc(100% - 78px)); grid-template-columns: 22px minmax(0, 1fr); gap: 6px; padding: 6px 8px; }
@@ -2557,7 +2558,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 @media (orientation: landscape) and (max-height: 560px) and (max-width: 980px) {
   :root {
     --mobile-combat-top: 54px;
-    --mobile-combat-height: clamp(112px, 34vh, 166px);
+    --mobile-combat-height: clamp(98px, 28vh, 138px);
     --mobile-nav-height: 46px;
     --combat-nav-gap: 0px;
     --bottom-nav-height: var(--mobile-nav-height);
@@ -2576,8 +2577,8 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .main-content { padding-top: 6px; }
   .persistent-combat { top: var(--mobile-combat-top); margin: 0 -2px 10px; }
   .persistent-combat .battle-stage { height: var(--mobile-combat-height); min-height: 0; max-height: none; border-radius: 14px; }
-  .persistent-combat .battle-stage.fixed-background { height: clamp(170px, 30vw, 240px); }
-  .combat-map-title { top: 5px; max-width: calc(100% - 82px); padding: 3px 10px 4px; font-size: 12px; }
+  .persistent-combat .battle-stage.fixed-background { height: var(--mobile-combat-height); }
+  .combat-map-title { top: 5px; max-width: calc(100% - 82px); padding: 2px 8px 3px; font-size: 9.6px; }
   .combat-map-title::before,
   .combat-map-title::after { display: none; }
   .floating-health { width: clamp(96px, 18vw, 138px); }
@@ -4630,7 +4631,7 @@ body {
   .topbar {
     height: 54px;
     min-height: 54px;
-    grid-template-columns: minmax(64px, .72fr) minmax(74px, .92fr) minmax(72px, .9fr) minmax(126px, 1.35fr);
+    grid-template-columns: minmax(52px, .62fr) minmax(82px, .95fr) minmax(88px, 1fr) minmax(104px, 1.08fr);
     grid-template-areas: "power gold coins captain";
     gap: 5px;
     padding: 5px 6px;
@@ -4656,8 +4657,8 @@ body {
 
   .topbar .top-power span,
   .topbar .top-resource-name {
-    font-size: 6px;
-    letter-spacing: .04em;
+    font-size: 5.8px;
+    letter-spacing: .02em;
   }
 
   .topbar .top-power strong,
@@ -4673,8 +4674,23 @@ body {
     display: none;
   }
 
+  .topbar .top-resource-chip {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr);
+    align-items: center;
+    gap: 3px;
+  }
+
+  .topbar .top-resource-name {
+    display: block;
+    max-width: none;
+  }
+
   .topbar .resource-symbol {
-    display: none;
+    display: block;
+    width: 14px;
+    font-size: 12px;
+    line-height: 1;
   }
 
   .persistent-combat {
@@ -4692,7 +4708,7 @@ body {
 
 @media (max-width: 380px) {
   .topbar {
-    grid-template-columns: minmax(54px, .7fr) minmax(62px, .86fr) minmax(62px, .86fr) minmax(104px, 1.3fr);
+    grid-template-columns: minmax(48px, .58fr) minmax(76px, .94fr) minmax(82px, 1fr) minmax(92px, 1.02fr);
     gap: 4px;
     padding-inline: 5px;
   }
@@ -4703,7 +4719,9 @@ body {
   }
 
   .topbar .resource-symbol {
-    display: none;
+    display: block;
+    width: 13px;
+    font-size: 11px;
   }
 
   .topbar .captain-topbar {
@@ -5321,6 +5339,27 @@ body {
     min-width: 48px;
     padding-inline: 5px;
     font-size: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .combat-map-title {
+    padding: 2px 8px 4px;
+    font-size: 11.2px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) and (max-width: 980px) {
+  .combat-map-title {
+    padding: 2px 8px 3px;
+    font-size: 11.2px;
+  }
+}
+
+@media (max-width: 390px) {
+  .combat-map-title {
+    padding-inline: 6px;
+    font-size: 10.5px;
   }
 }
 
