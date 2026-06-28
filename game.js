@@ -46,6 +46,7 @@
   const CAPTAIN_HP_REGEN_INTERVAL_SECONDS = 5;
   const AUTO_ATTACK_CAPTAIN_LEVEL_REQUIRED = 2;
   const MANUAL_ATTACK_TUTORIAL_DURATION_MS = 30000;
+  const CAPTAIN_REQUIRED_MESSAGE = "Escolha seu capitão primeiro!";
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -2068,6 +2069,10 @@
     return `${percent.toLocaleString("pt-BR", { maximumFractionDigits: percent < 10 ? 1 : 0 })}%`;
   }
   function isCaptainSelected() { return Boolean(normalizeCaptainGender(state.captainSelectedGender) && state.captainLevel > 0); }
+  function canUpgradeCaptainSystems() { return isCaptainSelected(); }
+  function shouldShowInitialCaptainGate() {
+    return Math.floor(Number(state.pirateLevel || 1)) === 1 && !isCaptainSelected() && Math.floor(Number(state.prestiges || 0)) === 0 && !state.hasStarted;
+  }
   function getCaptainGender() { return normalizeCaptainGender(state.captainSelectedGender); }
   function getCaptainLevel() { return isCaptainSelected() ? clamp(Math.floor(Number(state.captainLevel) || 1), 1, CAPTAIN_MAX_LEVEL) : 0; }
   function getCaptainBonuses(level = getCaptainLevel()) { return getCaptainBonusesForLevel(level); }
@@ -2349,7 +2354,7 @@
   }
 
   function shouldShowManualAttackTutorial(now = Date.now()) {
-    return !isArenaSceneActive() && state.pirateLevel < 2 && !manualAttackTutorialDismissed && now - manualAttackTutorialStartedAt <= MANUAL_ATTACK_TUTORIAL_DURATION_MS;
+    return !shouldShowInitialCaptainGate() && !isArenaSceneActive() && state.pirateLevel < 2 && !manualAttackTutorialDismissed && now - manualAttackTutorialStartedAt <= MANUAL_ATTACK_TUTORIAL_DURATION_MS;
   }
 
   function completeManualAttackTutorial() {
@@ -6989,6 +6994,10 @@
   }
 
   function manualShipAttack() {
+    if (shouldShowInitialCaptainGate()) {
+      toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
+      return false;
+    }
     if (state.combat.repairing || state.combat.playerHp <= 0) return false;
     if (!state.combat.running) {
       state.combat.running = true;
@@ -7032,7 +7041,7 @@
     const meta = CAPTAIN_MANUAL_SKILL_META[key];
     if (!meta) return;
     if (key === CAPTAIN_REPAIR_SKILL_KEY) return castEmergencyRepairSkill();
-    if (!isCaptainSelected()) return toast("Selecione um pirata inicial para liberar Sabotar Inimigo.", "danger-toast");
+    if (!canUpgradeCaptainSystems()) return toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return toast("Sabotar Inimigo precisa de um alvo vivo.", "danger-toast");
     if (enemy.isArena || isArenaBattleActive()) return;
@@ -7053,7 +7062,7 @@
 
   function castEmergencyRepairSkill() {
     const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_REPAIR_SKILL_KEY];
-    if (!isCaptainSelected()) return toast("Selecione um pirata inicial para liberar Reparo de Emergência.", "danger-toast");
+    if (!canUpgradeCaptainSystems()) return toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
     if (isArenaBattleActive()) return toast("Reparo de Emergência indisponível durante a Arena.", "danger-toast");
     if (isArenaBattleWaiting()) return toast(`Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
     if (state.combat.repairing) return toast("Reparo de Emergência já está em andamento.", "danger-toast");
@@ -7973,6 +7982,43 @@
     ].join("");
   }
 
+  function initialCaptainGateCardHtml([gender, meta]) {
+    const level = getCaptainLevelData(1);
+    return `<button class="initial-captain-card" type="button" data-select-captain-gender="${gender}" aria-label="Escolher ${meta.choice}">
+      <span class="initial-captain-card-image">${captainSpriteCanvasHtml(1, gender, "choice")}</span>
+      <span class="initial-captain-card-copy">
+        <span class="eyebrow">CAPITÃO INICIAL</span>
+        <strong>${meta.choice}</strong>
+        <small>${getCaptainName(1, gender)}</small>
+        <span class="initial-captain-card-bonus">${captainLevelBonusText(level)}</span>
+      </span>
+    </button>`;
+  }
+
+  function renderInitialCaptainGate() {
+    const gate = $("#initial-captain-gate");
+    const shell = $(".persistent-combat");
+    const stage = $("#battle-stage");
+    const show = shouldShowInitialCaptainGate();
+    shell?.classList.toggle("captain-gate-active", show);
+    stage?.setAttribute("aria-hidden", show ? "true" : "false");
+    if (!gate) return;
+    gate.classList.toggle("hidden", !show);
+    if (!show) {
+      gate.innerHTML = "";
+      return;
+    }
+    gate.innerHTML = `<section class="initial-captain-gate-panel" aria-labelledby="initial-captain-title">
+      <div class="initial-captain-gate-heading">
+        <span class="eyebrow">COMANDO INICIAL</span>
+        <h2 id="initial-captain-title">Escolha seu Capitão</h2>
+        <p>Seu capitão liderará sua jornada pirata.</p>
+      </div>
+      <div class="initial-captain-options">${Object.entries(CAPTAIN_GENDERS).map(initialCaptainGateCardHtml).join("")}</div>
+    </section>`;
+    renderCaptainPreviewCanvases(gate);
+  }
+
   function renderHome() {
     const region = getActiveCombatRegion();
     const stats = getStats();
@@ -8213,14 +8259,14 @@
       icon: "✦",
       eyebrow: "HABILIDADES MANUAIS DO PIRATA",
       title: "Skills de combate",
-      summary: locked ? "Escolha um Capitão para liberar Sabotar Inimigo e Reparo de Emergência." : `${Object.keys(CAPTAIN_MANUAL_SKILL_META).length} skills • pontos disponíveis ${getAvailableLevelPoints()}`,
+      summary: locked ? CAPTAIN_REQUIRED_MESSAGE : `${Object.keys(CAPTAIN_MANUAL_SKILL_META).length} skills • pontos disponíveis ${getAvailableLevelPoints()}`,
       countLabel: "SKILLS",
       countValue: Object.keys(CAPTAIN_MANUAL_SKILL_META).length
     });
     if (locked) {
       return `<section class="captain-equipment-section captain-manual-skill-section captain-collapsible-section ${captainManualSkillsExpanded ? "expanded" : ""} locked">
         ${toggle}
-        <div class="captain-section-body"><div class="section-heading compact"><div><span class="eyebrow">BLOQUEADO</span><h2>Skills manuais bloqueadas</h2><p>Selecione um pirata inicial para liberar Sabotar Inimigo e Reparo de Emergência no combate.</p></div></div></div>
+        <div class="captain-section-body"><div class="section-heading compact"><div><span class="eyebrow">BLOQUEADO</span><h2>${CAPTAIN_REQUIRED_MESSAGE}</h2><p>Escolha um dos capitães iniciais para liberar Sabotar Inimigo e Reparo de Emergência no combate.</p></div></div></div>
       </section>`;
     }
     syncCaptainRuntimeState(state);
@@ -8280,14 +8326,14 @@
       icon: "◆",
       eyebrow: "ARSENAL DO COMANDO",
       title: "Equipamentos do Capitão",
-      summary: locked ? "Escolha um Capitão para liberar os upgrades de comando." : `${equipmentTierTotal}/${equipmentTierMax} níveis • pontos disponíveis ${getAvailableLevelPoints()}`,
+      summary: locked ? CAPTAIN_REQUIRED_MESSAGE : `${equipmentTierTotal}/${equipmentTierMax} níveis • pontos disponíveis ${getAvailableLevelPoints()}`,
       countLabel: "NÍVEIS",
       countValue: `${equipmentTierTotal}/${equipmentTierMax}`
     });
     if (locked) {
       return `<section class="captain-equipment-section captain-collapsible-section ${captainEquipmentExpanded ? "expanded" : ""} locked">
         ${toggle}
-        <div class="captain-section-body"><div class="section-heading compact"><div><span class="eyebrow">BLOQUEADO</span><h2>Escolha um Capitão para liberar</h2><p>Os equipamentos do Capitão usam Pontos de Nível temporários e melhoram o desempenho do navio.</p></div></div></div>
+        <div class="captain-section-body"><div class="section-heading compact"><div><span class="eyebrow">BLOQUEADO</span><h2>${CAPTAIN_REQUIRED_MESSAGE}</h2><p>Os equipamentos do Capitão usam Pontos de Nível temporários e só podem evoluir depois da escolha.</p></div></div></div>
       </section>`;
     }
     syncCaptainRuntimeState(state);
@@ -9792,6 +9838,7 @@
     renderTopbar();
     renderHome();
     renderCombatHud();
+    renderInitialCaptainGate();
     if (expensive && shouldRenderInactiveScreens()) Object.values(SCREEN_RENDERERS).forEach(render => render());
     else renderScreen();
     setActiveScreen(currentScreen);
@@ -9891,6 +9938,8 @@
     state.captainLevel = 1;
     syncCaptainState(state);
     syncCaptainEquipmentState(state);
+    manualAttackTutorialStartedAt = Date.now();
+    manualAttackTutorialDismissed = false;
     scene.celebrateCaptain(2.4);
     addLog(`${getCaptainName(1, cleanGender)} assumiu o comando permanente.`, "loot");
     toast(`${CAPTAIN_GENDERS[cleanGender].label} escolhido!`, "gold-toast");
@@ -9901,7 +9950,7 @@
     const current = getCurrentCaptain();
     const next = getNextCaptain();
     const cost = getCaptainUpgradeCost();
-    if (!current) return toast("Escolha um Capitão primeiro.", "danger-toast");
+    if (!current) return toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
     if (!next) return toast("O Capitão já está no nível máximo.", "gold-toast");
     if (state.pirateCoins < cost) return toast(`Faltam ${formatNumber(cost - state.pirateCoins)} Moedas Pirata para evoluir o Capitão.`, "danger-toast");
     state.pirateCoins -= cost;
@@ -9914,7 +9963,7 @@
   }
 
   function openCaptainMutinyConfirmation() {
-    if (!isCaptainSelected()) return toast("Escolha um Capitão antes de iniciar um motim.", "danger-toast");
+    if (!canUpgradeCaptainSystems()) return toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
     $("#captain-mutiny-modal").classList.remove("hidden");
   }
 
@@ -9951,7 +10000,7 @@
 
   function upgradeCaptainManualSkill(key = CAPTAIN_MANUAL_SKILL_KEY) {
     const meta = CAPTAIN_MANUAL_SKILL_META[key];
-    if (!isCaptainSelected()) return toast("Selecione um pirata inicial antes de promover skills manuais.", "danger-toast");
+    if (!canUpgradeCaptainSystems()) return toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
     if (!meta) return;
     syncCaptainRuntimeState(state);
     const level = getCaptainManualSkillLevel(key);
@@ -9992,7 +10041,7 @@
   function upgradeCaptainEquipment(key) {
     const meta = CAPTAIN_EQUIPMENT_META[key];
     const next = getNextCaptainEquipmentTierData(key);
-    if (!isCaptainSelected()) return toast("Escolha um Capitão antes de comprar equipamentos.", "danger-toast");
+    if (!canUpgradeCaptainSystems()) return toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
     if (!meta || !next) return toast("Este equipamento já está no tier máximo.", "gold-toast");
     syncCaptainRuntimeState(state);
     const available = getAvailableLevelPoints();
@@ -10053,9 +10102,14 @@
     setActiveScreen(screen);
     renderScreen(screen);
     const appShell = $("#app") || $(".app-shell");
+    const mainContent = $(".main-content");
     if (appShell) {
       appShell.scrollTop = 0;
       appShell.scrollTo?.({ top: 0, behavior: "auto" });
+    }
+    if (mainContent) {
+      mainContent.scrollTop = 0;
+      mainContent.scrollTo?.({ top: 0, behavior: "auto" });
     }
     window.scrollTo?.({ top: 0, behavior: "auto" });
     document.scrollingElement?.scrollTo?.({ top: 0, behavior: "auto" });
@@ -10205,7 +10259,10 @@
       savePirateNameFromInput();
       return;
     }
-    if (target.dataset.selectCaptainGender) selectCaptainGender(target.dataset.selectCaptainGender);
+    if (target.dataset.selectCaptainGender) {
+      selectCaptainGender(target.dataset.selectCaptainGender);
+      return;
+    }
     if (target.dataset.upgradeCaptain !== undefined) upgradeCaptain();
     if (target.dataset.openCaptainMutiny !== undefined) openCaptainMutinyConfirmation();
     if (target.dataset.upgradeCaptainManualSkill) upgradeCaptainManualSkill(target.dataset.upgradeCaptainManualSkill);
@@ -10280,6 +10337,10 @@
   }
 
   function toggleAutoCombat() {
+    if (shouldShowInitialCaptainGate()) {
+      toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
+      return;
+    }
     state.combat.running = !state.combat.running;
     if (state.combat.running) {
       state.hasStarted = true;
@@ -10301,6 +10362,10 @@
 
   function challengeBoss(options = {}) {
     const automatic = Boolean(options?.automatic);
+    if (shouldShowInitialCaptainGate()) {
+      if (!automatic) toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
+      return false;
+    }
     if (isArenaSceneActive()) {
       if (!automatic) toast("Finalize a Arena antes de desafiar bosses do mapa.", "danger-toast");
       return false;

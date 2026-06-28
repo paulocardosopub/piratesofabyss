@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=95">
+  <link rel="stylesheet" href="styles.css?v=97">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -65,6 +65,8 @@
           <button class="combat-exit-button hidden" id="combat-exit-button" type="button" data-exit-special-combat>Sair do combate</button>
           <div class="skill-dock" id="skill-dock" aria-label="Habilidades de combate"></div>
         </div>
+
+        <div class="initial-captain-gate hidden" id="initial-captain-gate" aria-live="polite"></div>
 
         <nav class="bottom-nav" aria-label="Navegação principal">
           <button class="active" data-screen-target="home" aria-label="Combate"><span>⚔</span><strong>Combate</strong></button>
@@ -355,6 +357,6 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=165"></script>
+  <script src="game.js?v=166"></script>
 </body>
 </html>

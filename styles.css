@@ -4569,8 +4569,8 @@ body {
   height: 64px;
   min-height: 64px;
   display: grid;
-  grid-template-columns: 42px minmax(104px, 142px) minmax(118px, 164px) minmax(118px, 164px) minmax(168px, 220px);
-  grid-template-areas: "brand power gold coins captain";
+  grid-template-columns: minmax(104px, 142px) minmax(118px, 164px) minmax(118px, 164px) minmax(168px, 220px);
+  grid-template-areas: "power gold coins captain";
   justify-content: center;
   align-items: center;
   gap: 8px;
@@ -4578,10 +4578,7 @@ body {
 }
 
 .topbar .brand {
-  grid-area: brand;
-  justify-self: center;
-  width: 42px;
-  min-width: 42px;
+  display: none !important;
 }
 
 .topbar .top-power { grid-area: power; }
@@ -4612,20 +4609,9 @@ body {
   .topbar {
     height: 58px;
     min-height: 58px;
-    grid-template-columns: 38px minmax(86px, 112px) minmax(102px, 1fr) minmax(102px, 1fr) minmax(150px, 1.18fr);
+    grid-template-columns: minmax(86px, 112px) minmax(102px, 1fr) minmax(102px, 1fr) minmax(150px, 1.18fr);
     gap: 6px;
     padding: 6px 8px;
-  }
-
-  .topbar .brand {
-    grid-column: auto;
-    width: 38px;
-    min-width: 38px;
-  }
-
-  .topbar .brand-mark {
-    width: 34px;
-    height: 34px;
   }
 
   .topbar .top-power,
@@ -4642,47 +4628,30 @@ body {
 
 @media (max-width: 560px) {
   .topbar {
-    height: 100px;
-    min-height: 100px;
-    grid-template-columns: minmax(74px, .78fr) minmax(76px, .82fr) minmax(150px, 1.45fr);
-    grid-template-areas:
-      "brand power captain"
-      "gold coins captain";
-    gap: 6px;
-    padding: 6px;
-  }
-
-  .topbar .brand {
-    width: 100%;
-    min-width: 0;
-    height: 42px;
-    border: 1px solid rgba(210, 166, 77, .28);
-    border-radius: 8px;
-    background: rgba(8, 29, 42, .82);
-  }
-
-  .topbar .brand-mark {
-    width: 32px;
-    height: 32px;
-  }
-
-  .topbar .top-power,
-  .topbar .top-resources > div {
-    height: 42px;
+    height: 54px;
+    min-height: 54px;
+    grid-template-columns: minmax(64px, .72fr) minmax(74px, .92fr) minmax(72px, .9fr) minmax(126px, 1.35fr);
+    grid-template-areas: "power gold coins captain";
+    gap: 5px;
     padding: 5px 6px;
   }
 
+  .topbar .top-power,
+  .topbar .top-resources > div,
   .topbar .captain-topbar {
-    height: 90px;
-    grid-template-columns: 30px minmax(0, 1fr);
+    height: 42px;
+    padding: 5px;
+  }
+
+  .topbar .captain-topbar {
+    grid-template-columns: 28px minmax(0, 1fr);
     align-content: center;
-    gap: 6px;
-    padding: 8px;
+    gap: 5px;
   }
 
   .topbar .captain-topbar-avatar {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
   }
 
   .topbar .top-power span,
@@ -4704,8 +4673,12 @@ body {
     display: none;
   }
 
+  .topbar .resource-symbol {
+    display: none;
+  }
+
   .persistent-combat {
-    top: 108px;
+    top: 62px;
   }
 
   .skill-dock .skill-orb.locked {
@@ -4719,8 +4692,8 @@ body {
 
 @media (max-width: 380px) {
   .topbar {
-    grid-template-columns: minmax(66px, .72fr) minmax(68px, .78fr) minmax(140px, 1.5fr);
-    gap: 5px;
+    grid-template-columns: minmax(54px, .7fr) minmax(62px, .86fr) minmax(62px, .86fr) minmax(104px, 1.3fr);
+    gap: 4px;
     padding-inline: 5px;
   }
 
@@ -4746,7 +4719,7 @@ body {
 
 @media (max-width: 760px), (pointer: coarse) {
   .toast-region {
-    top: calc(env(safe-area-inset-top, 0px) + 108px);
+    top: calc(env(safe-area-inset-top, 0px) + 62px);
     right: 10px;
     left: 10px;
     display: grid !important;
@@ -4760,6 +4733,260 @@ body {
   .toast-region .toast.repair-cost-toast {
     display: block;
     max-width: none;
+  }
+}
+
+/* Full-viewport shell: topbar and combat touch, body never scrolls behind the game. */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #061421;
+}
+
+.app-shell {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+  overscroll-behavior: none;
+  background: linear-gradient(180deg, #061421, #04111c) !important;
+}
+
+.topbar {
+  position: relative;
+  top: auto;
+  flex: 0 0 auto;
+}
+
+.main-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: linear-gradient(180deg, #061421, #04111c);
+  -webkit-overflow-scrolling: touch;
+}
+
+.persistent-combat {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  width: 100%;
+  margin: 0;
+}
+
+.persistent-combat .battle-stage,
+.initial-captain-gate {
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.persistent-combat.captain-gate-active .battle-stage {
+  display: none;
+}
+
+.initial-captain-gate {
+  height: clamp(260px, 38vh, 470px);
+  min-height: 260px;
+  max-height: 470px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid rgba(136, 217, 215, .24);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(247, 189, 74, .14), transparent 28rem),
+    linear-gradient(180deg, rgba(8, 31, 47, .98), rgba(3, 14, 22, .98));
+}
+
+.initial-captain-gate.hidden {
+  display: none !important;
+}
+
+.initial-captain-gate-panel {
+  width: min(880px, 100%);
+  display: grid;
+  grid-template-columns: minmax(210px, .8fr) minmax(320px, 1.2fr);
+  align-items: center;
+  gap: 18px;
+}
+
+.initial-captain-gate-heading h2 {
+  margin: 4px 0 6px;
+  color: #fff1c9;
+  font: 700 clamp(24px, 3vw, 38px) Georgia, serif;
+}
+
+.initial-captain-gate-heading p {
+  max-width: 280px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.initial-captain-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.initial-captain-card {
+  min-width: 0;
+  min-height: 146px;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(247, 189, 74, .28);
+  border-radius: 8px;
+  color: #edf8f5;
+  background: rgba(8, 29, 42, .78);
+  text-align: left;
+  cursor: pointer;
+}
+
+.initial-captain-card:hover {
+  border-color: rgba(110, 239, 226, .52);
+  background: rgba(12, 45, 60, .86);
+}
+
+.initial-captain-card-image {
+  width: 92px;
+  height: 112px;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  border: 1px solid rgba(247, 189, 74, .24);
+  border-radius: 7px;
+  background: radial-gradient(circle at 50% 34%, rgba(247, 189, 74, .14), transparent 52%), rgba(1, 12, 20, .34);
+}
+
+.initial-captain-card-image .captain-sprite-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.initial-captain-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.initial-captain-card-copy strong,
+.initial-captain-card-copy small,
+.initial-captain-card-bonus {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.initial-captain-card-copy strong {
+  color: #fff1c9;
+  font: 700 18px Georgia, serif;
+  white-space: nowrap;
+}
+
+.initial-captain-card-copy small {
+  color: #dbe6df;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.initial-captain-card-bonus {
+  max-height: 42px;
+  color: var(--gold);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.screen {
+  width: min(1380px, calc(100% - 32px));
+  margin: 16px auto 44px;
+}
+
+@media (max-width: 980px) {
+  .persistent-combat {
+    top: 0;
+    margin: 0;
+  }
+
+  .persistent-combat .battle-stage,
+  .initial-captain-gate {
+    height: var(--mobile-combat-height, clamp(150px, 24vh, 210px));
+    min-height: 0;
+    max-height: none;
+  }
+
+  .screen {
+    width: calc(100% - 24px);
+    margin-top: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .initial-captain-gate {
+    height: max(var(--mobile-combat-height, 178px), 230px);
+    padding: 10px;
+  }
+
+  .initial-captain-gate-panel {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .initial-captain-gate-heading {
+    text-align: center;
+  }
+
+  .initial-captain-gate-heading h2 {
+    font-size: 22px;
+  }
+
+  .initial-captain-gate-heading p {
+    max-width: none;
+    font-size: 11px;
+  }
+
+  .initial-captain-card {
+    min-height: 86px;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 9px;
+    padding: 8px;
+  }
+
+  .initial-captain-card-image {
+    width: 58px;
+    height: 70px;
+  }
+
+  .initial-captain-card-copy strong {
+    font-size: 15px;
+  }
+
+  .initial-captain-card-bonus {
+    display: none;
   }
 }
 
