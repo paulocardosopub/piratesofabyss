@@ -14,6 +14,29 @@ python -m http.server 4173
 
 Depois, acesse `http://localhost:4173`.
 
+## Ranking online
+
+O ranking global usa Supabase por configuração pública no arquivo `online-config.js`.
+
+1. Crie um projeto no Supabase.
+2. Abra o SQL Editor do Supabase e rode `database/supabase-pirate-leaderboard.sql`.
+3. Em `online-config.js`, preencha:
+
+```js
+window.PIRATES_ONLINE_CONFIG = {
+  provider: "supabase",
+  supabaseUrl: "https://SEU-PROJETO.supabase.co",
+  supabaseAnonKey: "SUA_CHAVE_PUBLICA_DO_SUPABASE",
+  tableName: "pirate_leaderboard",
+  readRelationName: "pirate_leaderboard_public",
+  limit: 50
+};
+```
+
+Use apenas a chave publica do Supabase (`anon public`, `publishable key` ou `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`). Nunca coloque a chave `service_role` no frontend.
+
+Se o arquivo estiver vazio ou o Supabase estiver offline, o jogo continua funcionando e a tela de Stats mostra que o ranking online está indisponível. Ao realizar Prestígio, o jogo envia o ranking e salva também `pvp_snapshot` para uma futura Arena PvP assíncrona.
+
 ## Controles
 
 - **Iniciar / Pausar:** controla o combate automático.

@@ -834,6 +834,16 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .section-tabs button { min-height: 38px; padding: 8px 15px; white-space: nowrap; border: 1px solid transparent; border-radius: 9px; color: var(--muted); background: transparent; font-weight: 750; cursor: pointer; }
 .section-tabs button.active { color: var(--cyan-2); border-color: rgba(53,212,207,.22); background: rgba(53,212,207,.08); }
 .captain-page { display: grid; gap: 14px; padding-bottom: calc(var(--bottom-nav-height) + 48px); }
+.captain-identity-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .45fr); gap: 14px; align-items: end; padding: 16px 18px; border: 1px solid rgba(110,239,226,.18); border-radius: var(--radius); background: linear-gradient(145deg, rgba(13,42,59,.92), rgba(7,27,40,.96)); }
+.captain-identity-panel.missing { border-color: rgba(247,189,74,.34); background: linear-gradient(145deg, rgba(93,65,25,.28), rgba(7,27,40,.96)); }
+.captain-identity-panel h2 { margin: 4px 0 6px; font: 700 22px Georgia, serif; color: #f4dfae; }
+.captain-identity-panel p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.captain-identity-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.captain-identity-form label, .captain-identity-form span, .captain-identity-form small { display: block; }
+.captain-identity-form label { color: var(--muted); font-size: 8px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.pirate-name-input { width: 100%; min-height: 40px; margin-top: 5px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; color: #e2ecea; background: rgba(0,0,0,.2); font-size: 14px; font-weight: 750; }
+.pirate-name-input:focus { outline: 2px solid rgba(110,239,226,.25); border-color: rgba(110,239,226,.42); }
+.captain-identity-form small { grid-column: 1 / -1; min-height: 12px; color: var(--muted); font-size: 9px; }
 .captain-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .captain-choice { display: grid; grid-template-columns: minmax(150px, .8fr) 1fr; gap: 18px; align-items: center; padding: 18px; border: 1px solid rgba(247,189,74,.24); border-radius: var(--radius); background: linear-gradient(145deg, rgba(63,63,61,.24), rgba(7,27,40,.96)); }
 .captain-choice .button { grid-column: 1 / -1; }
@@ -1926,6 +1936,18 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .career-grid > div { padding: 16px; text-align: center; border: 1px solid var(--line); border-radius: 11px; background: rgba(0,0,0,.12); }
 .career-grid span { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; }
 .career-grid strong { display: block; margin-top: 5px; color: var(--gold); font-size: 22px; }
+.leaderboard-card { padding: 21px; }
+.leaderboard-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
+.leaderboard-heading h2 { margin: 4px 0 3px; font: 700 22px Georgia, serif; }
+.leaderboard-heading p { margin: 0; color: var(--muted); font-size: 11px; }
+.leaderboard-heading .button { flex: 0 0 auto; min-height: 34px; padding: 7px 12px; }
+.leaderboard-status { min-height: 18px; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
+.leaderboard-list { display: grid; gap: 7px; }
+.leaderboard-row { display: grid; grid-template-columns: 48px minmax(0, 1.25fr) minmax(104px, .7fr) minmax(90px, .55fr); gap: 9px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: rgba(0,0,0,.13); }
+.leaderboard-row.current-player { border-color: rgba(247,189,74,.32); background: rgba(247,189,74,.07); }
+.leaderboard-row strong { color: var(--gold); font-size: 14px; font-variant-numeric: tabular-nums; }
+.leaderboard-row span { min-width: 0; overflow: hidden; color: #dbe8e6; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard-row small { color: var(--muted); font-size: 10px; text-align: right; }
 .danger-zone { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-top: 20px; padding: 16px 20px; border: 1px solid rgba(224,82,82,.18); border-radius: 13px; }
 .danger-zone strong, .danger-zone span { display: block; }
 .danger-zone span { margin-top: 3px; color: var(--muted); font-size: 11px; }
@@ -2092,6 +2114,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .power-seal, .map-counter, .cargo-total, .rank-medallion, .trade-wallet, .prestige-wallet { min-width: 94px; padding: 10px; }
   .section-heading, .section-heading.compact { align-items: flex-start; flex-direction: column; gap: 10px; }
   .section-heading h2 { font-size: 21px; }
+  .captain-identity-panel { grid-template-columns: 1fr; padding: 14px; }
   .captain-choice-grid, .captain-layout { grid-template-columns: 1fr; }
   .captain-choice { grid-template-columns: 118px 1fr; gap: 12px; padding: 14px; }
   .captain-choice-image { height: 158px; }
@@ -2133,6 +2156,10 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .stats-layout { grid-template-columns: 1fr; }
   .stats-card.wide { grid-column: auto; }
   .career-grid { grid-template-columns: repeat(2, 1fr); }
+  .leaderboard-heading { align-items: stretch; flex-direction: column; gap: 10px; }
+  .leaderboard-heading .button { width: 100%; }
+  .leaderboard-row { grid-template-columns: 38px minmax(0, 1fr) minmax(82px, auto); }
+  .leaderboard-row small { grid-column: 2 / -1; text-align: left; }
   .prestige-bonuses > div { grid-template-columns: repeat(3, 1fr); }
   .toast-region { top: 66px; right: 10px; left: 10px; }
   .toast { max-width: none; }
@@ -2168,6 +2195,8 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .page-heading { align-items: flex-start; }
   .page-heading h1 { font-size: 29px; }
   .page-heading p { max-width: 220px; }
+  .captain-identity-form { grid-template-columns: 1fr; }
+  .captain-identity-form .button { width: 100%; }
   .prologue-map-modal-meta { gap: 5px; }
   .prologue-map-modal-actions { gap: 6px; }
   .upgrade-row { grid-template-columns: 44px minmax(0, 1fr); }

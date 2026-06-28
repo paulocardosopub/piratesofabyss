@@ -7,7 +7,7 @@
   <meta name="description" content="Pirates of the Abyss — Idle RPG Naval">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=68">
+  <link rel="stylesheet" href="styles.css?v=69">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -221,6 +221,14 @@
           <article class="card stats-card"><span class="eyebrow">COMBATE</span><div class="stats-list" id="combat-stats"></div></article>
           <article class="card stats-card"><span class="eyebrow">PROGRESSÃO</span><div class="stats-list" id="progression-stats"></div></article>
           <article class="card stats-card wide"><span class="eyebrow">CARREIRA</span><div class="career-grid" id="career-stats"></div></article>
+          <article class="card stats-card wide leaderboard-card">
+            <div class="leaderboard-heading">
+              <div><span class="eyebrow">RANKING ONLINE</span><h2>Ranking dos Piratas</h2><p>Jogadores que já realizaram Prestígio</p></div>
+              <button class="button" id="leaderboard-refresh" type="button">Atualizar</button>
+            </div>
+            <div class="leaderboard-status" id="leaderboard-status">Carregando ranking...</div>
+            <div class="leaderboard-list" id="leaderboard-list"></div>
+          </article>
         </div>
         <div class="danger-zone">
           <div><strong>Novo começo</strong><span>Apaga todo o progresso salvo neste dispositivo.</span></div>
@@ -283,6 +291,7 @@
     </div>
   </div>
 
-  <script src="game.js?v=131"></script>
+  <script src="online-config.js?v=1"></script>
+  <script src="game.js?v=137"></script>
 </body>
 </html>

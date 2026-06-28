@@ -3,6 +3,10 @@
 
   const SAVE_KEY = "pirates-of-the-abyss-save-v1";
   const COMBAT_MINIMIZED_KEY = "pirates-of-the-abyss-combat-minimized";
+  const LEADERBOARD_LIMIT = 50;
+  const PIRATE_NAME_MIN_LENGTH = 3;
+  const PIRATE_NAME_MAX_LENGTH = 20;
+  const PVP_SNAPSHOT_VERSION = 1;
   const OFFLINE_REWARD_RATE = .3;
   const OFFLINE_MODAL_AUTO_HIDE_MS = 5000;
   const COMMON_MONSTER_BALANCE_LAST_REGION = 10;
@@ -52,6 +56,38 @@
   }
 
   installMobileGestureGuards();
+
+  function createPlayerId() {
+    const webCrypto = typeof crypto !== "undefined" ? crypto : null;
+    if (webCrypto?.randomUUID) return webCrypto.randomUUID();
+    const bytes = webCrypto?.getRandomValues ? webCrypto.getRandomValues(new Uint8Array(16)) : null;
+    if (bytes) {
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const hex = [...bytes].map(value => value.toString(16).padStart(2, "0"));
+      return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+    }
+    return `pirate-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+
+  function sanitizePirateName(value = "") {
+    const text = String(value);
+    const normalized = text.normalize ? text.normalize("NFKC") : text;
+    return normalized
+      .replace(/[\u0000-\u001f\u007f<>`"'&]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, PIRATE_NAME_MAX_LENGTH);
+  }
+
+  function isValidPirateName(value = state?.pirateName) {
+    const clean = sanitizePirateName(value);
+    return clean.length >= PIRATE_NAME_MIN_LENGTH && clean.length <= PIRATE_NAME_MAX_LENGTH;
+  }
+
+  function escapeHtml(value = "") {
+    return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[char]));
+  }
 
   function createLazyImage() {
     const image = new Image();
@@ -1730,6 +1766,8 @@
   function createDefaultState() {
     return {
       version: 12,
+      playerId: createPlayerId(),
+      pirateName: "",
       resources: { ouro: 1200 },
       resourcesConvertedToGold: true,
       pirateCoins: 0,
@@ -1818,6 +1856,8 @@
       const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
       if (!saved) return defaults;
       const merged = { ...defaults, ...saved };
+      merged.playerId = typeof saved.playerId === "string" && saved.playerId.trim() ? saved.playerId.trim().slice(0, 80) : createPlayerId();
+      merged.pirateName = sanitizePirateName(saved.pirateName || "");
       merged.resources = { ...defaults.resources, ...(saved.resources || {}) };
       merged.levels = { ...defaults.levels, ...(saved.levels || {}) };
       merged.equipment = { ...defaults.equipment, ...(saved.equipment || {}) };
@@ -1829,6 +1869,7 @@
       const logsNeedSave = normalizeSavedLogText(merged);
       merged.progression = mergeProgression(saved.progression, defaults.progression);
       merged.quests = { completed: { ...(saved.quests?.completed || {}) }, claimed: { ...(saved.quests?.claimed || {}) } };
+      const identityNeedSave = merged.playerId !== saved.playerId || merged.pirateName !== (saved.pirateName || "");
       delete merged.achievements;
       merged.titles = Array.isArray(saved.titles) ? [...new Set(saved.titles)].slice(0, 80) : [];
       merged.combat = { ...defaults.combat, ...(saved.combat || {}), enemy: null, repairing: false, spawnTimer: 0 };
@@ -1867,7 +1908,7 @@
       merged.journeyStartedAt = Number(saved.journeyStartedAt || Date.now());
       merged.maxRegionReached = clamp(Math.max(Number(saved.maxRegionReached || 0), merged.regionIndex), 0, REGIONS.length - 1);
       merged.version = 12;
-      if (resourcesNeedSave || logsNeedSave) {
+      if (resourcesNeedSave || logsNeedSave || identityNeedSave) {
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(merged)); } catch (error) {}
       }
       return merged;
@@ -1918,6 +1959,7 @@
   let pendingTrade = null;
   let pendingMissingPurchase = null;
   let prestigeConfirmationStage = 0;
+  const leaderboardState = { status: "idle", entries: [], error: "", loadingPromise: null, lastLoadedAt: 0 };
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
   let lastCaptainEquipmentUpgrade = null;
@@ -2346,6 +2388,315 @@
   function commitGame(expensive = true) {
     renderAll(expensive);
     saveGame();
+  }
+
+  function getPirateRankTitle(source = state) {
+    const level = Math.floor(Number(source?.pirateLevel || 1));
+    return level >= 50 ? "Lenda Abissal" : level >= 30 ? "Almirante" : level >= 15 ? "Capitão" : level >= 5 ? "Corsário" : "Marujo";
+  }
+
+  function getCaptainPublicTitle(source = state) {
+    return Array.isArray(source?.titles) && source.titles.length ? source.titles[0] : getPirateRankTitle(source);
+  }
+
+  function getOnlineConfig() {
+    const raw = typeof window !== "undefined" ? (window.PIRATES_ONLINE_CONFIG || {}) : {};
+    const supabaseUrl = String(raw.supabaseUrl || raw.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+    const supabaseAnonKey = String(raw.supabaseAnonKey || raw.SUPABASE_ANON_KEY || "").trim();
+    const apiBaseUrl = String(raw.apiBaseUrl || raw.API_BASE_URL || "").trim().replace(/\/+$/, "");
+    const provider = String(raw.provider || (supabaseUrl && supabaseAnonKey ? "supabase" : apiBaseUrl ? "rest" : "")).trim().toLowerCase();
+    return {
+      provider,
+      supabaseUrl,
+      supabaseAnonKey,
+      apiBaseUrl,
+      tableName: String(raw.tableName || "pirate_leaderboard").trim() || "pirate_leaderboard",
+      readRelationName: String(raw.readRelationName || raw.readTableName || "pirate_leaderboard_public").trim() || "pirate_leaderboard_public",
+      limit: clamp(Math.floor(Number(raw.limit || LEADERBOARD_LIMIT)), 1, 100)
+    };
+  }
+
+  function isLeaderboardConfigured(config = getOnlineConfig()) {
+    if (config.provider === "supabase") return Boolean(config.supabaseUrl && config.supabaseAnonKey);
+    if (config.provider === "rest") return Boolean(config.apiBaseUrl);
+    return false;
+  }
+
+  function getLeaderboardSelectColumns() {
+    return [
+      "player_id",
+      "pirate_name",
+      "selected_pirate_id",
+      "selected_pirate_name",
+      "prestige_count",
+      "best_prestige_level",
+      "best_prestige_power",
+      "last_prestige_at",
+      "updated_at"
+    ].join(",");
+  }
+
+  function leaderboardHeaders(config) {
+    if (config.provider !== "supabase") return { "Content-Type": "application/json" };
+    return {
+      "Content-Type": "application/json",
+      "apikey": config.supabaseAnonKey,
+      "Authorization": `Bearer ${config.supabaseAnonKey}`
+    };
+  }
+
+  async function requestLeaderboardRows(config) {
+    if (config.provider === "supabase") {
+      const params = new URLSearchParams({
+        select: getLeaderboardSelectColumns(),
+        best_prestige_level: "gte.1",
+        order: "best_prestige_level.desc,best_prestige_power.desc,prestige_count.desc,last_prestige_at.desc",
+        limit: String(config.limit)
+      });
+      const response = await fetch(`${config.supabaseUrl}/rest/v1/${config.readRelationName}?${params}`, {
+        headers: leaderboardHeaders(config)
+      });
+      if (!response.ok) throw new Error(`Ranking indisponível (${response.status})`);
+      return response.json();
+    }
+    const response = await fetch(`${config.apiBaseUrl}/leaderboard?limit=${config.limit}`);
+    if (!response.ok) throw new Error(`Ranking indisponível (${response.status})`);
+    return response.json();
+  }
+
+  async function sendLeaderboardRow(config, record) {
+    if (config.provider === "supabase") {
+      const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/upsert_pirate_leaderboard`, {
+        method: "POST",
+        headers: leaderboardHeaders(config),
+        body: JSON.stringify({
+          p_player_id: record.player_id,
+          p_pirate_name: record.pirate_name,
+          p_selected_pirate_id: record.selected_pirate_id,
+          p_selected_pirate_name: record.selected_pirate_name,
+          p_prestige_count: record.prestige_count,
+          p_best_prestige_level: record.best_prestige_level,
+          p_best_prestige_power: record.best_prestige_power,
+          p_last_prestige_at: record.last_prestige_at,
+          p_pvp_snapshot: record.pvp_snapshot
+        })
+      });
+      if (!response.ok) throw new Error(`Falha ao enviar ranking (${response.status})`);
+      return;
+    }
+    const response = await fetch(`${config.apiBaseUrl}/leaderboard`, {
+      method: "POST",
+      headers: leaderboardHeaders(config),
+      body: JSON.stringify(record)
+    });
+    if (!response.ok) throw new Error(`Falha ao enviar ranking (${response.status})`);
+  }
+
+  function normalizeLeaderboardRow(row = {}) {
+    return {
+      player_id: String(row.player_id || row.playerId || ""),
+      pirate_name: sanitizePirateName(row.pirate_name || row.pirateName || "Pirata sem nome") || "Pirata sem nome",
+      selected_pirate_name: String(row.selected_pirate_name || row.selectedPirateName || ""),
+      prestige_count: Math.max(0, Math.floor(Number(row.prestige_count ?? row.prestigeCount ?? 0))),
+      best_prestige_level: Math.max(0, Math.floor(Number(row.best_prestige_level ?? row.bestPrestigeLevel ?? row.prestige_count ?? 0))),
+      best_prestige_power: Math.max(0, Math.floor(Number(row.best_prestige_power ?? row.bestPrestigePower ?? 0))),
+      last_prestige_at: row.last_prestige_at || row.lastPrestigeAt || row.updated_at || row.updatedAt || ""
+    };
+  }
+
+  function formatLeaderboardDate(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  }
+
+  function renderLeaderboard() {
+    const status = $("#leaderboard-status");
+    const list = $("#leaderboard-list");
+    if (!status || !list) return;
+    const refresh = $("#leaderboard-refresh");
+    if (refresh) refresh.disabled = leaderboardState.status === "loading";
+    list.innerHTML = "";
+    if (leaderboardState.status === "loading") {
+      status.textContent = "Carregando ranking...";
+      return;
+    }
+    if (leaderboardState.status === "unavailable") {
+      status.textContent = leaderboardState.error || "Ranking online indisponível no momento.";
+      return;
+    }
+    if (!leaderboardState.entries.length) {
+      status.textContent = "Nenhum pirata realizou Prestígio ainda. Seja o primeiro!";
+      return;
+    }
+    status.textContent = "";
+    list.innerHTML = leaderboardState.entries.map((entry, index) => {
+      const prestige = entry.best_prestige_level || entry.prestige_count || 0;
+      const isCurrentPlayer = entry.player_id && entry.player_id === state.playerId;
+      return `<div class="leaderboard-row ${isCurrentPlayer ? "current-player" : ""}">
+        <strong>#${index + 1}</strong>
+        <span>${escapeHtml(entry.pirate_name)}</span>
+        <span>Prestígio ${formatNumber(prestige)}</span>
+        <small>${formatLeaderboardDate(entry.last_prestige_at)}</small>
+      </div>`;
+    }).join("");
+  }
+
+  async function refreshLeaderboard(options = {}) {
+    const config = getOnlineConfig();
+    if (!isLeaderboardConfigured(config)) {
+      leaderboardState.status = "unavailable";
+      leaderboardState.error = "Ranking online indisponível no momento.";
+      renderLeaderboard();
+      return [];
+    }
+    if (leaderboardState.loadingPromise) return leaderboardState.loadingPromise;
+    if (!options.force && leaderboardState.status === "ready" && Date.now() - leaderboardState.lastLoadedAt < 30000) {
+      renderLeaderboard();
+      return leaderboardState.entries;
+    }
+    leaderboardState.status = "loading";
+    leaderboardState.error = "";
+    renderLeaderboard();
+    leaderboardState.loadingPromise = requestLeaderboardRows(config)
+      .then(rows => {
+        const entries = (Array.isArray(rows) ? rows : rows?.entries || []).map(normalizeLeaderboardRow);
+        leaderboardState.entries = entries;
+        leaderboardState.status = "ready";
+        leaderboardState.lastLoadedAt = Date.now();
+        return entries;
+      })
+      .catch(error => {
+        console.warn("Ranking online indisponível.", error);
+        leaderboardState.entries = [];
+        leaderboardState.status = "unavailable";
+        leaderboardState.error = "Ranking online indisponível no momento.";
+        return [];
+      })
+      .finally(() => {
+        leaderboardState.loadingPromise = null;
+        renderLeaderboard();
+      });
+    return leaderboardState.loadingPromise;
+  }
+
+  function buildCaptainEquipmentSnapshot() {
+    return Object.fromEntries(Object.entries(CAPTAIN_EQUIPMENT_META).map(([key, meta]) => [
+      `${key}_level`,
+      getCaptainEquipmentTier(key)
+    ]).concat([
+      ["sword_style_level", getCaptainEquipmentTier("sword")],
+      ["light_hands_level", getCaptainEquipmentTier("lightHands")]
+    ]));
+  }
+
+  function buildPvpSnapshot({ nowIso, nextPrestigeCount, prestigePower }) {
+    const stats = getStats();
+    const ship = SHIPS[state.shipId];
+    const captain = getCurrentCaptain();
+    const pet = getEquippedPet();
+    const manualLevel = getCaptainManualSkillLevel(CAPTAIN_MANUAL_SKILL_KEY);
+    const highestMap = getJourneyMaxUnlockedMap();
+    return {
+      snapshot_version: PVP_SNAPSHOT_VERSION,
+      player_id: state.playerId,
+      pirate_name: sanitizePirateName(state.pirateName),
+      prestige: {
+        prestige_count: nextPrestigeCount,
+        best_prestige_level: nextPrestigeCount,
+        best_prestige_power: prestigePower
+      },
+      captain: {
+        selected_pirate_id: captain ? `captain_${captain.gender}_${captain.level}` : null,
+        selected_pirate_name: captain?.name || null,
+        pirate_level: state.pirateLevel,
+        captain_runtime_level: state.captainRuntimeLevel,
+        captain_title: getCaptainPublicTitle(state)
+      },
+      ship: {
+        ship_id: `ship_${ship.id}`,
+        ship_name: ship.name,
+        ship_level: state.levels.ship,
+        tier: ship.tier,
+        max_hp: stats.maxHp,
+        damage: stats.damage,
+        dps: stats.dps,
+        ship_dps: stats.shipDps,
+        skill_dps: stats.skillDps,
+        pet_dps: stats.petDps,
+        combat_power: stats.power,
+        speed: stats.speed,
+        armor: stats.armor
+      },
+      upgrades: {
+        ship_level: state.levels.ship,
+        cannons_level: state.levels.cannons,
+        hull_level: state.levels.hull,
+        sails_level: state.levels.sails
+      },
+      equipments: {
+        ship_equipment: { ...state.equipment },
+        captain_equipment_levels: buildCaptainEquipmentSnapshot()
+      },
+      skills: {
+        sabotage_enemy_level: manualLevel,
+        sabotage_enemy_multiplier: getCaptainManualSkillMultiplier(CAPTAIN_MANUAL_SKILL_KEY, manualLevel),
+        ship_skill_levels: Object.fromEntries(Object.entries(state.skills).map(([key, skill]) => [key, Math.max(0, Math.floor(Number(skill.level || 0)))]))
+      },
+      pet: pet ? {
+        pet_id: `pet_${pet.id}`,
+        pet_name: pet.name,
+        pet_level: pet.level,
+        dps: Math.round(pet.dps || 0),
+        power: Math.round(pet.power || 0)
+      } : null,
+      permanent_bonuses: {
+        prestige_bonuses: getPrestigeBonuses(),
+        captain_bonuses: { ...state.captainBonuses },
+        titles: Array.isArray(state.titles) ? state.titles.slice(0, 8) : [],
+        owned_pet_ids: state.ownedPets.map(id => `pet_${id}`)
+      },
+      progression: {
+        highest_map_unlocked: highestMap,
+        highest_map_name: REGIONS[highestMap - 1]?.name || null
+      },
+      updated_at: nowIso
+    };
+  }
+
+  function buildLeaderboardPrestigeRecord({ nowIso, nextPrestigeCount, prestigePower }) {
+    const captain = getCurrentCaptain();
+    return {
+      player_id: state.playerId,
+      pirate_name: sanitizePirateName(state.pirateName),
+      selected_pirate_id: captain ? `captain_${captain.gender}_${captain.level}` : null,
+      selected_pirate_name: captain?.name || null,
+      prestige_count: nextPrestigeCount,
+      best_prestige_level: nextPrestigeCount,
+      best_prestige_power: prestigePower,
+      last_prestige_at: nowIso,
+      pvp_snapshot: buildPvpSnapshot({ nowIso, nextPrestigeCount, prestigePower })
+    };
+  }
+
+  async function submitPrestigeLeaderboard(record) {
+    const config = getOnlineConfig();
+    if (!isLeaderboardConfigured(config)) {
+      leaderboardState.status = "unavailable";
+      leaderboardState.error = "Ranking online indisponível no momento.";
+      renderLeaderboard();
+      return;
+    }
+    try {
+      await sendLeaderboardRow(config, record);
+      await refreshLeaderboard({ force: true });
+    } catch (error) {
+      console.warn("Não foi possível atualizar o ranking online.", error);
+      leaderboardState.status = "unavailable";
+      leaderboardState.error = "Ranking online indisponível no momento.";
+      renderLeaderboard();
+      toast("Prestígio salvo localmente. Ranking online indisponível no momento.", "danger-toast");
+    }
   }
 
   function loadCombatMinimizedPreference() {
@@ -6997,15 +7348,89 @@
     </section>`;
   }
 
+  function captainIdentityHtml() {
+    const cleanName = sanitizePirateName(state.pirateName);
+    const missing = !isValidPirateName(cleanName);
+    return `<section class="captain-identity-panel ${missing ? "missing" : ""}">
+      <div>
+        <span class="eyebrow">IDENTIDADE ONLINE</span>
+        <h2>${cleanName ? escapeHtml(cleanName) : "Nome de Pirata"}</h2>
+        <p>${missing ? "Escolha seu Nome de Pirata para aparecer no ranking online." : "Esse nome será usado no Ranking dos Piratas no próximo Prestígio registrado."}</p>
+      </div>
+      <div class="captain-identity-form">
+        <label for="pirate-name-input"><span>Nome de Pirata</span><input class="pirate-name-input" id="pirate-name-input" maxlength="${PIRATE_NAME_MAX_LENGTH}" value="${escapeHtml(cleanName)}" autocomplete="nickname" placeholder="3 a 20 caracteres"></label>
+        <button class="button primary" type="button" data-save-pirate-name>Salvar</button>
+        <small>Mínimo ${PIRATE_NAME_MIN_LENGTH}, máximo ${PIRATE_NAME_MAX_LENGTH} caracteres.</small>
+      </div>
+    </section>`;
+  }
+
+  function updateCaptainIdentityPreview(cleanName = sanitizePirateName(state.pirateName)) {
+    const panel = $(".captain-identity-panel");
+    if (!panel) return;
+    const missing = !isValidPirateName(cleanName);
+    panel.classList.toggle("missing", missing);
+    const title = $("h2", panel);
+    const copy = $("p", panel);
+    if (title) title.textContent = cleanName || "Nome de Pirata";
+    if (copy) copy.textContent = missing
+      ? "Escolha seu Nome de Pirata para aparecer no ranking online."
+      : "Esse nome será usado no Ranking dos Piratas no próximo Prestígio registrado.";
+  }
+
+  function persistPirateNameFromInput({ feedback = false, render = false } = {}) {
+    const input = $("#pirate-name-input");
+    const cleanName = sanitizePirateName(input?.value || "");
+    if (!isValidPirateName(cleanName)) {
+      if (input) input.value = cleanName;
+      if (feedback) toast(`Nome de Pirata precisa ter entre ${PIRATE_NAME_MIN_LENGTH} e ${PIRATE_NAME_MAX_LENGTH} caracteres.`, "danger-toast");
+      return false;
+    }
+    state.pirateName = cleanName;
+    if (input) input.value = cleanName;
+    saveGame();
+    if (render) renderCaptain();
+    else updateCaptainIdentityPreview(cleanName);
+    if (feedback) toast("Nome de Pirata salvo.", "gold-toast");
+    return true;
+  }
+
+  function bindCaptainIdentityControls(root = document) {
+    const input = $("#pirate-name-input", root);
+    const button = $("[data-save-pirate-name]", root);
+    const saveFromControl = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      savePirateNameFromInput();
+    };
+    button?.addEventListener("pointerdown", saveFromControl);
+    button?.addEventListener("click", saveFromControl);
+    input?.addEventListener("input", () => {
+      const cleanName = sanitizePirateName(input.value || "");
+      if (isValidPirateName(cleanName)) persistPirateNameFromInput();
+      else updateCaptainIdentityPreview("");
+    });
+    input?.addEventListener("blur", () => {
+      if (isValidPirateName(input.value || "")) persistPirateNameFromInput();
+    });
+    input?.addEventListener("keydown", event => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      event.stopPropagation();
+      savePirateNameFromInput();
+    });
+  }
+
   function renderCaptain() {
     $("#captain-coins").textContent = formatNumber(state.pirateCoins);
     const content = $("#captain-content");
     const current = getCurrentCaptain();
     if (!current) {
-      content.innerHTML = `<div class="captain-choice-grid">${Object.entries(CAPTAIN_GENDERS).map(([gender, meta]) => {
+      content.innerHTML = `${captainIdentityHtml()}<div class="captain-choice-grid">${Object.entries(CAPTAIN_GENDERS).map(([gender, meta]) => {
         const level = getCaptainLevelData(1);
         return `<article class="captain-choice"><div class="captain-choice-image">${captainSpriteCanvasHtml(1, gender, "choice")}</div><div><span class="eyebrow">VISUAL INICIAL</span><h2>${meta.choice}</h2><p>${getCaptainName(1, gender)}</p><div class="captain-choice-bonuses">${captainLevelBonusText(level)}</div></div><button class="button primary" data-select-captain-gender="${gender}">Escolher</button></article>`;
       }).join("")}</div>${renderCaptainManualSkillSection(true)}${renderCaptainEquipmentSection(true)}`;
+      bindCaptainIdentityControls(content);
       renderCaptainPreviewCanvases(content);
       return;
     }
@@ -7015,7 +7440,7 @@
     const nextPreview = next
       ? `<div class="captain-next"><div class="captain-next-image">${captainSpriteCanvasHtml(next.level, next.gender, "next")}</div><div><span class="eyebrow">PRÓXIMO NÍVEL</span><h3>${next.name}</h3><p>${captainLevelBonusText(next)}</p><strong>☠ ${formatNumber(cost)} Moedas Pirata</strong></div></div>`
       : `<div class="captain-next max"><div><span class="eyebrow">NÍVEL MÁXIMO</span><h3>Pirata lendário completo</h3><p>Todos os bônus permanentes do Capitão estão ativos.</p></div></div>`;
-    content.innerHTML = `<div class="captain-layout">
+    content.innerHTML = `${captainIdentityHtml()}<div class="captain-layout">
       <section class="captain-hero-panel">
         <div class="captain-portrait">${captainSpriteCanvasHtml(current.level, current.gender, "portrait")}</div>
         <div class="captain-hero-copy">
@@ -7034,6 +7459,7 @@
         <div class="captain-mutiny-panel"><div><span class="eyebrow">MOTIM</span><strong>Trocar escolha visual</strong><p>Reseta Capitão, Pontos de Nível e equipamentos. Moedas Pirata investidas no Capitão voltam.</p></div><button class="button danger" data-open-captain-mutiny>Iniciar um Motim</button></div>
       </section>
     </div>${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
+    bindCaptainIdentityControls(content);
     renderCaptainPreviewCanvases(content);
   }
 
@@ -7690,6 +8116,11 @@
 
   function openPrestigeConfirmation() {
     if (!canPrestige()) return toast(`Derrote ${PRESTIGE_BOSS_NAME} em ${PRESTIGE_REGION_NAME} para liberar.`, "danger-toast");
+    if (!isValidPirateName()) {
+      toast("Defina seu Nome de Pirata na tela de Capitão para registrar seu Prestígio no ranking.", "danger-toast");
+      navigate("captain");
+      return;
+    }
     prestigeConfirmationStage = 1;
     $("#prestige-confirm-step").textContent = "CONFIRMAÇÃO 1 DE 2";
     $("#prestige-modal-title").textContent = "Reiniciar esta jornada?";
@@ -7716,16 +8147,22 @@
     if (prestigeConfirmationStage !== 2 || !canPrestige()) return closePrestigeConfirmation();
     const reward = getPrestigeReward();
     const currentPet = getEquippedPet();
+    const nowIso = new Date().toISOString();
+    const nextPrestigeCount = state.prestiges + 1;
+    const prestigePower = getStats().power;
+    const leaderboardRecord = buildLeaderboardPrestigeRecord({ nowIso, nextPrestigeCount, prestigePower });
     const strongestBossIndex = state.bossesDefeated.reduce((best, defeated, index) => defeated ? index : best, 0);
     const entry = {
-      number: state.prestiges + 1, date: new Date().toLocaleDateString("pt-BR"), map: state.maxRegionReached + 1,
-      boss: REGIONS[strongestBossIndex].boss, power: getStats().power, coins: reward,
+      number: nextPrestigeCount, date: new Date(nowIso).toLocaleDateString("pt-BR"), map: state.maxRegionReached + 1,
+      boss: REGIONS[strongestBossIndex].boss, power: prestigePower, coins: reward,
       ship: SHIPS[Math.max(...state.ownedShips)].name, pet: currentPet?.name || null,
       duration: Math.max(0, Math.floor((Date.now() - state.journeyStartedAt) / 1000)),
       activeDuration: Math.max(0, Math.floor(Number(state.lifetime.playSeconds || 0)))
     };
     const permanent = {
-      prestiges: state.prestiges + 1,
+      playerId: state.playerId,
+      pirateName: state.pirateName,
+      prestiges: nextPrestigeCount,
       pirateCoins: state.pirateCoins + reward,
       totalActivePlaySeconds: Math.max(0, Number(state.totalActivePlaySeconds) || 0),
       captainSelectedGender: state.captainSelectedGender,
@@ -7754,6 +8191,7 @@
     closePrestigeConfirmation();
     navigate("prestige");
     commitGame(true);
+    submitPrestigeLeaderboard(leaderboardRecord);
     toast(`Prestígio concluído! +${formatNumber(reward)} Moedas Pirata.`, "gold-toast");
   }
 
@@ -7763,7 +8201,7 @@
     const rewardBonuses = getCaptainEquipmentRewardBonuses();
     const captain = getCurrentCaptain();
     const skillLevels = Object.values(state.skills).reduce((sum, item) => sum + item.level, 0);
-    const rank = state.pirateLevel >= 50 ? "Lenda Abissal" : state.pirateLevel >= 30 ? "Almirante" : state.pirateLevel >= 15 ? "Capitão" : state.pirateLevel >= 5 ? "Corsário" : "Marujo";
+    const rank = getPirateRankTitle(state);
     $("#captain-rank").textContent = rank;
     const list = items => items.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
     $("#combat-stats").innerHTML = list([
@@ -7773,6 +8211,8 @@
       ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
     $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
+    renderLeaderboard();
+    if (currentScreen === "stats") refreshLeaderboard();
   }
 
   const SCREEN_ALIASES = { trade: "upgrades", resources: "upgrades" };
@@ -7896,6 +8336,10 @@
     }
     state.equippedPetId = id; state.combat.petAttackTimer = 0; state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
     toast(`${PETS[id].name} equipado como companheiro.`); commitGame(true);
+  }
+
+  function savePirateNameFromInput() {
+    persistPirateNameFromInput({ feedback: true, render: true });
   }
 
   function selectCaptainGender(gender) {
@@ -8066,7 +8510,8 @@
     currentScreen = screen;
     setActiveScreen(screen);
     renderScreen(screen);
-    ($("#app") || document.scrollingElement)?.scrollTo?.({ top: 0, behavior: "smooth" });
+    window.scrollTo?.({ top: 0, behavior: "auto" });
+    document.scrollingElement?.scrollTo?.({ top: 0, behavior: "auto" });
   }
 
   function handleTradeQuantityButton(target) {
@@ -8168,6 +8613,10 @@
     if (target.dataset.buyPet) buyPet(Number(target.dataset.buyPet));
     if (target.dataset.upgradePet) upgradePet(Number(target.dataset.upgradePet));
     if (target.dataset.equipPet) equipPet(Number(target.dataset.equipPet));
+    if (target.dataset.savePirateName !== undefined) {
+      savePirateNameFromInput();
+      return;
+    }
     if (target.dataset.selectCaptainGender) selectCaptainGender(target.dataset.selectCaptainGender);
     if (target.dataset.upgradeCaptain !== undefined) upgradeCaptain();
     if (target.dataset.openCaptainMutiny !== undefined) openCaptainMutinyConfirmation();
@@ -8193,11 +8642,16 @@
     handleMissionFilterButton(target);
     if (target.dataset.claimAllMissions !== undefined) claimAllMissionRewards();
     if (target.dataset.claimMission) claimProgressionReward("mission", target.dataset.claimMission);
+    if (target.id === "leaderboard-refresh") refreshLeaderboard({ force: true });
     handleMapSelection(target);
   }
 
   function preventInvalidTradeInput(event) {
     if (event.target.matches("[data-trade-input]") && ["e", "E", "+", "-", ".", ","].includes(event.key)) event.preventDefault();
+    if (event.target.matches("#pirate-name-input") && event.key === "Enter") {
+      event.preventDefault();
+      savePirateNameFromInput();
+    }
   }
 
   function handleTradeInput(event) {
@@ -8326,6 +8780,7 @@
   state.combat.playerHp = clamp(state.combat.playerHp || getStats().maxHp, 1, getStats().maxHp);
   if (!state.logs.length) addLog(`${SHIPS[state.shipId].name} está pronto para sua primeira patrulha.`);
   renderAll(true);
+  refreshLeaderboard({ force: true });
   scheduleNearbyRegionPreload();
   requestAnimationFrame(gameLoop);
 

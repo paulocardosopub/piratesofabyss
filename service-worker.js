@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v118-smaller-attack-tutorial";
+const CACHE = "pirates-abyss-v124-online-leaderboard";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=68",
-  "game.js?v=131",
+  "styles.css?v=69",
+  "game.js?v=137",
   "icon.svg",
   "manifest.webmanifest"
 ];
@@ -35,6 +35,10 @@ self.addEventListener("fetch", event => {
   }
 
   if (!isSameOrigin) return;
+  if (url.pathname.endsWith("/online-config.js")) {
+    event.respondWith(fetch(event.request).catch(() => new Response("", { status: 204, headers: { "Content-Type": "application/javascript" } })));
+    return;
+  }
 
   event.respondWith(caches.match(event.request).then(cached => {
     if (cached) return cached;
