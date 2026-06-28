@@ -2086,6 +2086,9 @@
   let state = applyCaptainVisualAuditState(loadState());
   let currentScreen = "home";
   let combatMinimized = loadCombatMinimizedPreference();
+  let combatFullscreen = false;
+  let combatFullscreenHistoryActive = false;
+  let combatOrientationLocked = false;
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
   let lastSave = performance.now();
@@ -3322,6 +3325,138 @@
 
   function toggleCombatMinimized() {
     setCombatMinimized(!combatMinimized);
+  }
+
+  function getCombatFullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null;
+  }
+
+  function requestCombatFullscreen(element) {
+    const request = element?.requestFullscreen || element?.webkitRequestFullscreen || element?.mozRequestFullScreen || element?.msRequestFullscreen;
+    if (!request) return Promise.resolve(false);
+    try {
+      return Promise.resolve(request.call(element)).then(() => true);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
+  function exitNativeCombatFullscreen() {
+    if (!getCombatFullscreenElement()) return Promise.resolve(false);
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+    if (!exit) return Promise.resolve(false);
+    try {
+      return Promise.resolve(exit.call(document)).then(() => true);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
+  function resizeCombatViewport() {
+    scene?.resize?.();
+    requestAnimationFrame(() => scene?.resize?.());
+    window.setTimeout(() => scene?.resize?.(), 180);
+  }
+
+  function syncCombatFullscreenVisualState() {
+    const app = $("#app");
+    const shell = $(".persistent-combat");
+    const stage = $("#battle-stage");
+    const collapseButton = $("#combat-collapse-toggle");
+    const fullscreenButton = $("#combat-fullscreen-toggle");
+    const exitButton = $("#combat-fullscreen-exit");
+    document.documentElement.classList.toggle("is-combat-fullscreen", combatFullscreen);
+    document.body.classList.toggle("is-combat-fullscreen", combatFullscreen);
+    app?.classList.toggle("is-combat-fullscreen", combatFullscreen);
+    shell?.classList.toggle("combat-fullscreen-mode", combatFullscreen);
+    stage?.classList.toggle("combat-fullscreen-stage", combatFullscreen);
+    collapseButton?.classList.toggle("hidden", combatFullscreen);
+    fullscreenButton?.classList.toggle("hidden", combatFullscreen);
+    exitButton?.classList.toggle("hidden", !combatFullscreen);
+    if (fullscreenButton) fullscreenButton.setAttribute("aria-pressed", String(combatFullscreen));
+    resizeCombatViewport();
+  }
+
+  function pushCombatFullscreenHistoryState() {
+    if (combatFullscreenHistoryActive) return;
+    try {
+      const current = history.state && typeof history.state === "object" ? history.state : {};
+      history.pushState({ ...current, combatFullscreenMode: true }, "", location.href);
+      combatFullscreenHistoryActive = true;
+    } catch (error) {}
+  }
+
+  function clearCombatFullscreenHistoryState() {
+    if (!combatFullscreenHistoryActive) return;
+    try {
+      const current = history.state && typeof history.state === "object" ? history.state : {};
+      if (current.combatFullscreenMode) history.replaceState({ ...current, combatFullscreenMode: false }, "", location.href);
+    } catch (error) {}
+    combatFullscreenHistoryActive = false;
+  }
+
+  async function lockCombatOrientation() {
+    const orientation = window.screen?.orientation;
+    if (!orientation?.lock) return;
+    try {
+      await orientation.lock("landscape");
+      combatOrientationLocked = true;
+    } catch (error) {
+      combatOrientationLocked = false;
+    }
+  }
+
+  function unlockCombatOrientation() {
+    const orientation = window.screen?.orientation;
+    if (combatOrientationLocked && orientation?.unlock) {
+      try { orientation.unlock(); } catch (error) {}
+    }
+    combatOrientationLocked = false;
+  }
+
+  async function enterCombatFullscreen() {
+    if (combatFullscreen) return;
+    if (combatMinimized) setCombatMinimized(false);
+    combatFullscreen = true;
+    syncCombatFullscreenVisualState();
+    pushCombatFullscreenHistoryState();
+    const target = $("#app") || document.documentElement;
+    try {
+      await requestCombatFullscreen(target);
+    } catch (error) {}
+    await lockCombatOrientation();
+    resizeCombatViewport();
+  }
+
+  async function exitCombatFullscreen(options = {}) {
+    if (!combatFullscreen && !options.force) return;
+    combatFullscreen = false;
+    unlockCombatOrientation();
+    syncCombatFullscreenVisualState();
+    if (options.fromHistory) combatFullscreenHistoryActive = false;
+    else clearCombatFullscreenHistoryState();
+    if (!options.skipNative) {
+      try { await exitNativeCombatFullscreen(); } catch (error) {}
+    }
+    resizeCombatViewport();
+  }
+
+  function handleCombatFullscreenChange() {
+    if (combatFullscreen && !getCombatFullscreenElement()) {
+      exitCombatFullscreen({ skipNative: true });
+      return;
+    }
+    resizeCombatViewport();
+  }
+
+  function handleCombatFullscreenKeydown(event) {
+    if (event.key !== "Escape" || !combatFullscreen) return;
+    event.preventDefault();
+    exitCombatFullscreen();
+  }
+
+  function handleCombatFullscreenPopState() {
+    if (combatFullscreen) exitCombatFullscreen({ fromHistory: true });
   }
 
   function clearCurrentEnemy() {
@@ -10680,6 +10815,8 @@
   $("#auto-boss-button")?.addEventListener("click", toggleAutoChallengeBoss);
   $("#boss-button").addEventListener("click", challengeBoss);
   $("#combat-collapse-toggle")?.addEventListener("click", toggleCombatMinimized);
+  $("#combat-fullscreen-toggle")?.addEventListener("click", enterCombatFullscreen);
+  $("#combat-fullscreen-exit")?.addEventListener("click", () => exitCombatFullscreen());
   $("#offline-close").addEventListener("click", closeOfflineModal);
   $("#wipe-button").addEventListener("click", () => $("#confirm-modal").classList.remove("hidden"));
   $("#confirm-cancel").addEventListener("click", () => $("#confirm-modal").classList.add("hidden"));
@@ -10694,9 +10831,13 @@
   $("#captain-mutiny-confirm").addEventListener("click", confirmCaptainMutiny);
 
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  document.addEventListener("keydown", handleCombatFullscreenKeydown);
+  ["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"].forEach(type => document.addEventListener(type, handleCombatFullscreenChange));
+  window.addEventListener("popstate", handleCombatFullscreenPopState);
   window.addEventListener("resize", () => {
     renderCaptainPreviewCanvases();
     renderPetPreviewCanvases();
+    if (combatFullscreen) resizeCombatViewport();
   });
   window.addEventListener("beforeunload", saveGame);
 

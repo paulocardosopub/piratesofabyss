@@ -5366,3 +5366,231 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+.combat-fullscreen-toggle,
+.combat-fullscreen-exit {
+  position: absolute;
+  z-index: 9;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(212, 239, 237, .24);
+  border-radius: 9px;
+  color: var(--cyan-2);
+  background: rgba(5, 24, 35, .76);
+  box-shadow: 0 7px 16px rgba(0,0,0,.22);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  touch-action: manipulation;
+}
+
+.combat-fullscreen-toggle {
+  top: 10px;
+  right: 50px;
+}
+
+.combat-fullscreen-toggle span {
+  display: block;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.combat-fullscreen-exit {
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 16;
+  width: 36px;
+  height: 36px;
+  color: #ffe1da;
+  border-color: rgba(255, 214, 204, .42);
+  background: rgba(92, 28, 24, .76);
+}
+
+.combat-fullscreen-exit span {
+  display: block;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.combat-fullscreen-toggle:hover,
+.combat-fullscreen-toggle:focus-visible {
+  border-color: rgba(110,239,226,.48);
+  background: rgba(8, 36, 51, .86);
+}
+
+.combat-fullscreen-exit:hover,
+.combat-fullscreen-exit:focus-visible {
+  border-color: rgba(255, 173, 154, .64);
+  background: rgba(126, 38, 30, .84);
+}
+
+.persistent-combat.combat-minimized .combat-fullscreen-toggle {
+  top: 50%;
+  right: 46px;
+  width: 30px;
+  height: 30px;
+  transform: translateY(-50%);
+}
+
+.persistent-combat.combat-minimized .combat-map-title {
+  max-width: calc(100% - 124px);
+}
+
+html.is-combat-fullscreen,
+body.is-combat-fullscreen {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #061421;
+}
+
+.app-shell:fullscreen,
+.app-shell:-webkit-full-screen {
+  width: 100vw;
+  height: 100dvh;
+  background: #061421;
+}
+
+body.is-combat-fullscreen .app-shell {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+body.is-combat-fullscreen .topbar {
+  position: relative;
+  top: auto;
+  z-index: 90;
+  flex: 0 0 auto;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+}
+
+body.is-combat-fullscreen .main-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+body.is-combat-fullscreen .persistent-combat {
+  position: relative;
+  top: 0 !important;
+  z-index: 85;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+body.is-combat-fullscreen .persistent-combat .battle-stage,
+body.is-combat-fullscreen .persistent-combat .initial-captain-gate {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.is-combat-fullscreen .persistent-combat .combat-status-strip {
+  flex: 0 0 auto;
+}
+
+body.is-combat-fullscreen .persistent-combat .bottom-nav.main-tabs,
+body.is-combat-fullscreen .screen {
+  display: none !important;
+}
+
+body.is-combat-fullscreen .combat-collapse-toggle,
+body.is-combat-fullscreen .combat-fullscreen-toggle {
+  display: none !important;
+}
+
+body.is-combat-fullscreen .combat-fullscreen-exit {
+  display: grid !important;
+}
+
+body.is-combat-fullscreen .combat-map-title {
+  max-width: calc(100% - 108px);
+}
+
+body.is-combat-fullscreen .combat-exit-button,
+body.is-combat-fullscreen .combat-next-map-button {
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 980px) {
+  body.is-combat-fullscreen .topbar {
+    height: 56px;
+    min-height: 56px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  body.is-combat-fullscreen .persistent-combat .combat-status-strip {
+    min-height: 32px;
+    height: 32px;
+  }
+
+  body.is-combat-fullscreen .combat-map-title {
+    top: 6px;
+    max-width: calc(100% - 96px);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) and (max-width: 980px) {
+  body.is-combat-fullscreen .topbar {
+    height: 50px;
+    min-height: 50px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  body.is-combat-fullscreen .topbar .top-power,
+  body.is-combat-fullscreen .topbar .top-resources > div,
+  body.is-combat-fullscreen .topbar .captain-topbar {
+    height: 40px;
+  }
+
+  body.is-combat-fullscreen .persistent-combat .combat-status-strip {
+    min-height: 30px;
+    height: 30px;
+  }
+
+  body.is-combat-fullscreen .combat-exit-button,
+  body.is-combat-fullscreen .combat-next-map-button {
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 560px) {
+  .combat-fullscreen-toggle {
+    right: 46px;
+  }
+
+  body.is-combat-fullscreen .topbar {
+    height: 52px;
+    min-height: 52px;
+    padding-inline: max(6px, env(safe-area-inset-left)) max(6px, env(safe-area-inset-right));
+  }
+
+  body.is-combat-fullscreen .combat-fullscreen-exit {
+    width: 34px;
+    height: 34px;
+  }
+}
