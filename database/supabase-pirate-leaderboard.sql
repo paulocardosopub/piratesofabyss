@@ -25,6 +25,8 @@ alter table public.pirate_leaderboard enable row level security;
 drop policy if exists "Pirate leaderboard public read" on public.pirate_leaderboard;
 revoke all on public.pirate_leaderboard from anon, authenticated;
 
+drop view if exists public.pirate_leaderboard_public;
+
 create or replace view public.pirate_leaderboard_public as
 select
   player_id,
@@ -34,6 +36,18 @@ select
   prestige_count,
   best_prestige_level,
   best_prestige_power,
+  coalesce(nullif(pvp_snapshot #>> '{ship,ship_name}', ''), nullif(pvp_snapshot ->> 'ship_name', '')) as ship_name,
+  case
+    when (pvp_snapshot #>> '{ship,ship_level}') ~ '^[0-9]+(\.[0-9]+)?$'
+      then floor((pvp_snapshot #>> '{ship,ship_level}')::numeric)::integer
+    else null
+  end as ship_level,
+  case
+    when (pvp_snapshot #>> '{progression,highest_map_unlocked}') ~ '^[0-9]+(\.[0-9]+)?$'
+      then floor((pvp_snapshot #>> '{progression,highest_map_unlocked}')::numeric)::integer
+    else null
+  end as highest_map_unlocked,
+  coalesce(nullif(pvp_snapshot #>> '{progression,highest_map_name}', ''), nullif(pvp_snapshot ->> 'highest_map_name', '')) as highest_map_name,
   last_prestige_at,
   updated_at
 from public.pirate_leaderboard
@@ -113,13 +127,25 @@ begin
   on conflict (player_id) do update
   set
     pirate_name = excluded.pirate_name,
-    selected_pirate_id = excluded.selected_pirate_id,
-    selected_pirate_name = excluded.selected_pirate_name,
+    selected_pirate_id = case
+      when excluded.best_prestige_power >= public.pirate_leaderboard.best_prestige_power
+        then excluded.selected_pirate_id
+      else public.pirate_leaderboard.selected_pirate_id
+    end,
+    selected_pirate_name = case
+      when excluded.best_prestige_power >= public.pirate_leaderboard.best_prestige_power
+        then excluded.selected_pirate_name
+      else public.pirate_leaderboard.selected_pirate_name
+    end,
     prestige_count = greatest(public.pirate_leaderboard.prestige_count, excluded.prestige_count),
     best_prestige_level = greatest(public.pirate_leaderboard.best_prestige_level, excluded.best_prestige_level),
     best_prestige_power = greatest(public.pirate_leaderboard.best_prestige_power, excluded.best_prestige_power),
     last_prestige_at = greatest(public.pirate_leaderboard.last_prestige_at, excluded.last_prestige_at),
-    pvp_snapshot = excluded.pvp_snapshot,
+    pvp_snapshot = case
+      when excluded.best_prestige_power >= public.pirate_leaderboard.best_prestige_power
+        then coalesce(excluded.pvp_snapshot, public.pirate_leaderboard.pvp_snapshot)
+      else public.pirate_leaderboard.pvp_snapshot
+    end,
     updated_at = now();
 end;
 $$;

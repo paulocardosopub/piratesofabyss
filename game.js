@@ -9,6 +9,7 @@
   const ARENA_ATTACK_INTERVAL_DEFAULT_MS = 1500;
   const ARENA_ATTACK_INTERVAL_MIN_MS = 300;
   const ARENA_ATTACK_INTERVAL_MAX_MS = 5000;
+  const ARENA_START_DELAY_MS = 3000;
   const PIRATE_NAME_MIN_LENGTH = 3;
   const PIRATE_NAME_MAX_LENGTH = 20;
   const PVP_SNAPSHOT_VERSION = 1;
@@ -2122,7 +2123,7 @@
     return index >= 0 && state.unlockedRegions > index && state.bossesDefeated[index] && REGIONS[index].boss === PRESTIGE_BOSS_NAME;
   }
   function getPrestigeBonuses() {
-    return { gold: state.prestiges * .04, xp: state.prestiges * .04, dps: state.prestiges * .02, speed: state.prestiges * .02, drop: state.prestiges * .02, idle: state.prestiges * .02 };
+    return { gold: state.prestiges * .04, xp: state.prestiges * .04, dps: state.prestiges * .02, speed: state.prestiges * .02, shipDamage: state.prestiges * .10, idle: state.prestiges * .02 };
   }
   function getCaptainEquipmentRewardBonuses(source = state) {
     const bonuses = getCaptainEquipmentBonuses(source);
@@ -2183,7 +2184,7 @@
     const hpBonus = 1 + (state.levels.hull - 1) * .15;
     const prestigeBonuses = getPrestigeBonuses();
     const captainEquipmentBonuses = getCaptainEquipmentBonuses();
-    let damage = ship.damage * overall * damageBonus * (1 + prestigeBonuses.dps) * (1 + captainEquipmentBonuses.shipDamageBonus);
+    let damage = ship.damage * overall * damageBonus * (1 + prestigeBonuses.dps) * (1 + prestigeBonuses.shipDamage) * (1 + captainEquipmentBonuses.shipDamageBonus);
     let speed = ship.speed * overall * speedBonus * (1 + prestigeBonuses.speed);
     let maxHp = ship.hp * overall * hpBonus * (1 + captainEquipmentBonuses.shipHpBonus);
     let armor = ship.armor + (state.levels.hull - 1) * 2.2 + (state.levels.ship - 1) * .7;
@@ -2473,6 +2474,10 @@
       "prestige_count",
       "best_prestige_level",
       "best_prestige_power",
+      "ship_name",
+      "ship_level",
+      "highest_map_unlocked",
+      "highest_map_name",
       "last_prestige_at",
       "updated_at"
     ].join(",");
@@ -2542,6 +2547,10 @@
       prestige_count: Math.max(0, Math.floor(Number(row.prestige_count ?? row.prestigeCount ?? 0))),
       best_prestige_level: Math.max(0, Math.floor(Number(row.best_prestige_level ?? row.bestPrestigeLevel ?? row.prestige_count ?? 0))),
       best_prestige_power: Math.max(0, Math.floor(Number(row.best_prestige_power ?? row.bestPrestigePower ?? 0))),
+      ship_name: String(row.ship_name || row.shipName || "").trim(),
+      ship_level: Math.max(0, Math.floor(Number(row.ship_level ?? row.shipLevel ?? 0) || 0)),
+      highest_map_unlocked: Math.max(0, Math.floor(Number(row.highest_map_unlocked ?? row.highestMapUnlocked ?? 0) || 0)),
+      highest_map_name: String(row.highest_map_name || row.highestMapName || "").trim(),
       last_prestige_at: row.last_prestige_at || row.lastPrestigeAt || row.updated_at || row.updatedAt || ""
     };
   }
@@ -2550,6 +2559,17 @@
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
     return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  }
+
+  function leaderboardProgressMeta(entry = {}) {
+    const ship = entry.ship_name ? entry.ship_name : "Barco não informado";
+    const shipLevel = entry.ship_level ? `Nv. ${formatNumber(entry.ship_level)}` : "Nv. ?";
+    const map = entry.highest_map_name
+      ? entry.highest_map_name
+      : entry.highest_map_unlocked
+        ? `Mapa ${formatNumber(entry.highest_map_unlocked)}`
+        : "Mapa não informado";
+    return `${ship} • ${shipLevel} • ${map}`;
   }
 
   function renderLeaderboardTabs() {
@@ -2599,9 +2619,9 @@
       const isCurrentPlayer = entry.player_id && entry.player_id === state.playerId;
       return `<div class="leaderboard-row ${isCurrentPlayer ? "current-player" : ""}">
         <strong>#${index + 1}</strong>
-        <span>${escapeHtml(entry.pirate_name)}</span>
+        <div class="leaderboard-player"><span>${escapeHtml(entry.pirate_name)}</span><small>${escapeHtml(leaderboardProgressMeta(entry))}</small></div>
         <span>Prestígio ${formatNumber(prestige)}</span>
-        <small>${formatLeaderboardDate(entry.last_prestige_at)}</small>
+        <small class="leaderboard-date">${formatLeaderboardDate(entry.last_prestige_at)}</small>
       </div>`;
     }).join("");
   }
@@ -6774,6 +6794,10 @@
     }
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated || isBossIntroActive(enemy)) return false;
+    if (isArenaBattleWaiting()) {
+      toast(`Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
+      return false;
+    }
     basicAttack({ manual: true, allowDoubleStrike: false });
     completeManualAttackTutorial();
     renderCombatHud();
@@ -6801,6 +6825,7 @@
     if (!isCaptainSelected()) return toast("Selecione um pirata inicial para liberar Sabotar Inimigo.", "danger-toast");
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return toast("Sabotar Inimigo precisa de um alvo vivo.", "danger-toast");
+    if (isArenaBattleWaiting()) return toast(`Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
     const remaining = getCaptainManualSkillCooldownRemaining(key);
     if (remaining > 0) return toast(`Sabotar Inimigo recarrega em ${formatSeconds(remaining)}.`, "danger-toast");
     const skill = getCaptainManualSkillState(key);
@@ -6915,7 +6940,7 @@
     const dropKeys = new Set([...Object.keys(regionDrops), ...Object.keys(enemyDrops)]);
     dropKeys.forEach(key => {
       const chance = Math.min(.88, (regionDrops[key] || 0) + (enemyDrops[key] || 0));
-      if (Math.random() < chance * lootBonus * (1 + getPrestigeBonuses().drop) * (multiplier > 1 ? 1.65 : 1)) {
+      if (Math.random() < chance * lootBonus * (multiplier > 1 ? 1.65 : 1)) {
         const amount = Math.max(1, Math.round(integerBetween(1, 1 + Math.floor(state.regionIndex / 2)) * multiplier));
         extraGold += Math.round(convertResourceAmountToGold(key, amount));
       }
@@ -7066,6 +7091,12 @@
     const enemy = state.combat.enemy;
     if (enemy.defeated) return;
     if (isBossIntroActive(enemy)) return;
+    if (isArenaBattleWaiting()) {
+      state.combat.attackTimer = 0;
+      state.combat.petAttackTimer = 0;
+      state.combat.enemyAttackTimer = 0;
+      return;
+    }
     if (enemy.burnTime > 0) {
       enemy.burnTime -= dt;
       enemy.hp = Math.max(0, enemy.hp - enemy.burnDps * dt);
@@ -7134,7 +7165,7 @@
     const rewards = [{ name: "Ouro", amount: gold }, { name: "XP", amount: calculateXpReward(xp) }, { name: "Vitórias", amount: kills }];
     let extraGold = 0;
     Object.entries(region.goldDrops || region.drops || {}).forEach(([key, chance]) => {
-      const amount = Math.floor(kills * chance * (1 + getPrestigeBonuses().drop) * randomBetween(.75, 1.15));
+      const amount = Math.floor(kills * chance * randomBetween(.75, 1.15));
       if (amount > 0) extraGold += Math.round(convertResourceAmountToGold(key, amount));
     });
     if (extraGold > 0) {
@@ -7828,8 +7859,9 @@
     const meta = CAPTAIN_MANUAL_SKILL_META[CAPTAIN_MANUAL_SKILL_KEY];
     const unlocked = isCaptainSelected();
     const hasTarget = Boolean(state.combat.enemy && !state.combat.enemy.defeated);
+    const waitingArena = isArenaBattleWaiting();
     const remaining = unlocked ? getCaptainManualSkillCooldownRemaining(CAPTAIN_MANUAL_SKILL_KEY) : meta.cooldown;
-    const ready = unlocked && hasTarget && remaining <= 0;
+    const ready = unlocked && hasTarget && !waitingArena && remaining <= 0;
     node.classList.toggle("locked", !unlocked);
     node.classList.toggle("off", unlocked && !ready);
     node.disabled = !ready;
@@ -7838,11 +7870,13 @@
     if (label) label.textContent = "";
     node.title = !unlocked
       ? "Selecione um pirata inicial para desbloquear Sabotar Inimigo"
-      : remaining > 0
-        ? `Sabotar Inimigo recarrega em ${formatSeconds(remaining)}`
-        : hasTarget
-          ? `${meta.name} - manual - ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier())} do dano atual`
-          : "Sabotar Inimigo precisa de um alvo vivo";
+      : waitingArena
+        ? `Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}`
+        : remaining > 0
+          ? `Sabotar Inimigo recarrega em ${formatSeconds(remaining)}`
+          : hasTarget
+            ? `${meta.name} - manual - ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier())} do dano atual`
+            : "Sabotar Inimigo precisa de um alvo vivo";
   }
 
   function renderSkillDock() {
@@ -8370,7 +8404,7 @@
     ].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
     $("#prestige-reward").textContent = `${formatNumber(reward)} Moedas Pirata`;
     $("#prestige-button").disabled = !unlocked;
-    $("#prestige-bonuses").innerHTML = [["Ouro", bonuses.gold], ["XP", bonuses.xp], ["DPS", bonuses.dps], ["Velocidade", bonuses.speed], ["Chance de drop", bonuses.drop], ["Eficiência idle", bonuses.idle]].map(([label, value]) => `<div><span>${label}</span><strong>+${Math.round(value * 100)}%</strong></div>`).join("");
+    $("#prestige-bonuses").innerHTML = [["Ouro", bonuses.gold], ["XP", bonuses.xp], ["DPS", bonuses.dps], ["Velocidade", bonuses.speed], ["Dano de ataque da embarcação", bonuses.shipDamage], ["Eficiência idle", bonuses.idle]].map(([label, value]) => `<div><span>${label}</span><strong>+${Math.round(value * 100)}%</strong></div>`).join("");
     $("#prestige-history").innerHTML = state.prestigeHistory.length ? state.prestigeHistory.map(item => `<div class="prestige-history-row"><strong>#${item.number}</strong><span>${item.date}</span><span>Mapa ${item.map} • ${item.boss}</span><span>${formatNumber(item.power)} poder</span><span>+${formatNumber(item.coins)} ☠</span><small>${item.ship} • ${item.pet || "Sem pet"} • ${formatDuration(item.duration || 0)}</small></div>`).join("") : `<p class="empty-state">Seu primeiro ciclo aparecerá aqui.</p>`;
   }
 
@@ -8612,6 +8646,15 @@
     return Boolean(arenaState.battle?.active && !arenaState.battle.finished);
   }
 
+  function isArenaBattleWaiting(now = Date.now()) {
+    const battle = arenaState.battle;
+    return Boolean(battle?.active && !battle.finished && Number(battle.startsAt || 0) > now);
+  }
+
+  function getArenaStartRemainingSeconds(now = Date.now()) {
+    return Math.max(0, (Number(arenaState.battle?.startsAt || 0) - now) / 1000);
+  }
+
   function getArenaSceneRegion() {
     return {
       name: "Arena - Duelo Pirata",
@@ -8682,6 +8725,7 @@
     if (isArenaSceneActive()) return toast("Um duelo da Arena já está em andamento.", "danger-toast");
     const opponent = getArenaOpponentById(playerId);
     if (!opponent) return toast("Esse inimigo da Arena não está mais disponível.", "danger-toast");
+    const startsAt = Date.now() + ARENA_START_DELAY_MS;
     arenaState.previousCombat = {
       screen: currentScreen,
       hasStarted: state.hasStarted,
@@ -8691,7 +8735,8 @@
       active: true,
       finished: false,
       opponent,
-      startedAt: Date.now(),
+      startsAt,
+      startedAt: startsAt,
       damageDealt: 0,
       damageReceived: 0
     };
@@ -8707,8 +8752,8 @@
     state.hasStarted = true;
     scene.resetPlayerShipAnimation();
     navigate("home");
-    addLog(`Arena iniciada contra ${opponent.pirate_name}.`, "danger-text");
-    toast(`Arena iniciada: ${opponent.pirate_name}.`, "gold-toast");
+    addLog(`Arena preparada contra ${opponent.pirate_name}. Combate começa em ${formatSeconds(ARENA_START_DELAY_MS / 1000)}.`, "danger-text");
+    toast(`Arena começa em ${formatSeconds(ARENA_START_DELAY_MS / 1000)}: ${opponent.pirate_name}.`, "gold-toast");
     renderAll(false);
   }
 

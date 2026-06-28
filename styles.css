@@ -521,7 +521,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .manual-skill-orb .cooldown { background: rgba(17, 9, 25, .78); }
 
 .dashboard-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 14px; margin-top: 14px; }
-.home-clean-grid { grid-template-columns: .8fr 1.2fr; grid-template-areas: "controls boss" "log leaderboard"; align-items: stretch; }
+.home-clean-grid { position: relative; z-index: 26; grid-template-columns: .8fr 1.2fr; grid-template-areas: "controls boss" "log leaderboard"; align-items: stretch; }
 .card { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(13, 42, 59, .92), rgba(7, 27, 40, .94)); box-shadow: 0 9px 28px rgba(0,0,0,.15); }
 .progression-card, .controls-card, .captain-card, .log-card { padding: 18px; }
 .quick-controls-card { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
@@ -1941,6 +1941,10 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .leaderboard-row strong { color: var(--gold); font-size: 14px; font-variant-numeric: tabular-nums; }
 .leaderboard-row span { min-width: 0; overflow: hidden; color: #dbe8e6; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .leaderboard-row small { color: var(--muted); font-size: 10px; text-align: right; }
+.leaderboard-player { min-width: 0; display: grid; gap: 2px; }
+.leaderboard-player span { font-weight: 850; }
+.leaderboard-player small { min-width: 0; overflow: hidden; color: var(--muted); font-size: 9px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard-date { white-space: nowrap; }
 .arena-card { margin-top: 18px; padding: 21px; }
 .arena-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .arena-heading h2 { margin: 4px 0 3px; font: 700 22px Georgia, serif; }
@@ -2177,7 +2181,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .leaderboard-heading { align-items: stretch; flex-direction: column; gap: 10px; }
   .leaderboard-heading .button { width: 100%; }
   .leaderboard-row { grid-template-columns: 38px minmax(0, 1fr) minmax(82px, auto); }
-  .leaderboard-row small { grid-column: 2 / -1; text-align: left; }
+  .leaderboard-date { grid-column: 2 / -1; text-align: left; }
   .arena-heading { align-items: stretch; flex-direction: column; gap: 10px; }
   .arena-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .arena-heading .button { width: 100%; }

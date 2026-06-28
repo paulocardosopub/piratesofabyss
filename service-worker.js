@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v131-ranking-arena-tabs";
+const CACHE = "pirates-abyss-v135-ranking-arena-start-fix";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=72",
-  "game.js?v=144",
+  "styles.css?v=74",
+  "game.js?v=147",
   "icon.svg",
   "manifest.webmanifest"
 ];
