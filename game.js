@@ -712,7 +712,7 @@
   };
 
   const EQUIPMENT_META = {
-    compass: { name: "Bússola Naval", icon: "✥", effect: "+12% velocidade e +8% chance de loot", costs: { cristal: 200, perola: 50, ouro: 50000 } },
+    compass: { name: "Bússola Naval", icon: "✥", effect: "+12% velocidade", costs: { cristal: 200, perola: 50, ouro: 50000 } },
     spyglass: { name: "Luneta Imperial", icon: "⌕", effect: "+8% precisão e +7% crítico", costs: { cristal: 300, gema: 100, ouro: 75000 } },
     anchor: { name: "Âncora Reforçada", icon: "⚓", effect: "+20 armadura e +10% de vida", costs: { ferro: 1000, pedra: 200, ouro: 50000 } },
     amulet: { name: "Amuleto do Abismo", icon: "☠", effect: "+25% DPS e +20% contra bosses", costs: { ambar: 200, perola: 100, fragmentos: 10, ouro: 100000 } }
@@ -1839,12 +1839,12 @@
     12: { hp: 2.25, damage: 2.05, armor: 1.25, evasion: .02, attackSpeed: .82, skillResist: .2, bossHp: 2.35, bossDamage: 2.1, bossArmor: 1.35, special: "chamas vulcânicas" },
     13: { hp: 2.85, damage: 2.35, armor: 1.85, evasion: .025, attackSpeed: .78, skillResist: .28, bossHp: 3.15, bossDamage: 2.55, bossArmor: 1.85, special: "controle glacial" },
     14: { hp: 4.2, damage: 3.7, armor: 2.45, evasion: .04, attackSpeed: .68, skillResist: .4, bossHp: 7.02, bossDamage: 5.525, bossArmor: 2.6, special: "maldição abissal" },
-    15: { hp: 4.4, damage: 3.95, armor: 2.62, evasion: .045, attackSpeed: .66, skillResist: .43, bossHp: 7.65, bossDamage: 5.9, bossArmor: 2.8, special: "couraça abissal" },
-    16: { hp: 4.85, damage: 4.28, armor: 2.82, evasion: .05, attackSpeed: .64, skillResist: .46, bossHp: 8.4, bossDamage: 6.35, bossArmor: 3.0, special: "tentáculos ocultos" },
-    17: { hp: 5.35, damage: 4.66, armor: 3.02, evasion: .055, attackSpeed: .62, skillResist: .49, bossHp: 9.25, bossDamage: 6.85, bossArmor: 3.2, special: "mandíbulas serpentinas" },
-    18: { hp: 5.95, damage: 5.05, armor: 3.25, evasion: .058, attackSpeed: .6, skillResist: .52, bossHp: 10.25, bossDamage: 7.45, bossArmor: 3.45, special: "caldeira viva" },
-    19: { hp: 6.65, damage: 5.55, armor: 3.55, evasion: .06, attackSpeed: .58, skillResist: .55, bossHp: 11.45, bossDamage: 8.25, bossArmor: 3.75, special: "presas congeladas" },
-    20: { hp: 7.5, damage: 6.4, armor: 3.9, evasion: .065, attackSpeed: .56, skillResist: .6, bossHp: 12.95, bossDamage: 9.6, bossArmor: 4.1, special: "covil da morte" }
+    15: { hp: 13.2, damage: 11.85, armor: 7.86, evasion: .045, attackSpeed: .22, skillResist: .43, bossHp: 22.95, bossDamage: 17.7, bossArmor: 8.4, special: "couraça abissal" },
+    16: { hp: 14.55, damage: 12.84, armor: 8.46, evasion: .05, attackSpeed: .213, skillResist: .46, bossHp: 25.2, bossDamage: 19.05, bossArmor: 9.0, special: "tentáculos ocultos" },
+    17: { hp: 16.05, damage: 13.98, armor: 9.06, evasion: .055, attackSpeed: .207, skillResist: .49, bossHp: 27.75, bossDamage: 20.55, bossArmor: 9.6, special: "mandíbulas serpentinas" },
+    18: { hp: 17.85, damage: 15.15, armor: 9.75, evasion: .058, attackSpeed: .2, skillResist: .52, bossHp: 30.75, bossDamage: 22.35, bossArmor: 10.35, special: "caldeira viva" },
+    19: { hp: 19.95, damage: 16.65, armor: 10.65, evasion: .06, attackSpeed: .193, skillResist: .55, bossHp: 34.35, bossDamage: 24.75, bossArmor: 11.25, special: "presas congeladas" },
+    20: { hp: 22.5, damage: 19.2, armor: 11.7, evasion: .065, attackSpeed: .187, skillResist: .6, bossHp: 38.85, bossDamage: 28.8, bossArmor: 12.3, special: "covil da morte" }
   };
   let activeMissionFilter = "Próximas de concluir";
   let captainPetsExpanded = false;
@@ -2077,6 +2077,32 @@
     return shouldConvert || hadSecondaryResources;
   }
 
+  function parseFormattedGoldText(value) {
+    const text = String(value || "").trim().toLowerCase();
+    const match = text.match(/^([\d.,]+)(?:\s*(mil|mi|bi|tri))?$/);
+    if (!match) return 0;
+    const number = Number(match[1].replace(/\./g, "").replace(",", ".")) || 0;
+    const multipliers = { mil: 1e3, mi: 1e6, bi: 1e9, tri: 1e12 };
+    return number * (multipliers[match[2]] || 1);
+  }
+
+  function formatLegacyGoldText(value) {
+    const n = Math.max(0, Number(value) || 0);
+    if (n < 1000) return Math.round(n).toLocaleString("pt-BR");
+    const units = [[1e12, " tri"], [1e9, " bi"], [1e6, " mi"], [1e3, " mil"]];
+    const [size, suffix] = units.find(([unitSize]) => n >= unitSize);
+    const scaled = n / size;
+    return scaled.toLocaleString("pt-BR", { maximumFractionDigits: scaled < 10 ? 1 : 0 }) + suffix;
+  }
+
+  function normalizeLegacyGoldDropText(message) {
+    return String(message || "")
+      .replace(/Gold\s+extra/g, "Ouro extra")
+      .replace(/Drop: ([\d.,]+(?:\s*(?:mil|mi|bi|tri))?) Ouro \+ ([\d.,]+(?:\s*(?:mil|mi|bi|tri))?) Ouro extra/g, (_, base, extra) => `Drop: ${formatLegacyGoldText(parseFormattedGoldText(base) + parseFormattedGoldText(extra))} Ouro`)
+      .replace(/Drop do boss: ([\d.,]+(?:\s*(?:mil|mi|bi|tri))?) Ouro extra/g, (_, extra) => `Drop do boss: ${formatLegacyGoldText(parseFormattedGoldText(extra))} Ouro`)
+      .replace(/Ouro extra/g, "Ouro");
+  }
+
   function normalizeSavedLogText(target) {
     if (!Array.isArray(target.logs)) {
       target.logs = [];
@@ -2085,7 +2111,7 @@
     let changed = false;
     target.logs = target.logs.slice(0, 100).map(item => {
       if (!item || typeof item.message !== "string") return item;
-      const message = item.message.replace(/Gold\s+extra/g, "Ouro extra");
+      const message = normalizeLegacyGoldDropText(item.message);
       if (message === item.message) return item;
       changed = true;
       return { ...item, message };
@@ -2433,11 +2459,20 @@
     const bonuses = getCaptainEquipmentBonuses(source);
     return { gold: bonuses.goldGainBonus || 0, xp: bonuses.xpGainBonus || 0 };
   }
-  function getGoldGainMultiplier() {
+
+  function getGoldPrestigeMultiplier() {
     const prestige = getPrestigeBonuses();
+    return 1 + prestige.gold;
+  }
+
+  function getGoldBuffMultiplier() {
     const equipment = getCaptainEquipmentRewardBonuses();
     const petBonuses = getActivePetBonuses();
-    return (1 + prestige.gold) * (1 + equipment.gold + percentFromPetBonus(petBonuses.goldPercent));
+    return 1 + equipment.gold + percentFromPetBonus(petBonuses.goldPercent);
+  }
+
+  function getGoldGainMultiplier() {
+    return getGoldPrestigeMultiplier() * getGoldBuffMultiplier();
   }
   function getXpGainMultiplier() {
     const prestige = getPrestigeBonuses();
@@ -2445,8 +2480,24 @@
     const petBonuses = getActivePetBonuses();
     return (1 + prestige.xp) * (1 + equipment.xp + percentFromPetBonus(petBonuses.xpPercent));
   }
+  function calculateGoldRewardDetails(amount) {
+    const raw = Math.max(0, Number(amount) || 0);
+    const prestigeTotal = Math.round(raw * getGoldPrestigeMultiplier());
+    const total = Math.round(raw * getGoldGainMultiplier());
+    const bonus = Math.max(0, total - prestigeTotal);
+    return {
+      raw,
+      base: prestigeTotal,
+      total,
+      bonus,
+      bonusPercent: Math.max(0, getGoldBuffMultiplier() - 1)
+    };
+  }
   function calculateGoldReward(amount) {
-    return Math.round(Math.max(0, Number(amount) || 0) * getGoldGainMultiplier());
+    return calculateGoldRewardDetails(amount).total;
+  }
+  function goldDropText(details) {
+    return `${formatNumber(details.total)} Ouro${details.bonus > 0 ? ` (bônus: +${formatNumber(details.bonus)} / +${formatCaptainPercent(details.bonusPercent)})` : ""}`;
   }
   function calculateXpReward(amount) {
     return Math.max(0, Number(amount) || 0) * getXpGainMultiplier();
@@ -8173,26 +8224,50 @@
     commitGame(false);
   }
 
-  function rewardMaterials(multiplier = 1, enemy = state.combat.enemy) {
-    const region = REGIONS[state.regionIndex];
-    const lootBonus = state.equipment.compass ? 1.08 : 1;
-    let extraGold = 0;
-    const regionDrops = region.goldDrops || region.drops || {};
-    const enemyDrops = enemy?.bonusGoldDrops || enemy?.bonusDrops || {};
-    const dropKeys = new Set([...Object.keys(regionDrops), ...Object.keys(enemyDrops)]);
-    dropKeys.forEach(key => {
-      const chance = Math.min(.88, (regionDrops[key] || 0) + (enemyDrops[key] || 0));
-      if (Math.random() < chance * lootBonus * (multiplier > 1 ? 1.65 : 1)) {
-        const amount = Math.max(1, Math.round(integerBetween(1, 1 + Math.floor(state.regionIndex / 2)) * multiplier));
-        extraGold += Math.round(convertResourceAmountToGold(key, amount));
-      }
-    });
-    if (extraGold <= 0) return [];
-    const gold = calculateGoldReward(extraGold);
-    state.resources.ouro += gold;
-    state.lifetime.gold += gold;
-    trackAction("gold", { amount: gold });
-    return [`${formatNumber(gold)} Ouro extra`];
+  function getAverageConvertedDropAmount(regionIndex, multiplier = 1) {
+    const maxRoll = 1 + Math.floor(Math.max(0, Number(regionIndex) || 0) / 2);
+    return ((1 + maxRoll) / 2) * multiplier;
+  }
+
+  function getExpectedConvertedDropGold(regionIndex, regionDrops = {}, enemyDrops = {}, multiplier = 1) {
+    const amount = getAverageConvertedDropAmount(regionIndex, multiplier);
+    const chanceMultiplier = multiplier > 1 ? 1.65 : 1;
+    return [...new Set([...Object.keys(regionDrops || {}), ...Object.keys(enemyDrops || {})])].reduce((sum, key) => {
+      const chance = Math.min(.88, (Number(regionDrops?.[key]) || 0) + (Number(enemyDrops?.[key]) || 0));
+      const probability = Math.min(1, chance * chanceMultiplier);
+      return sum + probability * amount * getResourceGoldValue(key);
+    }, 0);
+  }
+
+  function getEnemyConvertedDropGold(regionIndex, enemy, multiplier = 1) {
+    const region = REGIONS[regionIndex] || {};
+    const profileDrops = enemy?.isBoss ? {} : (enemy?.bonusGoldDrops || ENEMY_CATEGORIES[enemy?.category]?.goldDrops || {});
+    return getExpectedConvertedDropGold(regionIndex, region.goldDrops || region.drops || {}, profileDrops, multiplier);
+  }
+
+  function getAverageMonsterBaseGoldForMap(regionIndex) {
+    const region = REGIONS[regionIndex];
+    if (!region) return 0;
+    const roster = REGION_ENCOUNTERS[regionIndex] || [];
+    const totalWeight = roster.reduce((sum, encounter) => sum + (Number(encounter.weight) || 1), 0);
+    if (!totalWeight) return region.gold + getExpectedConvertedDropGold(regionIndex, region.goldDrops || region.drops || {}, {}, 1);
+    return roster.reduce((sum, encounter) => {
+      const profile = ENEMY_CATEGORIES[encounter.category] || {};
+      const weight = Number(encounter.weight) || 1;
+      const averageRoll = clamp(region.gold * (profile.gold || 1) * 1.015, region.goldRange[0], region.goldRange[1]);
+      const convertedDrops = getExpectedConvertedDropGold(regionIndex, region.goldDrops || region.drops || {}, profile.goldDrops || profile.drops || {}, 1);
+      return sum + (averageRoll + convertedDrops) * weight;
+    }, 0) / totalWeight;
+  }
+
+  function getMonsterBaseGoldReward(region, enemy) {
+    const regionIndex = enemy?.regionIndex ?? state.regionIndex;
+    const weightedGold = region.gold * (enemy.goldMultiplier || 1) * randomBetween(.88, 1.15);
+    return clamp(weightedGold, region.goldRange[0], region.goldRange[1]) + getEnemyConvertedDropGold(regionIndex, enemy, 1);
+  }
+
+  function getBossBaseGoldReward(region, regionIndex = state.regionIndex) {
+    return integerBetween(region.bossGold[0], region.bossGold[1]) + getExpectedConvertedDropGold(regionIndex, region.goldDrops || region.drops || {}, {}, 8);
   }
 
   function scheduleBossMapAdvance(defeatedRegionIndex) {
@@ -8257,7 +8332,8 @@
     if (getEquippedPet()) state.lifetime.petKills += 1;
     if (enemy.isBoss) {
       const isSurpriseBoss = Boolean(enemy.isSurpriseBoss);
-      const reward = calculateGoldReward(integerBetween(region.bossGold[0], region.bossGold[1]));
+      const rewardDetails = calculateGoldRewardDetails(getBossBaseGoldReward(region, state.regionIndex));
+      const reward = rewardDetails.total;
       state.resources.ouro += reward;
       state.lifetime.gold += reward;
       state.lifetime.bosses += 1;
@@ -8266,9 +8342,8 @@
       if (getEquippedPet()) state.lifetime.bossesWithPet += 1;
       if (!isSurpriseBoss) state.bossesDefeated[state.regionIndex] = true;
       gainXp(region.xp * 35);
-      const materials = rewardMaterials(8, enemy);
       trySpawnChestDrop("boss", enemy);
-      addLog(`${isSurpriseBoss ? "Boss surpresa derrotado" : "Boss derrotado"}: ${region.boss}. Drop: ${formatNumber(reward)} Ouro.`, "loot");
+      addLog(`${isSurpriseBoss ? "Boss surpresa derrotado" : "Boss derrotado"}: ${region.boss}. Drop: ${goldDropText(rewardDetails)}.`, "loot");
       toast(`${region.boss}${isSurpriseBoss ? " surpresa" : ""} foi derrotado!`, "gold-toast");
       if (isSurpriseBoss) {
         state.combat.enemy = null;
@@ -8276,10 +8351,9 @@
       } else {
         scheduleBossMapAdvance(state.regionIndex);
       }
-      if (materials.length) addLog(`Drop do boss: ${materials.join(", ")}.`, "loot");
     } else {
-      const weightedGold = region.gold * (enemy.goldMultiplier || 1) * randomBetween(.88, 1.15);
-      const gold = calculateGoldReward(clamp(weightedGold, region.goldRange[0], region.goldRange[1]));
+      const rewardDetails = calculateGoldRewardDetails(getMonsterBaseGoldReward(region, enemy));
+      const gold = rewardDetails.total;
       state.resources.ouro += gold;
       state.lifetime.gold += gold;
       state.lifetime.enemies += 1;
@@ -8287,10 +8361,9 @@
       state.regionKills[state.regionIndex] += 1;
       trackAction("gold", { amount: gold });
       gainXp(Math.round(region.xp * (enemy.xpMultiplier || 1) * randomBetween(.92, 1.08)));
-      const materials = rewardMaterials(1, enemy);
       trySpawnChestDrop("monster", enemy);
-      trackAction("enemy", { onlyGold: materials.length === 0, multiResource: materials.length >= 2, survivor: state.combat.playerHp > 0 && state.combat.playerHp <= getStats().maxHp * .05 });
-      addLog(materials.length ? `Vitória contra ${enemy.name}. Drop: ${formatNumber(gold)} Ouro + ${materials.join(", ")}.` : `Vitória contra ${enemy.name}. Drop: ${formatNumber(gold)} Ouro.`, materials.length ? "loot" : "");
+      trackAction("enemy", { onlyGold: true, multiResource: false, survivor: state.combat.playerHp > 0 && state.combat.playerHp <= getStats().maxHp * .05 });
+      addLog(`Vitória contra ${enemy.name}. Drop: ${goldDropText(rewardDetails)}.`, rewardDetails.bonus > 0 ? "loot" : "");
       if (state.regionKills[state.regionIndex] === 100 && !state.bossesDefeated[state.regionIndex]) toast(`${region.boss} está disponível para desafio!`, "gold-toast");
       state.combat.enemy = null;
       state.combat.spawnTimer = 0;
@@ -8451,7 +8524,7 @@
     const efficiency = .62 * (1 + prestigeIdle);
     const cycle = (region.baseHp * getCommonMonsterBalanceMultiplier(state.regionIndex)) / Math.max(1, stats.dps) + getSpawnDelay() / 1000;
     const kills = Math.max(1, Math.floor(capped / cycle * efficiency * OFFLINE_REWARD_RATE));
-    const gold = calculateGoldReward(kills * region.gold * .94);
+    const gold = calculateGoldReward(kills * getAverageMonsterBaseGoldForMap(state.regionIndex) * .94);
     const xp = Math.round(kills * region.xp * .94);
     state.resources.ouro += gold;
     state.lifetime.gold += gold;
@@ -8463,18 +8536,6 @@
     trackAction("offline", { seconds: capped });
     gainXp(xp);
     const rewards = [{ name: "Ouro", amount: gold }, { name: "XP", amount: calculateXpReward(xp) }, { name: "Vitórias", amount: kills }];
-    let extraGold = 0;
-    Object.entries(region.goldDrops || region.drops || {}).forEach(([key, chance]) => {
-      const amount = Math.floor(kills * chance * randomBetween(.75, 1.15));
-      if (amount > 0) extraGold += Math.round(convertResourceAmountToGold(key, amount));
-    });
-    if (extraGold > 0) {
-      const extraGoldReward = calculateGoldReward(extraGold);
-      state.resources.ouro += extraGoldReward;
-      state.lifetime.gold += extraGoldReward;
-      trackAction("gold", { amount: extraGoldReward });
-      rewards.push({ name: "Ouro extra", amount: extraGoldReward });
-    }
     if (showModal) {
       $("#offline-time").textContent = `Sua frota navegou por ${formatDuration(capped)} (limite de 24 horas). Eficiência offline: ${Math.round(OFFLINE_REWARD_RATE * (1 + prestigeIdle) * 100)}% do combate ativo.`;
       $("#offline-rewards").innerHTML = rewards.map(item => `<div><span>${item.name}</span><strong>+${formatNumber(item.amount)}</strong></div>`).join("");
@@ -10071,7 +10132,6 @@
     const nextStats = equipped ? currentStats : getStatsWithTemporaryState(() => { state.equipment[key] = true; });
     const powerGain = Math.max(0, nextStats.power - currentStats.power);
     const statRows = getPositiveStatRows(currentStats, nextStats, ["damage", "maxHp", "speed", "armor", "precision", "crit", "evasion", "shipDps", "dps"]);
-    if (!equipped && key === "compass") statRows.push({ label: "Loot", value: "Chance de loot", delta: "+8%" });
     const action = equipped
       ? { actionAttrs: "", disabled: true, label: "Comprado" }
       : upgradeTableActionState("equipment", key, item.costs);
@@ -10229,9 +10289,9 @@
       if (!point || !region) return "";
       const status = mapStatus(activeMapInfoIndex);
       const description = point.description || region.description;
-      const extraChance = Math.min(.95, Object.values(region.goldDrops || {}).reduce((sum, chance) => sum + Number(chance || 0), 0));
-      const drops = `<div class="map-drops prologue-map-modal-drops"><span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS.legendary}"><span>${RESOURCE_META.ouro.icon}</span>Ouro extra <b>${Math.round(extraChance * 100)}%</b></span><span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS.rare}"><span>Baú</span>Comum <b>${Math.round(CHEST_DROP_CHANCES.monster * 100)}%</b></span></div>`;
-      return `<div class="prologue-map-modal-layer" data-close-map-info><article class="prologue-map-modal-card" role="dialog" aria-modal="true" aria-labelledby="map-info-title"><button class="prologue-map-close" data-close-map-info aria-label="Fechar">×</button><span class="map-number">${mapStepLabel(point)}</span><h3 id="map-info-title">${point.title || region.name}</h3><span class="map-status ${status.key}">${status.label}</span><p>${description}</p><div class="prologue-map-modal-meta"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div>${drops}<div class="prologue-map-modal-actions"><button class="button primary" data-select-map="${activeMapInfoIndex}" ${!status.unlocked || status.current ? "disabled" : ""}>${status.unlocked ? status.current ? "Atual" : "Viajar" : "Bloqueado"}</button><button class="button" data-close-map-info>Fechar</button></div></article></div>`;
+      const averageGold = getAverageMonsterBaseGoldForMap(activeMapInfoIndex);
+      const drops = `<div class="map-drops prologue-map-modal-drops"><span class="map-drop-chip" style="--rarity-color:${RARITY_COLORS.rare}"><span>Baú</span>Comum <b>${Math.round(CHEST_DROP_CHANCES.monster * 100)}%</b></span></div>`;
+      return `<div class="prologue-map-modal-layer" data-close-map-info><article class="prologue-map-modal-card" role="dialog" aria-modal="true" aria-labelledby="map-info-title"><button class="prologue-map-close" data-close-map-info aria-label="Fechar">×</button><span class="map-number">${mapStepLabel(point)}</span><h3 id="map-info-title">${point.title || region.name}</h3><span class="map-status ${status.key}">${status.label}</span><p>${description}</p><div class="prologue-map-modal-meta"><span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(averageGold)}</strong></span><span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span></div>${drops}<div class="prologue-map-modal-actions"><button class="button primary" data-select-map="${activeMapInfoIndex}" ${!status.unlocked || status.current ? "disabled" : ""}>${status.unlocked ? status.current ? "Atual" : "Viajar" : "Bloqueado"}</button><button class="button" data-close-map-info>Fechar</button></div></article></div>`;
     };
     const mapCompactRowsHtml = () => REGIONS.map((region, index) => {
       const status = mapStatus(index);
@@ -10260,7 +10320,7 @@
           <div class="map-progress-bar"><i style="width:${progress}%"></i></div>
         </div>
         <div class="map-yields">
-          <span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(region.gold)}</strong></span>
+          <span><small>Gold médio</small><strong>${RESOURCE_META.ouro.icon} ${formatNumber(getAverageMonsterBaseGoldForMap(index))}</strong></span>
           <span><small>XP média</small><strong>XP ${formatNumber(region.xp)}</strong></span>
         </div>
         <div class="map-drops">${mapDropsHtml(region)}</div>
