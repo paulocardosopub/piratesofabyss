@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v190-single-toast";
+const CACHE = "pirates-abyss-v191-quest-shortcut";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=109",
-  "game.js?v=202",
+  "styles.css?v=110",
+  "game.js?v=203",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

@@ -4175,6 +4175,24 @@
     return Boolean(item && !store.claimed[item.id] && (store.completed[item.id] || (isProgressionUnlocked(item, missionDefinitions, "quests") && objectiveProgress(item.objective) >= objectiveTarget(item.objective))));
   }
 
+  function getReadyMissionRewardCount() {
+    if (!state?.quests) return 0;
+    return missionDefinitions.filter(isMissionRewardReady).length;
+  }
+
+  function updateMissionRewardShortcut() {
+    const button = $("#combat-quest-alert");
+    if (!button) return;
+    resetPeriodicProgressIfNeeded();
+    const readyCount = getReadyMissionRewardCount();
+    const hasRewards = readyCount > 0;
+    const suffix = readyCount === 1 ? "" : "s";
+    const availableText = readyCount === 1 ? "disponível" : "disponíveis";
+    button.classList.toggle("hidden", !hasRewards);
+    button.setAttribute("aria-label", hasRewards ? `${readyCount} recompensa${suffix} de missões ${availableText}. Coletar tudo.` : "Sem recompensas de missões disponíveis");
+    button.title = hasRewards ? `Coletar ${readyCount} recompensa${suffix} de missões` : "Sem recompensas de missões disponíveis";
+  }
+
   function grantMissionReward(item) {
     const store = state.quests;
     if (!isMissionRewardReady(item)) return false;
@@ -4228,6 +4246,14 @@
     toast(`${claimed.length} recompensa${suffix} coletada${suffix}!`, "gold-toast");
     addLog(`Coletar tudo: ${claimed.length} recompensa${suffix} de missão coletada${suffix}.`, "loot");
     commitGame(true);
+  }
+
+  function openMissionRewardShortcut() {
+    activeMissionFilter = "Concluídas";
+    statsPanelsExpanded.quests = true;
+    navigate("missions");
+    claimAllMissionRewards();
+    requestAnimationFrame(() => $("[data-stats-panel=\"quests\"]")?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
   }
 
   function normalizeText(value = "") {
@@ -10749,6 +10775,7 @@
     const complete = completedCount(state.quests, missionDefinitions);
     const readyCount = missionDefinitions.filter(item => progressionStatus(item, state.quests, "quests") === "ready").length;
     const claimAllButtons = $$("[data-claim-all-missions]");
+    updateMissionRewardShortcut();
     summary.textContent = `${complete} / ${missionDefinitions.length}`;
     const panelSummary = $("#stats-quests-summary");
     if (panelSummary) panelSummary.textContent = `${readyCount} pronta${readyCount === 1 ? "" : "s"} • ${complete} / ${missionDefinitions.length}`;
@@ -11217,6 +11244,7 @@
     renderTopbar();
     renderHome();
     renderCombatHud();
+    updateMissionRewardShortcut();
     renderInitialCaptainGate();
     if (expensive && shouldRenderInactiveScreens()) Object.values(SCREEN_RENDERERS).forEach(render => render());
     else renderScreen();
@@ -11637,6 +11665,10 @@
     }
     if (target.dataset.exitSpecialCombat !== undefined) {
       exitSpecialCombat();
+      return;
+    }
+    if (target.dataset.missionRewardShortcut !== undefined) {
+      openMissionRewardShortcut();
       return;
     }
     if (target.dataset.toggleCaptainPets !== undefined) {
