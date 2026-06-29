@@ -3636,6 +3636,18 @@ body {
   color: var(--green);
 }
 
+.captain-pets-section .pet-table-row .upgrade-table-summary {
+  max-height: 50px;
+  align-content: center;
+  overflow: hidden;
+}
+
+.captain-pets-section .pet-table-row .upgrade-table-summary span {
+  min-height: 20px;
+  padding: 2px 6px;
+  font-size: 9px;
+}
+
 .upgrade-table-cost .cost-list,
 .upgrade-table-cost .cost-chip {
   margin: 0;

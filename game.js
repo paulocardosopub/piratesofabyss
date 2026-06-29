@@ -30,6 +30,7 @@
   const PET_MAX_LEVEL = 5;
   const PET_BASE_STRENGTH_MULTIPLIER = 2;
   const PET_UPGRADE_POWER_STEP = .32;
+  const PET_MIN_MONSTER_SPAWN_INTERVAL_MS = 280;
   const CAPTAIN_MAX_LEVEL = 10;
   const CAPTAIN_CHARACTER_ASSET_PATH = "assets/newpirates/";
   const EFFECT_ASSET_PATH = "assets/effects/";
@@ -780,15 +781,66 @@
   const PETS = [
     { name: "Peixe-palhaço", icon: "🐠", type: "Pet inicial", rarity: "Comum", rarityKey: "common", damage: 50, interval: 2, power: 300, levelReq: 1, costs: { ouro: 500, comida: 20 }, description: "Pequeno, ligeiro e sempre perto do casco.", color: "#ff9c45", visual: "fish" },
     { name: "Água-viva", icon: "🐙", type: "Aquático mágico", rarity: "Incomum", rarityKey: "uncommon", damage: 80, interval: 2.2, power: 480, levelReq: 3, costs: { ouro: 1200, comida: 40 }, description: "Flutua com um brilho azul e lança bolhas elétricas.", color: "#75dcff", visual: "jelly" },
-    { name: "Tartaruga Marinha", icon: "🐢", type: "Defensivo", rarity: "Incomum", rarityKey: "uncommon", damage: 120, interval: 2.5, power: 720, levelReq: 5, costs: { ouro: 2500, comida: 75, madeira: 25 }, description: "Casco resistente que concede +3% de defesa.", bonus: "+3% defesa do navio", defenseBonus: .03, color: "#67d997", visual: "turtle" },
+    { name: "Tartaruga Marinha", icon: "🐢", type: "Defensivo", rarity: "Incomum", rarityKey: "uncommon", damage: 120, interval: 2.5, power: 720, levelReq: 5, costs: { ouro: 2500, comida: 75, madeira: 25 }, description: "Casco resistente que avança firme ao lado do navio.", color: "#67d997", visual: "turtle" },
     { name: "Foca", icon: "🐬", type: "Ágil", rarity: "Incomum", rarityKey: "uncommon", damage: 180, interval: 2, power: 1050, levelReq: 8, costs: { ouro: 5000, comida: 120 }, description: "Emerge em saltos rápidos para atingir o alvo.", color: "#b9d5dc", visual: "seal" },
-    { name: "Golfinho", icon: "🐬", type: "Veloz", rarity: "Raro", rarityKey: "rare", damage: 300, interval: 1.7, power: 1700, levelReq: 12, costs: { ouro: 12000, comida: 250, perola: 5 }, description: "Nado elegante que concede +3% de velocidade.", bonus: "+3% velocidade do navio", speedBonus: .03, color: "#5ab9ed", visual: "dolphin" },
-    { name: "Arraia Elétrica", icon: "⚡", type: "Controle", rarity: "Raro", rarityKey: "rare", damage: 420, interval: 2.3, power: 2300, levelReq: 16, costs: { ouro: 20000, comida: 350, cristal: 10 }, description: "Descargas aquáticas podem desacelerar o inimigo.", bonus: "15% de chance de lentidão", slowChance: .15, color: "#57ddff", visual: "ray" },
+    { name: "Golfinho", icon: "🐬", type: "Veloz", rarity: "Raro", rarityKey: "rare", damage: 300, interval: 1.7, power: 1700, levelReq: 12, costs: { ouro: 12000, comida: 250, perola: 5 }, description: "Nado elegante que acompanha saques mais longos.", color: "#5ab9ed", visual: "dolphin" },
+    { name: "Arraia Elétrica", icon: "⚡", type: "Controle", rarity: "Raro", rarityKey: "rare", damage: 420, interval: 2.3, power: 2300, levelReq: 16, costs: { ouro: 20000, comida: 350, cristal: 10 }, description: "Descargas aquáticas iluminam o caminho da tripulação.", color: "#57ddff", visual: "ray" },
     { name: "Tubarão", icon: "🦈", type: "Ofensivo", rarity: "Épico", rarityKey: "epic", damage: 750, interval: 2, power: 3500, levelReq: 25, costs: { ouro: 50000, comida: 700, gema: 10 }, description: "Uma mordida brutal acompanhada por forte splash.", color: "#92aebb", visual: "shark" },
-    { name: "Baleia Assassina", icon: "🐋", type: "Pesado", rarity: "Épico", rarityKey: "epic", damage: 1200, interval: 2.7, power: 5200, levelReq: 35, costs: { ouro: 100000, comida: 1200, gema: 15, perola: 10 }, description: "Orca imponente que concede +4% de vida máxima.", bonus: "+4% vida máxima", hpBonus: .04, color: "#e4f1f0", visual: "orca" },
-    { name: "Megalodon", icon: "🦈", type: "Lendário ofensivo", rarity: "Lendário", rarityKey: "legendary", damage: 2500, interval: 2.5, power: 11000, levelReq: 55, regionReq: 10, costs: { ouro: 500000, comida: 2500, gema: 50, perola: 25, fragmentos: 10 }, description: "Predador pré-histórico do Oceano Profundo.", bonus: "+3% DPS do navio", dpsBonus: .03, color: "#ffb349", visual: "megalodon" },
-    { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 5000, interval: 3, power: 35000, levelReq: 75, regionReq: 15, bossReq: 14, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários com +15% de dano contra bosses.", bonus: "+15% contra bosses", bossBonus: .15, color: "#c485ff", visual: "kraken" }
+    { name: "Baleia Assassina", icon: "🐋", type: "Pesado", rarity: "Épico", rarityKey: "epic", damage: 1200, interval: 2.7, power: 5200, levelReq: 35, costs: { ouro: 100000, comida: 1200, gema: 15, perola: 10 }, description: "Orca imponente que escolta o navio nas rotas perigosas.", color: "#e4f1f0", visual: "orca" },
+    { name: "Megalodon", icon: "🦈", type: "Lendário ofensivo", rarity: "Lendário", rarityKey: "legendary", damage: 2500, interval: 2.5, power: 11000, levelReq: 55, prestigeReq: 10, costs: { ouro: 500000, comida: 2500, gema: 50, perola: 25, fragmentos: 10 }, description: "Predador pré-histórico do Oceano Profundo.", color: "#ffb349", visual: "megalodon" },
+    { name: "Kraken", icon: "🐙", type: "Mítico", rarity: "Mítico", rarityKey: "legendary", damage: 5000, interval: 3, power: 35000, levelReq: 75, prestigeReq: 20, costs: { ouro: 1500000, comida: 5000, gema: 100, ambar: 50, fragmentos: 25 }, description: "Tentáculos lendários que protegem a frota no abismo.", color: "#c485ff", visual: "kraken" }
   ].map((pet, id) => ({ id, dps: pet.damage / pet.interval, ...pet }));
+
+  const PET_BONUS_LEVEL_VALUES = {
+    shipAttackPercent: [0, 5, 10, 15, 20, 25],
+    attackSpeedPercent: [0, 5, 10, 15, 20, 25],
+    monsterSpawnPercent: [0, 5, 10, 15, 20, 25],
+    hpRegenPercentPer5s: [0, 1, 3, 5, 7, 10],
+    xpPercent: [0, 10, 20, 30, 40, 50],
+    goldPercent: [0, 10, 20, 30, 40, 50]
+  };
+  const PET_FULL_BONUS_KEYS = ["shipAttackPercent", "attackSpeedPercent", "hpRegenPercentPer5s", "xpPercent", "goldPercent", "monsterSpawnPercent"];
+  const PET_EMPTY_BONUSES = Object.freeze({
+    shipAttackPercent: 0,
+    attackSpeedPercent: 0,
+    monsterSpawnPercent: 0,
+    hpRegenPercentPer5s: 0,
+    xpPercent: 0,
+    goldPercent: 0
+  });
+  const PET_BONUS_DISPLAY = [
+    ["shipAttackPercent", "Ataque"],
+    ["attackSpeedPercent", "Veloc."],
+    ["hpRegenPercentPer5s", "Regen"],
+    ["xpPercent", "EXP"],
+    ["goldPercent", "Gold"],
+    ["monsterSpawnPercent", "Spawn"]
+  ];
+
+  function buildPetBonusLevels(keys, multiplier = 1) {
+    return Object.fromEntries(Array.from({ length: PET_MAX_LEVEL }, (_, index) => {
+      const level = index + 1;
+      const bonuses = {};
+      keys.forEach(key => {
+        const value = Number(PET_BONUS_LEVEL_VALUES[key]?.[level] || 0) * multiplier;
+        if (value > 0) bonuses[key] = value;
+      });
+      return [level, bonuses];
+    }));
+  }
+
+  const PET_BONUS_CONFIG = {
+    0: { name: PETS[0].name, bonusesByLevel: buildPetBonusLevels(["attackSpeedPercent"]) },
+    1: { name: PETS[1].name, bonusesByLevel: buildPetBonusLevels(["hpRegenPercentPer5s"]) },
+    2: { name: PETS[2].name, bonusesByLevel: buildPetBonusLevels(["shipAttackPercent"]) },
+    3: { name: PETS[3].name, bonusesByLevel: buildPetBonusLevels(["attackSpeedPercent", "xpPercent"]) },
+    4: { name: PETS[4].name, bonusesByLevel: buildPetBonusLevels(["hpRegenPercentPer5s", "goldPercent"]) },
+    5: { name: PETS[5].name, bonusesByLevel: buildPetBonusLevels(["shipAttackPercent", "goldPercent", "xpPercent"]) },
+    6: { name: PETS[6].name, bonusesByLevel: buildPetBonusLevels(PET_FULL_BONUS_KEYS) },
+    7: { name: PETS[7].name, bonusesByLevel: buildPetBonusLevels(PET_FULL_BONUS_KEYS, 2) },
+    8: { name: PETS[8].name, bonusesByLevel: buildPetBonusLevels(PET_FULL_BONUS_KEYS, 3) },
+    9: { name: PETS[9].name, bonusesByLevel: buildPetBonusLevels(PET_FULL_BONUS_KEYS, 4) }
+  };
 
   const PET_SPRITE_PATH = "assets/newpets/";
   const PET_SPRITE_CONFIG = {
@@ -1944,7 +1996,7 @@
       progression: makeProgressionDefaults(),
       quests: { completed: {}, claimed: {} },
       titles: [],
-      combat: { running: false, repairing: false, repairStarted: 0, repairDuration: AUTO_REPAIR_DURATION_MS, repairStartHp: 0, repairTargetHp: 140, repairSource: "", repairResumeRunning: false, pausedRegenTimer: 0, specialCombatResumeRunning: false, playerHp: 140, enemy: null, attackTimer: 0, petAttackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
+      combat: { running: false, repairing: false, repairStarted: 0, repairDuration: AUTO_REPAIR_DURATION_MS, repairStartHp: 0, repairTargetHp: 140, repairSource: "", repairResumeRunning: false, pausedRegenTimer: 0, hpRegenTimer: 0, specialCombatResumeRunning: false, playerHp: 140, enemy: null, attackTimer: 0, petAttackTimer: 0, enemyAttackTimer: 0, spawnTimer: 0 },
       autoChallengeBoss: false,
       logs: [],
       hasStarted: false,
@@ -2224,7 +2276,51 @@
     if (level >= PET_MAX_LEVEL) return null;
     return Math.round(PET_PIRATE_COIN_COSTS[id] * (1.8 + level * .7) * Math.pow(1.35, level - 1));
   }
-  function percentText(value) { return `${Math.round(value * 100)}%`; }
+  function percentFromPetBonus(value) {
+    return Math.max(0, Number(value) || 0) / 100;
+  }
+  function formatPetBonusPercent(value) {
+    const percent = Math.max(0, Number(value) || 0);
+    return `${percent.toLocaleString("pt-BR", { maximumFractionDigits: percent % 1 ? 1 : 0 })}%`;
+  }
+  function getPetPrestigeRequirement(pet) {
+    return Math.max(0, Math.floor(Number(pet?.prestigeReq ?? ((pet?.id ?? 0) + 1)) || 0));
+  }
+  function getPetBonuses(petId, level = 1) {
+    const id = Math.floor(Number(petId));
+    const config = PET_BONUS_CONFIG[id];
+    const safeLevel = clamp(Math.floor(Number(level) || 1), 1, PET_MAX_LEVEL);
+    return { ...PET_EMPTY_BONUSES, ...(config?.bonusesByLevel?.[safeLevel] || {}) };
+  }
+  function getPetBonusSummaryRows(petOrId, level = 1) {
+    const id = typeof petOrId === "object" ? petOrId?.id : petOrId;
+    const bonuses = getPetBonuses(id, level);
+    return PET_BONUS_DISPLAY
+      .filter(([key]) => Number(bonuses[key] || 0) > 0)
+      .map(([key, label]) => ({
+        label,
+        value: key === "hpRegenPercentPer5s" ? `+${formatPetBonusPercent(bonuses[key])}/5s` : `+${formatPetBonusPercent(bonuses[key])}`
+      }));
+  }
+  function getPetBonusInlineText(petOrId, level = 1, limit = 6) {
+    return getPetBonusSummaryRows(petOrId, level).slice(0, limit).map(row => `${row.label} ${row.value}`).join(" • ");
+  }
+  function getActivePetBonuses(activePet = getEquippedPet()) {
+    return activePet ? getPetBonuses(activePet.id, activePet.level) : { ...PET_EMPTY_BONUSES };
+  }
+  function applyActivePetBonuses(playerStats, activePet) {
+    const bonuses = getActivePetBonuses(activePet);
+    return {
+      ...playerStats,
+      damage: playerStats.damage * (1 + percentFromPetBonus(bonuses.shipAttackPercent)),
+      attackSpeedBonus: (playerStats.attackSpeedBonus || 0) + percentFromPetBonus(bonuses.attackSpeedPercent),
+      hpRegenPercentPer5s: (playerStats.hpRegenPercentPer5s || 0) + bonuses.hpRegenPercentPer5s,
+      goldGainBonus: (playerStats.goldGainBonus || 0) + percentFromPetBonus(bonuses.goldPercent),
+      xpGainBonus: (playerStats.xpGainBonus || 0) + percentFromPetBonus(bonuses.xpPercent),
+      monsterSpawnBonusPercent: (playerStats.monsterSpawnBonusPercent || 0) + bonuses.monsterSpawnPercent,
+      petBonuses: bonuses
+    };
+  }
   function getPetWithLevel(pet, level = getPetLevel(pet.id)) {
     const multiplier = getPetMultiplier(level);
     const scaled = {
@@ -2236,18 +2332,8 @@
       power: Math.round(pet.power * multiplier)
     };
     scaled.dps = scaled.damage / scaled.interval;
-    if (pet.speedBonus) scaled.speedBonus = pet.speedBonus * multiplier;
-    if (pet.hpBonus) scaled.hpBonus = pet.hpBonus * multiplier;
-    if (pet.defenseBonus) scaled.defenseBonus = pet.defenseBonus * multiplier;
-    if (pet.dpsBonus) scaled.dpsBonus = pet.dpsBonus * multiplier;
-    if (pet.bossBonus) scaled.bossBonus = pet.bossBonus * multiplier;
-    if (pet.slowChance) scaled.slowChance = Math.min(.85, pet.slowChance * multiplier);
-    if (scaled.defenseBonus) scaled.bonus = `+${percentText(scaled.defenseBonus)} defesa do navio`;
-    if (scaled.speedBonus) scaled.bonus = `+${percentText(scaled.speedBonus)} velocidade do navio`;
-    if (scaled.hpBonus) scaled.bonus = `+${percentText(scaled.hpBonus)} vida máxima`;
-    if (scaled.dpsBonus) scaled.bonus = `+${percentText(scaled.dpsBonus)} DPS do navio`;
-    if (scaled.bossBonus) scaled.bonus = `+${percentText(scaled.bossBonus)} contra bosses`;
-    if (scaled.slowChance) scaled.bonus = `${percentText(scaled.slowChance)} de chance de lentidão`;
+    scaled.bonuses = getPetBonuses(pet.id, level);
+    scaled.bonus = getPetBonusInlineText(pet.id, level);
     return scaled;
   }
   function getPetAuraStyle(pet) {
@@ -2257,9 +2343,13 @@
   function petLevelPips(level) {
     return Array.from({ length: PET_MAX_LEVEL }, (_, index) => `<i class="${index < level ? "on" : ""}"></i>`).join("");
   }
-  function getEquippedPet() { return state.equippedPetId === null ? null : PETS[state.equippedPetId] ? getPetWithLevel(PETS[state.equippedPetId]) : null; }
+  function getEquippedPet() {
+    if (state.equippedPetId === null) return null;
+    const pet = PETS[state.equippedPetId];
+    return pet && state.ownedPets.includes(pet.id) && isPetUnlocked(pet) ? getPetWithLevel(pet) : null;
+  }
   function isPetUnlocked(pet) {
-    return state.prestiges >= pet.id + 1 && (!pet.regionReq || state.unlockedRegions >= pet.regionReq) && (pet.bossReq === undefined || state.bossesDefeated[pet.bossReq]);
+    return state.prestiges >= getPetPrestigeRequirement(pet) && (!pet.regionReq || state.unlockedRegions >= pet.regionReq) && (pet.bossReq === undefined || state.bossesDefeated[pet.bossReq]);
   }
 
   function prestigeRegionIndex() { return REGIONS.findIndex(region => region.name === PRESTIGE_REGION_NAME); }
@@ -2277,12 +2367,14 @@
   function getGoldGainMultiplier() {
     const prestige = getPrestigeBonuses();
     const equipment = getCaptainEquipmentRewardBonuses();
-    return (1 + prestige.gold) * (1 + equipment.gold);
+    const petBonuses = getActivePetBonuses();
+    return (1 + prestige.gold) * (1 + equipment.gold + percentFromPetBonus(petBonuses.goldPercent));
   }
   function getXpGainMultiplier() {
     const prestige = getPrestigeBonuses();
     const equipment = getCaptainEquipmentRewardBonuses();
-    return (1 + prestige.xp) * (1 + equipment.xp);
+    const petBonuses = getActivePetBonuses();
+    return (1 + prestige.xp) * (1 + equipment.xp + percentFromPetBonus(petBonuses.xpPercent));
   }
   function calculateGoldReward(amount) {
     return Math.round(Math.max(0, Number(amount) || 0) * getGoldGainMultiplier());
@@ -2378,14 +2470,12 @@
     if (state.equipment.anchor) { armor += 20; maxHp *= 1.1; }
     if (state.equipment.amulet) damage *= 1.25;
     const pet = getEquippedPet();
-    if (pet?.speedBonus) speed *= 1 + pet.speedBonus;
-    if (pet?.hpBonus) maxHp *= 1 + pet.hpBonus;
-    if (pet?.defenseBonus) armor *= 1 + pet.defenseBonus;
     if (captainEquipmentBonuses.shipArmorBonus) armor *= 1 + captainEquipmentBonuses.shipArmorBonus;
     crit = Math.min(.75, crit + captainEquipmentBonuses.critChance);
     const evasion = Math.min(.6, Math.min(.3, .03 + speed / 5000) + captainEquipmentBonuses.dodgeChance);
     const doubleAttackChance = Math.min(.5, captainEquipmentBonuses.doubleAttackChance);
-    const attackSpeedBonus = captainEquipmentBonuses.shipAttackSpeedBonus;
+    let attackSpeedBonus = captainEquipmentBonuses.shipAttackSpeedBonus;
+    ({ damage, speed, maxHp, armor, attackSpeedBonus } = applyActivePetBonuses({ damage, speed, maxHp, armor, attackSpeedBonus }, pet));
     const armorReduction = Math.min(.75, (1 - 100 / (100 + armor * 4)) + captainEquipmentBonuses.shipArmorBonus);
     const attackInterval = Math.max(190, 100000 / speed / (1 + attackSpeedBonus));
     const basicDps = damage / (attackInterval / 1000) * precision * (1 + crit) * (1 + doubleAttackChance);
@@ -2400,7 +2490,7 @@
     const shipDps = basicDps;
     const boostedSkillDps = skillDps;
     const petDps = pet?.dps || 0;
-    const navalDps = (shipDps + boostedSkillDps) * (1 + (pet?.dpsBonus || 0));
+    const navalDps = shipDps + boostedSkillDps;
     const totalDps = Math.round(navalDps + petDps);
     const unlockedSkillLevels = Object.entries(state.skills).reduce((sum, [key, skill]) => sum + (isSkillUnlocked(key) ? skill.level : 0), 0);
     const powerBreakdown = getNavalPowerV2Breakdown({
@@ -2427,7 +2517,8 @@
 
   function getSpawnDelay() {
     const baseSpawnInterval = 5000 * Math.pow(100 / getStats().speed, .72);
-    return Math.max(280, baseSpawnInterval / (1 + getCaptainBonuses().spawnBonus));
+    const petBonuses = getActivePetBonuses();
+    return Math.max(PET_MIN_MONSTER_SPAWN_INTERVAL_MS, baseSpawnInterval / (1 + getCaptainBonuses().spawnBonus + percentFromPetBonus(petBonuses.monsterSpawnPercent)));
   }
 
   function getCombatRegionLabel(region = REGIONS[state.regionIndex]) {
@@ -7498,7 +7589,7 @@
       return;
     }
     const critical = Math.random() < stats.crit;
-    const raw = stats.damage * randomBetween(.91, 1.09) * (critical ? 2 : 1) * (1 + (getEquippedPet()?.dpsBonus || 0));
+    const raw = stats.damage * randomBetween(.91, 1.09) * (critical ? 2 : 1);
     const attackColor = options.manual ? (critical ? "#fff19a" : "#9ff4e9") : critical ? "#ffe268" : "#ffd37a";
     dealToEnemy(raw, { color: attackColor, manual: options.manual });
     if (critical) {
@@ -7550,7 +7641,7 @@
     if (!enemy || enemy.defeated) return;
     const meta = SKILL_META[key];
     const level = state.skills[key].level;
-    const base = getStats().damage * (meta.factor + (level - 1) * .24) * (1 + (getEquippedPet()?.dpsBonus || 0));
+    const base = getStats().damage * (meta.factor + (level - 1) * .24);
     if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a", skill: true }); enemy.burnTime = meta.burnDuration + (level - 1) * .25; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04) * (1 - (enemy.skillResist || 0)); }
     if (key === "ice") { dealToEnemy(base, { color: "#81e8ff", skill: true }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
     if (key === "ghost") dealToEnemy(base, { color: "#c58cff", ignoreArmor: true, skill: true });
@@ -7604,13 +7695,8 @@
     const enemy = state.combat.enemy;
     const pet = getEquippedPet();
     if (!enemy || enemy.defeated || !pet) return;
-    const bossMultiplier = enemy.isBoss ? 1 + (pet.bossBonus || 0) : 1;
-    dealToEnemy(pet.damage * randomBetween(.94, 1.06) * bossMultiplier, { pet, color: pet.color });
+    dealToEnemy(pet.damage * randomBetween(.94, 1.06), { pet, color: pet.color });
     state.lifetime.petAttacks += 1;
-    if (pet.slowChance && Math.random() < pet.slowChance && state.combat.enemy) {
-      state.combat.enemy.slowed = Math.max(state.combat.enemy.slowed, 2.5);
-      addLog(`${pet.name} eletrizou a água e desacelerou o inimigo.`, "loot");
-    }
   }
 
   function applyShipDamageReduction(rawDamage, stats = getStats()) {
@@ -7694,7 +7780,7 @@
 
   function applyPausedHpRegen(dt) {
     if (state.combat.running || state.combat.repairing || isArenaSceneActive() || state.combat.playerHp <= 0) return;
-    const bonus = getCaptainBonuses().hpRegenPercentPerSecond || 0;
+    const bonus = (getCaptainBonuses().hpRegenPercentPerSecond || 0) + percentFromPetBonus(getActivePetBonuses().hpRegenPercentPer5s);
     if (bonus <= 0) {
       state.combat.pausedRegenTimer = 0;
       return;
@@ -7968,14 +8054,29 @@
     }
     if (!state.combat.running) {
       applyPausedHpRegen(dt);
+      state.combat.hpRegenTimer = 0;
       return;
     }
     state.combat.pausedRegenTimer = 0;
     const captainBonuses = getCaptainBonuses();
-    if (!arenaBattleActive && captainBonuses.hpRegenPercentPerSecond > 0 && state.combat.playerHp > 0) {
+    const petHpRegenPer5s = percentFromPetBonus(getActivePetBonuses().hpRegenPercentPer5s);
+    if (!arenaBattleActive && (captainBonuses.hpRegenPercentPerSecond > 0 || petHpRegenPer5s > 0) && state.combat.playerHp > 0) {
       const maxHp = getStats().maxHp;
-      const hpRegenPerSecond = captainBonuses.hpRegenPercentPerSecond / CAPTAIN_HP_REGEN_INTERVAL_SECONDS;
-      if (state.combat.playerHp < maxHp) state.combat.playerHp = Math.min(maxHp, state.combat.playerHp + maxHp * hpRegenPerSecond * dt);
+      if (captainBonuses.hpRegenPercentPerSecond > 0 && state.combat.playerHp < maxHp) {
+        const hpRegenPerSecond = captainBonuses.hpRegenPercentPerSecond / CAPTAIN_HP_REGEN_INTERVAL_SECONDS;
+        state.combat.playerHp = Math.min(maxHp, state.combat.playerHp + maxHp * hpRegenPerSecond * dt);
+      }
+      if (petHpRegenPer5s > 0 && state.combat.playerHp < maxHp) {
+        state.combat.hpRegenTimer = Math.max(0, Number(state.combat.hpRegenTimer || 0)) + dt;
+        while (state.combat.hpRegenTimer >= CAPTAIN_HP_REGEN_INTERVAL_SECONDS && state.combat.playerHp < maxHp) {
+          state.combat.hpRegenTimer -= CAPTAIN_HP_REGEN_INTERVAL_SECONDS;
+          state.combat.playerHp = Math.min(maxHp, state.combat.playerHp + maxHp * petHpRegenPer5s);
+        }
+      } else {
+        state.combat.hpRegenTimer = 0;
+      }
+    } else {
+      state.combat.hpRegenTimer = 0;
     }
     if (!state.combat.enemy) {
       if (isArenaSceneActive()) return;
@@ -8638,7 +8739,8 @@
 
   function getPetIssues(pet) {
     const issues = [];
-    if (state.prestiges < pet.id + 1) issues.push(`${pet.id + 1} Prestígio${pet.id ? "s" : ""} realizado${pet.id ? "s" : ""}`);
+    const prestigeReq = getPetPrestigeRequirement(pet);
+    if (state.prestiges < prestigeReq) issues.push(`Desbloqueia com ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}`);
     if (pet.regionReq && state.unlockedRegions < pet.regionReq) issues.push(pet.id === 8 ? "Oceano Profundo desbloqueado" : "Abismo do Kraken desbloqueado");
     if (pet.bossReq !== undefined && !state.bossesDefeated[pet.bossReq]) issues.push("Kraken Primordial derrotado");
     return issues;
@@ -8653,41 +8755,35 @@
     if (ownedCount) ownedCount.textContent = `${state.ownedPets.length} / ${PETS.length}`;
     banner.className = `pet-current-banner pet-current-compact${current ? " equipped" : ""}`;
     banner.setAttribute("style", current ? getPetAuraStyle(current) : "");
-    banner.innerHTML = current ? `<div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Nenhum pet equipado</h2><p>Você pode navegar sem pet ou escolher um companheiro quando quiser.</p></div>`;
+    banner.innerHTML = current ? `<div><span class="eyebrow">PET EQUIPADO</span><h2>${current.name}</h2><p>${getPetBonusInlineText(current.id, current.level) || current.description}</p></div><div class="pet-current-stats"><span>Nível <strong>${current.level}/${PET_MAX_LEVEL}</strong></span><span>Dano <strong>${formatNumber(current.damage)}</strong></span><span>DPS <strong>${current.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</strong></span><span>Poder <strong>+${formatNumber(current.power)}</strong></span></div>` : `<div><span class="eyebrow">SEM COMPANHEIRO</span><h2>Nenhum pet equipado</h2><p>Você pode navegar sem pet ou escolher um companheiro quando quiser.</p></div>`;
     grid.innerHTML = PETS.map(basePet => {
       const owned = state.ownedPets.includes(basePet.id);
       const level = owned ? getPetLevel(basePet.id) : 1;
       const pet = getPetWithLevel(basePet, level);
-      const equipped = state.equippedPetId === pet.id;
-      const issues = getPetIssues(basePet);
       const unlocked = isPetUnlocked(basePet);
+      const equipped = state.equippedPetId === pet.id && unlocked;
+      const issues = getPetIssues(basePet);
       const pirateCoinCost = PET_PIRATE_COIN_COSTS[pet.id];
       const affordable = canAfford(pet.costs) && state.pirateCoins >= pirateCoinCost;
-      const status = equipped ? "EQUIPADO" : owned ? `NÍVEL ${level}` : unlocked ? "DISPONÍVEL" : "BLOQUEADO";
-      const deltaDamage = current ? pet.damage - current.damage : pet.damage;
-      const deltaDps = current ? pet.dps - current.dps : pet.dps;
+      const status = equipped ? "EQUIPADO" : owned && !unlocked ? "BLOQUEADO" : owned ? `NÍVEL ${level}` : unlocked ? "DISPONÍVEL" : "BLOQUEADO";
       const upgradeCost = owned ? getPetUpgradeCost(pet.id, level) : null;
-      const nextPet = owned && level < PET_MAX_LEVEL ? getPetWithLevel(basePet, level + 1) : null;
-      const prestigeLine = `Prestígio necessário: ${state.prestiges} / ${pet.id + 1}`;
-      const summaryRows = [
-        { label: "Dano", value: formatNumber(pet.damage), delta: current && !equipped ? `${deltaDamage >= 0 ? "+" : "−"}${formatNumber(Math.abs(deltaDamage))}` : formatNumber(pet.damage) },
-        { label: "DPS", value: pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 }), delta: current && !equipped ? `${deltaDps >= 0 ? "+" : "−"}${Math.abs(deltaDps).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}` : pet.dps.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) },
-        { label: "Ataque", value: `${pet.interval.toLocaleString("pt-BR")}s` },
-        ...(nextPet ? [{ label: "Próx. poder", delta: `+${formatNumber(nextPet.power - pet.power)}` }] : [])
-      ].slice(0, 4);
+      const prestigeReq = getPetPrestigeRequirement(basePet);
+      const prestigeLine = `Prestígio necessário: ${state.prestiges} / ${prestigeReq}`;
+      const summaryRows = getPetBonusSummaryRows(pet.id, level);
       const costHtml = owned
         ? upgradeCost ? `<span class="cost-chip pirate-coin-cost">☠ ${formatNumber(upgradeCost)}</span>` : `<span class="cost-chip">Nível máximo</span>`
         : `<span class="cost-chip pirate-coin-cost">☠ ${formatNumber(pirateCoinCost)}</span>${resourceCostHtml(pet.costs)}`;
       const actionHtml = owned
-        ? `${upgradeTableButtonHtml(equipped ? "Desequipar" : "Equipar", `data-equip-pet="${pet.id}"`, false, equipped ? "" : "primary")}${upgradeTableButtonHtml(upgradeCost ? "Melhorar" : "Máximo", `data-upgrade-pet="${pet.id}"`, !(upgradeCost && state.pirateCoins >= upgradeCost), "prestige-button")}`
+        ? `${upgradeTableButtonHtml(state.equippedPetId === pet.id ? "Desequipar" : "Equipar", `data-equip-pet="${pet.id}"`, !unlocked && state.equippedPetId !== pet.id, equipped ? "" : "primary")}${upgradeTableButtonHtml(upgradeCost ? "Melhorar" : "Máximo", `data-upgrade-pet="${pet.id}"`, !unlocked || !(upgradeCost && state.pirateCoins >= upgradeCost), "prestige-button")}`
         : upgradeTableButtonHtml("Comprar", `data-buy-pet="${pet.id}"`, !unlocked || !affordable);
-      const value = owned ? `Nível ${level}/${PET_MAX_LEVEL}` : unlocked ? `Prestígio ${pet.id + 1}` : "Bloqueado";
-      const valueSub = owned ? (equipped ? "Equipado" : "Comprado") : issues.length ? issues.join(" • ") : prestigeLine;
+      const value = owned ? `Nível ${level}/${PET_MAX_LEVEL}` : unlocked ? `Prestígio ${prestigeReq}` : "Bloqueado";
+      const valueSub = owned ? (equipped ? "Equipado" : unlocked ? "Comprado" : prestigeLine) : issues.length ? issues.join(" • ") : prestigeLine;
+      const bonusText = getPetBonusInlineText(pet.id, level) || pet.description;
       const note = owned
-        ? pet.bonus || pet.description
-        : issues.length ? `Requer: ${issues.join(" • ")}` : state.pirateCoins >= pirateCoinCost ? "Pronto para adotar" : `Faltam ${formatNumber(pirateCoinCost - state.pirateCoins)} Moedas Pirata`;
+        ? !unlocked && issues.length ? issues.join(" • ") : bonusText
+        : issues.length ? `Requer: ${issues.join(" • ")}` : bonusText;
       return upgradeTableRowHtml({
-        classes: `pet-card pet-list-card pet-table-row ${equipped ? "equipped" : owned ? "owned" : unlocked ? "available" : "locked"}`,
+        classes: `pet-card pet-list-card pet-table-row ${equipped ? "equipped" : owned && !unlocked ? "owned locked" : owned ? "owned" : unlocked ? "available" : "locked"}`,
         style: getPetAuraStyle(pet),
         icon: pet.icon,
         eyebrow: `${pet.rarity} • ${status}`,
@@ -8996,7 +9092,7 @@
       </button>
       <div class="captain-pets-body">
         <div class="pet-prestige-notice">
-          <div><span class="eyebrow">REQUISITO PERMANENTE</span><strong>Pets só liberam com Prestígio</strong><p>Cada pet exige Prestígios acumulados e Moedas Pirata. O primeiro pet exige 1 Prestígio, o segundo exige 2, e assim por diante.</p></div>
+          <div><span class="eyebrow">REQUISITO PERMANENTE</span><strong>Pets só liberam com Prestígio</strong><p>Cada pet exige Prestígios acumulados e Moedas Pirata. Megalodon libera com 10 Prestígios, e Kraken com 20.</p></div>
           <button class="button prestige-button" data-screen-target="prestige">Ir para Prestígio</button>
         </div>
         <div class="pet-current-banner" id="pet-current-banner"></div>
@@ -10583,12 +10679,15 @@
     const pirateCoinCost = PET_PIRATE_COIN_COSTS[id];
     if (state.pirateCoins < pirateCoinCost) return toast("Moedas Pirata insuficientes para este pet.", "danger-toast");
     if (!canAfford(pet.costs)) return toast("Ainda falta Gold para adotar este pet.", "danger-toast");
-    spend(pet.costs); state.pirateCoins -= pirateCoinCost; state.ownedPets.push(id); state.petLevels[id] = 1; state.equippedPetId = id; state.combat.petAttackTimer = 0; state.lifetime.petsBought += 1;
+    spend(pet.costs); state.pirateCoins -= pirateCoinCost; state.ownedPets.push(id); state.petLevels[id] = 1; state.equippedPetId = id; state.combat.petAttackTimer = 0; state.combat.hpRegenTimer = 0; state.lifetime.petsBought += 1;
     toast(`${pet.name} foi comprado e equipado!`, "gold-toast"); addLog(`${pet.name} agora acompanha seu navio.`, "loot"); commitGame(true);
   }
 
   function upgradePet(id) {
-    if (!state.ownedPets.includes(id) || !PETS[id]) return;
+    const basePet = PETS[id];
+    if (!state.ownedPets.includes(id) || !basePet) return;
+    const issues = getPetIssues(basePet);
+    if (issues.length) return toast(`Pet bloqueado: ${issues.join(" • ")}.`, "danger-toast");
     const level = getPetLevel(id);
     if (level >= PET_MAX_LEVEL) return toast("Este pet já está no nível máximo.", "gold-toast");
     const cost = getPetUpgradeCost(id, level);
@@ -10605,17 +10704,21 @@
   }
 
   function equipPet(id) {
-    if (!state.ownedPets.includes(id) || !PETS[id]) return;
+    const pet = PETS[id];
+    if (!state.ownedPets.includes(id) || !pet) return;
     if (state.equippedPetId === id) {
       state.equippedPetId = null;
       state.combat.petAttackTimer = 0;
+      state.combat.hpRegenTimer = 0;
       state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
       toast("Pet desequipado. Seu navio seguirá sem companheiro.");
       commitGame(true);
       return;
     }
-    state.equippedPetId = id; state.combat.petAttackTimer = 0; state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
-    toast(`${PETS[id].name} equipado como companheiro.`); commitGame(true);
+    const issues = getPetIssues(pet);
+    if (issues.length) return toast(`Pet bloqueado: ${issues.join(" • ")}.`, "danger-toast");
+    state.equippedPetId = id; state.combat.petAttackTimer = 0; state.combat.hpRegenTimer = 0; state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
+    toast(`${pet.name} equipado como companheiro.`); commitGame(true);
   }
 
   function savePirateNameFromInput() {
