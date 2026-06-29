@@ -1,11 +1,12 @@
-const CACHE = "pirates-abyss-v174-mobile-landscape-combat";
+const CACHE = "pirates-abyss-v180-captain-editor-final";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=106",
-  "game.js?v=177",
+  "game.js?v=184",
   "icon.svg",
   "manifest.webmanifest",
+  "assets/effects/reparo_barco_3sprites.png",
   "assets/ui/tabs/mobile/icon_combate_square.png",
   "assets/ui/tabs/mobile/icon_navio_square.png",
   "assets/ui/tabs/mobile/icon_mapa_square.png",

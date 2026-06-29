@@ -32,6 +32,7 @@
   const PET_UPGRADE_POWER_STEP = .32;
   const CAPTAIN_MAX_LEVEL = 10;
   const CAPTAIN_CHARACTER_ASSET_PATH = "assets/newpirates/";
+  const EFFECT_ASSET_PATH = "assets/effects/";
   const CAPTAIN_MANUAL_SKILL_KEY = "sabotage";
   const CAPTAIN_REPAIR_SKILL_KEY = "emergencyRepair";
   const CAPTAIN_MANUAL_SKILL_BASE_COOLDOWN = 10;
@@ -655,7 +656,7 @@
     },
     emergencyRepair: {
       name: "Restaurar Navio",
-      icon: "+",
+      icon: "\u2665",
       cooldown: EMERGENCY_REPAIR_COOLDOWN_SECONDS,
       maxLevel: 4,
       description: "Skill manual do pirata. Restaura 25%, 50%, 75% ou 100% da vida máxima atual do navio."
@@ -1068,32 +1069,32 @@
   const CAPTAIN_CHARACTER_REACTION_SECONDS = { celebrate: 2.35, hit: .42 };
   const CAPTAIN_CHARACTER_GENDER_FILE_KEYS = { male: "masculino", female: "feminino" };
   const PIRATE_CHARACTER_CONFIG = {
-    boat_01: { scale: .445, offsetX: .01, offsetY: .949, deckY: .86, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .05 },
-    boat_02: { scale: .43, offsetX: -.029, offsetY: -2.593, deckY: .85, anchor: "deck", maxHeight: 110, embed: .08, railOverlap: .01 },
-    boat_03: { scale: .44, offsetX: -.017, offsetY: -25.956, deckY: .8, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01 },
-    boat_04: { scale: .43, offsetX: -.062, offsetY: -3.478, deckY: .84, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01 },
-    boat_05: { scale: .43, offsetX: -.006, offsetY: -5.363, deckY: .81, anchor: "deck", maxHeight: 114, embed: .08, railOverlap: .01 },
-    boat_06: { scale: .425, offsetX: -.022, offsetY: -24.956, deckY: .78, anchor: "deck", maxHeight: 114, embed: .08, railOverlap: .01 },
-    boat_07: { scale: .41, offsetX: -.029, offsetY: -2.707, deckY: .74, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01 },
-    boat_08: { scale: .414, offsetX: -.07, offsetY: 15, deckY: .76, anchor: "deck", maxHeight: 116, embed: .08, railOverlap: .01 },
-    boat_09: { scale: .405, offsetX: -.12, offsetY: 14.229, deckY: .78, anchor: "deck", maxHeight: 118, embed: .08, railOverlap: .01 },
-    boat_10: { scale: .398, offsetX: -.119, offsetY: -23.727, deckY: .8, anchor: "deck", maxHeight: 118, embed: .08, railOverlap: .01 },
-    boat_11: { scale: .405, offsetX: .01, offsetY: -10.561, deckY: .78, anchor: "deck", maxHeight: 120, embed: .08, railOverlap: .01 },
-    boat_12: { scale: .396, offsetX: .005, offsetY: -.822, deckY: .78, anchor: "deck", maxHeight: 120, embed: .08, railOverlap: .01 },
-    boat_13: { scale: .398, offsetX: .009, offsetY: 5.605, deckY: .8, anchor: "deck", maxHeight: 122, embed: .08, railOverlap: .01 },
-    boat_14: { scale: .388, offsetX: .005, offsetY: -33.695, deckY: .77, anchor: "deck", maxHeight: 122, embed: .08, railOverlap: .01 },
-    boat_15: { scale: .388, offsetX: -.012, offsetY: .949, deckY: .77, anchor: "deck", maxHeight: 124, embed: .08, railOverlap: .01 },
-    boat_16: { scale: .392, offsetX: .034, offsetY: 16.885, deckY: .78, anchor: "deck", maxHeight: 126, embed: .08, railOverlap: .01 },
-    boat_17: { scale: .356, offsetX: -.009, offsetY: 12.459, deckY: .77, anchor: "deck", maxHeight: 128, embed: .4, railOverlap: .066 },
-    boat_18: { scale: .309, offsetX: -.011, offsetY: 36.593, deckY: .8, anchor: "deck", maxHeight: 128, embed: .35, railOverlap: .07 },
-    boat_19: { scale: .309, offsetX: -.054, offsetY: 41.905, deckY: .8, anchor: "deck", maxHeight: 128, embed: .43, railOverlap: .07 },
-    boat_20: { scale: .309, offsetX: .086, offsetY: 56.071, deckY: .8, anchor: "deck", maxHeight: 130, embed: .43, railOverlap: .07 },
-    boat_21: { scale: .309, offsetX: .027, offsetY: 28.624, deckY: .81, anchor: "deck", maxHeight: 132, embed: .08, railOverlap: .01 },
-    boat_22: { scale: .309, offsetX: .265, offsetY: -42.976, deckY: .82, anchor: "deck", maxHeight: 134, embed: .08, railOverlap: .01 },
-    boat_23: { scale: .37, offsetX: -.035, offsetY: 2.949, deckY: .81, anchor: "deck", maxHeight: 136, embed: .2, railOverlap: .076 },
-    boat_24: { scale: .309, offsetX: -.022, offsetY: 18.885, deckY: .81, anchor: "deck", maxHeight: 136, embed: .08, railOverlap: .01 },
-    boat_25: { scale: .309, offsetX: .005, offsetY: 32.166, deckY: .82, anchor: "deck", maxHeight: 138, embed: .35, railOverlap: .08 },
-    boat_26: { scale: .309, offsetX: .006, offsetY: 17.229, deckY: .82, anchor: "deck", maxHeight: 140, embed: .08, railOverlap: .01 }
+    boat_01: { scale: .445, offsetX: .063, offsetY: -5.186, deckY: .86, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .05, legCut: .2, layer: "front" },
+    boat_02: { scale: .43, offsetX: .059, offsetY: -16.908, deckY: .85, anchor: "deck", maxHeight: 110, embed: .08, railOverlap: .01, legCut: 0, layer: "front" },
+    boat_03: { scale: .4, offsetX: .009, offsetY: -35.159, deckY: .8, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01, legCut: .14, layer: "front" },
+    boat_04: { scale: .4, offsetX: -.034, offsetY: -20.861, deckY: .84, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01, legCut: 0, layer: "front" },
+    boat_05: { scale: .43, offsetX: -.002, offsetY: -14.566, deckY: .81, anchor: "deck", maxHeight: 114, embed: .08, railOverlap: .01, legCut: .15, layer: "front" },
+    boat_06: { scale: .35, offsetX: .238, offsetY: -41.316, deckY: .78, anchor: "deck", maxHeight: 114, embed: .08, railOverlap: .01, legCut: 0, layer: "behind" },
+    boat_07: { scale: .35, offsetX: -.037, offsetY: -19.067, deckY: .74, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01, legCut: 0, layer: "front" },
+    boat_08: { scale: .35, offsetX: .164, offsetY: .685, deckY: .76, anchor: "deck", maxHeight: 116, embed: .08, railOverlap: .01, legCut: .2, layer: "behind" },
+    boat_09: { scale: .35, offsetX: .189, offsetY: -7.244, deckY: .78, anchor: "deck", maxHeight: 118, embed: .08, railOverlap: .01, legCut: 0, layer: "behind" },
+    boat_10: { scale: .35, offsetX: -.233, offsetY: -40.087, deckY: .8, anchor: "deck", maxHeight: 118, embed: .08, railOverlap: .01, legCut: 0, layer: "behind" },
+    boat_11: { scale: .405, offsetX: .041, offsetY: -15.674, deckY: .78, anchor: "deck", maxHeight: 120, embed: .08, railOverlap: .01, legCut: .2, layer: "front" },
+    boat_12: { scale: .35, offsetX: .008, offsetY: -11.047, deckY: .78, anchor: "deck", maxHeight: 120, embed: .08, railOverlap: .01, legCut: .145, layer: "front" },
+    boat_13: { scale: .398, offsetX: .035, offsetY: 9.695, deckY: .8, anchor: "deck", maxHeight: 122, embed: .08, railOverlap: .01, legCut: .25, layer: "front" },
+    boat_14: { scale: .33, offsetX: .245, offsetY: -60.281, deckY: .77, anchor: "deck", maxHeight: 122, embed: .08, railOverlap: .01, legCut: .25, layer: "behind" },
+    boat_15: { scale: .35, offsetX: .01, offsetY: -.074, deckY: .77, anchor: "deck", maxHeight: 124, embed: .08, railOverlap: .01, legCut: .25, layer: "front" },
+    boat_16: { scale: .35, offsetX: .011, offsetY: 3.592, deckY: .78, anchor: "deck", maxHeight: 126, embed: .08, railOverlap: .01, legCut: .12, layer: "front" },
+    boat_17: { scale: .25, offsetX: .23, offsetY: -56.05, deckY: .77, anchor: "deck", maxHeight: 128, embed: .4, railOverlap: .066, legCut: 0, layer: "behind" },
+    boat_18: { scale: .25, offsetX: -.011, offsetY: 5.917, deckY: .8, anchor: "deck", maxHeight: 128, embed: .35, railOverlap: .07, legCut: .25, layer: "front" },
+    boat_19: { scale: .25, offsetX: .218, offsetY: -30.694, deckY: .8, anchor: "deck", maxHeight: 128, embed: .43, railOverlap: .07, legCut: 0, layer: "behind" },
+    boat_20: { scale: .25, offsetX: .041, offsetY: 9.035, deckY: .8, anchor: "deck", maxHeight: 130, embed: .43, railOverlap: .07, legCut: .15, layer: "front" },
+    boat_21: { scale: .25, offsetX: .273, offsetY: -19.435, deckY: .81, anchor: "deck", maxHeight: 132, embed: .08, railOverlap: .01, legCut: .15, layer: "behind" },
+    boat_22: { scale: .25, offsetX: .296, offsetY: -56.269, deckY: .82, anchor: "deck", maxHeight: 134, embed: .08, railOverlap: .08, legCut: 0, layer: "behind" },
+    boat_23: { scale: .25, offsetX: -.064, offsetY: -36.93, deckY: .81, anchor: "deck", maxHeight: 136, embed: .2, railOverlap: .076, legCut: .1, layer: "front" },
+    boat_24: { scale: .25, offsetX: -.059, offsetY: 5.592, deckY: .81, anchor: "deck", maxHeight: 136, embed: .5, railOverlap: .08, legCut: .12, layer: "front" },
+    boat_25: { scale: .25, offsetX: -.031, offsetY: -12.825, deckY: .82, anchor: "deck", maxHeight: 138, embed: .35, railOverlap: .08, legCut: .12, layer: "front" },
+    boat_26: { scale: .25, offsetX: -.027, offsetY: -7.312, deckY: .82, anchor: "deck", maxHeight: 140, embed: .08, railOverlap: .01, legCut: .1, layer: "front" }
   };
 
   const CAPTAIN_EDITOR_STORAGE_KEY = "piratesCaptainPositionDrafts";
@@ -1126,6 +1127,7 @@
   }
 
   function sanitizeCaptainEditorConfig(config) {
+    const layer = config.layer === "behind" ? "behind" : "front";
     return {
       scale: clamp(Number(config.scale ?? .4), .22, .7),
       offsetX: clamp(Number(config.offsetX ?? 0), -.5, .5),
@@ -1133,8 +1135,10 @@
       deckY: clamp(Number(config.deckY ?? .78), .52, .96),
       anchor: "deck",
       maxHeight: clamp(Number(config.maxHeight ?? 120), 64, 180),
-      embed: clamp(Number(config.embed ?? .38), .08, .58),
-      railOverlap: clamp(Number(config.railOverlap ?? .06), .01, .14)
+      embed: clamp(Number(config.embed ?? .08), 0, .58),
+      railOverlap: clamp(Number(config.railOverlap ?? .06), .01, .14),
+      legCut: clamp(Number(config.legCut ?? 0), 0, .5),
+      layer
     };
   }
 
@@ -1168,7 +1172,7 @@
   function formatCaptainEditorConfigEntry(shipId, config = null) {
     const key = getCaptainEditorBoatKey(shipId);
     const current = sanitizeCaptainEditorConfig(config || getPirateCharacterBoatConfig(shipId) || PIRATE_CHARACTER_CONFIG[key] || {});
-    return `${key}: { scale: ${formatCaptainEditorNumber(current.scale)}, offsetX: ${formatCaptainEditorNumber(current.offsetX)}, offsetY: ${formatCaptainEditorNumber(current.offsetY)}, deckY: ${formatCaptainEditorNumber(current.deckY)}, anchor: "deck", maxHeight: ${Math.round(current.maxHeight)}, embed: ${formatCaptainEditorNumber(current.embed)}, railOverlap: ${formatCaptainEditorNumber(current.railOverlap)} }`;
+    return `${key}: { scale: ${formatCaptainEditorNumber(current.scale)}, offsetX: ${formatCaptainEditorNumber(current.offsetX)}, offsetY: ${formatCaptainEditorNumber(current.offsetY)}, deckY: ${formatCaptainEditorNumber(current.deckY)}, anchor: "deck", maxHeight: ${Math.round(current.maxHeight)}, embed: ${formatCaptainEditorNumber(current.embed)}, railOverlap: ${formatCaptainEditorNumber(current.railOverlap)}, legCut: ${formatCaptainEditorNumber(current.legCut)}, layer: "${current.layer}" }`;
   }
 
   function getPirateCharacterBoatConfig(shipId) {
@@ -2065,7 +2069,29 @@
     const gender = normalizeCaptainGender(params.get("gender")) || "male";
     const pose = ["idle", "celebrate", "hit"].includes(params.get("pose")) ? params.get("pose") : "idle";
     const editCaptain = ["1", "true", "yes", "on"].includes(String(params.get("editCaptain") || params.get("captainEdit") || "").toLowerCase());
-    return { shipId, level, gender, pose, editCaptain };
+    const unlockFleet = ["1", "true", "yes", "on"].includes(String(params.get("unlockFleet") || "").toLowerCase());
+    const pirateCoinsParam = params.get("pirateCoins");
+    const pirateCoins = pirateCoinsParam === null ? null : Math.max(0, Math.floor(Number(pirateCoinsParam) || 0));
+    const regionIndexParam = params.get("regionIndex");
+    const regionParam = regionIndexParam ?? params.get("region") ?? params.get("map");
+    let regionIndex = null;
+    if (regionParam !== null) {
+      const normalizedRegion = String(regionParam).toLowerCase();
+      if (["last", "ultimo", "último", "final"].includes(normalizedRegion)) {
+        regionIndex = REGIONS.length - 1;
+      } else {
+        const numericRegion = Math.floor(Number(regionParam));
+        if (Number.isFinite(numericRegion)) {
+          regionIndex = clamp(regionIndexParam !== null ? numericRegion : numericRegion - 1, 0, REGIONS.length - 1);
+        }
+      }
+    }
+    const unlockMaps = ["1", "true", "yes", "on"].includes(String(params.get("unlockMaps") || "").toLowerCase());
+    const screenParam = String(params.get("screen") || "home");
+    const screenAliases = { map: "maps", resources: "upgrades", missions: "stats", pets: "captain" };
+    const normalizedScreen = screenAliases[screenParam] || screenParam;
+    const screen = ["home", "upgrades", "maps", "captain", "prestige", "stats"].includes(normalizedScreen) ? normalizedScreen : "home";
+    return { shipId, level, gender, pose, editCaptain, unlockFleet, pirateCoins, regionIndex, unlockMaps, screen };
   }
 
   const VISUAL_AUDIT_CONFIG = getCaptainVisualAuditConfig();
@@ -2074,17 +2100,27 @@
 
   function applyCaptainVisualAuditState(target) {
     if (!VISUAL_AUDIT_CONFIG) return target;
-    const { shipId, level, gender } = VISUAL_AUDIT_CONFIG;
+    const { shipId, level, gender, unlockFleet, pirateCoins, regionIndex, unlockMaps } = VISUAL_AUDIT_CONFIG;
     target.shipId = shipId;
-    target.ownedShips = [...new Set([...(target.ownedShips || []), shipId])].filter(id => SHIPS[id]);
+    const auditShips = unlockFleet ? SHIPS.map(ship => ship.id) : [shipId];
+    target.ownedShips = [...new Set([...(target.ownedShips || []), ...auditShips])].filter(id => SHIPS[id]);
     target.captainSelectedGender = gender;
     target.captainLevel = level;
+    if (pirateCoins !== null) target.pirateCoins = pirateCoins;
+    if (regionIndex !== null || unlockMaps) {
+      const maxAuditRegion = unlockMaps ? REGIONS.length - 1 : regionIndex;
+      target.regionIndex = regionIndex ?? maxAuditRegion;
+      target.unlockedRegions = Math.max(Number(target.unlockedRegions || 1), maxAuditRegion + 1);
+      target.maxRegionReached = Math.max(Number(target.maxRegionReached || 0), maxAuditRegion);
+      target.regionKills = REGIONS.map((_, index) => Math.max(Number(target.regionKills?.[index] || 0), index < maxAuditRegion ? 100 : 0));
+      target.bossesDefeated = REGIONS.map((_, index) => Boolean(target.bossesDefeated?.[index]) || index < maxAuditRegion);
+    }
     target.combat = { ...target.combat, running: false, repairing: false, enemy: null, spawnTimer: 0, playerHp: Number.MAX_SAFE_INTEGER };
     return syncCaptainState(target);
   }
 
   let state = applyCaptainVisualAuditState(loadState());
-  let currentScreen = "home";
+  let currentScreen = VISUAL_AUDIT_CONFIG?.screen || "home";
   let combatMinimized = loadCombatMinimizedPreference();
   let combatFullscreen = false;
   let combatFullscreenSource = "";
@@ -3842,7 +3878,7 @@
   };
   const SPRITE_BREATHING_PRESETS = {
     enemy: { normal: .018, damaged: .012, defeated: .0025, speed: 1.85 },
-    playerShip: { normal: .008, damaged: .006, defeated: .0015, speed: 1.35 },
+    playerShip: { normal: 0, damaged: 0, defeated: 0, speed: 1 },
     pet: { normal: .022, damaged: .014, defeated: .003, speed: 2.05 }
   };
   if (typeof window !== "undefined") {
@@ -3852,6 +3888,16 @@
   }
 
   const PLAYER_SHIP_SPRITESHEET_PATH = "assets/spritesships/";
+  const REPAIR_EFFECT_SPRITE = {
+    key: "repairShip",
+    image: createLazyImage(),
+    file: "reparo_barco_3sprites.png",
+    frames: 3,
+    requested: false,
+    loadFailed: false,
+    frameBounds: null,
+    referenceBounds: null
+  };
   const PLAYER_SHIP_SPRITESHEET_FILES = [
     "PLAYER-01_01_Bote_de_Tronco_sprite_9frames.png",
     "PLAYER-01_02_Jangada_de_Cipó_sprite_9frames.png",
@@ -3881,16 +3927,18 @@
     "PLAYER-03_09_Black_Abyss_sprite_9frames.png"
   ];
   const PLAYER_SHIP_ATTACK_ANIMATION_SECONDS = .42;
+  const PLAYER_SHIP_ATTACK_FRAMES = [3, 4, 5, 4];
   const PLAYER_SHIP_DEFAULT_ANIMATIONS = {
-    idle: { frames: [0, 1, 0, 1], fps: 2.2, loop: true, blend: true },
-    moving: { frames: [2, 1], fps: 3.2, loop: true, blend: true },
-    attack: { frames: [3, 4, 5, 4], fps: 9, loop: false, blend: true },
-    hit: { frames: [6, 7, 6], fps: 8, loop: false, blend: true },
+    idle: { frames: [0], fps: 1, loop: true, blend: false },
+    moving: { frames: [0], fps: 1, loop: true, blend: false },
+    attack: { frames: PLAYER_SHIP_ATTACK_FRAMES, fps: 9, loop: false, blend: true },
+    hit: { frames: [6], fps: 1, loop: false, blend: false },
     death: { frames: [8], fps: 1, loop: false, blend: false }
   };
   const PLAYER_SHIP_TALL_ANIMATIONS = {
     idle: { frames: [0], fps: 1, loop: true, blend: false },
     moving: { frames: [0], fps: 1, loop: true, blend: false },
+    attack: { frames: PLAYER_SHIP_ATTACK_FRAMES, fps: 8.5, loop: false, blend: true },
     hit: { frames: [6], fps: 7, loop: false, blend: false },
     death: { frames: [8], fps: 1, loop: false, blend: false }
   };
@@ -3940,6 +3988,11 @@
     const options = PLAYER_SHIP_SPRITESHEET_OPTIONS[name] || {};
     const fileFrameCount = getSpritesheetFrameCountFromFile(file);
     const usesNineFrameLayout = fileFrameCount === 9;
+    const baseAnimations = usesNineFrameLayout ? PLAYER_SHIP_DEFAULT_ANIMATIONS : options.animations || PLAYER_SHIP_DEFAULT_ANIMATIONS;
+    const animations = { ...baseAnimations };
+    if (options.attackFrames?.length) {
+      animations.attack = { ...(animations.attack || PLAYER_SHIP_DEFAULT_ANIMATIONS.attack), frames: options.attackFrames };
+    }
     const sprite = {
       key: name,
       role: "playerShip",
@@ -3949,7 +4002,7 @@
       frames: fileFrameCount || options.frames || 9,
       columns: options.columns || 3,
       rows: usesNineFrameLayout ? 3 : options.rows || 3,
-      animations: usesNineFrameLayout ? PLAYER_SHIP_DEFAULT_ANIMATIONS : options.animations || PLAYER_SHIP_DEFAULT_ANIMATIONS,
+      animations,
       width: options.width || 280,
       anchorX: options.anchorX ?? .5,
       anchorY: options.anchorY ?? .64,
@@ -4008,6 +4061,10 @@
 
   function requestPlayerShipSpritesheet(sprite) {
     return requestSpriteImage(sprite, `${PLAYER_SHIP_SPRITESHEET_PATH}${sprite.file}`, prepareEnemySpritesheet);
+  }
+
+  function requestRepairEffectSprite() {
+    return requestSpriteImage(REPAIR_EFFECT_SPRITE, `${EFFECT_ASSET_PATH}${REPAIR_EFFECT_SPRITE.file}`);
   }
 
   const ENEMY_SPRITE_LAYOUTS = [
@@ -5068,6 +5125,8 @@
       requestPlayerShipSpritesheet(shipSprite);
       addSprite(shipSprite);
     }
+    requestRepairEffectSprite();
+    addSprite(REPAIR_EFFECT_SPRITE);
 
     const enemyNames = new Set((REGION_ENCOUNTERS[index] || []).map(enemy => enemy.name).filter(Boolean));
     if (REGIONS[index]?.boss) enemyNames.add(REGIONS[index].boss);
@@ -5215,6 +5274,7 @@
       this.enemyDeathAnimations = [];
       this.playerShipAnimation = null;
       this.playerCaptainReaction = { state: "idle", until: 0 };
+      this.repairEffect = { startedAt: -999, until: 0 };
       this.captainEditorDrag = null;
       this.captainEditorInfo = null;
       this.environmentEvents = [];
@@ -5303,7 +5363,7 @@
       const sprite = getPlayerShipSpritesheet(ship?.name);
       if (!sprite) return null;
       if (!this.playerShipAnimation || this.playerShipAnimation.sheetKey !== sprite.key) {
-        this.playerShipAnimation = { sheetKey: sprite.key, frameSeed: randomBetween(0, 5), attackStartedAt: -999, attackUntil: 0, hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 };
+        this.playerShipAnimation = { sheetKey: sprite.key, frameSeed: randomBetween(0, 5), attackStartedAt: -999, attackUntil: 0, deathStartedAt: 0 };
       }
       return this.playerShipAnimation;
     }
@@ -5316,17 +5376,12 @@
     }
 
     markPlayerShipHit() {
-      const animation = this.ensurePlayerShipAnimation(SHIPS[state.shipId]);
-      if (!animation || animation.deathStartedAt) return;
-      animation.hitStartedAt = this.time;
-      animation.hitUntil = this.time + .34;
       this.markPlayerCaptainHit();
     }
 
     markPlayerShipDeath() {
       const animation = this.ensurePlayerShipAnimation(SHIPS[state.shipId]);
       if (!animation || animation.deathStartedAt) return;
-      animation.hitUntil = 0;
       animation.deathStartedAt = this.time;
       this.markPlayerCaptainHit();
     }
@@ -5334,10 +5389,26 @@
     resetPlayerShipAnimation() {
       if (this.playerShipAnimation) {
         this.playerShipAnimation.attackUntil = 0;
-        this.playerShipAnimation.hitUntil = 0;
         this.playerShipAnimation.deathStartedAt = 0;
       }
       this.playerCaptainReaction = { state: "idle", until: 0 };
+    }
+
+    showRepairEffect(seconds = 1.25) {
+      this.repairEffect.startedAt = this.time;
+      this.repairEffect.until = Math.max(this.repairEffect.until || 0, this.time + Math.max(.2, Number(seconds) || 1.25));
+    }
+
+    hideRepairEffect() {
+      this.repairEffect.until = 0;
+    }
+
+    updateRepairEffect() {
+      if (this.repairEffect.until <= this.time) this.repairEffect.until = 0;
+    }
+
+    isRepairEffectActive() {
+      return Boolean(state.combat.repairing || this.repairEffect.until > this.time);
     }
 
     markPlayerCaptainHit() {
@@ -5653,6 +5724,7 @@
       });
       this.enemyDeathAnimations.forEach(item => item.age += dt);
       this.environmentEvents.forEach(item => item.age += dt);
+      this.updateRepairEffect();
       this.autoCollectEnvironmentEvents();
       this.projectiles = this.projectiles.filter(item => item.age < item.duration);
       this.bursts = this.bursts.filter(item => item.age < .75);
@@ -6506,35 +6578,80 @@
 
     getPlayerShipSpritesheetPose(ship, sprite, options = {}) {
       const animation = options.preview
-        ? { sheetKey: sprite.key, frameSeed: (Number(ship?.id) || 0) * .47, attackStartedAt: -999, attackUntil: 0, hitStartedAt: -999, hitUntil: 0, deathStartedAt: 0 }
+        ? { sheetKey: sprite.key, frameSeed: (Number(ship?.id) || 0) * .47, attackStartedAt: -999, attackUntil: 0, deathStartedAt: 0 }
         : this.ensurePlayerShipAnimation(ship);
       if (!animation) return null;
       if (sprite.image?.complete && sprite.image.naturalWidth && !sprite.ready && !sprite.processing) prepareEnemySpritesheet(sprite);
       if (!options.preview && state.combat.repairing && state.combat.playerHp <= 0 && !animation.deathStartedAt) animation.deathStartedAt = this.time;
       const maxHp = Math.max(1, Number(options.maxHp ?? getActivePlayerMaxHp()) || 1);
       const hp = options.preview ? Math.max(0, Number(options.hp ?? maxHp) || 0) : Math.max(0, Number(state.combat.playerHp) || 0);
-      const stateName = this.getPlayerShipHpState(hp, maxHp, Boolean(options.defeated) || (!options.preview && Boolean(animation.deathStartedAt) && hp <= maxHp * .01));
+      const isDefeated = Boolean(options.defeated) || (!options.preview && Boolean(animation.deathStartedAt) && hp <= maxHp * .01);
+      let stateName = this.getPlayerShipHpState(hp, maxHp, isDefeated);
       if (!options.preview && animation.deathStartedAt && stateName !== SPRITE_HP_STATES.defeated) animation.deathStartedAt = 0;
+      const maxFrame = Math.max(0, (sprite?.frames || 1) - 1);
+      const normalFrame = this.getStateSpriteFrame(sprite, SPRITE_HP_STATES.normal, "playerShip");
+      const damagedFrame = this.getStateSpriteFrame(sprite, SPRITE_HP_STATES.damaged, "playerShip");
+      const defeatedFrame = this.getStateSpriteFrame(sprite, SPRITE_HP_STATES.defeated, "playerShip");
+      const now = this.time;
+      let actionName = stateName;
+      let elapsed = animation.deathStartedAt ? Math.max(0, now - animation.deathStartedAt) : now + (animation.frameSeed || 0);
+      let actionProgress = 1;
+      let frame = stateName === SPRITE_HP_STATES.damaged ? damagedFrame : normalFrame;
+
+      if (stateName === SPRITE_HP_STATES.defeated) {
+        actionName = "death";
+        elapsed = animation.deathStartedAt ? Math.max(0, now - animation.deathStartedAt) : 0;
+        frame = clamp(defeatedFrame, 0, maxFrame);
+      } else if (!options.preview && animation.attackUntil > now) {
+        actionName = "attack";
+        elapsed = Math.max(0, now - animation.attackStartedAt);
+        actionProgress = clamp(elapsed / PLAYER_SHIP_ATTACK_ANIMATION_SECONDS, 0, 1);
+        frame = getAnimationFrameAtTime(sprite, "attack", elapsed, normalFrame, normalFrame, { centerShift: .34, bottomShift: .38, topShift: .42, minArea: .26, maxArea: 2.15, minHeight: .38, maxHeight: 1.95, minWidth: .38, maxWidth: 1.95 });
+      } else if (stateName === SPRITE_HP_STATES.damaged) {
+        actionName = "damaged";
+        frame = damagedFrame;
+      } else {
+        actionName = !options.preview && state.combat.running && !state.combat.enemy ? "moving" : "idle";
+        elapsed = now + (animation.frameSeed || 0);
+        frame = getAnimationFrameAtTime(sprite, actionName, elapsed, normalFrame, normalFrame, { centerShift: .16, bottomShift: .16, topShift: .22, minArea: .55, maxArea: 1.42, minHeight: .68, maxHeight: 1.34, minWidth: .66, maxWidth: 1.34 });
+      }
+
+      if (animation.poseName !== actionName) {
+        animation.poseName = actionName;
+        animation.poseChangedAt = now;
+      }
+
       return {
         stateName,
-        frame: this.getStateSpriteFrame(sprite, stateName, "playerShip"),
+        frame,
         blend: 0,
-        elapsed: animation.deathStartedAt ? Math.max(0, this.time - animation.deathStartedAt) : this.time + (animation.frameSeed || 0),
-        seed: animation.frameSeed || 0
+        elapsed,
+        seed: animation.frameSeed || 0,
+        actionName,
+        actionProgress,
+        transitionProgress: clamp((now - (animation.poseChangedAt || now)) / .18, 0, 1),
+        hpRatio: hp / Math.max(1, maxHp)
       };
     }
 
-    drawCaptainCharacter(ctx, ship, shipSprite, targetWidth, targetHeight, scale, options = {}) {
-      if (options.preview) return false;
-      if (!isCaptainSelected()) return false;
-      const config = getPirateCharacterBoatConfig(ship?.id) || {
+    getCaptainCharacterDeckPlacement(ship, shipSprite, targetWidth, targetHeight, scale) {
+      const config = sanitizeCaptainEditorConfig(getPirateCharacterBoatConfig(ship?.id) || {
         scale: .3,
         offsetX: (shipSprite.captainAnchorX ?? .48) - (shipSprite.anchorX ?? .5),
         offsetY: 4,
         deckY: shipSprite.captainAnchorY ?? .67,
         anchor: "deck",
         maxHeight: 98
-      };
+      });
+      const footX = targetWidth * (config.offsetX || 0);
+      const footY = -targetHeight * (shipSprite.anchorY ?? .64) + targetHeight * (config.deckY ?? .55) + (config.offsetY || 0) * scale;
+      return { config, footX, footY };
+    }
+
+    drawCaptainCharacter(ctx, ship, shipSprite, targetWidth, targetHeight, scale, options = {}) {
+      if (options.preview) return false;
+      if (!isCaptainSelected()) return false;
+      const { config, footX, footY } = this.getCaptainCharacterDeckPlacement(ship, shipSprite, targetWidth, targetHeight, scale);
       const sprite = getActiveCaptainCharacterSpritesheet();
       requestCaptainCharacterSprite(sprite);
       const image = sprite?.image;
@@ -6556,15 +6673,12 @@
       const frameScale = visualHeight / bodyHeight;
       const targetFrameHeight = frameHeight * frameScale;
       const targetFrameWidth = frameWidth * frameScale;
-      const footX = targetWidth * (config.offsetX || 0);
-      const footY = -targetHeight * (shipSprite.anchorY ?? .64) + targetHeight * (config.deckY ?? .55) + (config.offsetY || 0) * scale;
       const drawX = footX - referenceBody.centerX * frameScale;
       const drawY = footY - referenceBody.bottomY * frameScale;
       const frameX = frame * frameWidth;
-      const embed = clamp((Number(config.embed ?? .3) || .3) + .025, .16, .56);
-      const clipBottom = footY - Math.max(7 * scale, visualHeight * embed);
-      const shadowY = clipBottom - Math.max(1, 1.5 * scale);
-      const railOverlap = Math.max(2 * scale, visualHeight * clamp((Number(config.railOverlap ?? .045) || .045) + .008, .02, .13));
+      const legCut = clamp(Number(config.legCut ?? 0) || 0, 0, .5);
+      const clipBottom = footY + Math.max(4 * scale, visualHeight * .05) - visualHeight * legCut;
+      const shadowY = footY + Math.max(1, 1.5 * scale);
       if (isCaptainEditorEnabled()) {
         const matrix = ctx.getTransform();
         const dpr = this.dpr || 1;
@@ -6618,14 +6732,53 @@
       ctx.shadowBlur = 3.5 * scale;
       ctx.drawImage(source, frameX, 0, frameWidth, frameHeight, drawX, drawY, targetFrameWidth, targetFrameHeight);
       ctx.restore();
-      return {
-        deckOverlay: {
-          x: -targetWidth,
-          y: clipBottom - railOverlap,
-          width: targetWidth * 2,
-          height: targetHeight * 2
-        }
-      };
+      return true;
+    }
+
+    drawRepairEffect(ctx, ship, shipSprite, targetWidth, targetHeight, scale, options = {}) {
+      if (options.preview || !this.isRepairEffectActive()) return false;
+      const image = requestRepairEffectSprite();
+      if (!image?.complete || !image.naturalWidth) return false;
+      const sprite = REPAIR_EFFECT_SPRITE;
+      const source = image;
+      const sourceWidth = source.width || source.naturalWidth;
+      const sourceHeight = source.height || source.naturalHeight;
+      const frameCount = Math.max(1, sprite.frames || 3);
+      const frameWidth = Math.floor(sourceWidth / frameCount);
+      const frameHeight = sourceHeight;
+      if (!frameWidth || !frameHeight) return false;
+      measureChestSpriteFrameBounds(sprite, source);
+      const elapsed = state.combat.repairing && state.combat.repairStarted
+        ? Math.max(0, (performance.now() - Number(state.combat.repairStarted || 0)) / 1000)
+        : Math.max(0, this.time - (this.repairEffect.startedAt || this.time));
+      const frame = Math.floor(elapsed * 8.5) % frameCount;
+      const { footX, footY } = this.getCaptainCharacterDeckPlacement(ship, shipSprite, targetWidth, targetHeight, scale);
+      const targetSize = clamp(targetWidth * .48, 86 * scale, 178 * scale);
+      const frameScale = targetSize / frameWidth;
+      const frameBounds = sprite.frameBounds?.[frame];
+      const referenceBounds = sprite.referenceBounds || frameBounds;
+      const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
+      const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
+      const pulse = .5 + .5 * Math.sin(elapsed * Math.PI * 2.4);
+      ctx.save();
+      ctx.translate(footX, footY);
+      ctx.globalAlpha = .84 + pulse * .12;
+      ctx.imageSmoothingEnabled = false;
+      ctx.shadowColor = "rgba(255,239,179,.46)";
+      ctx.shadowBlur = (8 + pulse * 6) * scale;
+      ctx.drawImage(
+        source,
+        frame * frameWidth,
+        0,
+        frameWidth,
+        frameHeight,
+        -targetSize * .5 + anchorOffsetX,
+        -targetSize * .78 + anchorOffsetY,
+        targetSize,
+        targetSize * (frameHeight / frameWidth)
+      );
+      ctx.restore();
+      return true;
     }
 
     drawPlayerShipSpritesheet(ctx, x, y, scale, ship, sprite, options = {}) {
@@ -6674,11 +6827,18 @@
         ctx.drawImage(source, frameX, frameY, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
         ctx.restore();
       };
+      const shouldDrawCaptain = pose.stateName !== SPRITE_HP_STATES.defeated;
+      const captainLayer = shouldDrawCaptain
+        ? this.getCaptainCharacterDeckPlacement(ship, sprite, targetWidth, targetHeight, scale).config.layer
+        : "front";
+      if (shouldDrawCaptain && captainLayer === "behind") {
+        this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
+      }
       drawFrame(pose.frame, 1);
-      const captainDeck = pose.stateName !== SPRITE_HP_STATES.defeated
-        ? this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options)
-        : null;
-      if (captainDeck?.deckOverlay) drawFrame(pose.frame, 1, captainDeck.deckOverlay);
+      if (shouldDrawCaptain && captainLayer !== "behind") {
+        this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
+      }
+      this.drawRepairEffect(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
       ctx.restore();
       return true;
     }
@@ -7039,6 +7199,7 @@
     setCaptainEditorInputValue(captainEditorPanel.querySelector("[data-captain-editor-level]"), state.captainLevel || 1);
     setCaptainEditorInputValue(captainEditorPanel.querySelector("[data-captain-editor-gender]"), state.captainSelectedGender || "male");
     setCaptainEditorInputValue(captainEditorPanel.querySelector("[data-captain-editor-pose]"), VISUAL_AUDIT_CONFIG?.pose || "idle");
+    setCaptainEditorInputValue(captainEditorPanel.querySelector("[data-captain-editor-layer]"), config.layer || "front");
     captainEditorPanel.querySelectorAll("[data-captain-editor-field]").forEach(input => {
       const field = input.dataset.captainEditorField;
       const value = field === "maxHeight" ? Math.round(config[field]) : Number(config[field]).toFixed(field === "offsetY" ? 1 : 3);
@@ -7078,6 +7239,8 @@
         <label>Altura<input type="number" step="1" data-captain-editor-field="maxHeight"></label>
         <label>Dentro<input type="number" step="0.001" data-captain-editor-field="embed"></label>
         <label>Borda<input type="number" step="0.001" data-captain-editor-field="railOverlap"></label>
+        <label>Corte pernas<input type="number" min="0" max="0.5" step="0.001" data-captain-editor-field="legCut"></label>
+        <label>Camada<select data-captain-editor-layer><option value="front">Frente</option><option value="behind">Atras</option></select></label>
       </div>
       <p class="captain-editor-foot">Pe: <span data-captain-editor-foot>-</span></p>
       <textarea data-captain-editor-code readonly rows="3"></textarea>
@@ -7099,6 +7262,11 @@
       if (target.matches("[data-captain-editor-level]")) setCaptainEditorUrlParam("level", clamp(Math.floor(Number(target.value) || 1), 1, CAPTAIN_MAX_LEVEL));
       if (target.matches("[data-captain-editor-gender]")) setCaptainEditorUrlParam("gender", normalizeCaptainGender(target.value) || "male");
       if (target.matches("[data-captain-editor-pose]")) setCaptainEditorUrlParam("pose", target.value || "idle");
+      if (target.matches("[data-captain-editor-layer]")) {
+        const config = setCaptainEditorDraft(state.shipId, { layer: target.value === "behind" ? "behind" : "front" });
+        captainEditorPanelSnapshot = "";
+        updateCaptainEditorPanel(scene.captainEditorInfo, config);
+      }
     });
     captainEditorPanel.addEventListener("click", async event => {
       const target = event.target;
@@ -7321,7 +7489,6 @@
   function basicAttack(options = {}) {
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
-    scene.markPlayerShipAttack();
     const stats = getStats();
     const hitChance = stats.precision * (1 - (enemy.evasion || 0));
     if (Math.random() > hitChance) {
@@ -7381,7 +7548,6 @@
   function castSkill(key) {
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated) return;
-    scene.markPlayerShipAttack();
     const meta = SKILL_META[key];
     const level = state.skills[key].level;
     const base = getStats().damage * (meta.factor + (level - 1) * .24) * (1 + (getEquippedPet()?.dpsBonus || 0));
@@ -7408,6 +7574,7 @@
     skill.nextReadyAt = Date.now() + meta.cooldown * 1000;
     const stats = getStats();
     const damage = getCaptainManualSkillDamage(key, stats);
+    if (key === CAPTAIN_MANUAL_SKILL_KEY) scene.markPlayerShipAttack();
     scene.celebrateCaptain(.9);
     dealToEnemy(damage, { sabotage: true, ignoreArmor: true, color: "#b68cff" });
     trackAction("skill", { key });
@@ -7565,6 +7732,7 @@
     state.combat.running = voluntary ? Boolean(state.combat.specialCombatResumeRunning) : true;
     state.combat.specialCombatResumeRunning = false;
     clearCombatTimers();
+    if (!voluntary) scene.showRepairEffect(1.25);
     if (voluntary || disabledAuto) {
       addLog(voluntary ? `Voce saiu do combate contra ${bossName}.` : `Derrota contra ${bossName}. Navio restaurado.`, "danger-text");
       toast(voluntary ? "Combate contra boss encerrado." : "Derrota para o boss. Boss Auto foi desligado.", "danger-toast");
@@ -7593,6 +7761,7 @@
     state.combat.repairSource = "auto";
     state.combat.repairResumeRunning = resumeRunning;
     state.combat.running = false;
+    scene.showRepairEffect(AUTO_REPAIR_DURATION_MS / 1000);
     trackAction("repair");
     addLog(`Derrota contra ${defeatedBy}. Reparo iniciado.`, "danger-text");
     toast("Navio destruído — reparo automático em andamento.", "danger-toast");
@@ -7614,6 +7783,7 @@
     state.combat.attackTimer = 0;
     state.combat.running = resumeRunning;
     scene.resetPlayerShipAnimation();
+    scene.hideRepairEffect();
     addLog(forced ? "Protocolo de segurança concluiu o reparo." : repairSource === "manual" ? "Restaurar Navio concluído." : "Reparo concluído. Retomando o combate.", "loot");
   }
 
@@ -7633,6 +7803,7 @@
     state.combat.running = false;
     state.hasStarted = true;
     scene.resetPlayerShipAnimation();
+    scene.showRepairEffect(EMERGENCY_REPAIR_DURATION_MS / 1000);
     trackAction("repair");
     addLog(`Restaurar Navio iniciado: ${Math.round(repairPercent * 100)}% da vida máxima em 5s.`, "loot");
     toast("Restaurar Navio iniciado.", "gold-toast");
