@@ -14,10 +14,41 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=111">
+  <link rel="stylesheet" href="styles.css?v=113">
   <title>Pirates of the Abyss</title>
 </head>
-<body>
+<body class="auth-locked">
+  <section class="auth-screen" id="auth-screen" data-auth-mode="login" aria-labelledby="auth-title">
+    <form class="auth-card" data-auth-form autocomplete="on">
+      <div class="auth-heading">
+        <span>Pirates of the Abyss</span>
+        <h1 id="auth-title">Entrar</h1>
+      </div>
+      <label class="auth-field">
+        <span>Usuario</span>
+        <input data-auth-username name="username" type="text" autocomplete="username" maxlength="24" required>
+      </label>
+      <label class="auth-field">
+        <span>Senha</span>
+        <input data-auth-password name="password" type="password" autocomplete="current-password" maxlength="80" required>
+      </label>
+      <label class="auth-field auth-email-field">
+        <span>Email opcional</span>
+        <input data-auth-email name="email" type="email" autocomplete="email" maxlength="120">
+      </label>
+      <label class="auth-remember">
+        <input data-auth-remember name="remember" type="checkbox">
+        <span>Lembrar-me</span>
+      </label>
+      <div class="auth-actions">
+        <button class="button primary" type="submit" data-auth-login>Entrar</button>
+        <button class="button" type="button" data-auth-create>Criar Conta</button>
+      </div>
+      <button class="auth-forgot" type="button" data-auth-forgot>Esqueci minha senha</button>
+      <p class="auth-status" data-auth-status aria-live="polite"></p>
+    </form>
+  </section>
+
   <div class="app-shell" id="app">
     <header class="topbar">
       <button class="brand" data-screen-target="home" aria-label="Ir para o combate">
@@ -325,6 +356,19 @@
             </div>
           </section>
 
+          <section class="stats-panel" data-stats-panel="account">
+            <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="account" aria-expanded="false">
+              <span><span class="eyebrow">CONTA</span><strong>Mudar de conta</strong><small>Sair para relogar ou entrar em outra conta</small></span>
+              <i class="stats-panel-indicator" aria-hidden="true">+</i>
+            </button>
+            <div class="stats-panel-body" data-stats-panel-body="account">
+              <div class="danger-zone account-zone">
+                <div><strong>Mudar de conta</strong><span>Seu progresso sera salvo antes de voltar para o login.</span></div>
+                <button class="button primary" type="button" data-logout-account>Mudar de conta</button>
+              </div>
+            </div>
+          </section>
+
           <section class="stats-panel danger-stats-panel" data-stats-panel="reset">
             <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="reset" aria-expanded="false">
               <span><span class="eyebrow">NOVO COMEÇO</span><strong>Novo começo</strong><small>Apaga o progresso salvo neste dispositivo</small></span>
@@ -406,6 +450,7 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=207"></script>
+  <script src="auth.js?v=1"></script>
+  <script src="game.js?v=209"></script>
 </body>
 </html>

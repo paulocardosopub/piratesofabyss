@@ -1,9 +1,10 @@
-const CACHE = "pirates-abyss-v195-guild-system";
+const CACHE = "pirates-abyss-v197-account-switch";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=111",
-  "game.js?v=207",
+  "styles.css?v=113",
+  "auth.js?v=1",
+  "game.js?v=209",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",
@@ -14,7 +15,8 @@ const APP_SHELL = [
   "assets/ui/tabs/mobile/icon_capitao_square.png",
   "assets/ui/tabs/mobile/icon_prestigio_square.png",
   "assets/ui/tabs/mobile/icon_status_square.png",
-  "assets/maps/mapa_idle_mobile.jpg"
+  "assets/maps/mapa_idle_mobile.jpg",
+  "assets/newbackgrounds/login.png"
 ];
 
 self.addEventListener("install", event => {

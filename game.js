@@ -92,7 +92,12 @@
   const integerBetween = (min, max) => Math.floor(randomBetween(min, max + 1));
   const nonPassiveListener = { passive: false };
 
+  function isTextEditingTarget(target) {
+    return Boolean(target?.closest?.("input, textarea, select, [contenteditable='true'], [contenteditable=''], [data-auth-form]"));
+  }
+
   function preventCancelableDefault(event) {
+    if (isTextEditingTarget(event.target)) return;
     if (event.cancelable) event.preventDefault();
   }
 
@@ -108,6 +113,7 @@
     });
     ["touchstart", "touchmove"].forEach(type => {
       document.addEventListener(type, event => {
+        if (isTextEditingTarget(event.target)) return;
         if (event.touches && event.touches.length > 1) preventCancelableDefault(event);
       }, nonPassiveListener);
     });
@@ -270,7 +276,7 @@
   }
 
   const CHEST_SPRITE_PATH = "assets/chests/";
-  const CHEST_SPRITE_VERSION = "4";
+  const CHEST_SPRITE_VERSION = "5";
   const CHEST_DROP_CHANCES = { monster: .05, boss: .30 };
   const CHEST_PIRATE_COIN_CHANCE = .10;
   const CHEST_OPEN_DURATION = .95;
@@ -1918,7 +1924,7 @@
   let captainOverviewExpanded = false;
   let captainManualSkillsExpanded = false;
   let captainEquipmentExpanded = false;
-  const statsPanelsExpanded = { quests: false, combat: false, progression: false, career: false, reset: false };
+  const statsPanelsExpanded = { quests: false, combat: false, progression: false, career: false, account: false, reset: false };
 
   function rewardText(reward = {}) {
     const parts = Object.entries(goldOnlyBundle(reward.resources || {})).filter(([, value]) => value > 0).map(([, value]) => `${formatNumber(calculateGoldReward(value))} Gold`);
@@ -2268,7 +2274,7 @@
       merged.journeyStartedAt = Number(saved.journeyStartedAt || Date.now());
       merged.maxRegionReached = clamp(Math.max(Number(saved.maxRegionReached || 0), merged.regionIndex), 0, REGIONS.length - 1);
       merged.version = 12;
-      if (resourcesNeedSave || logsNeedSave || identityNeedSave) {
+      if ((resourcesNeedSave || logsNeedSave || identityNeedSave) && isGameAuthenticated()) {
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(merged)); } catch (error) {}
       }
       return merged;
@@ -2315,8 +2321,14 @@
   }
 
   const VISUAL_AUDIT_CONFIG = getCaptainVisualAuditConfig();
+  const AUTH_MANAGER = typeof window !== "undefined" ? window.PiratesAuth : null;
+  const AUTH_BOOTSTRAP = AUTH_MANAGER?.prepareInitialSave?.({ bypass: Boolean(VISUAL_AUDIT_CONFIG) }) || { authenticated: true, bypassed: true };
   const captainEditorDrafts = VISUAL_AUDIT_CONFIG?.editCaptain ? loadCaptainEditorDrafts() : {};
   if (VISUAL_AUDIT_CONFIG?.editCaptain && typeof window !== "undefined") window.__captainEditorDrafts = captainEditorDrafts;
+
+  function isGameAuthenticated() {
+    return Boolean(VISUAL_AUDIT_CONFIG || !AUTH_MANAGER || AUTH_MANAGER.isAuthenticated?.());
+  }
 
   function applyCaptainVisualAuditState(target) {
     if (!VISUAL_AUDIT_CONFIG) return target;
@@ -2981,12 +2993,14 @@
 
   function saveGame() {
     if (VISUAL_AUDIT_CONFIG) return;
+    if (!isGameAuthenticated()) return;
     const lastSeen = Date.now();
     state.lastSeen = lastSeen;
     const saveState = isArenaSceneActive() && arenaState.previousCombat?.combat
       ? { ...state, combat: JSON.parse(JSON.stringify(arenaState.previousCombat.combat)), lastSeen }
       : state;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(saveState)); } catch (error) { console.warn("Não foi possível salvar.", error); }
+    AUTH_MANAGER?.saveCurrentGame?.(saveState);
     if (guildState.current?.guild) syncGuildPlayerProfile();
   }
 
@@ -4145,6 +4159,7 @@
   }
 
   function handleCombatFullscreenKeydown(event) {
+    if (isTextEditingTarget(event.target)) return;
     if (event.key !== "Escape" || combatFullscreenSource !== "manual") return;
     event.preventDefault();
     exitCombatFullscreen();
@@ -6597,9 +6612,11 @@
       measureChestSpriteFrameBounds(sprite, source);
       const frameBounds = sprite.frameBounds?.[frame];
       const referenceBounds = sprite.referenceBounds;
-      const frameScale = targetWidth / frameWidth;
-      const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
-      const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
+      const drawWidth = Math.max(1, Math.round(targetWidth));
+      const drawHeight = Math.max(1, Math.round(targetHeight));
+      const frameScale = drawWidth / frameWidth;
+      const anchorOffsetX = frameBounds && referenceBounds ? Math.round((referenceBounds.centerX - frameBounds.centerX) * frameScale) : 0;
+      const anchorOffsetY = frameBounds && referenceBounds ? Math.round((referenceBounds.bottomY - frameBounds.bottomY) * frameScale) : 0;
       ctx.save();
       ctx.globalAlpha *= alpha;
       ctx.imageSmoothingEnabled = false;
@@ -6609,10 +6626,10 @@
         0,
         frameWidth,
         frameHeight,
-        -targetWidth * .5 + anchorOffsetX,
-        -targetHeight * CHEST_FRAME_ANCHOR_Y + anchorOffsetY,
-        targetWidth,
-        targetHeight
+        Math.round(-drawWidth * .5 + anchorOffsetX),
+        Math.round(-drawHeight * CHEST_FRAME_ANCHOR_Y + anchorOffsetY),
+        drawWidth,
+        drawHeight
       );
       ctx.restore();
     }
@@ -10051,6 +10068,8 @@
   function captainIdentityHtml() {
     const cleanName = sanitizePirateName(state.pirateName);
     const missing = !isValidPirateName(cleanName);
+    const account = AUTH_MANAGER?.getCurrentUser?.();
+    const accountHtml = account ? `<div class="captain-account-row"><span>Conta</span><strong>${escapeHtml(account.username)}</strong><button class="button" type="button" data-logout-account>Sair</button></div>` : "";
     return `<section class="captain-identity-panel ${missing ? "missing" : ""}">
       <div>
         <span class="eyebrow">IDENTIDADE ONLINE</span>
@@ -10060,6 +10079,7 @@
       <div class="captain-identity-form">
         <label for="pirate-name-input"><span>Nome de Pirata</span><input class="pirate-name-input" id="pirate-name-input" maxlength="${PIRATE_NAME_MAX_LENGTH}" value="${escapeHtml(cleanName)}" autocomplete="nickname" placeholder="3 a 20 caracteres"></label>
         <button class="button primary" type="button" data-save-pirate-name>Salvar</button>
+        ${accountHtml}
         <small>Mínimo ${PIRATE_NAME_MIN_LENGTH}, máximo ${PIRATE_NAME_MAX_LENGTH} caracteres.</small>
       </div>
     </section>`;
@@ -12598,6 +12618,10 @@
     }
     const target = event.target.closest("button");
     if (!target) return;
+    if (target.dataset.logoutAccount !== undefined) {
+      logoutAccount();
+      return;
+    }
     if (target.dataset.openGuild !== undefined) {
       openGuildFromHome();
       return;
@@ -12756,6 +12780,7 @@
   }
 
   function preventInvalidTradeInput(event) {
+    if (isTextEditingTarget(event.target) && !event.target.matches("[data-trade-input], #pirate-name-input")) return;
     if (event.target.matches("[data-trade-input]") && ["e", "E", "+", "-", ".", ","].includes(event.key)) event.preventDefault();
     if (event.target.matches("#pirate-name-input") && event.key === "Enter") {
       event.preventDefault();
@@ -12825,6 +12850,12 @@
     else commitGame(false);
   }
 
+  function logoutAccount() {
+    saveGame();
+    AUTH_MANAGER?.logout?.({ clearActiveSave: true });
+    window.location.reload();
+  }
+
   function challengeBoss(options = {}) {
     const automatic = Boolean(options?.automatic);
     if (pendingBossChallengeTimer) return true;
@@ -12882,6 +12913,7 @@
   }
 
   function wipeProgress() {
+    AUTH_MANAGER?.deleteCurrentSave?.();
     localStorage.removeItem(SAVE_KEY);
     cancelPendingBossMapAdvance();
     cancelPendingSurpriseBoss();
@@ -12946,6 +12978,8 @@
   window.visualViewport?.addEventListener?.("resize", updateMobileCombatFullscreen);
   window.addEventListener("beforeunload", saveGame);
 
+  AUTH_MANAGER?.initLoginScreen?.();
+  if (!isGameAuthenticated()) return;
   setCombatMinimized(combatMinimized, false);
   const offlineSeconds = (Date.now() - Number(state.lastSeen || Date.now())) / 1000;
   if (!VISUAL_AUDIT_CONFIG && offlineSeconds >= 30) applyOfflineProgress(offlineSeconds, true);
