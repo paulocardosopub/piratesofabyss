@@ -38,6 +38,7 @@
   const CAPTAIN_REPAIR_SKILL_KEY = "emergencyRepair";
   const CAPTAIN_MANUAL_SKILL_BASE_COOLDOWN = 10;
   const CAPTAIN_MANUAL_SKILL_MAX_LEVEL = 20;
+  const CAPTAIN_SABOTAGE_COST_MULTIPLIER = 2;
   const RESTORE_SHIP_REPAIR_BY_LEVEL = { 1: .25, 2: .5, 3: .75, 4: 1 };
   const RESTORE_SHIP_UPGRADE_COSTS = { 2: 4, 3: 8, 4: 10 };
   const EMERGENCY_REPAIR_COOLDOWN_SECONDS = 15;
@@ -928,7 +929,8 @@
     const meta = CAPTAIN_MANUAL_SKILL_META[key];
     if (!meta || level >= meta.maxLevel) return null;
     if (key === CAPTAIN_REPAIR_SKILL_KEY) return RESTORE_SHIP_UPGRADE_COSTS[level + 1] ?? null;
-    return Math.ceil(level / 2);
+    const baseCost = Math.ceil(level / 2);
+    return key === CAPTAIN_MANUAL_SKILL_KEY ? baseCost * CAPTAIN_SABOTAGE_COST_MULTIPLIER : baseCost;
   }
 
   function getCaptainManualSkillSpentPoints(source = state) {
@@ -8529,6 +8531,36 @@
     return base * (canBuy ? 100 : blocked ? .25 : 1);
   }
 
+  function captainEquipmentProgressScore(key, currentTier, nextTier, currentStats, nextStats) {
+    const cost = Math.max(1, Number(nextTier?.pointCost) || 1);
+    const current = currentTier?.bonuses || {};
+    const next = nextTier?.bonuses || {};
+    const bonusDelta = bonusKey => Math.max(0, Number(next[bonusKey] || 0) - Number(current[bonusKey] || 0));
+    if (key === "lightHands") {
+      const currentRewardMultiplier = getGoldGainMultiplier() + getXpGainMultiplier();
+      const rewardDelta = bonusDelta("goldGainBonus") + bonusDelta("xpGainBonus");
+      return currentRewardMultiplier * rewardDelta * 100 / cost;
+    }
+    if (key === "sword") {
+      return Math.max(1, Number(nextStats.damage || 0) - Number(currentStats.damage || 0)) / cost;
+    }
+    const dpsDelta = Math.max(0, Number(nextStats.dps || 0) - Number(currentStats.dps || 0));
+    const damageDelta = Math.max(0, Number(nextStats.damage || 0) - Number(currentStats.damage || 0));
+    const hpDelta = Math.max(0, Number(nextStats.maxHp || 0) - Number(currentStats.maxHp || 0));
+    const attackSpeedDelta = bonusDelta("shipAttackSpeedBonus") * Math.max(1, Number(currentStats.shipDps || currentStats.dps || 1));
+    const rewardDelta = (bonusDelta("goldGainBonus") + bonusDelta("xpGainBonus")) * 100;
+    return (dpsDelta + damageDelta + hpDelta + attackSpeedDelta + rewardDelta) / cost;
+  }
+
+  function captainRecommendationPriority(candidate) {
+    if (candidate?.kind === "captainEquipment" && candidate.key === "lightHands") return 0;
+    if (candidate?.kind === "captainEquipment" && candidate.key === "sword") return 1;
+    if (candidate?.kind === "captainEquipment") return 2;
+    if (candidate?.kind === "captainManualSkill" && candidate.key === CAPTAIN_MANUAL_SKILL_KEY) return 4;
+    if (candidate?.kind === "captainManualSkill") return 3;
+    return 5;
+  }
+
   function recommendationActionMatches(candidate, attr) {
     return Boolean(candidate?.actionAttrs && candidate.actionAttrs.includes(attr));
   }
@@ -8590,7 +8622,8 @@
       });
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const canBuy = available >= next.pointCost;
-      candidates.push({ category: "Equipamento do Capitão", title: next.name, powerGain, canBuy, blocked: false, actionLabel: canBuy ? "Melhorar" : "Faltam pts", actionAttrs: `data-upgrade-captain-equipment="${key}"`, disabled: !canBuy, note: captainEquipmentRecommendationImpactText(key, current, next), costText: `${next.pointCost} Ponto${next.pointCost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, next.pointCost, canBuy) });
+      const progressScore = captainEquipmentProgressScore(key, current, next, currentStats, nextStats);
+      candidates.push({ kind: "captainEquipment", key, category: "Equipamento do Capitão", title: next.name, powerGain, canBuy, blocked: false, actionLabel: canBuy ? "Melhorar" : "Faltam pts", actionAttrs: `data-upgrade-captain-equipment="${key}"`, disabled: !canBuy, note: captainEquipmentRecommendationImpactText(key, current, next, currentStats, nextStats), costText: `${next.pointCost} Ponto${next.pointCost === 1 ? "" : "s"}`, score: progressScore * (canBuy ? 100 : 1) });
     });
     Object.entries(CAPTAIN_MANUAL_SKILL_META).forEach(([key, meta]) => {
       const level = getCaptainManualSkillLevel(key);
@@ -8599,9 +8632,13 @@
       const isRepair = key === CAPTAIN_REPAIR_SKILL_KEY;
       const powerGain = isRepair ? Math.round(getStats().maxHp * (getCaptainRepairPercent(level + 1) - getCaptainRepairPercent(level))) : Math.round(getStats().damage * (getCaptainManualSkillMultiplier(key, level + 1) - getCaptainManualSkillMultiplier(key, level)));
       const canBuy = available >= cost;
-      candidates.push({ category: "Skill do Capitão", title: `${meta.name} Nv. ${level + 1}`, powerGain: Math.max(1, powerGain), canBuy, blocked: false, actionLabel: canBuy ? "Promover" : "Faltam pts", actionAttrs: `data-upgrade-captain-manual-skill="${key}"`, disabled: !canBuy, note: captainManualSkillRecommendationImpactText(key, level, currentStats), costText: `${cost} Ponto${cost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, cost, canBuy) });
+      candidates.push({ kind: "captainManualSkill", key, category: "Skill do Capitão", title: `${meta.name} Nv. ${level + 1}`, powerGain: Math.max(1, powerGain), canBuy, blocked: false, actionLabel: canBuy ? "Promover" : "Faltam pts", actionAttrs: `data-upgrade-captain-manual-skill="${key}"`, disabled: !canBuy, note: captainManualSkillRecommendationImpactText(key, level, currentStats), costText: `${cost} Ponto${cost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, cost, canBuy) });
     });
-    return candidates.sort((a, b) => Number(b.canBuy) - Number(a.canBuy) || b.score - a.score);
+    return candidates.sort((a, b) =>
+      Number(b.canBuy) - Number(a.canBuy)
+      || captainRecommendationPriority(a) - captainRecommendationPriority(b)
+      || b.score - a.score
+    );
   }
 
   function resourceCostText(cost = {}) {
@@ -9528,15 +9565,18 @@
   }
 
   function recommendationBonusPercent(value) {
-    const amount = Math.round(Math.max(0, Number(value) || 0) * 100);
-    return `+${amount}%`;
+    const amount = Math.max(0, Number(value) || 0) * 100;
+    return `+${amount.toLocaleString("pt-BR", { maximumFractionDigits: amount % 1 ? 1 : 0 })}%`;
   }
 
-  function captainEquipmentRecommendationImpactText(key, currentTier, nextTier) {
+  function captainEquipmentRecommendationImpactText(key, currentTier, nextTier, currentStats = getStats(), nextStats = currentStats) {
     const current = currentTier?.bonuses || {};
     const next = nextTier?.bonuses || {};
     if (key === "lightHands") {
       return `Ouro e EXP ganhos: ${recommendationBonusPercent(current.goldGainBonus)} -> ${recommendationBonusPercent(next.goldGainBonus)}`;
+    }
+    if (key === "sword") {
+      return `Dano do pirata: ${formatNumber(currentStats.damage)} -> ${formatNumber(nextStats.damage)}`;
     }
     const rows = [
       ["Dano do navio", "shipDamageBonus"],
@@ -9559,9 +9599,7 @@
     if (key === CAPTAIN_REPAIR_SKILL_KEY) {
       return `Reparo do navio: ${formatCaptainRepairPercent(level)} -> ${formatCaptainRepairPercent(nextLevel)}`;
     }
-    const currentDamage = Math.round(stats.damage * getCaptainManualSkillMultiplier(key, level));
-    const nextDamage = Math.round(stats.damage * getCaptainManualSkillMultiplier(key, nextLevel));
-    return `Dano manual: ${formatNumber(currentDamage)} -> ${formatNumber(nextDamage)}`;
+    return `Dano da habilidade: ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key, level))} -> ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key, nextLevel))}`;
   }
 
   function upgradeSummaryHtml(rows, fallback = "") {
