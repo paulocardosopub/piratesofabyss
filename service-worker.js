@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v187-shields-map-lock";
+const CACHE = "pirates-abyss-v189-v2-difficulty";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=109",
-  "game.js?v=199",
+  "game.js?v=201",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

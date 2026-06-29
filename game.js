@@ -2523,6 +2523,15 @@
   }
 
   function prestigeRegionIndex() { return REGIONS.findIndex(region => region.name === PRESTIGE_REGION_NAME); }
+  function krakenAbyssRegionIndex() { return REGIONS.findIndex(region => region.name === "Abismo do Kraken"); }
+  function hasCompletedKrakenAbyssOnce(source = state) {
+    const index = krakenAbyssRegionIndex();
+    if (index < 0) return false;
+    if (source?.bossesDefeated?.[index]) return true;
+    if (Number(source?.maxRegionReached || 0) > index) return true;
+    return Array.isArray(source?.prestigeHistory) && source.prestigeHistory.some(entry => Number(entry?.map || 0) > index + 1 || entry?.boss === REGIONS[index].boss);
+  }
+
   function canPrestige() {
     const index = prestigeRegionIndex();
     return index >= 0 && state.unlockedRegions > index && state.bossesDefeated[index] && REGIONS[index].boss === PRESTIGE_BOSS_NAME;
@@ -2868,7 +2877,25 @@
     return { ok: true, total: info.total, bought };
   }
 
+  function isNoisyCombatLogMessage(message = "") {
+    return /Ataque duplo|Esquiv|Bloqueou|Escudos bloquearam/i.test(String(message || ""));
+  }
+
+  function isHomeCombatSummaryLog(item = {}) {
+    const message = String(item?.message || "");
+    if (isNoisyCombatLogMessage(message)) return false;
+    return [
+      /^Vit[oó]ria contra/i,
+      /^Boss (surpresa )?derrotado/i,
+      /^Derrota contra/i,
+      /^Voce afundou/i,
+      /^Você afundou/i,
+      /^(Vit[oó]ria|Derrota) na Arena/i
+    ].some(pattern => pattern.test(message));
+  }
+
   function addLog(message, type = "") {
+    if (isNoisyCombatLogMessage(message)) return;
     const importantPatterns = [
       /Vit/i,
       /Derrota/i,
@@ -7846,6 +7873,12 @@
     return !isBoss && index === 0 ? MAP_ONE_COMMON_MONSTER_DAMAGE_MULTIPLIER : 1;
   }
 
+  function getV2AbyssDifficultyMultiplier(regionIndex) {
+    const mapNumber = Math.floor(Number(regionIndex) || 0) + 1;
+    if (mapNumber < V2_ABYSS_FIRST_MAP || mapNumber > V2_ABYSS_LAST_MAP) return 1;
+    return mapNumber - 14;
+  }
+
   function endgameRequirementIssues(index) {
     const req = ENDGAME_REQUIREMENTS[index];
     if (!req) return [];
@@ -7873,9 +7906,10 @@
     const stage = getEndgameStageMultiplier(state.regionIndex);
     const commonBalance = isBoss ? 1 : getCommonMonsterBalanceMultiplier(state.regionIndex);
     const damageBalance = getCommonMonsterDamageBalanceMultiplier(state.regionIndex, isBoss);
+    const abyssDifficulty = getV2AbyssDifficultyMultiplier(state.regionIndex);
     const enemyName = isBoss ? region.boss : encounter.name;
     const visual = inferEnemyVisual(enemyName, region, isBoss ? "BOSS" : encounter.category, isBoss ? 5 : encounter.tier, isBoss);
-    const hp = Math.round(region.baseHp * variation * (isBoss ? 34 * (mod.bossHp || 1) : profile.hp * stage * (mod.hp || 1) * commonBalance));
+    const hp = Math.round(region.baseHp * variation * (isBoss ? 34 * (mod.bossHp || 1) : profile.hp * stage * (mod.hp || 1) * commonBalance) * abyssDifficulty);
     const spawnEndsAt = isBoss ? scene.time + BOSS_SPAWN_ANIMATION_SECONDS : 0;
     state.combat.enemy = {
       name: enemyName,
@@ -7891,8 +7925,8 @@
       spawnEndsAt,
       maxHp: hp,
       hp,
-      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 * (mod.bossDamage || 1) : profile.damage * stage * (mod.damage || 1) * commonBalance * damageBalance)),
-      armor: Math.round((isBoss ? 22 + state.regionIndex * 9 : (2 + state.regionIndex * 5) * profile.armor) * (isBoss ? (mod.bossArmor || 1) : (mod.armor || 1))),
+      damage: Math.round(region.baseDamage * variation * (isBoss ? 3.5 * (mod.bossDamage || 1) : profile.damage * stage * (mod.damage || 1) * commonBalance * damageBalance) * abyssDifficulty),
+      armor: Math.round((isBoss ? 22 + state.regionIndex * 9 : (2 + state.regionIndex * 5) * profile.armor) * (isBoss ? (mod.bossArmor || 1) : (mod.armor || 1)) * abyssDifficulty),
       evasion: Math.min(.28, (isBoss ? .035 : profile.evasion) + (mod.evasion || 0)),
       attackSpeed: (isBoss ? .82 : profile.attackSpeed) * (mod.attackSpeed || 1),
       skillResist: mod.skillResist || 0,
@@ -9238,7 +9272,7 @@
     if (xpText) xpText.textContent = `${formatNumber(state.xp)} / ${formatNumber(needed)} XP`;
     if (pirateLevelText) pirateLevelText.textContent = `Nível ${state.pirateLevel}`;
     if (xpFill) xpFill.style.width = `${state.xp / needed * 100}%`;
-    const homeLogs = state.logs.slice(0, 5);
+    const homeLogs = state.logs.filter(isHomeCombatSummaryLog).slice(0, 5);
     $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
     renderLeaderboard();
     renderArenaPanel();
@@ -9810,6 +9844,11 @@
     return `Desbloqueia no Mapa ${getRequiredMapForShip(ship)}`;
   }
 
+  function getShipSpecialProgressionIssue(ship) {
+    if (ship?.name === "Black Abyss" && !hasCompletedKrakenAbyssOnce()) return "Conclua Abismo do Kraken uma vez";
+    return "";
+  }
+
   function getStatsPreview(levelOverrides = {}, shipId = state.shipId) {
     const previousLevels = state.levels;
     state.levels = { ...state.levels, ...levelOverrides };
@@ -9951,6 +9990,8 @@
     if (mapLockIssue) issues.push(mapLockIssue);
     const killLockIssue = getShipKillLockIssue(ship);
     if (killLockIssue) issues.push(killLockIssue);
+    const specialLockIssue = getShipSpecialProgressionIssue(ship);
+    if (specialLockIssue) issues.push(specialLockIssue);
     const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
     if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
     const prestigeReq = getShipPrestigeRequirement(ship);
@@ -10369,6 +10410,8 @@
     const issues = [];
     const mapLockIssue = getShipMapLockIssue(ship);
     if (mapLockIssue) issues.push(mapLockIssue);
+    const specialLockIssue = getShipSpecialProgressionIssue(ship);
+    if (specialLockIssue) issues.push(specialLockIssue);
     const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
     if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
     const prestigeReq = getShipPrestigeRequirement(ship);
@@ -11207,6 +11250,8 @@
     if (!nextShip || ship.id !== nextShip.id) return toast("A frota evolui em sequência: compre o próximo barco da lista.", "danger-toast");
     const killLockIssue = getShipKillLockIssue(ship);
     if (killLockIssue) return toast(`Libere o próximo navio: ${killLockIssue}.`, "danger-toast");
+    const specialLockIssue = getShipSpecialProgressionIssue(ship);
+    if (specialLockIssue) return toast(`Libere ${ship.name}: ${specialLockIssue}.`, "danger-toast");
     if (ship.tier >= 1 && !state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) return toast("Conclua o prólogo da Era Primitiva para acessar navios piratas.", "danger-toast");
     const prestigeReq = getShipPrestigeRequirement(ship);
     if (state.prestiges < prestigeReq) return toast(`Tier ${ship.tier} requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}.`, "danger-toast");
