@@ -51,8 +51,12 @@
     { maxMap: 5, gold: 100 },
     { maxMap: 10, gold: 500 },
     { maxMap: 13, gold: 5000 },
-    { maxMap: 15, gold: 25000 }
+    { maxMap: 15, gold: 25000 },
+    { maxMap: 21, gold: 60000 }
   ];
+  const V2_ABYSS_FIRST_MAP = 16;
+  const V2_ABYSS_LAST_MAP = 21;
+  const V2_ABYSS_COMMON_MONSTER_SCALE = 1.2;
   const CAPTAIN_HP_REGEN_INTERVAL_SECONDS = 5;
   const AUTO_ATTACK_CAPTAIN_LEVEL_REQUIRED = 2;
   const MANUAL_ATTACK_TUTORIAL_DURATION_MS = 30000;
@@ -345,7 +349,13 @@
     { name: "Mar Imperial", weather: "Ventos de guerra", description: "Fortificações e frotas militares dominam o horizonte.", boss: "Grande Armada Imperial", enemies: ["Fragata Imperial", "Galeão Real", "Navio de Linha", "Encouraçado Imperial", "Frota Imperial"], drops: { ferro: .24, cristal: .095 }, baseHp: 22000, baseDamage: 1300, gold: 190, goldRange: [130, 250], bossGold: [20000, 35000], xp: 1650, sky: "#8ca7bb", sea: "#2b5c78", land: "#6c7568", kind: "MARINHA" },
     { name: "Arquipélago Vulcânico", weather: "Cinzas no ar", description: "Rochas negras, lava e criaturas cobertas de magma.", boss: "Dragão Marinho Vulcânico", enemies: ["Corsário Vulcânico", "Bote Flamejante", "Guardião de Lava", "Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .2, ferro: .22, cristal: .1 }, baseHp: 52000, baseDamage: 3200, gold: 240, goldRange: [160, 320], bossGold: [35000, 60000], xp: 3600, sky: "#8c4d3e", sea: "#373743", land: "#342e2b", kind: "VULCÂNICO" },
     { name: "Reino Congelado", weather: "Nevasca cortante", description: "Icebergs, monstros gelados e navios presos no gelo.", boss: "Jormungandr de Gelo", enemies: ["Navio Congelado", "Corsário de Gelo", "Serpente Glacial", "Guardião Congelado", "Fragata Ártica"], drops: { cristal: .12, gema: .045 }, baseHp: 125000, baseDamage: 7200, gold: 335, goldRange: [220, 450], bossGold: [60000, 100000], xp: 7800, sky: "#b4d4df", sea: "#447b91", land: "#d2e2e1", kind: "GLACIAL" },
-    { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Criatura Abissal", "Navio Amaldiçoado", "Tentáculo Menor", "Leviatã Jovem", "Guardião do Abismo", "Frota Fantasma"], drops: { fragmentos: .008, gema: .05, cristal: .13 }, baseHp: 320000, baseDamage: 18000, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 18000, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" }
+    { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Criatura Abissal", "Navio Amaldiçoado", "Tentáculo Menor", "Leviatã Jovem", "Guardião do Abismo", "Frota Fantasma"], drops: { fragmentos: .008, gema: .05, cristal: .13 }, baseHp: 320000, baseDamage: 18000, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 18000, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" },
+    { name: "Costa das Couraças", weather: "Couraças ancestrais", description: "Répteis gigantes cercam a entrada da nova sequência do Abismo.", boss: "Deinosuchus do Mangue", enemies: ["Réptil das Raízes", "Ictiossauro"], drops: { cristal: .14, perola: .085, gema: .052, fragmentos: .01 }, baseHp: 370000, baseDamage: 21500, gold: 560, goldRange: [360, 760], bossGold: [150000, 240000], xp: 23000, sky: "#516f67", sea: "#0c3340", land: "#334d3e", kind: "ABISSAL" },
+    { name: "Mar de Ventosa", weather: "Redemoinhos ocultos", description: "Tentáculos misteriosos rasgam a superfície de um mar escuro.", boss: "Leviatã Jurássico", enemies: ["Tentáculo Guardião", "Leviatã Menor"], drops: { cristal: .15, perola: .092, gema: .056, fragmentos: .012 }, baseHp: 430000, baseDamage: 25000, gold: 650, goldRange: [420, 890], bossGold: [190000, 300000], xp: 29500, sky: "#263d56", sea: "#061d35", land: "#202e40", kind: "ABISSAL" },
+    { name: "Mandíbula Serpente", weather: "Mar de escamas", description: "Serpentes marinhas e mosassauros dominam águas agressivas.", boss: "Mosasaurus Jovem", enemies: ["Plesiossauro", "Serpente Marinha"], drops: { cristal: .16, perola: .1, gema: .06, fragmentos: .014 }, baseHp: 500000, baseDamage: 29000, gold: 760, goldRange: [500, 1040], bossGold: [240000, 380000], xp: 38000, sky: "#35596d", sea: "#073044", land: "#2b4652", kind: "CRIATURA" },
+    { name: "Caldeira Viva", weather: "Cinzas abissais", description: "Monstros marinhos vulcânicos atravessam lava, fumaça e mar fervente.", boss: "Dragão Marinho Vulcânico", enemies: ["Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .24, cristal: .18, gema: .065, fragmentos: .016 }, baseHp: 590000, baseDamage: 34000, gold: 900, goldRange: [590, 1220], bossGold: [310000, 480000], xp: 49000, sky: "#753e35", sea: "#211b24", land: "#3d2924", kind: "VULCÂNICO" },
+    { name: "Presas de Gelo", weather: "Nevasca profunda", description: "Criaturas congeladas e navios espectrais quebram o gelo do Abismo.", boss: "Jormungandr de Gelo", enemies: ["Serpente de Gelo", "Navio Fantasma do Gelo"], drops: { cristal: .19, gema: .075, perola: .11, fragmentos: .018 }, baseHp: 700000, baseDamage: 41000, gold: 1080, goldRange: [710, 1450], bossGold: [400000, 620000], xp: 63500, sky: "#95bdcb", sea: "#1c526b", land: "#b8d2d5", kind: "GLACIAL" },
+    { name: "Covil da Morte", weather: "Predador desperto", description: "O covil do predador reúne culto sombrio, leviatãs e a ameaça final.", boss: "Kraken Primordial", enemies: ["Leviatã Menor", "Cultista do Kraken"], drops: { fragmentos: .024, gema: .09, cristal: .21, perola: .12 }, baseHp: 840000, baseDamage: 52000, gold: 1320, goldRange: [860, 1760], bossGold: [520000, 820000], xp: 82000, sky: "#111d31", sea: "#04152a", land: "#1b2230", kind: "ABISSAL" }
   ];
   const FIXED_BACKGROUND_PATH = "assets/newbackgrounds/";
   const ARENA_BACKGROUND_FILE = "00 - Arena.png";
@@ -364,9 +374,19 @@
     "12 - Mar Imperial.png",
     "13 - Arquipelago Vulcanico.png",
     "14 - Reino Congelado.png",
+    "15 - Abismo do Kraken.png",
+    "02 - Manguezal dos Ancestrais.png",
+    "03 - Ilha dos Pterodactilos.png",
+    "04 - Selva dos Repteis Marinhos.png",
+    "13 - Arquipelago Vulcanico.png",
+    "14 - Reino Congelado.png",
     "15 - Abismo do Kraken.png"
   ];
   const REGIONS = [...PRIMITIVE_REGIONS, ...MAIN_REGIONS];
+  function isV2AbyssRegionIndex(index) {
+    const mapNumber = Math.floor(Number(index) || 0) + 1;
+    return mapNumber >= V2_ABYSS_FIRST_MAP && mapNumber <= V2_ABYSS_LAST_MAP;
+  }
   FIXED_BACKGROUND_ASSET_FILES.forEach((file, index) => {
     const region = REGIONS[index];
     if (!region) return;
@@ -457,6 +477,23 @@
         { id: "arquipelago-vulcanico", mapIndex: 13, x: 29, y: 31, width: 42, height: 35, shape: "polygon(22% 0, 86% 0, 100% 57%, 77% 100%, 17% 91%, 0 45%)" },
         { id: "reino-congelado", mapIndex: 14, x: 0, y: 47, width: 43, height: 44, shape: "polygon(0 23%, 62% 0, 100% 43%, 86% 100%, 10% 93%, 0 62%)" },
         { id: "abismo-kraken", mapIndex: 15, x: 55, y: 48, width: 43, height: 43, shape: "polygon(16% 0, 100% 0, 100% 91%, 44% 100%, 0 76%, 0 25%)" }
+      ]
+    },
+    {
+      id: "abismo-v2",
+      title: "Jornada Abismo",
+      subtitle: "Mapas 16 a 21",
+      asset: "assets/maps/jornada_abissal_dinamico_animado.gif",
+      mobileAsset: "assets/maps/jornada_abissal_dinamico_mobile.jpg",
+      alt: "Mapa visual da Jornada Abismo",
+      eraLabel: "JORNADA ABISMO",
+      points: [
+        { id: "costa-couracas", mapIndex: 16, x: 0, y: 5, width: 30, height: 36, title: "Costa das Couraças", description: "A costa reptiliana onde couraças antigas anunciam a entrada da Jornada Abismo.", shape: "polygon(0 6%, 72% 0, 100% 44%, 78% 100%, 10% 92%)" },
+        { id: "mar-ventosa", mapIndex: 17, x: 34, y: 11, width: 24, height: 30, title: "Mar de Ventosa", description: "Redemoinhos e tentáculos misteriosos puxam qualquer embarcação para águas mais escuras.", shape: "polygon(28% 0, 78% 8%, 100% 64%, 54% 100%, 0 72%, 6% 24%)" },
+        { id: "mandibula-serpente", mapIndex: 18, x: 63, y: 5, width: 34, height: 41, title: "Mandíbula Serpente", description: "Serpentes marinhas e mosassauros rondam uma passagem estreita e agressiva.", shape: "polygon(22% 0, 100% 2%, 96% 86%, 46% 100%, 0 70%, 8% 24%)" },
+        { id: "caldeira-viva", mapIndex: 19, x: 4, y: 44, width: 36, height: 34, title: "Caldeira Viva", description: "Fumaça, rocha quente e monstros vulcânicos transformam o mar em uma caldeira.", shape: "polygon(8% 16%, 34% 0, 94% 8%, 100% 68%, 72% 100%, 12% 92%, 0 48%)" },
+        { id: "presas-gelo", mapIndex: 20, x: 53, y: 47, width: 43, height: 31, title: "Presas de Gelo", description: "Criaturas congeladas defendem um corredor de gelo escuro e navios espectrais.", shape: "polygon(16% 16%, 56% 0, 100% 20%, 94% 78%, 56% 100%, 0 82%, 4% 34%)" },
+        { id: "covil-morte", mapIndex: 21, x: 34, y: 72, width: 61, height: 27, title: "Covil da Morte", description: "O covil do predador encerra a Jornada Abismo.", shape: "polygon(10% 20%, 44% 0, 100% 12%, 96% 86%, 56% 100%, 0 82%)" }
       ]
     }
   ];
@@ -638,7 +675,13 @@
     [{ name: "Bote da Marinha", category: "MARINHA", tier: 2 }, { name: "Cutter Real", category: "MARINHA", tier: 2 }, { name: "Fragata Imperial", category: "MARINHA", tier: 4 }, { name: "Galeão Real", category: "MARINHA", tier: 4 }, { name: "Navio de Linha", category: "MARINHA", tier: 5 }, { name: "Navio Almirante", category: "MARINHA", tier: 5 }],
     [{ name: "Saqueador de Cinzas", category: "PIRATA", tier: 4 }, { name: "Transporte de Obsidiana", category: "MERCANTE", tier: 4 }, { name: "Corveta Vulcânica", category: "MARINHA", tier: 4 }, { name: "Carapaça Vulcânica", category: "CRIATURA", tier: 5 }, { name: "Dragão Marinho Jovem", category: "CRIATURA", tier: 5 }],
     [{ name: "Barco Costeiro Congelado", category: "PESCADOR", tier: 3 }, { name: "Corsário Boreal", category: "PIRATA", tier: 4 }, { name: "Fragata Congelada", category: "MARINHA", tier: 5 }, { name: "Navio Fantasma do Gelo", category: "FANTASMA", tier: 5 }, { name: "Serpente de Gelo", category: "CRIATURA", tier: 5 }],
-    [{ name: "Cultista do Kraken", category: "PIRATA", tier: 5 }, { name: "Dreadnought Afundado", category: "FANTASMA", tier: 5 }, { name: "Frota Imperial Perdida", category: "MARINHA", tier: 5 }, { name: "Leviatã Menor", category: "CRIATURA", tier: 5 }, { name: "Navio Fantasma Lendário", category: "FANTASMA", tier: 5 }]
+    [{ name: "Cultista do Kraken", category: "PIRATA", tier: 5 }, { name: "Dreadnought Afundado", category: "FANTASMA", tier: 5 }, { name: "Frota Imperial Perdida", category: "MARINHA", tier: 5 }, { name: "Leviatã Menor", category: "CRIATURA", tier: 5 }, { name: "Navio Fantasma Lendário", category: "FANTASMA", tier: 5 }],
+    [{ name: "Réptil das Raízes", category: "CRIATURA", tier: 5, weight: 2 }, { name: "Ictiossauro", category: "CRIATURA", tier: 5, weight: 2 }],
+    [{ name: "Tentáculo Guardião", category: "CRIATURA", tier: 5, weight: 2 }, { name: "Leviatã Menor", category: "CRIATURA", tier: 5 }],
+    [{ name: "Plesiossauro", category: "CRIATURA", tier: 5, weight: 2 }, { name: "Serpente Marinha", category: "CRIATURA", tier: 5 }],
+    [{ name: "Carapaça Vulcânica", category: "CRIATURA", tier: 5, weight: 2 }, { name: "Dragão Marinho Jovem", category: "CRIATURA", tier: 5 }],
+    [{ name: "Serpente de Gelo", category: "CRIATURA", tier: 5, weight: 2 }, { name: "Navio Fantasma do Gelo", category: "FANTASMA", tier: 5 }],
+    [{ name: "Leviatã Menor", category: "CRIATURA", tier: 5, weight: 2 }, { name: "Cultista do Kraken", category: "PIRATA", tier: 5 }]
   ];
   const REGION_ENCOUNTERS = [...PRIMITIVE_ENCOUNTERS, ...MAIN_REGION_ENCOUNTERS];
 
@@ -1783,13 +1826,25 @@
     11: { power: 25000, dps: 8000, maxHp: 20000, upgrades: 30, tier: 3, prestiges: 2, label: "Endgame imperial" },
     12: { power: 50000, dps: 18000, maxHp: 45000, upgrades: 50, tier: 4, prestiges: 3, label: "Endgame vulcânico" },
     13: { power: 100000, dps: 40000, maxHp: 90000, upgrades: 80, tier: 4, prestiges: 4, label: "Endgame congelado" },
-    14: { power: 250000, dps: 100000, maxHp: 250000, upgrades: 120, tier: 5, prestiges: 5, label: "Desafio final do Kraken" }
+    14: { power: 250000, dps: 100000, maxHp: 250000, upgrades: 120, tier: 5, prestiges: 5, label: "Desafio final do Kraken" },
+    15: { power: 380000, dps: 150000, maxHp: 380000, upgrades: 145, tier: 5, prestiges: 6, label: "Costa das Couraças" },
+    16: { power: 540000, dps: 215000, maxHp: 520000, upgrades: 170, tier: 5, prestiges: 7, label: "Mar de Ventosa" },
+    17: { power: 760000, dps: 300000, maxHp: 700000, upgrades: 195, tier: 5, prestiges: 8, label: "Mandíbula Serpente" },
+    18: { power: 1050000, dps: 415000, maxHp: 950000, upgrades: 225, tier: 5, prestiges: 9, label: "Caldeira Viva" },
+    19: { power: 1450000, dps: 570000, maxHp: 1250000, upgrades: 255, tier: 5, prestiges: 10, label: "Presas de Gelo" },
+    20: { power: 2000000, dps: 780000, maxHp: 1650000, upgrades: 290, tier: 5, prestiges: 12, label: "Covil da Morte" }
   };
   const ENDGAME_ENEMY_MODS = {
     11: { hp: 1.75, damage: 1.45, armor: 1.55, evasion: .015, attackSpeed: .9, skillResist: .12, bossHp: 1.8, bossDamage: 1.45, bossArmor: 1.45, special: "blindagem imperial" },
     12: { hp: 2.25, damage: 2.05, armor: 1.25, evasion: .02, attackSpeed: .82, skillResist: .2, bossHp: 2.35, bossDamage: 2.1, bossArmor: 1.35, special: "chamas vulcânicas" },
     13: { hp: 2.85, damage: 2.35, armor: 1.85, evasion: .025, attackSpeed: .78, skillResist: .28, bossHp: 3.15, bossDamage: 2.55, bossArmor: 1.85, special: "controle glacial" },
-    14: { hp: 4.2, damage: 3.7, armor: 2.45, evasion: .04, attackSpeed: .68, skillResist: .4, bossHp: 7.02, bossDamage: 5.525, bossArmor: 2.6, special: "maldição abissal" }
+    14: { hp: 4.2, damage: 3.7, armor: 2.45, evasion: .04, attackSpeed: .68, skillResist: .4, bossHp: 7.02, bossDamage: 5.525, bossArmor: 2.6, special: "maldição abissal" },
+    15: { hp: 4.4, damage: 3.95, armor: 2.62, evasion: .045, attackSpeed: .66, skillResist: .43, bossHp: 7.65, bossDamage: 5.9, bossArmor: 2.8, special: "couraça abissal" },
+    16: { hp: 4.85, damage: 4.28, armor: 2.82, evasion: .05, attackSpeed: .64, skillResist: .46, bossHp: 8.4, bossDamage: 6.35, bossArmor: 3.0, special: "tentáculos ocultos" },
+    17: { hp: 5.35, damage: 4.66, armor: 3.02, evasion: .055, attackSpeed: .62, skillResist: .49, bossHp: 9.25, bossDamage: 6.85, bossArmor: 3.2, special: "mandíbulas serpentinas" },
+    18: { hp: 5.95, damage: 5.05, armor: 3.25, evasion: .058, attackSpeed: .6, skillResist: .52, bossHp: 10.25, bossDamage: 7.45, bossArmor: 3.45, special: "caldeira viva" },
+    19: { hp: 6.65, damage: 5.55, armor: 3.55, evasion: .06, attackSpeed: .58, skillResist: .55, bossHp: 11.45, bossDamage: 8.25, bossArmor: 3.75, special: "presas congeladas" },
+    20: { hp: 7.5, damage: 6.4, armor: 3.9, evasion: .065, attackSpeed: .56, skillResist: .6, bossHp: 12.95, bossDamage: 9.6, bossArmor: 4.1, special: "covil da morte" }
   };
   let activeMissionFilter = "Próximas de concluir";
   let captainPetsExpanded = false;
@@ -2071,6 +2126,11 @@
         merged.regionKills = defaults.regionKills.map((_, i) => Number(saved.regionKills?.[i] || 0));
         merged.bossesDefeated = defaults.bossesDefeated.map((_, i) => Boolean(saved.bossesDefeated?.[i]));
       }
+      merged.bossesDefeated.forEach((defeated, index) => {
+        if (!defeated || index >= REGIONS.length - 1) return;
+        merged.unlockedRegions = Math.max(merged.unlockedRegions, index + 2);
+        merged.maxRegionReached = Math.max(merged.maxRegionReached || 0, index + 1);
+      });
       const shipOffset = previousVersion < 4 ? PRIMITIVE_SHIPS.length : 0;
       const migratedOwned = Array.isArray(saved.ownedShips) ? saved.ownedShips.map(id => (previousVersion < 2 && Number(id) === 19 ? 20 : Number(id)) + shipOffset) : [0];
       merged.ownedShips = [...new Set([0, ...migratedOwned])].filter(id => Number.isInteger(id) && id >= 0 && id < SHIPS.length);
@@ -4046,6 +4106,16 @@
     frameBounds: null,
     referenceBounds: null
   };
+  const ENEMY_AURA_EFFECT_SPRITE = {
+    key: "enemyAura1",
+    image: createLazyImage(),
+    file: "aura1.png",
+    frames: 3,
+    requested: false,
+    loadFailed: false,
+    frameBounds: null,
+    referenceBounds: null
+  };
   const PLAYER_SHIP_SPRITESHEET_FILES = [
     "PLAYER-01_01_Bote_de_Tronco_sprite_9frames.png",
     "PLAYER-01_02_Jangada_de_Cipó_sprite_9frames.png",
@@ -4215,6 +4285,10 @@
     return requestSpriteImage(REPAIR_EFFECT_SPRITE, `${EFFECT_ASSET_PATH}${REPAIR_EFFECT_SPRITE.file}`);
   }
 
+  function requestEnemyAuraEffectSprite() {
+    return requestSpriteImage(ENEMY_AURA_EFFECT_SPRITE, `${EFFECT_ASSET_PATH}${ENEMY_AURA_EFFECT_SPRITE.file}`);
+  }
+
   const ENEMY_SPRITE_LAYOUTS = [
     ["Remador Rival", { width: 250, anchorY: .68 }],
     ["Pescador Primitivo", { width: 265, anchorY: .7 }],
@@ -4296,6 +4370,7 @@
     ["Frota Imperial Perdida", { width: 360, anchorY: .58 }],
     ["Leviata Menor", { width: 360, anchorY: .58 }],
     ["Navio Fantasma Lendario", { width: 365, anchorY: .62 }],
+    ["Tentaculo Guardiao", { width: 360, anchorY: .62 }],
     ["Kraken Primordial", { width: 405, anchorY: .6 }]
   ].reduce((layouts, [name, options]) => {
     layouts[normalizeText(name)] = options;
@@ -4516,6 +4591,45 @@
       .replace(/\b\d+\s*frames?\b/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+  }
+
+  const V2_ABYSS_AURA_DEFAULT = Object.freeze({ scaleX: 1.34, scaleY: 1.6, offsetX: 0, offsetY: 0, bottomAnchor: .95, alpha: .7, fps: 5.6 });
+  const V2_ABYSS_AURA_CONFIG = [
+    ["Reptil das Raizes", { scaleX: 1.28, scaleY: 1.42, bottomAnchor: .92, alpha: .68 }],
+    ["Ictiossauro", { scaleX: 1.36, scaleY: 1.38, bottomAnchor: .9, alpha: .66 }],
+    ["Deinosuchus do Mangue", { scaleX: 1.42, scaleY: 1.46, bottomAnchor: .92, alpha: .7 }],
+    ["Tentaculo Guardiao", { scaleX: 1.22, scaleY: 1.72, bottomAnchor: .96, alpha: .72 }],
+    ["Leviata Menor", { scaleX: 1.5, scaleY: 1.4, bottomAnchor: .91, alpha: .68 }],
+    ["Leviata Jurassico", { scaleX: 1.55, scaleY: 1.48, bottomAnchor: .91, alpha: .7 }],
+    ["Plesiossauro", { scaleX: 1.48, scaleY: 1.38, bottomAnchor: .9, alpha: .67 }],
+    ["Serpente Marinha", { scaleX: 1.55, scaleY: 1.42, bottomAnchor: .91, alpha: .69 }],
+    ["Mosasaurus Jovem", { scaleX: 1.5, scaleY: 1.46, bottomAnchor: .91, alpha: .7 }],
+    ["Carapaca Vulcanica", { scaleX: 1.32, scaleY: 1.5, bottomAnchor: .94, alpha: .68 }],
+    ["Dragao Marinho Jovem", { scaleX: 1.42, scaleY: 1.5, bottomAnchor: .93, alpha: .69 }],
+    ["Dragao Marinho Vulcanico", { scaleX: 1.48, scaleY: 1.56, bottomAnchor: .94, alpha: .71 }],
+    ["Serpente de Gelo", { scaleX: 1.52, scaleY: 1.44, bottomAnchor: .91, alpha: .72 }],
+    ["Navio Fantasma do Gelo", { scaleX: 1.24, scaleY: 1.54, bottomAnchor: .95, alpha: .66 }],
+    ["Jormungandr de Gelo", { scaleX: 1.58, scaleY: 1.5, bottomAnchor: .92, alpha: .72 }],
+    ["Cultista do Kraken", { scaleX: 1.18, scaleY: 1.55, bottomAnchor: .95, alpha: .68 }],
+    ["Kraken Primordial", { scaleX: 1.38, scaleY: 1.56, bottomAnchor: .96, alpha: .72 }]
+  ].reduce((config, [name, options]) => {
+    config[normalizeEnemySpriteKey(name)] = { ...V2_ABYSS_AURA_DEFAULT, ...options };
+    return config;
+  }, {});
+
+  function getV2AbyssAuraConfig(enemy) {
+    return V2_ABYSS_AURA_CONFIG[normalizeEnemySpriteKey(enemy?.name)] || V2_ABYSS_AURA_DEFAULT;
+  }
+
+  function shouldUseV2AbyssCommonAttackSprite(enemy) {
+    return Boolean(enemy && !enemy.isBoss && !enemy.isArena && isV2AbyssRegionIndex(enemy.regionIndex ?? state.regionIndex));
+  }
+
+  function getV2AbyssCommonAttackFrame(sprite, fallbackFrame = 0) {
+    const maxFrame = Math.max(0, (sprite?.frames || 1) - 1);
+    const attackFrames = getSpritesheetAnimation(sprite, "attack")?.frames || [];
+    const attackFrame = attackFrames.find(frame => Number.isFinite(Number(frame)) && Math.floor(Number(frame)) !== fallbackFrame);
+    return clamp(Math.floor(Number(attackFrame ?? 3) || 0), 0, maxFrame);
   }
 
   function getEnemyRegionalSpritesheetKey(key, regionIndex) {
@@ -5224,6 +5338,7 @@
     preloadedRegionAssets.add(index);
 
     getFixedBackgroundSprite(REGIONS[index]);
+    if (isV2AbyssRegionIndex(index)) requestEnemyAuraEffectSprite();
 
     const names = new Set((REGION_ENCOUNTERS[index] || []).map(enemy => enemy.name));
     if (REGIONS[index]?.boss) names.add(REGIONS[index].boss);
@@ -5267,6 +5382,10 @@
     };
 
     addSprite(getFixedBackgroundSprite(REGIONS[index]));
+    if (isV2AbyssRegionIndex(index)) {
+      requestEnemyAuraEffectSprite();
+      addSprite(ENEMY_AURA_EFFECT_SPRITE);
+    }
 
     const shipSprite = getPlayerShipSpritesheet(SHIPS[state.shipId]?.name);
     if (shipSprite) {
@@ -6649,9 +6768,23 @@
       const stateName = this.getSpriteHpState(hp, maxHp, isDefeated);
       if (!isDefeated && animation.deathStartedAt) animation.deathStartedAt = 0;
       if (enemy.isBoss) return this.getBossSpritesheetPose(enemy, sprite, animation, hp, maxHp, isDefeated, stateName);
+      const stateFrame = this.getStateSpriteFrame(sprite, stateName, "enemy");
+      if (!isDefeated && shouldUseV2AbyssCommonAttackSprite(enemy) && animation.attackUntil > this.time) {
+        const elapsed = Math.max(0, this.time - animation.attackStartedAt);
+        return {
+          stateName,
+          frame: getV2AbyssCommonAttackFrame(sprite, stateFrame),
+          blend: 0,
+          elapsed,
+          seed: animation.frameSeed || 0,
+          actionName: "attack",
+          actionProgress: clamp(elapsed / ENEMY_ATTACK_ANIMATION_SECONDS, 0, 1),
+          transitionProgress: clamp((this.time - (animation.poseChangedAt || this.time)) / .18, 0, 1)
+        };
+      }
       return {
         stateName,
-        frame: this.getStateSpriteFrame(sprite, stateName, "enemy"),
+        frame: stateFrame,
         blend: 0,
         elapsed: stateName === SPRITE_HP_STATES.defeated && animation.deathStartedAt ? Math.max(0, this.time - animation.deathStartedAt) : this.time + (animation.frameSeed || 0),
         seed: animation.frameSeed || 0
@@ -6692,6 +6825,50 @@
       return transform;
     }
 
+    shouldDrawEnemyAura(enemy) {
+      return Boolean(enemy && !enemy.isArena && isV2AbyssRegionIndex(enemy.regionIndex ?? state.regionIndex));
+    }
+
+    drawEnemyAuraEffect(ctx, enemy, sprite, pose, frameInfo, baseAlpha) {
+      if (!frameInfo || !this.shouldDrawEnemyAura(enemy)) return false;
+      const image = requestEnemyAuraEffectSprite();
+      if (!image?.complete || !image.naturalWidth) return false;
+      const auraSprite = ENEMY_AURA_EFFECT_SPRITE;
+      measureChestSpriteFrameBounds(auraSprite, image);
+      const source = image;
+      const sourceWidth = source.width || source.naturalWidth;
+      const sourceHeight = source.height || source.naturalHeight;
+      const frameCount = Math.max(1, auraSprite.frames || 3);
+      const auraFrameWidth = Math.floor(sourceWidth / frameCount);
+      const auraFrameHeight = sourceHeight;
+      if (!auraFrameWidth || !auraFrameHeight) return false;
+
+      const config = getV2AbyssAuraConfig(enemy);
+      const auraFrame = Math.floor((this.time + (pose?.seed || 0)) * (config.fps || 5.6)) % frameCount;
+      const body = frameInfo.frameBounds || sprite.referenceBounds;
+      const bodyWidth = Math.max(1, Number(body?.width) || frameInfo.frameWidth * .72);
+      const bodyHeight = Math.max(1, Number(body?.height) || frameInfo.frameHeight * .72);
+      const bodyCenterX = Number(body?.centerX ?? frameInfo.frameWidth * .5);
+      const bodyBottomY = Number(body?.bottomY ?? frameInfo.frameHeight * .82);
+      const centerX = frameInfo.drawX + bodyCenterX * frameInfo.frameScale;
+      const bottomY = frameInfo.drawY + bodyBottomY * frameInfo.frameScale;
+      const auraWidth = Math.max(bodyWidth * frameInfo.frameScale * config.scaleX, frameInfo.targetWidth * .7);
+      const auraHeight = Math.max(bodyHeight * frameInfo.frameScale * config.scaleY, frameInfo.targetHeight * .76);
+      const pulse = .5 + .5 * Math.sin((this.time + (pose?.seed || 0)) * Math.PI * 2.1);
+      const drawX = centerX - auraWidth * .5 + (config.offsetX || 0) * frameInfo.frameScale;
+      const drawY = bottomY - auraHeight * (config.bottomAnchor || .95) + (config.offsetY || 0) * frameInfo.frameScale;
+
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.globalAlpha = baseAlpha * (config.alpha || .7) * (.92 + pulse * .08);
+      ctx.imageSmoothingEnabled = false;
+      ctx.shadowColor = "rgba(101, 225, 255, .48)";
+      ctx.shadowBlur = 10 + 12 * pulse;
+      ctx.drawImage(source, auraFrame * auraFrameWidth, 0, auraFrameWidth, auraFrameHeight, drawX, drawY, auraWidth, auraHeight);
+      ctx.restore();
+      return true;
+    }
+
     drawEnemySpritesheet(ctx, x, y, scale, enemy, sprite) {
       requestEnemySpritesheet(sprite);
       const image = sprite.image;
@@ -6726,16 +6903,36 @@
       ctx.imageSmoothingEnabled = false;
       ctx.shadowColor = "rgba(0,0,0,.34)";
       ctx.shadowBlur = 7 * scale;
-      const drawFrame = (frame, alpha) => {
+      const getFrameInfo = frame => {
         const frameX = (frame % sprite.columns) * frameWidth;
         const frameY = Math.floor(frame / sprite.columns) * frameHeight;
         const frameBounds = sprite.frameBounds?.[frame];
         const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
         const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
-        ctx.globalAlpha = baseAlpha * alpha;
-        ctx.drawImage(source, frameX, frameY, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
+        return {
+          frame,
+          frameX,
+          frameY,
+          frameWidth,
+          frameHeight,
+          frameBounds,
+          anchorOffsetX,
+          anchorOffsetY,
+          drawX: drawX + anchorOffsetX,
+          drawY: drawY + anchorOffsetY,
+          targetWidth,
+          targetHeight,
+          frameScale
+        };
       };
-      drawFrame(pose.frame, 1);
+      const drawFrame = (frame, alpha) => {
+        const info = getFrameInfo(frame);
+        ctx.globalAlpha = baseAlpha * alpha;
+        ctx.drawImage(source, info.frameX, info.frameY, info.frameWidth, info.frameHeight, info.drawX, info.drawY, info.targetWidth, info.targetHeight);
+        return info;
+      };
+      const frameInfo = drawFrame(pose.frame, 1);
+      this.drawEnemyAuraEffect(ctx, enemy, sprite, pose, frameInfo, baseAlpha);
       ctx.restore();
       return true;
     }
@@ -7017,13 +7214,14 @@
       if (enemy.isArena) return .94;
       if (enemy.isBoss) return 1.06;
       const text = normalizeText(`${enemy.name} ${enemy.category || ""}`);
-      if (/canoa|jangada|remador|pescador|bote|tribal|cacador|saqueador|contrabandista pequeno|pequeno contrabandista/.test(text)) return .62;
-      if (/jacare|reptil|pterodactilo|ictiossauro|plesiossauro|serpente|carapaca|dragao|leviata|baleeiro/.test(text)) return .68;
-      if (enemy.category === "PESCADOR") return .64;
-      if (enemy.category === "CRIATURA") return .68;
-      if (enemy.category === "MERCANTE" || enemy.category === "CONTRABANDISTA") return .72;
-      if (enemy.category === "MARINHA" || enemy.category === "FANTASMA") return .76;
-      return .72;
+      let factor = .72;
+      if (/canoa|jangada|remador|pescador|bote|tribal|cacador|saqueador|contrabandista pequeno|pequeno contrabandista/.test(text)) factor = .62;
+      else if (/jacare|reptil|pterodactilo|ictiossauro|plesiossauro|serpente|carapaca|dragao|leviata|baleeiro|tentaculo/.test(text)) factor = .68;
+      else if (enemy.category === "PESCADOR") factor = .64;
+      else if (enemy.category === "CRIATURA") factor = .68;
+      else if (enemy.category === "MERCANTE" || enemy.category === "CONTRABANDISTA") factor = .72;
+      else if (enemy.category === "MARINHA" || enemy.category === "FANTASMA") factor = .76;
+      return isV2AbyssRegionIndex(enemy.regionIndex ?? state.regionIndex) ? factor * V2_ABYSS_COMMON_MONSTER_SCALE : factor;
     }
 
     enemySceneScale(baseScale, enemy, sourceWidth = 280) {
@@ -7032,7 +7230,7 @@
       const playerSprite = getPlayerShipSpritesheet(SHIPS[state.shipId].name);
       const playerSceneScale = Math.min(1.15, this.width / 950);
       const playerWidth = (playerSprite?.width || 250) * playerSceneScale;
-      const maxEnemyWidth = playerWidth * .82;
+      const maxEnemyWidth = playerWidth * (isV2AbyssRegionIndex(enemy.regionIndex ?? state.regionIndex) ? 1.02 : .82);
       const projectedWidth = sourceWidth * sizedScale;
       return projectedWidth > maxEnemyWidth ? sizedScale * (maxEnemyWidth / projectedWidth) : sizedScale;
     }
@@ -7542,6 +7740,7 @@
       category: isBoss ? "BOSS" : encounter.category,
       visual,
       animation: createEnemySpriteAnimation(enemyName),
+      regionIndex: state.regionIndex,
       visualKind: isBoss ? region.kind : profile.visual,
       visualTier: isBoss ? 5 : encounter.tier,
       isBoss,
@@ -10011,9 +10210,10 @@
     }).join("");
     const allMapPoints = [...PROLOGUE_MAP_POINTS, ...JOURNEY_MAP_PARTS.flatMap(part => part.points)];
     const mapPointByIndex = index => allMapPoints.find(point => point.mapIndex - 1 === index);
+    const pointEraLabel = point => JOURNEY_MAP_PARTS.find(part => part.points.includes(point))?.eraLabel || "JORNADA PIRATA";
     const mapStepLabel = point => point.mapIndex <= PRIMITIVE_REGIONS.length
       ? `PRÓLOGO • MAPA ${point.mapIndex}/5`
-      : `JORNADA PIRATA • MAPA ${point.mapIndex}/${REGIONS.length}`;
+      : `${pointEraLabel(point)} • MAPA ${point.mapIndex}/${REGIONS.length}`;
     const mapHotspotHtml = point => {
       const index = point.mapIndex - 1;
       const region = REGIONS[index];

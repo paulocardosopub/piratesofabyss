@@ -1,11 +1,12 @@
-const CACHE = "pirates-abyss-v181-combat-cues";
+const CACHE = "pirates-abyss-v185-jornada-abismo";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=108",
-  "game.js?v=190",
+  "game.js?v=194",
   "icon.svg",
   "manifest.webmanifest",
+  "assets/effects/aura1.png",
   "assets/effects/reparo_barco_3sprites.png",
   "assets/ui/tabs/mobile/icon_combate_square.png",
   "assets/ui/tabs/mobile/icon_navio_square.png",
@@ -15,7 +16,8 @@ const APP_SHELL = [
   "assets/ui/tabs/mobile/icon_status_square.png",
   "assets/maps/mapa_idle_mobile.jpg",
   "assets/maps/jornada_pirata_parte1_mobile.jpg",
-  "assets/maps/jornada_pirata_parte2_mobile.jpg"
+  "assets/maps/jornada_pirata_parte2_mobile.jpg",
+  "assets/maps/jornada_abissal_dinamico_mobile.jpg"
 ];
 
 self.addEventListener("install", event => {
