@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v186-xp-sprite-log";
+const CACHE = "pirates-abyss-v187-shields-map-lock";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=108",
-  "game.js?v=198",
+  "styles.css?v=109",
+  "game.js?v=199",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",
@@ -14,10 +14,7 @@ const APP_SHELL = [
   "assets/ui/tabs/mobile/icon_capitao_square.png",
   "assets/ui/tabs/mobile/icon_prestigio_square.png",
   "assets/ui/tabs/mobile/icon_status_square.png",
-  "assets/maps/mapa_idle_mobile.jpg",
-  "assets/maps/jornada_pirata_parte1_mobile.jpg",
-  "assets/maps/jornada_pirata_parte2_mobile.jpg",
-  "assets/maps/jornada_abissal_dinamico_mobile.jpg"
+  "assets/maps/mapa_idle_mobile.jpg"
 ];
 
 self.addEventListener("install", event => {

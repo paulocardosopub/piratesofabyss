@@ -32,6 +32,15 @@
   const PET_UPGRADE_POWER_STEP = .32;
   const PET_MIN_MONSTER_SPAWN_INTERVAL_MS = 280;
   const CAPTAIN_MAX_LEVEL = 10;
+  const SHIP_UPGRADE_MAX_LEVEL = 30;
+  const SHIP_UPGRADE_DEFINITIONS = [
+    { key: "ship", name: "Convés e Estrutura", icon: "⛵", desc: "Melhora o nível geral do navio e aumenta todos os atributos principais." },
+    { key: "cannons", name: "Canhões", icon: "☄", desc: "Aumenta dano, crítico e poder de artilharia." },
+    { key: "sails", name: "Velas", icon: "◒", desc: "Acelera ataques, deslocamento, precisão e evasão." },
+    { key: "hull", name: "Casco", icon: "⬡", desc: "Amplia vida, defesa e resistência em combate." },
+    { key: "shields", name: "Escudos", icon: "▣", desc: "Aumenta a chance de bloquear ataques inimigos." }
+  ];
+  const SHIP_UPGRADE_KEYS = SHIP_UPGRADE_DEFINITIONS.map(item => item.key);
   const CAPTAIN_CHARACTER_ASSET_PATH = "assets/newpirates/";
   const EFFECT_ASSET_PATH = "assets/effects/";
   const CAPTAIN_MANUAL_SKILL_KEY = "sabotage";
@@ -497,10 +506,6 @@
       ]
     }
   ];
-  const MAP_BOARD_ASSETS = [
-    { asset: PROLOGUE_MAP_ASSET, mobileAsset: PROLOGUE_MAP_MOBILE_ASSET },
-    ...JOURNEY_MAP_PARTS.map(({ asset, mobileAsset }) => ({ asset, mobileAsset }))
-  ];
   const MOBILE_ASSET_MEDIA = "(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)";
 
   function prefersMobileMapAssets() {
@@ -509,8 +514,14 @@
 
   function preloadMapBoardAssets() {
     const useMobileAssets = prefersMobileMapAssets();
-    const assets = MAP_BOARD_ASSETS.map(item => useMobileAssets ? item.mobileAsset || item.asset : item.asset);
+    const visibleBoards = [{ asset: PROLOGUE_MAP_ASSET, mobileAsset: PROLOGUE_MAP_MOBILE_ASSET }, ...JOURNEY_MAP_PARTS.filter(isJourneyMapPartVisible).map(({ asset, mobileAsset }) => ({ asset, mobileAsset }))];
+    const assets = visibleBoards.map(item => useMobileAssets ? item.mobileAsset || item.asset : item.asset);
     return Promise.allSettled(assets.map(preloadImageUrl));
+  }
+
+  function isJourneyMapPartVisible(part, source = state) {
+    const firstMap = Math.min(...(part?.points || []).map(point => point.mapIndex));
+    return Number(source?.unlockedRegions || 1) >= firstMap;
   }
 
   const loadSceneSprite = src => {
@@ -604,7 +615,7 @@
     { name: "Encouraçado Imperial", type: "Marinha", tier: 5, levelReq: 50, hp: 29500, damage: 2400, speed: 218, armor: 145, costs: { ouro: 500000, madeira: 4000, ferro: 2500, polvora: 1200, pedra: 400, cristal: 100 } },
     { name: "Fragata Fantasma", type: "Espectral", tier: 5, levelReq: 65, hp: 44000, damage: 3600, speed: 245, armor: 170, costs: { ouro: 550000, madeira: 4500, ferro: 2500, ambar: 150, perola: 150, gema: 50 } },
     { name: "Kraken Hunter", type: "Caçador", tier: 5, levelReq: 72, hp: 57000, damage: 4700, speed: 238, armor: 205, costs: { ouro: 750000, madeira: 4800, ferro: 2800, polvora: 1600, cristal: 180, gema: 75, fragmentos: 15 } },
-    { name: "Black Abyss", type: "Espectral", tier: 5, levelReq: 80, hp: 78000, damage: 6500, speed: 260, armor: 250, costs: { ouro: 1000000, madeira: 5000, ferro: 3000, polvora: 2000, cristal: 250, gema: 100, fragmentos: 25 } }
+    { name: "Black Abyss", type: "Espectral", tier: 5, prestigeReq: 6, levelReq: 80, hp: 156000, damage: 13000, speed: 520, armor: 500, costs: { ouro: 1000000, madeira: 5000, ferro: 3000, polvora: 2000, cristal: 250, gema: 100, fragmentos: 25 } }
   ];
   const SHIPS = [...PRIMITIVE_SHIPS, ...MAIN_SHIPS].map((ship, id) => ({ id, bossReq: 0, ...ship }));
   const SHIP_UNLOCK_BY_MAP = Object.freeze({
@@ -757,13 +768,42 @@
     { names: { male: "Pirata Lendário", female: "Pirata Lendária" }, cost: 60000, bonuses: { spawnBonus: .4, autoFoodBonus: .5, hpRegenPercentPerSecond: .03 } }
   ].map((entry, index) => ({ level: index + 1, ...entry }));
 
-  const CAPTAIN_EQUIPMENT_MAX_TIER = 10;
-  const CAPTAIN_SWORD_BONUS_PROGRESS = [.03, .10, .20, .35, .55, .80, 1.15, 1.60, 2.20, 3.00];
+  const CAPTAIN_EQUIPMENT_MAX_TIER = 30;
+  function extendNumericProgression(values, targetLength = CAPTAIN_EQUIPMENT_MAX_TIER) {
+    const result = values.slice();
+    const step = result.length > 1 ? result[result.length - 1] - result[result.length - 2] : result[0] || 0;
+    while (result.length < targetLength) result.push(Number((result[result.length - 1] + step).toFixed(4)));
+    return result;
+  }
+
+  function extendTupleProgression(rows, targetLength = CAPTAIN_EQUIPMENT_MAX_TIER) {
+    const result = rows.map(row => row.slice());
+    const last = result[result.length - 1] || [];
+    const previous = result[result.length - 2] || last;
+    const steps = last.map((value, index) => value - (previous[index] || 0));
+    while (result.length < targetLength) {
+      const current = result[result.length - 1];
+      result.push(current.map((value, index) => Number((value + (steps[index] || 0)).toFixed(4))));
+    }
+    return result;
+  }
+
+  function getCaptainEquipmentPointCost(level) {
+    const cleanLevel = clamp(Math.floor(Number(level) || 1), 1, CAPTAIN_EQUIPMENT_MAX_TIER);
+    if (cleanLevel <= 10) return cleanLevel;
+    return Math.min(100, (cleanLevel - 9) * 10);
+  }
+
+  function getCaptainEquipmentTierName(names, index) {
+    return names[index] || `${names[names.length - 1]} +${index - names.length + 1}`;
+  }
+
+  const CAPTAIN_SWORD_BONUS_PROGRESS = extendNumericProgression([.03, .10, .20, .35, .55, .80, 1.15, 1.60, 2.20, 3.00]);
   const CAPTAIN_LIGHT_HANDS_BONUS_PROGRESS = CAPTAIN_SWORD_BONUS_PROGRESS.map(value => value * .5);
   function buildCaptainEquipmentTiers(names, bonusRows) {
-    return names.map((name, index) => {
+    return Array.from({ length: CAPTAIN_EQUIPMENT_MAX_TIER }, (_, index) => {
       const level = index + 1;
-      return { level, name, bonuses: bonusRows[index], pointCost: level };
+      return { level, name: getCaptainEquipmentTierName(names, index), bonuses: bonusRows[index] || bonusRows[bonusRows.length - 1] || {}, pointCost: getCaptainEquipmentPointCost(level) };
     });
   }
 
@@ -787,7 +827,7 @@
       description: "Aumenta a velocidade de ataque do barco.",
       tiers: buildCaptainEquipmentTiers(
         ["Pistola Enferrujada", "Pistola de Convés", "Mosquete Pirata", "Pistola Dupla", "Bacamarte Corsário", "Arma Dourada do Capitão", "Revólver de Maré Negra", "Pistola Fantasma", "Arma Abissal", "Disparo Lendário do Abismo"],
-        [.02, .07, .14, .25, .40, .60, .85, 1.15, 1.55, 2.10].map(shipAttackSpeedBonus => ({ shipAttackSpeedBonus }))
+        extendNumericProgression([.02, .07, .14, .25, .40, .60, .85, 1.15, 1.55, 2.10]).map(shipAttackSpeedBonus => ({ shipAttackSpeedBonus }))
       )
     },
     armor: {
@@ -798,7 +838,7 @@
       description: "Aumenta a vida máxima e a resistência do barco.",
       tiers: buildCaptainEquipmentTiers(
         ["Camisa de Marujo", "Colete de Couro Simples", "Veste de Corsário", "Casaco de Batalha", "Armadura do Capitão", "Casaco Dourado de Comando", "Couraça do Kraken", "Veste Fantasma", "Armadura Abissal", "Veste Lendária do Abismo"],
-        [[.05, .01], [.12, .02], [.22, .04], [.38, .06], [.60, .09], [.90, .12], [1.30, .16], [1.80, .20], [2.45, .25], [3.30, .32]].map(([shipHpBonus, shipArmorBonus]) => ({ shipHpBonus, shipArmorBonus }))
+        extendTupleProgression([[.05, .01], [.12, .02], [.22, .04], [.38, .06], [.60, .09], [.90, .12], [1.30, .16], [1.80, .20], [2.45, .25], [3.30, .32]]).map(([shipHpBonus, shipArmorBonus]) => ({ shipHpBonus, shipArmorBonus }))
       )
     },
     trick: {
@@ -809,7 +849,7 @@
       description: "Aumenta esquiva, crítico e chance de ataque duplo.",
       tiers: buildCaptainEquipmentTiers(
         ["Truque de Marujo", "Dado Viciado", "Carta na Manga", "Golpe Baixo", "Blefe de Capitão", "Tiro Escondido", "Trapaça Corsária", "Sorte Fantasma", "Pacto Abissal", "Trapaça Lendária"],
-        [[.01, .02, .01], [.02, .04, .02], [.03, .07, .03], [.05, .10, .05], [.07, .14, .07], [.09, .18, .10], [.12, .23, .13], [.15, .29, .17], [.19, .36, .22], [.25, .45, .30]].map(([dodgeChance, critChance, doubleAttackChance]) => ({ dodgeChance, critChance, doubleAttackChance }))
+        extendTupleProgression([[.01, .02, .01], [.02, .04, .02], [.03, .07, .03], [.05, .10, .05], [.07, .14, .07], [.09, .18, .10], [.12, .23, .13], [.15, .29, .17], [.19, .36, .22], [.25, .45, .30]]).map(([dodgeChance, critChance, doubleAttackChance]) => ({ dodgeChance, critChance, doubleAttackChance }))
       )
     },
     lightHands: {
@@ -1046,7 +1086,10 @@
   function getCaptainEquipmentSpentPoints(source = state) {
     return Object.keys(CAPTAIN_EQUIPMENT_META).reduce((sum, key) => {
       const tier = getCaptainEquipmentTier(key, source);
-      return sum + tier * (tier + 1) / 2;
+      for (let level = 1; level <= tier; level += 1) {
+        sum += getCaptainEquipmentTierData(key, level)?.pointCost || getCaptainEquipmentPointCost(level);
+      }
+      return sum;
     }, 0);
   }
 
@@ -1827,12 +1870,12 @@
     12: { power: 50000, dps: 18000, maxHp: 45000, upgrades: 50, tier: 4, prestiges: 3, label: "Endgame vulcânico" },
     13: { power: 100000, dps: 40000, maxHp: 90000, upgrades: 80, tier: 4, prestiges: 4, label: "Endgame congelado" },
     14: { power: 250000, dps: 100000, maxHp: 250000, upgrades: 120, tier: 5, prestiges: 5, label: "Desafio final do Kraken" },
-    15: { power: 380000, dps: 150000, maxHp: 380000, upgrades: 145, tier: 5, prestiges: 6, label: "Costa das Couraças" },
-    16: { power: 540000, dps: 215000, maxHp: 520000, upgrades: 170, tier: 5, prestiges: 7, label: "Mar de Ventosa" },
-    17: { power: 760000, dps: 300000, maxHp: 700000, upgrades: 195, tier: 5, prestiges: 8, label: "Mandíbula Serpente" },
-    18: { power: 1050000, dps: 415000, maxHp: 950000, upgrades: 225, tier: 5, prestiges: 9, label: "Caldeira Viva" },
-    19: { power: 1450000, dps: 570000, maxHp: 1250000, upgrades: 255, tier: 5, prestiges: 10, label: "Presas de Gelo" },
-    20: { power: 2000000, dps: 780000, maxHp: 1650000, upgrades: 290, tier: 5, prestiges: 12, label: "Covil da Morte" }
+    15: { power: 380000, dps: 150000, maxHp: 380000, upgrades: 125, tier: 5, prestiges: 6, label: "Costa das Couraças" },
+    16: { power: 540000, dps: 215000, maxHp: 520000, upgrades: 130, tier: 5, prestiges: 7, label: "Mar de Ventosa" },
+    17: { power: 760000, dps: 300000, maxHp: 700000, upgrades: 135, tier: 5, prestiges: 8, label: "Mandíbula Serpente" },
+    18: { power: 1050000, dps: 415000, maxHp: 950000, upgrades: 140, tier: 5, prestiges: 9, label: "Caldeira Viva" },
+    19: { power: 1450000, dps: 570000, maxHp: 1250000, upgrades: 143, tier: 5, prestiges: 10, label: "Presas de Gelo" },
+    20: { power: 2000000, dps: 780000, maxHp: 1650000, upgrades: 145, tier: 5, prestiges: 12, label: "Covil da Morte" }
   };
   const ENDGAME_ENEMY_MODS = {
     11: { hp: 1.75, damage: 1.45, armor: 1.55, evasion: .015, attackSpeed: .9, skillResist: .12, bossHp: 1.8, bossDamage: 1.45, bossArmor: 1.45, special: "blindagem imperial" },
@@ -1863,7 +1906,7 @@
 
   function makeProgressionDefaults() {
     return {
-      totalUpgrades: 0, upgradesByType: { ship: 0, cannons: 0, sails: 0, hull: 0 },
+      totalUpgrades: 0, upgradesByType: { ship: 0, cannons: 0, sails: 0, hull: 0, shields: 0 },
       skillUses: { total: 0, fire: 0, ice: 0, ghost: 0, chain: 0 },
       trade: { transactions: 0, buys: 0, sells: 0, resourcesBought: 0, resourcesSold: 0 },
       offline: { claims: 0, seconds: 0, maxClaimSeconds: 0 },
@@ -1895,7 +1938,8 @@
       ["Melhorar Canhões I", "Compre 5 upgrades de canhão.", { kind: "upgrade", type: "cannons", target: 5 }, { ouro: 300, polvora: 15 }],
       ["Melhorar Velas I", "Compre 5 upgrades de vela.", { kind: "upgrade", type: "sails", target: 5 }, { ouro: 300, tecido: 15 }],
       ["Melhorar Casco I", "Compre 5 upgrades de casco.", { kind: "upgrade", type: "hull", target: 5 }, { ouro: 300, madeira: 15 }],
-      ["Preparado para o Mar", "Tenha 5 upgrades em canhões, velas e casco.", { kind: "allCoreUpgrades", target: 5 }, { ouro: 750 }],
+      ["Melhorar Escudos I", "Compre 5 upgrades de escudos.", { kind: "upgrade", type: "shields", target: 5 }, { ouro: 300, ferro: 15 }],
+      ["Preparado para o Mar", "Tenha 5 upgrades em canhões, velas, casco e escudos.", { kind: "allCoreUpgrades", target: 5 }, { ouro: 750 }],
       ["Caçada Regional", "Derrote 75 inimigos na jornada.", { kind: "enemies", target: 75 }, { ouro: 500, madeira: 25, ferro: 25 }],
       ["Pirata Iniciante", "Alcance nível 3 de pirata.", { kind: "pirateLevel", target: 3 }, { ouro: 1000 }]
     ].forEach(([name, description, objective, resources], index) => add({ name, description, objective, reward: { resources, xp: index < 3 ? 10 : 50 }, recommendedLevel: Math.max(1, Math.ceil((index + 1) / 2)), icon: "☠", earlyReward: true }));
@@ -1903,7 +1947,13 @@
     [1, 3, 5, 10, REGIONS.length].forEach((target, i) => add({ name: `Boss Hunter ${roman[i]}`, description: i === 0 ? "Derrote o primeiro boss regional." : `Derrote ${target} bosses regionais.`, category: "Boss", type: "boss", objective: { kind: "bosses", target }, reward: { resources: { ouro: 2500 * (i + 1), cristal: i >= 1 ? 3 * i : 0, fragmentos: i >= 3 ? i : 0 }, xp: 100 * (i + 1) }, recommendedLevel: 8 + i * 8, icon: "👑" }));
     MAIN_REGIONS.slice(0, 10).forEach((region, i) => add({ name: region.name, description: `Desbloqueie ${region.name}.`, category: "Mapas", type: "map", objective: { kind: "regionUnlocked", target: PRIMITIVE_REGIONS.length + i + 1 }, reward: { resources: { ouro: 1800 * (i + 1), ...(i > 6 ? { fragmentos: 1 } : i > 3 ? { perola: 2 } : { madeira: 40 }) }, xp: 75 * (i + 1) }, recommendedLevel: 3 + i * 5, icon: "⌖" }));
     Object.entries({ madeira: [1000, 5000], ferro: [1000, 5000], tecido: [1000, 5000], polvora: [500, 1500], cristal: [500], perola: [100], ambar: [100], fragmentos: [25] }).forEach(([key, targets]) => targets.forEach((target, i) => add({ name: `${RESOURCE_META[key].name} ${roman[i]}`, description: `Colete ${shortNumber(target)} ${RESOURCE_META[key].name}.`, category: "Recursos", type: "resource", objective: { kind: "resource", key, target }, reward: { resources: { ouro: target * 8, [key]: Math.max(2, Math.round(target * .08)) }, xp: Math.round(target / 4) }, recommendedLevel: key === "fragmentos" ? 70 : key === "ambar" ? 45 : key === "cristal" ? 18 : 5, icon: RESOURCE_META[key].icon })));
-    ["cannons", "sails", "hull"].forEach(type => [5, 10, 20, 35, 50, 75, 100].forEach((target, i) => add({ name: `${type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} ${roman[i]}`, description: `Compre ${target} upgrades de ${type === "cannons" ? "canhões" : type === "sails" ? "velas" : "casco"}.`, category: "Upgrades", type: "upgrade", objective: { kind: "upgrade", type, target }, reward: { resources: { ouro: 600 * target, [type === "cannons" ? "polvora" : type === "sails" ? "tecido" : "madeira"]: 20 * (i + 1) }, xp: 40 * (i + 1) }, recommendedLevel: 4 + i * 7, icon: type === "cannons" ? "☄" : type === "sails" ? "◒" : "⬡" })));
+    const upgradeMissionMeta = {
+      cannons: { label: "Canhões", plural: "canhões", reward: "polvora", icon: "☄" },
+      sails: { label: "Velas", plural: "velas", reward: "tecido", icon: "◒" },
+      hull: { label: "Casco", plural: "casco", reward: "madeira", icon: "⬡" },
+      shields: { label: "Escudos", plural: "escudos", reward: "ferro", icon: "▣" }
+    };
+    Object.entries(upgradeMissionMeta).forEach(([type, meta]) => [5, 10, 20, 30].forEach((target, i) => add({ name: `${meta.label} ${roman[i]}`, description: `Compre ${target} upgrades de ${meta.plural}.`, category: "Upgrades", type: "upgrade", objective: { kind: "upgrade", type, target }, reward: { resources: { ouro: 600 * target, [meta.reward]: 20 * (i + 1) }, xp: 40 * (i + 1) }, recommendedLevel: 4 + i * 8, icon: meta.icon })));
     [2, 5, 10, 15, SHIPS.length].forEach((target, i) => add({ name: ["Novo Navio", "Pequena Frota", "Frota de Guerra", "Estaleiro Pirata", "Dono da Frota"][i], description: `Compre ${target === SHIPS.length ? "todos os navios" : `${target} navios`}.`, category: "Navios", type: "ship", objective: { kind: "shipsOwned", target }, reward: { resources: { ouro: 2000 * (i + 1) ** 2, madeira: 100 * (i + 1), fragmentos: i === 4 ? 10 : 0 }, xp: 100 * (i + 1) }, recommendedLevel: 5 + i * 15, icon: "⛵" }));
     Object.keys(SKILL_META).forEach((key, i) => add({ name: `${SKILL_META[key].name} em Ação`, description: `Use ${SKILL_META[key].name} ${[100, 250, 500, 1000][i]} vezes em combate.`, category: "Skills", type: "skill", objective: { kind: "skillUse", key, target: [100, 250, 500, 1000][i] }, reward: { resources: { ouro: 2000 + i * 1000, [SKILL_META[key].materials[0]]: 25 }, xp: 75 }, recommendedLevel: SKILL_META[key].unlock, icon: SKILL_META[key].icon }));
     add({ name: "Skills Automáticas", description: "Ative auto lançamento em 3 skills.", category: "Skills", type: "skill", objective: { kind: "skillAuto", target: 3 }, reward: { resources: { ouro: 5000 }, xp: 100 }, recommendedLevel: 20, icon: "⚙" });
@@ -1917,7 +1967,7 @@
     ].forEach(([name, description, objective, recommendedLevel], i) => add({ name, description, category: "Principal", type: "main", objective, reward: { resources: { ouro: 20000 * (i + 1), cristal: 10 * (i + 1), fragmentos: i ? i : 0 }, xp: 250 * (i + 1) }, recommendedLevel, icon: "✦" }));
     [["Caçada Diária", "Derrote 75 inimigos hoje.", "dailyEnemies", 75], ["Saque Diário", "Colete 3.000 Ouro hoje.", "dailyGold", 3000], ["Upgrade Diário", "Faça 3 upgrades hoje.", "dailyUpgrades", 3], ["Skill Diária", "Use skills 100 vezes hoje.", "dailySkillUses", 100], ["Comércio Diário", "Faça 10 transações hoje.", "dailyTrades", 10]].forEach(([name, description, kind, target]) => add({ name, description, category: "Diária", type: "daily", objective: { kind, target }, reward: { resources: { ouro: 500, polvora: kind === "dailySkillUses" ? 25 : 0, comida: kind === "dailyTrades" ? 25 : 0 }, xp: 50 }, recommendedLevel: 1, icon: "☀", resets: "daily" }));
     [["Semana de Guerra", "Derrote 1.500 inimigos na semana.", "weeklyEnemies", 1500], ["Semana de Boss", "Derrote 5 bosses na semana.", "weeklyBosses", 5], ["Semana de Upgrades", "Faça 35 upgrades na semana.", "weeklyUpgrades", 35], ["Semana de Recursos", "Colete 5.000 recursos na semana.", "weeklyResources", 5000], ["Semana Mercante", "Realize 75 transações na semana.", "weeklyTrades", 75]].forEach(([name, description, kind, target]) => add({ name, description, category: "Semanal", type: "weekly", objective: { kind, target }, reward: { resources: { ouro: 10000, cristal: 5, perola: kind === "weeklyBosses" ? 3 : 0, gema: kind === "weeklyUpgrades" ? 3 : 0 }, xp: 250 }, recommendedLevel: 10, icon: "☽", resets: "weekly" }));
-    [["Black Abyss", "Compre o navio Black Abyss.", { kind: "shipName", name: "Black Abyss" }, "Black Abyss"], ["Poder Lendário", "Equipe um navio lendário e alcance 10.000 DPS.", { kind: "legendaryPower", target: 10000 }, "Poder Lendário"], ["Rei dos Bosses", "Derrote todos os bosses regionais.", { kind: "allBosses" }, "Rei dos Bosses"], ["Mestre dos Recursos", "Colete todos os tipos de recursos pelo menos uma vez.", { kind: "allResourcesSeen" }, "Mestre dos Recursos"], ["Arsenal Final", "Desbloqueie todas as skills base.", { kind: "allSkillsUnlocked" }, "Arsenal Final"], ["Navio Perfeito", "Tenha canhões, velas e casco no nível 25.", { kind: "perfectShip", target: 25 }, "Navio Perfeito"], ["Missão Final", "Complete 99 missões.", { kind: "missionsCompleted", target: 99 }, "Lenda das Missões"]].forEach(([name, description, objective, title], i) => add({ name, description, category: "Endgame", type: "endgame", objective, reward: { resources: { ouro: 100000 * (i + 1), fragmentos: 5 + i }, title, xp: 500 }, recommendedLevel: 60, icon: "✹" }));
+    [["Black Abyss", "Compre o navio Black Abyss.", { kind: "shipName", name: "Black Abyss" }, "Black Abyss"], ["Poder Lendário", "Equipe um navio lendário e alcance 10.000 DPS.", { kind: "legendaryPower", target: 10000 }, "Poder Lendário"], ["Rei dos Bosses", "Derrote todos os bosses regionais.", { kind: "allBosses" }, "Rei dos Bosses"], ["Mestre dos Recursos", "Colete todos os tipos de recursos pelo menos uma vez.", { kind: "allResourcesSeen" }, "Mestre dos Recursos"], ["Arsenal Final", "Desbloqueie todas as skills base.", { kind: "allSkillsUnlocked" }, "Arsenal Final"], ["Navio Perfeito", "Tenha canhões, velas, casco e escudos no nível 25.", { kind: "perfectShip", target: 25 }, "Navio Perfeito"], ["Missão Final", "Complete 99 missões.", { kind: "missionsCompleted", target: 99 }, "Lenda das Missões"]].forEach(([name, description, objective, title], i) => add({ name, description, category: "Endgame", type: "endgame", objective, reward: { resources: { ouro: 100000 * (i + 1), fragmentos: 5 + i }, title, xp: 500 }, recommendedLevel: 60, icon: "✹" }));
     [["Testemunha do Abismo", "Veja a animação rara do Kraken no cenário.", { kind: "krakenSightings", target: 1 }, "Testemunha do Abismo"], ["Sorte do Pirata", "Receba múltiplos recursos em uma única batalha.", { kind: "multiResourceDrops", target: 1 }, null], ["Sem Materiais", "Receba apenas Ouro em 100 batalhas.", { kind: "onlyGoldBattles", target: 100 }, null], ["Sobrevivente", "Vença uma batalha com menos de 5% de HP.", { kind: "survivorWins", target: 1 }, "Sobrevivente"]].forEach(([name, description, objective, title]) => add({ name, description, category: "Secretas", type: "secret", objective, reward: { resources: { ouro: 25000, cristal: 5 }, title, xp: 100 }, recommendedLevel: 20, icon: "?" }));
     const selected = defs.length > 100 ? [...defs.slice(0, 89), ...defs.slice(-11)] : defs;
     return selected.map((item, index, all) => ({ ...item, reward: balanceReward(item.reward), prevId: all[index - 1]?.type === item.type ? all[index - 1].id : null, nextId: all[index + 1]?.type === item.type ? all[index + 1].id : null }));
@@ -2044,7 +2094,7 @@
       ownedPets: [],
       equippedPetId: null,
       petLevels: {},
-      levels: { ship: 1, cannons: 1, sails: 1, hull: 1 },
+      levels: { ship: 1, cannons: 1, sails: 1, hull: 1, shields: 1 },
       equipment: { compass: false, spyglass: false, anchor: false, amulet: false },
       skills: {
         fire: { level: 1, auto: true, remaining: 1.5 },
@@ -2129,6 +2179,9 @@
       merged.pirateName = sanitizePirateName(saved.pirateName || "");
       merged.resources = { ...defaults.resources, ...(saved.resources || {}) };
       merged.levels = { ...defaults.levels, ...(saved.levels || {}) };
+      SHIP_UPGRADE_KEYS.forEach(key => {
+        merged.levels[key] = clamp(Math.floor(Number(merged.levels[key] || 1)), 1, SHIP_UPGRADE_MAX_LEVEL);
+      });
       merged.equipment = { ...defaults.equipment, ...(saved.equipment || {}) };
       merged.captainEquipment = { ...defaults.captainEquipment, ...(saved.captainEquipment || {}) };
       merged.captainManualSkills = { ...defaults.captainManualSkills, ...(saved.captainManualSkills || {}) };
@@ -2361,6 +2414,28 @@
   function xpNeeded(level = state.pirateLevel) { return Math.round(100 * Math.pow(level, 1.42)); }
   function bossesCount() { return state.bossesDefeated.filter(Boolean).length; }
   function isSkillUnlocked(key) { return state.pirateLevel >= SKILL_META[key].unlock; }
+  function getShipUpgradeDefinition(key) {
+    return SHIP_UPGRADE_DEFINITIONS.find(item => item.key === key) || null;
+  }
+
+  function getShipUpgradeLevel(type, source = state) {
+    return clamp(Math.floor(Number(source?.levels?.[type] || 1)), 1, SHIP_UPGRADE_MAX_LEVEL);
+  }
+
+  function getTotalShipUpgradeLevels(source = state) {
+    return SHIP_UPGRADE_KEYS.reduce((sum, key) => sum + Math.max(0, getShipUpgradeLevel(key, source) - 1), 0);
+  }
+
+  function getShipBlockChance(level = getShipUpgradeLevel("shields")) {
+    const cleanLevel = clamp(Math.floor(Number(level) || 1), 1, SHIP_UPGRADE_MAX_LEVEL);
+    const chance = cleanLevel <= 5 ? cleanLevel * .03 : .15 + (cleanLevel - 5) * .01;
+    return Math.min(.30, chance);
+  }
+
+  function getShipPrestigeRequirement(ship) {
+    return Math.max(0, Math.floor(Number(ship?.prestigeReq ?? ((ship?.tier || 0) - 1)) || 0));
+  }
+
   function getPetLevel(id) {
     return clamp(Math.floor(Number(state.petLevels?.[id] || 1)), 1, PET_MAX_LEVEL);
   }
@@ -2543,6 +2618,7 @@
     const defense = Math.max(0, Number(stats.defense ?? stats.armor) || 0);
     const damageReduction = clamp(Number(stats.damageReduction ?? stats.damage_reduction ?? stats.armorReduction) || 0, 0, .75);
     const dodgeChance = clamp(Number(stats.dodgeChance ?? stats.dodge_chance ?? stats.evasion) || 0, 0, .5);
+    const blockChance = clamp(Number(stats.blockChance ?? stats.block_chance) || 0, 0, .3);
     const critChance = clamp(Number(stats.critChance ?? stats.crit_chance ?? stats.crit) || 0, 0, 1);
     const critMultiplier = Math.max(1, Number(stats.critMultiplier ?? stats.crit_multiplier) || 1);
     const estimatedDpsFromHit = damage * (1000 / attackIntervalMs);
@@ -2550,12 +2626,12 @@
     const defenseReduction = defense > 0 ? defense / (defense + 100) : 0;
     const totalReduction = clamp(damageReduction + defenseReduction, 0, .85);
     const effectiveHp = maxHp / Math.max(.15, 1 - totalReduction);
-    const effectiveHpWithDodge = effectiveHp / Math.max(.5, 1 - dodgeChance);
+    const effectiveHpWithAvoidance = effectiveHp / Math.max(.35, (1 - dodgeChance) * (1 - blockChance));
     const critBonus = effectiveDps * critChance * Math.max(0, critMultiplier - 1);
     const speedBonus = damage * (attackSpeedFactor - 1) * 6;
     const offensePower = effectiveDps * 15.6;
     const damagePower = damage * 8;
-    const survivalPower = effectiveHpWithDodge * 1.5;
+    const survivalPower = effectiveHpWithAvoidance * 1.5;
     const critPower = critBonus * 6;
     const petPower = Math.max(0, Number(stats.petPower ?? stats.pet_power) || 0);
     const skillPower = Math.max(0, Number(stats.skillPower ?? stats.skill_power) || 0);
@@ -2573,18 +2649,23 @@
 
   function getStats(shipId = state.shipId) {
     const ship = SHIPS[shipId];
-    const overall = 1 + (state.levels.ship - 1) * .06;
-    const damageBonus = 1 + (state.levels.cannons - 1) * .13;
-    const speedBonus = 1 + (state.levels.sails - 1) * .075;
-    const hpBonus = 1 + (state.levels.hull - 1) * .15;
+    const shipLevel = getShipUpgradeLevel("ship");
+    const cannonLevel = getShipUpgradeLevel("cannons");
+    const sailLevel = getShipUpgradeLevel("sails");
+    const hullLevel = getShipUpgradeLevel("hull");
+    const shieldLevel = getShipUpgradeLevel("shields");
+    const overall = 1 + (shipLevel - 1) * .06;
+    const damageBonus = 1 + (cannonLevel - 1) * .13;
+    const speedBonus = 1 + (sailLevel - 1) * .075;
+    const hpBonus = 1 + (hullLevel - 1) * .15;
     const prestigeBonuses = getPrestigeBonuses();
     const captainEquipmentBonuses = getCaptainEquipmentBonuses();
     let damage = ship.damage * overall * damageBonus * (1 + prestigeBonuses.dps) * (1 + prestigeBonuses.shipDamage) * (1 + captainEquipmentBonuses.shipDamageBonus);
     let speed = ship.speed * overall * speedBonus * (1 + prestigeBonuses.speed);
     let maxHp = ship.hp * overall * hpBonus * (1 + captainEquipmentBonuses.shipHpBonus);
-    let armor = ship.armor + (state.levels.hull - 1) * 2.2 + (state.levels.ship - 1) * .7;
-    let precision = Math.min(.98, .83 + (state.levels.cannons - 1) * .006);
-    let crit = Math.min(.55, .06 + (state.levels.cannons - 1) * .005);
+    let armor = ship.armor + (hullLevel - 1) * 2.2 + (shipLevel - 1) * .7;
+    let precision = Math.min(.98, .83 + (cannonLevel - 1) * .006);
+    let crit = Math.min(.55, .06 + (cannonLevel - 1) * .005);
     if (state.equipment.compass) speed *= 1.12;
     if (state.equipment.spyglass) { precision = Math.min(1, precision + .08); crit = Math.min(.7, crit + .07); }
     if (state.equipment.anchor) { armor += 20; maxHp *= 1.1; }
@@ -2593,6 +2674,7 @@
     if (captainEquipmentBonuses.shipArmorBonus) armor *= 1 + captainEquipmentBonuses.shipArmorBonus;
     crit = Math.min(.75, crit + captainEquipmentBonuses.critChance);
     const evasion = Math.min(.6, Math.min(.3, .03 + speed / 5000) + captainEquipmentBonuses.dodgeChance);
+    const blockChance = getShipBlockChance(shieldLevel);
     const doubleAttackChance = Math.min(.5, captainEquipmentBonuses.doubleAttackChance);
     let attackSpeedBonus = captainEquipmentBonuses.shipAttackSpeedBonus;
     ({ damage, speed, maxHp, armor, attackSpeedBonus } = applyActivePetBonuses({ damage, speed, maxHp, armor, attackSpeedBonus }, pet));
@@ -2621,6 +2703,7 @@
       defense: armor,
       damageReduction: armorReduction,
       dodgeChance: evasion,
+      blockChance,
       critChance: crit,
       critMultiplier: 2,
       petPower: pet?.power || 0,
@@ -2629,7 +2712,7 @@
     const power = powerBreakdown.total;
     return {
       damage: Math.round(damage), speed: Math.round(speed), maxHp: Math.round(maxHp), armor: Math.round(armor),
-      precision, crit, evasion, armorReduction, attackSpeedBonus, doubleAttackChance, attackInterval,
+      precision, crit, evasion, blockChance, armorReduction, attackSpeedBonus, doubleAttackChance, attackInterval,
       shipDps: Math.round(shipDps), skillDps: Math.round(boostedSkillDps), petDps: Math.round(petDps),
       dps: totalDps, power, powerBreakdown
     };
@@ -2669,7 +2752,8 @@
     $("#manual-attack-tutorial")?.classList.add("hidden");
   }
 
-  function getUpgradeCost(type, level = state.levels[type]) {
+  function getUpgradeCost(type, level = getShipUpgradeLevel(type)) {
+    level = clamp(Math.floor(Number(level) || 1), 1, SHIP_UPGRADE_MAX_LEVEL);
     const pow = (base, growth) => Math.round(base * Math.pow(growth, level - 1));
     if (type === "ship") {
       const cost = { ouro: pow(120, 1.54), madeira: pow(12, 1.42) };
@@ -2687,6 +2771,12 @@
       const cost = { ouro: pow(100, 1.52), tecido: pow(10, 1.44) };
       if (level >= 7) cost.cristal = pow(2, 1.28);
       if (level >= 13) cost.gema = pow(1, 1.2);
+      return goldOnlyBundle(cost);
+    }
+    if (type === "shields") {
+      const cost = { ouro: pow(180, 1.55), ferro: pow(18, 1.42), madeira: pow(16, 1.38) };
+      if (level >= 6) cost.cristal = pow(2, 1.28);
+      if (level >= 12) cost.perola = pow(1, 1.2);
       return goldOnlyBundle(cost);
     }
     const cost = { ouro: pow(150, 1.56), madeira: pow(25, 1.42), ferro: pow(10, 1.4) };
@@ -3442,7 +3532,7 @@
       ship: {
         ship_id: `ship_${ship.id}`,
         ship_name: ship.name,
-        ship_level: state.levels.ship,
+        ship_level: getShipUpgradeLevel("ship"),
         tier: ship.tier,
         max_hp: stats.maxHp,
         damage: stats.damage,
@@ -3468,14 +3558,16 @@
         defense: stats.armor,
         damage_reduction: stats.armorReduction,
         dodge_chance: stats.evasion,
+        block_chance: stats.blockChance,
         crit_chance: stats.crit,
         crit_multiplier: 2
       },
       upgrades: {
-        ship_level: state.levels.ship,
-        cannons_level: state.levels.cannons,
-        hull_level: state.levels.hull,
-        sails_level: state.levels.sails
+        ship_level: getShipUpgradeLevel("ship"),
+        cannons_level: getShipUpgradeLevel("cannons"),
+        hull_level: getShipUpgradeLevel("hull"),
+        sails_level: getShipUpgradeLevel("sails"),
+        shields_level: getShipUpgradeLevel("shields")
       },
       equipments: {
         ship_equipment: { ...state.equipment },
@@ -3982,7 +4074,7 @@
       dps: stats.dps,
       maxHp: stats.maxHp,
       power: stats.power,
-      totalUpgrades: p.totalUpgrades || Math.max(0, state.levels.ship + state.levels.cannons + state.levels.sails + state.levels.hull - 4),
+      totalUpgrades: p.totalUpgrades || getTotalShipUpgradeLevels(),
       prestiges: state.prestiges,
       resourceTotal: Object.values(p.resourcesByKey || {}).reduce((sum, value) => sum + Number(value || 0), 0),
       dailyEnemies: p.daily.enemies,
@@ -4002,8 +4094,8 @@
       missionsCompleted: completedCount(state.quests, missionDefinitions)
     };
     if (objective.kind === "all") return Math.floor(Math.min(...objective.objectives.map(entry => objectiveProgress(entry) / Math.max(1, objectiveTarget(entry)))) * 100);
-    if (objective.kind === "upgrade") return p.upgradesByType[objective.type] || Math.max(0, state.levels[objective.type] - 1);
-    if (objective.kind === "allCoreUpgrades") return Math.min(p.upgradesByType.cannons || 0, p.upgradesByType.sails || 0, p.upgradesByType.hull || 0);
+    if (objective.kind === "upgrade") return p.upgradesByType[objective.type] || Math.max(0, getShipUpgradeLevel(objective.type) - 1);
+    if (objective.kind === "allCoreUpgrades") return Math.min(p.upgradesByType.cannons || 0, p.upgradesByType.sails || 0, p.upgradesByType.hull || 0, p.upgradesByType.shields || 0);
     if (objective.kind === "resource") return p.resourcesByKey[objective.key] || 0;
     if (objective.kind === "skillUse") return p.skillUses[objective.key] || 0;
     if (objective.kind === "skillAuto") return Object.keys(SKILL_META).filter(key => isSkillUnlocked(key) && state.skills[key].auto).length;
@@ -4012,7 +4104,7 @@
     if (objective.kind === "allBosses") return bossesCount();
     if (objective.kind === "allResourcesSeen") return Object.keys(RESOURCE_META).filter(key => p.resourceTypesSeen[key] || (state.resources[key] || 0) > 0).length;
     if (objective.kind === "allSkillsUnlocked") return Object.keys(SKILL_META).filter(isSkillUnlocked).length;
-    if (objective.kind === "perfectShip") return Math.min(state.levels.cannons, state.levels.sails, state.levels.hull);
+    if (objective.kind === "perfectShip") return Math.min(getShipUpgradeLevel("cannons"), getShipUpgradeLevel("sails"), getShipUpgradeLevel("hull"), getShipUpgradeLevel("shields"));
     return values[objective.kind] || 0;
   }
 
@@ -7758,7 +7850,7 @@
     const req = ENDGAME_REQUIREMENTS[index];
     if (!req) return [];
     const stats = getStats();
-    const upgrades = state.levels.ship + state.levels.cannons + state.levels.sails + state.levels.hull - 4;
+    const upgrades = getTotalShipUpgradeLevels();
     const tier = SHIPS[state.shipId].tier;
     const checks = [
       ["Poder Naval", stats.power, req.power],
@@ -8034,6 +8126,11 @@
     if (Math.random() < stats.evasion) {
       scene.floatDamage("Esquivou!", false, "#9ff4e9");
       addLog("Esquivou! Ataque inimigo evitado.", "loot");
+      return;
+    }
+    if (Math.random() < (stats.blockChance || 0)) {
+      scene.floatDamage("Bloqueou!", false, "#8ee8ff");
+      addLog("Escudos bloquearam o ataque inimigo.", "loot");
       return;
     }
     const damage = Math.max(1, Math.round(applyShipDamageReduction(enemy.damage * randomBetween(.87, 1.12), stats)));
@@ -8591,7 +8688,11 @@
   }
 
   function decorateMissingPurchasePanels(root = document) {
-    $$("[data-upgrade]", root).forEach(button => insertMissingPurchasePanel(button, getUpgradeCost(button.dataset.upgrade), { kind: "upgrade", id: button.dataset.upgrade }));
+    $$("[data-upgrade]", root).forEach(button => {
+      const key = button.dataset.upgrade;
+      if (!SHIP_UPGRADE_KEYS.includes(key) || getShipUpgradeLevel(key) >= SHIP_UPGRADE_MAX_LEVEL) return;
+      insertMissingPurchasePanel(button, getUpgradeCost(key), { kind: "upgrade", id: key });
+    });
     $$("[data-upgrade-skill]", root).forEach(button => {
       const key = button.dataset.upgradeSkill;
       if (isSkillUnlocked(key)) insertMissingPurchasePanel(button, getSkillCost(key), { kind: "skill", id: key });
@@ -8620,8 +8721,9 @@
   function getMissingPurchaseContext(kind, rawId) {
     const id = ["ship", "pet"].includes(kind) ? Number(rawId) : rawId;
     if (kind === "upgrade") {
-      const names = { ship: "Conves e Estrutura", cannons: "Canhoes", sails: "Velas", hull: "Casco" };
-      return { cost: getUpgradeCost(id), label: `${names[id] || "Melhoria"} nivel ${state.levels[id] + 1}`, execute: () => upgrade(id) };
+      if (!SHIP_UPGRADE_KEYS.includes(id) || getShipUpgradeLevel(id) >= SHIP_UPGRADE_MAX_LEVEL) return null;
+      const names = Object.fromEntries(SHIP_UPGRADE_DEFINITIONS.map(item => [item.key, item.name]));
+      return { cost: getUpgradeCost(id), label: `${names[id] || "Melhoria"} nivel ${getShipUpgradeLevel(id) + 1}`, execute: () => upgrade(id) };
     }
     if (kind === "skill" && SKILL_META[id] && isSkillUnlocked(id)) return { cost: getSkillCost(id), label: `${SKILL_META[id].name} nivel ${state.skills[id].level + 1}`, execute: () => upgradeSkill(id) };
     if (kind === "equipment" && EQUIPMENT_META[id] && !state.equipment[id]) return { cost: EQUIPMENT_META[id].costs, label: EQUIPMENT_META[id].name, execute: () => craftEquipment(id) };
@@ -8931,13 +9033,15 @@
   function buildProgressRecommendationCandidates() {
     const currentStats = getStats();
     const candidates = [];
-    [["ship", "Convés e Estrutura", "Melhorias do Navio"], ["cannons", "Canhões", "Melhorias do Navio"], ["sails", "Velas", "Melhorias do Navio"], ["hull", "Casco", "Melhorias do Navio"]].forEach(([key, title, category]) => {
+    SHIP_UPGRADE_DEFINITIONS.forEach(({ key, name: title }) => {
+      const category = "Melhorias do Navio";
+      if (getShipUpgradeLevel(key) >= SHIP_UPGRADE_MAX_LEVEL) return;
       const cost = getUpgradeCost(key);
-      const nextStats = getStatsPreview({ [key]: state.levels[key] + 1 });
+      const nextStats = getStatsPreview({ [key]: getShipUpgradeLevel(key) + 1 });
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const action = upgradeTableActionState("upgrade", key, cost);
       const canBuy = canAfford(cost);
-      candidates.push({ kind: "fleetUpgrade", category, title: `${title} Nv. ${state.levels[key] + 1}`, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactText(getImprovementRows(key), `${formatNumber(currentStats.power)} -> ${formatNumber(nextStats.power)} poder`), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
+      candidates.push({ kind: "fleetUpgrade", category, title: `${title} Nv. ${getShipUpgradeLevel(key) + 1}`, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactText(getImprovementRows(key), `${formatNumber(currentStats.power)} -> ${formatNumber(nextStats.power)} poder`), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
     });
     Object.entries(EQUIPMENT_META).forEach(([key, item]) => {
       if (state.equipment[key]) return;
@@ -9849,7 +9953,7 @@
     if (killLockIssue) issues.push(killLockIssue);
     const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
     if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
-    const prestigeReq = Math.max(0, ship.tier - 1);
+    const prestigeReq = getShipPrestigeRequirement(ship);
     if (state.prestiges < prestigeReq) issues.push(`Prestígios atuais: ${state.prestiges} / ${prestigeReq}`);
     if (state.pirateLevel < ship.levelReq) issues.push(`Requer nível ${ship.levelReq}`);
     return issues;
@@ -9857,11 +9961,12 @@
 
   function getImprovementRows(type) {
     const current = getStats();
-    const next = getStatsPreview({ [type]: state.levels[type] + 1 });
+    const next = getStatsPreview({ [type]: getShipUpgradeLevel(type) + 1 });
     const row = (label, key) => ({ label, value: `${formatNumber(current[key])} → ${formatNumber(next[key])}`, delta: formatStatDelta(next[key] - current[key]) });
     if (type === "ship") return [row("Dano", "damage"), row("Vida", "maxHp"), row("Veloc.", "speed"), row("Defesa", "armor")];
     if (type === "cannons") return [row("Dano", "damage"), { label: "Crítico", value: `${Math.round(current.crit * 100)}% → ${Math.round(next.crit * 100)}%`, delta: `+${Math.max(0, Math.round((next.crit - current.crit) * 100))}%` }, { label: "DPS", value: `${formatNumber(current.shipDps)} → ${formatNumber(next.shipDps)}`, delta: formatStatDelta(next.shipDps - current.shipDps) }];
     if (type === "sails") return [row("Veloc.", "speed"), { label: "Evasão", value: `${Math.round(current.evasion * 100)}% → ${Math.round(next.evasion * 100)}%`, delta: `+${Math.max(0, Math.round((next.evasion - current.evasion) * 100))}%` }, { label: "DPS", value: `${formatNumber(current.shipDps)} → ${formatNumber(next.shipDps)}`, delta: formatStatDelta(next.shipDps - current.shipDps) }];
+    if (type === "shields") return [{ label: "Bloqueio", value: `${Math.round(current.blockChance * 100)}% → ${Math.round(next.blockChance * 100)}%`, delta: `+${Math.max(0, Math.round((next.blockChance - current.blockChance) * 100))}%` }, { label: "Poder", value: `${formatNumber(current.power)} → ${formatNumber(next.power)}`, delta: formatStatDelta(next.power - current.power) }];
     return [row("Vida", "maxHp"), row("Defesa", "armor"), { label: "Poder", value: `${formatNumber(current.power)} → ${formatNumber(next.power)}`, delta: formatStatDelta(next.power - current.power) }];
   }
 
@@ -9879,6 +9984,7 @@
       precision: ["Precisão", value => `${Math.round(value * 100)}%`, value => formatPercentDelta(value)],
       crit: ["Crítico", value => `${Math.round(value * 100)}%`, value => formatPercentDelta(value)],
       evasion: ["Evasão", value => `${Math.round(value * 100)}%`, value => formatPercentDelta(value)],
+      blockChance: ["Bloqueio", value => `${Math.round(value * 100)}%`, value => formatPercentDelta(value)],
       shipDps: ["DPS navio", value => formatNumber(value), value => formatStatDelta(value)],
       skillDps: ["DPS skill", value => formatNumber(value), value => formatStatDelta(value)],
       dps: ["DPS", value => formatNumber(value), value => formatStatDelta(value)]
@@ -9998,9 +10104,13 @@
   }
 
   function legacyUpgradeLineHtml(item) {
+    const level = getShipUpgradeLevel(item.key);
+    if (level >= SHIP_UPGRADE_MAX_LEVEL) {
+      return `<article class="upgrade-row completed"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">NÍVEL ${level}/${SHIP_UPGRADE_MAX_LEVEL}</span><h3>${item.name}</h3><p>${item.desc}</p><div class="cost-list"><span class="cost-chip">Nível máximo</span></div></div>${upgradeTableButtonHtml("Máximo", "", true)}</article>`;
+    }
     const cost = getUpgradeCost(item.key);
     const affordable = canAfford(cost);
-    return `<article class="upgrade-row ${affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">NÍVEL ${state.levels[item.key]}</span><h3>${item.name}</h3><p>${item.desc}</p>${statRowsHtml(getImprovementRows(item.key))}<div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div></div>${upgradeActionHtml("upgrade", item.key, cost, affordable, { hint: `Próximo: nível ${state.levels[item.key] + 1}` })}</article>`;
+    return `<article class="upgrade-row ${affordable ? "available" : ""}"><div class="upgrade-row-icon">${item.icon}</div><div class="upgrade-row-main"><span class="level-label">NÍVEL ${level}/${SHIP_UPGRADE_MAX_LEVEL}</span><h3>${item.name}</h3><p>${item.desc}</p>${statRowsHtml(getImprovementRows(item.key))}<div class="cost-list">${resourceCostHtml(cost)}</div><div class="resource-readiness ${affordable ? "ready" : "missing"}">${missingResourcesText(cost)}</div></div>${upgradeActionHtml("upgrade", item.key, cost, affordable, { hint: `Próximo: nível ${level + 1}` })}</article>`;
   }
 
   function upgradeTableActionState(kind, id, cost, options = {}) {
@@ -10022,12 +10132,33 @@
   }
 
   function upgradeLineHtml(item) {
+    const level = getShipUpgradeLevel(item.key);
+    const maxed = level >= SHIP_UPGRADE_MAX_LEVEL;
+    if (maxed) {
+      const stats = getStats();
+      const rows = getImprovementRows(item.key).filter(row => row.label !== "Poder").slice(0, 3);
+      return upgradeTableRowHtml({
+        classes: "completed",
+        icon: item.icon,
+        eyebrow: `NÍVEL ${level}/${SHIP_UPGRADE_MAX_LEVEL}`,
+        title: item.name,
+        note: item.desc,
+        power: "Máx.",
+        powerSub: formatNumber(stats.power),
+        value: "Nível máximo",
+        valueSub: `Atual ${level}`,
+        summaryRows: rows,
+        summaryFallback: item.desc,
+        costHtml: `<span class="cost-chip">Nível máximo</span>`,
+        actionHtml: upgradeTableButtonHtml("Máximo", "", true)
+      });
+    }
     const cost = getUpgradeCost(item.key);
     const affordable = canAfford(cost);
     const rows = getImprovementRows(item.key);
     const action = upgradeTableActionState("upgrade", item.key, cost);
     const currentStats = getStats();
-    const nextStats = getStatsPreview({ [item.key]: state.levels[item.key] + 1 });
+    const nextStats = getStatsPreview({ [item.key]: level + 1 });
     const powerGain = Math.max(0, nextStats.power - currentStats.power);
     const summaryRows = rows
       .filter(row => row.label !== "Poder")
@@ -10040,12 +10171,12 @@
     return upgradeTableRowHtml({
       classes: `${affordable ? "available" : ""} ${recommended ? "recommended" : ""}`,
       icon: item.icon,
-      eyebrow: `NÍVEL ${state.levels[item.key]}`,
+      eyebrow: `NÍVEL ${level}/${SHIP_UPGRADE_MAX_LEVEL}`,
       title: item.name,
       power: `+${formatNumber(powerGain)}`,
       powerSub: `${formatNumber(currentStats.power)} → ${formatNumber(nextStats.power)}`,
-      value: `Nível ${state.levels[item.key] + 1}`,
-      valueSub: `Atual ${state.levels[item.key]}`,
+      value: `Nível ${level + 1}`,
+      valueSub: `Atual ${level}`,
       summaryRows: visibleRows,
       summaryFallback: item.desc,
       costHtml: resourceCostHtml(cost),
@@ -10219,12 +10350,7 @@
   function renderUpgrades() {
     const stats = getStats();
     $("#naval-power").textContent = formatNumber(stats.power);
-    const improvements = [
-      { key: "ship", name: "Convés e Estrutura", icon: "⛵", desc: "Melhora o nível geral do navio e aumenta todos os atributos principais." },
-      { key: "cannons", name: "Canhões", icon: "☄", desc: "Aumenta dano, crítico e poder de artilharia." },
-      { key: "sails", name: "Velas", icon: "◒", desc: "Acelera ataques, deslocamento, precisão e evasão." },
-      { key: "hull", name: "Casco", icon: "⬡", desc: "Amplia vida, defesa e resistência em combate." }
-    ].map(upgradeLineHtml);
+    const improvements = SHIP_UPGRADE_DEFINITIONS.map(upgradeLineHtml);
     const categories = {
       improvements: renderUpgradeSection("Melhorias", improvements),
       equipment: renderUpgradeSection("Equipamentos", Object.entries(EQUIPMENT_META).map(equipmentLineHtml)),
@@ -10245,7 +10371,7 @@
     if (mapLockIssue) issues.push(mapLockIssue);
     const prologueComplete = state.bossesDefeated[PRIMITIVE_REGIONS.length - 1];
     if (ship.tier >= 1 && !prologueComplete) issues.push("Conclua o prólogo da Era Primitiva");
-    const prestigeReq = Math.max(0, ship.tier - 1);
+    const prestigeReq = getShipPrestigeRequirement(ship);
     if (state.prestiges < prestigeReq) issues.push(`Prestígios atuais: ${state.prestiges} / ${prestigeReq}`);
     if (state.pirateLevel < ship.levelReq) issues.push(`Requer nível ${ship.levelReq}`);
     Object.entries(ship.costs).forEach(([key, amount]) => {
@@ -10303,6 +10429,16 @@
       const progress = status.completed ? 100 : status.unlocked ? kills : 0;
       const missingWins = Math.max(0, 100 - progress);
       const subtitle = point ? mapStepLabel(point) : `MAPA ${index + 1}/${REGIONS.length}`;
+      if (!status.unlocked) {
+        return `<article class="map-card ${status.key} compact-locked-map" style="--map-accent:var(--red)">
+        <div class="map-row-main">
+          <div class="map-title-line"><span class="map-number">${subtitle}</span><span class="map-status ${status.key}">${status.label}</span></div>
+          <h3>Mapa ${index + 1} bloqueado</h3>
+          <p class="map-requirement">Continue a jornada para revelar esta rota.</p>
+        </div>
+        <div class="map-action"><button class="button" data-select-map="${index}" disabled>Bloqueado</button></div>
+      </article>`;
+      }
       const requirement = !status.unlocked
         ? `Desbloqueie a região ${index} para viajar.`
         : status.current
@@ -10330,7 +10466,15 @@
         <div class="map-action"><button class="button ${status.unlocked && !status.current ? "primary" : ""}" data-select-map="${index}" ${!status.unlocked || status.current ? "disabled" : ""}>${buttonText}</button></div>
       </article>`;
     }).join("");
-    const mapBoardHtml = ({ title, subtitle, asset, mobileAsset, alt, points }, sectionClass = "") => `<section class="map-section ${sectionClass}"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="prologue-map-board"><picture><source media="${MOBILE_ASSET_MEDIA}" srcset="${mobileAsset || asset}"><img src="${asset}" alt="${alt}" class="prologue-map-image" loading="eager" decoding="async" fetchpriority="high"></picture><div class="prologue-map-points">${points.map(mapHotspotHtml).join("")}</div></div></section>`;
+    const lockedMapBoardHtml = ({ title, subtitle, points }) => {
+      const firstMap = Math.min(...points.map(point => point.mapIndex));
+      return `<section class="map-section locked-map-section"><div class="map-section-heading locked-map-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="locked-map-placeholder"><strong>Mapa bloqueado</strong><small>Chegue ao Mapa ${firstMap} para revelar esta parte da jornada.</small></div></section>`;
+    };
+    const mapBoardHtml = (part, sectionClass = "") => {
+      if (part.points !== PROLOGUE_MAP_POINTS && !isJourneyMapPartVisible(part)) return lockedMapBoardHtml(part);
+      const { title, subtitle, asset, mobileAsset, alt, points } = part;
+      return `<section class="map-section ${sectionClass}"><div class="map-section-heading"><h2>${title}</h2><span>${subtitle}</span></div><div class="prologue-map-board"><picture><source media="${MOBILE_ASSET_MEDIA}" srcset="${mobileAsset || asset}"><img src="${asset}" alt="${alt}" class="prologue-map-image" loading="eager" decoding="async" fetchpriority="high"></picture><div class="prologue-map-points">${points.map(mapHotspotHtml).join("")}</div></div></section>`;
+    };
     const prologueMapHtml = () => mapBoardHtml({ title: "Prólogo Pré-Histórico", subtitle: "5 mapas iniciais", asset: PROLOGUE_MAP_ASSET, mobileAsset: PROLOGUE_MAP_MOBILE_ASSET, alt: "Mapa animado do prólogo", points: PROLOGUE_MAP_POINTS }, "prologue-map-section");
     $("#maps-grid").innerHTML = [
       prologueMapHtml(),
@@ -10989,10 +11133,10 @@
     const list = items => items.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
     const powerBreakdown = stats.powerBreakdown || getNavalPowerV2Breakdown(stats);
     $("#combat-stats").innerHTML = list([
-      ["Poder Naval", formatNumber(stats.power)], ["Ofensiva", formatNumber(powerBreakdown.offense)], ["Resistência", formatNumber(powerBreakdown.survival)], ["Bônus", formatNumber(powerBreakdown.bonuses)], ["Vida atual / máxima", `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`], ["Dano do navio", formatNumber(stats.damage)], ["DPS do navio", formatNumber(stats.shipDps)], ["DPS das skills", formatNumber(stats.skillDps)], ["DPS do pet", formatNumber(stats.petDps)], ["DPS total", formatNumber(stats.dps)], ["Velocidade", formatNumber(stats.speed)], ["Intervalo ataque", `${Math.round(stats.attackInterval)}ms`], ["Bônus vel. ataque", `+${Math.round(stats.attackSpeedBonus * 100)}%`], ["Armadura", formatNumber(stats.armor)], ["Redução de dano", `${Math.round(stats.armorReduction * 100)}%`], ["Precisão", `${Math.round(stats.precision * 100)}%`], ["Crítico", `${Math.round(stats.crit * 100)}%`]
+      ["Poder Naval", formatNumber(stats.power)], ["Ofensiva", formatNumber(powerBreakdown.offense)], ["Resistência", formatNumber(powerBreakdown.survival)], ["Bônus", formatNumber(powerBreakdown.bonuses)], ["Vida atual / máxima", `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`], ["Dano do navio", formatNumber(stats.damage)], ["DPS do navio", formatNumber(stats.shipDps)], ["DPS das skills", formatNumber(stats.skillDps)], ["DPS do pet", formatNumber(stats.petDps)], ["DPS total", formatNumber(stats.dps)], ["Velocidade", formatNumber(stats.speed)], ["Intervalo ataque", `${Math.round(stats.attackInterval)}ms`], ["Bônus vel. ataque", `+${Math.round(stats.attackSpeedBonus * 100)}%`], ["Armadura", formatNumber(stats.armor)], ["Redução de dano", `${Math.round(stats.armorReduction * 100)}%`], ["Precisão", `${Math.round(stats.precision * 100)}%`], ["Crítico", `${Math.round(stats.crit * 100)}%`], ["Bloqueio", `${Math.round(stats.blockChance * 100)}%`]
     ]);
     $("#progression-stats").innerHTML = list([
-      ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
+      ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", getShipUpgradeLevel("ship")], ["Nível dos canhões", getShipUpgradeLevel("cannons")], ["Nível das velas", getShipUpgradeLevel("sails")], ["Nível do casco", getShipUpgradeLevel("hull")], ["Nível dos escudos", getShipUpgradeLevel("shields")], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
     $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
     renderMissions();
@@ -11037,15 +11181,18 @@
   }
 
   function upgrade(type) {
+    if (!SHIP_UPGRADE_KEYS.includes(type)) return;
+    const level = getShipUpgradeLevel(type);
+    if (level >= SHIP_UPGRADE_MAX_LEVEL) return toast("Esta melhoria já está no nível máximo.", "gold-toast");
     const oldStats = getStats();
     const oldRatio = state.combat.playerHp / oldStats.maxHp;
     const cost = getUpgradeCost(type);
     if (!canAfford(cost)) return toast("Gold insuficiente para essa melhoria.", "danger-toast");
-    spend(cost); state.levels[type] += 1;
+    spend(cost); state.levels[type] = level + 1;
     trackAction("upgrade", { type });
     const newStats = getStats();
     if (type === "hull" || type === "ship") state.combat.playerHp = Math.max(state.combat.playerHp, Math.round(newStats.maxHp * oldRatio));
-    addLog(`${type === "ship" ? "Navio" : type === "cannons" ? "Canhões" : type === "sails" ? "Velas" : "Casco"} melhorado para o nível ${state.levels[type]}.`, "loot");
+    addLog(`${getShipUpgradeDefinition(type)?.name || "Melhoria"} melhorado para o nível ${state.levels[type]}.`, "loot");
     scene.celebrateCaptain(type === "ship" ? 2.4 : 1.55);
     const powerGain = Math.max(0, newStats.power - oldStats.power);
     toast(`Melhoria concluída! Poder Naval: ${formatNumber(oldStats.power)} → ${formatNumber(newStats.power)} (+${formatNumber(powerGain)}).`);
@@ -11061,7 +11208,7 @@
     const killLockIssue = getShipKillLockIssue(ship);
     if (killLockIssue) return toast(`Libere o próximo navio: ${killLockIssue}.`, "danger-toast");
     if (ship.tier >= 1 && !state.bossesDefeated[PRIMITIVE_REGIONS.length - 1]) return toast("Conclua o prólogo da Era Primitiva para acessar navios piratas.", "danger-toast");
-    const prestigeReq = Math.max(0, ship.tier - 1);
+    const prestigeReq = getShipPrestigeRequirement(ship);
     if (state.prestiges < prestigeReq) return toast(`Tier ${ship.tier} requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}.`, "danger-toast");
     if (state.pirateLevel < ship.levelReq) return toast(`Requer nível ${ship.levelReq} para comprar ${ship.name}.`, "danger-toast");
     if (!canAfford(ship.costs)) return toast("Ainda falta Gold para construir este navio.", "danger-toast");

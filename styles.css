@@ -1910,6 +1910,13 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .prologue-map-marker { position: absolute; left: var(--point-x); top: var(--point-y); z-index: 2; width: var(--point-w); height: var(--point-h); padding: 0; border: 0; border-radius: 34% 42% 38% 36%; background: transparent; box-shadow: none; opacity: 1; pointer-events: auto; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent; clip-path: var(--point-shape, inset(0)); -webkit-clip-path: var(--point-shape, inset(0)); }
 .prologue-map-marker:hover, .prologue-map-marker:active { background: transparent; box-shadow: none; transform: none; }
 .prologue-map-marker:focus-visible { outline: 2px solid rgba(255,232,168,.86); outline-offset: 2px; background: rgba(247,189,74,.08); }
+.locked-map-section { opacity: .78; }
+.locked-map-heading { border-bottom: 0; }
+.locked-map-placeholder { display: grid; gap: 4px; padding: 14px 16px; border-top: 1px solid rgba(157,211,209,.1); color: #d8e5e3; background: linear-gradient(90deg, rgba(224,82,82,.08), rgba(255,255,255,.025)); }
+.locked-map-placeholder strong { color: #ffc5b8; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
+.locked-map-placeholder small { color: var(--muted); font-size: 10px; line-height: 1.35; }
+.compact-locked-map { grid-template-columns: minmax(180px, 1fr) auto; min-height: 58px; }
+.compact-locked-map .map-action { grid-column: auto; }
 .prologue-map-modal-layer { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(2,12,19,.68); backdrop-filter: blur(5px); }
 .prologue-map-modal-card { position: relative; width: min(390px, 100%); padding: 18px; border: 1px solid rgba(110,239,226,.25); border-radius: 12px; background: linear-gradient(145deg, rgba(13,42,59,.97), rgba(7,27,40,.99)); box-shadow: 0 24px 60px rgba(0,0,0,.42); }
 .prologue-map-modal-card h3 { margin: 6px 30px 7px 0; font: 700 22px Georgia, serif; line-height: 1.12; }
@@ -3355,6 +3362,14 @@ body {
 
 .map-card.locked {
   opacity: .5;
+}
+
+.compact-locked-map {
+  grid-template-columns: minmax(180px, 1fr) auto;
+}
+
+.compact-locked-map .map-action {
+  grid-column: auto;
 }
 
 .map-card h3 {
