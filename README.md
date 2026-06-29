@@ -19,7 +19,7 @@ Depois, acesse `http://localhost:4173`.
 O ranking global usa Supabase por configuração pública no arquivo `online-config.js`.
 
 1. Crie um projeto no Supabase.
-2. Abra o SQL Editor do Supabase e rode `database/supabase-pirate-leaderboard.sql`.
+2. Abra o SQL Editor do Supabase e rode `database/supabase-pirate-leaderboard.sql` e `database/supabase-pirate-guilds.sql`.
 3. Em `online-config.js`, preencha:
 
 ```js

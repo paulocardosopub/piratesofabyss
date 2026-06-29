@@ -599,12 +599,13 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .repair-skill-orb .cooldown { background: rgba(4, 20, 26, .78); }
 
 .dashboard-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 14px; margin-top: 14px; }
-.home-clean-grid { position: relative; z-index: 1; grid-template-columns: .8fr 1.2fr; grid-template-areas: "controls boss" "log leaderboard"; align-items: stretch; }
+.home-clean-grid { position: relative; z-index: 1; grid-template-columns: .8fr 1.2fr; grid-template-areas: "controls boss" "log guild" "log leaderboard"; align-items: stretch; }
 .card { border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(13, 42, 59, .92), rgba(7, 27, 40, .94)); box-shadow: 0 9px 28px rgba(0,0,0,.15); }
 .progression-card, .controls-card, .captain-card, .log-card { padding: 18px; }
 .quick-controls-card { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
 .quick-controls-card { grid-area: controls; }
 .progression-card { grid-area: boss; }
+.home-guild-card { grid-area: guild; }
 .home-leaderboard-card { grid-area: leaderboard; }
 .log-card { grid-area: log; }
 .card-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
@@ -621,6 +622,37 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .boss-map-button { min-height: 28px; padding: 5px 8px; border: 1px solid rgba(169, 210, 209, .22); border-radius: 8px; color: #cfe7e4; background: rgba(255,255,255,.055); font-size: 10px; font-weight: 900; cursor: pointer; white-space: nowrap; }
 .boss-map-button:hover:not(:disabled) { border-color: rgba(110,239,226,.5); color: var(--cyan-2); background: rgba(110,239,226,.1); }
 .boss-map-button:disabled { cursor: not-allowed; opacity: .38; }
+.home-guild-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .55fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 18px;
+}
+.home-guild-copy { min-width: 0; }
+.home-guild-copy h2 { margin: 3px 0 4px; font: 700 20px Georgia, serif; color: #f5dfaa; }
+.home-guild-copy p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
+.home-guild-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.home-guild-stats div {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid rgba(247,189,74,.18);
+  border-radius: 8px;
+  background: rgba(247,189,74,.055);
+}
+.home-guild-stats span,
+.home-guild-stats strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-guild-stats span { color: var(--muted); font-size: 7px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.home-guild-stats strong { margin-top: 3px; color: var(--gold); font-size: 12px; font-variant-numeric: tabular-nums; }
 
 .button { min-height: 39px; padding: 9px 15px; border: 1px solid rgba(169, 210, 209, .23); border-radius: 9px; background: rgba(255,255,255,.06); font-size: 12px; font-weight: 800; cursor: pointer; transition: .18s ease; }
 .button:hover:not(:disabled) { border-color: rgba(110,239,226,.5); transform: translateY(-1px); background: rgba(255,255,255,.1); }
@@ -1023,6 +1055,259 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .captain-pets-section .cost-list { min-height: 0; margin: 7px 0; }
 .captain-pets-section .pet-requirements { min-height: 0; margin: 7px 0; font-size: 9px; }
 .captain-pets-section .pet-actions .button { min-height: 32px; padding: 6px 8px; font-size: 10px; }
+.captain-guild-section .captain-pets-toggle-icon { color: #ffe6a6; }
+.guild-panel { display: grid; gap: 10px; }
+.guild-status {
+  padding: 12px;
+  border: 1px solid rgba(157,211,209,.15);
+  border-radius: 8px;
+  color: #cfe1df;
+  background: rgba(1,9,15,.22);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.guild-status.danger { border-color: rgba(224,82,82,.28); color: #ffd6ce; background: rgba(92,28,24,.14); }
+.guild-actions, .guild-create-actions, .guild-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.guild-create-grid,
+.guild-config-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 9px;
+}
+.guild-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.guild-field.wide { grid-column: 1 / -1; }
+.guild-field span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.guild-field input,
+.guild-field textarea,
+.guild-field select {
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 10px;
+  border: 1px solid rgba(157,211,209,.18);
+  border-radius: 7px;
+  color: #edf8f5;
+  background: rgba(1,9,15,.28);
+  font: inherit;
+}
+.guild-field textarea {
+  min-height: 68px;
+  resize: vertical;
+}
+.guild-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.guild-tabs::-webkit-scrollbar { display: none; }
+.guild-tabs button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid rgba(157,211,209,.16);
+  border-radius: 7px;
+  color: var(--muted);
+  background: rgba(1,9,15,.2);
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.guild-tabs button.active {
+  color: #061421;
+  border-color: var(--cyan-2);
+  background: var(--cyan-2);
+}
+.guild-summary-grid,
+.guild-member-summary,
+.guild-boss-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+.guild-summary-grid div,
+.guild-member-summary div,
+.guild-boss-summary div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(157,211,209,.12);
+  border-radius: 7px;
+  background: rgba(1,9,15,.22);
+}
+.guild-summary-grid span,
+.guild-summary-grid strong,
+.guild-member-summary span,
+.guild-member-summary strong,
+.guild-boss-summary span,
+.guild-boss-summary strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guild-summary-grid span,
+.guild-member-summary span,
+.guild-boss-summary span { color: var(--muted); font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.guild-summary-grid strong,
+.guild-member-summary strong,
+.guild-boss-summary strong { margin-top: 4px; color: #f5dfaa; font-size: 14px; font-variant-numeric: tabular-nums; }
+.guild-list,
+.guild-member-list,
+.guild-boss-list,
+.guild-upgrade-list,
+.guild-application-list {
+  display: grid;
+  gap: 7px;
+}
+.guild-row,
+.guild-member-row,
+.guild-boss-row,
+.guild-upgrade-row,
+.guild-application-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(157,211,209,.13);
+  border-radius: 8px;
+  background: rgba(1,9,15,.2);
+}
+.guild-row.available,
+.guild-boss-row.current,
+.guild-upgrade-row.available {
+  border-color: rgba(247,189,74,.34);
+  background: rgba(247,189,74,.055);
+}
+.guild-boss-row.defeated {
+  border-color: rgba(89,211,157,.22);
+  background: rgba(89,211,157,.045);
+}
+.guild-row-main,
+.guild-member-main,
+.guild-boss-main,
+.guild-upgrade-main,
+.guild-application-main { min-width: 0; }
+.guild-row-main strong,
+.guild-member-main strong,
+.guild-boss-main strong,
+.guild-upgrade-main strong,
+.guild-application-main strong {
+  display: block;
+  overflow: hidden;
+  color: #fff1c9;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guild-row-main small,
+.guild-member-main small,
+.guild-boss-main small,
+.guild-upgrade-main small,
+.guild-application-main small {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guild-member-row {
+  grid-template-columns: minmax(0, 1.2fr) repeat(4, minmax(70px, .4fr));
+}
+.guild-member-stat span,
+.guild-member-stat strong {
+  display: block;
+  text-align: right;
+  white-space: nowrap;
+}
+.guild-member-stat span { color: var(--muted); font-size: 7px; font-weight: 900; text-transform: uppercase; }
+.guild-member-stat strong { color: #dfecea; font-size: 11px; font-variant-numeric: tabular-nums; }
+.guild-boss-hp {
+  min-width: 130px;
+  display: grid;
+  gap: 4px;
+}
+.guild-boss-hp-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0,0,0,.32);
+}
+.guild-boss-hp-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #df783e, var(--gold));
+}
+.guild-boss-hp small {
+  color: var(--muted);
+  font-size: 9px;
+  text-align: right;
+}
+.guild-upgrade-row {
+  grid-template-columns: 42px minmax(0, 1fr) minmax(120px, auto) auto;
+}
+.guild-upgrade-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(247,189,74,.25);
+  border-radius: 7px;
+  background: rgba(247,189,74,.08);
+  font-size: 20px;
+}
+.guild-upgrade-level { text-align: right; }
+.guild-upgrade-level span,
+.guild-upgrade-level strong { display: block; }
+.guild-upgrade-level span { color: var(--muted); font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.guild-upgrade-level strong { color: var(--gold); font-size: 13px; }
+
+@media (max-width: 760px) {
+  .home-guild-card,
+  .guild-create-grid,
+  .guild-config-grid,
+  .guild-member-row,
+  .guild-upgrade-row {
+    grid-template-columns: 1fr;
+  }
+  .guild-summary-grid,
+  .guild-member-summary,
+  .guild-boss-summary,
+  .home-guild-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .guild-boss-hp,
+  .guild-row .button,
+  .guild-boss-row .button,
+  .guild-upgrade-row .button,
+  .guild-application-row .button {
+    width: 100%;
+  }
+  .guild-member-stat span,
+  .guild-member-stat strong,
+  .guild-upgrade-level {
+    text-align: left;
+  }
+}
 .captain-identity-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .45fr); gap: 12px; align-items: end; padding: 12px 14px; border: 1px solid rgba(110,239,226,.18); border-radius: 10px; background: linear-gradient(145deg, rgba(13,42,59,.92), rgba(7,27,40,.96)); }
 .captain-identity-panel.missing { border-color: rgba(247,189,74,.34); background: linear-gradient(145deg, rgba(93,65,25,.28), rgba(7,27,40,.96)); }
 .captain-identity-panel h2 { margin: 3px 0 4px; font: 700 19px Georgia, serif; color: #f4dfae; }
@@ -2380,8 +2665,8 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .skill-orb small { right: 2px; bottom: 1px; font-size: 6px; }
   .manual-skill-orb .icon { font-size: 14px; }
   .dashboard-grid, .home-clean-grid { grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
-  .home-clean-grid { grid-template-areas: "controls" "boss" "leaderboard" "log"; }
-  .progression-card, .controls-card, .captain-card, .log-card { padding: 14px; }
+  .home-clean-grid { grid-template-areas: "controls" "boss" "guild" "leaderboard" "log"; }
+  .progression-card, .controls-card, .captain-card, .home-guild-card, .log-card { padding: 14px; }
   .boss-row { grid-template-columns: auto 1fr; }
   .boss-map-controls { grid-column: 1 / -1; }
   .boss-map-button { flex: 1; }
@@ -2906,6 +3191,7 @@ body {
 
 .quick-controls-card,
 .progression-card,
+.home-guild-card,
 .leaderboard-card,
 .log-card {
   padding: 14px;
@@ -2917,6 +3203,10 @@ body {
 }
 
 .progression-card {
+  border-bottom: 1px solid var(--line);
+}
+
+.home-guild-card {
   border-bottom: 1px solid var(--line);
 }
 
@@ -3811,12 +4101,14 @@ body {
     grid-template-areas:
       "controls"
       "boss"
+      "guild"
       "leaderboard"
       "log";
   }
 
   .quick-controls-card,
   .progression-card,
+  .home-guild-card,
   .log-card {
     border-right: 0;
     border-bottom: 1px solid var(--line);
@@ -4391,6 +4683,7 @@ body {
   grid-template-areas:
     "controls recommendation"
     "boss boss"
+    "guild guild"
     "leaderboard log";
 }
 
@@ -4577,6 +4870,7 @@ body {
       "controls"
       "recommendation"
       "boss"
+      "guild"
       "leaderboard"
       "log";
   }
@@ -5285,6 +5579,7 @@ body {
   grid-template-columns: minmax(320px, .95fr) minmax(360px, 1.05fr);
   grid-template-areas:
     "boss recommendation"
+    "guild recommendation"
     "leaderboard log";
 }
 
@@ -5294,6 +5589,11 @@ body {
 
 .progression-card {
   border-right: 1px solid var(--line);
+}
+
+.home-guild-card {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .leaderboard-card {
@@ -5335,12 +5635,14 @@ body {
     grid-template-areas:
       "recommendation"
       "boss"
+      "guild"
       "leaderboard"
       "log";
   }
 
   .home-recommendation-card,
   .progression-card,
+  .home-guild-card,
   .leaderboard-card,
   .log-card {
     border-right: 0;

@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=110">
+  <link rel="stylesheet" href="styles.css?v=111">
   <title>Pirates of the Abyss</title>
 </head>
 <body>
@@ -156,6 +156,20 @@
               </div>
               <button class="button boss-button" id="boss-button" disabled>Desafiar Boss</button>
             </div>
+          </article>
+
+          <article class="card home-guild-card" id="home-guild-card">
+            <div class="home-guild-copy">
+              <span class="eyebrow">IRMANDADE PIRATA</span>
+              <h2 id="home-guild-title">Sua tripulacao online</h2>
+              <p id="home-guild-status">Entre em uma Irmandade, enfrente bosses diarios e libere bonus permanentes.</p>
+            </div>
+            <div class="home-guild-stats" id="home-guild-stats">
+              <div><span>Membros</span><strong>--</strong></div>
+              <div><span>Nivel</span><strong>--</strong></div>
+              <div><span>Poder</span><strong>--</strong></div>
+            </div>
+            <button class="button primary" type="button" data-open-guild>Abrir Irmandade</button>
           </article>
 
           <article class="card leaderboard-card home-leaderboard-card">
@@ -392,6 +406,6 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="game.js?v=205"></script>
+  <script src="game.js?v=207"></script>
 </body>
 </html>

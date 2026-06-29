@@ -12,6 +12,21 @@
   const ARENA_BALANCED_ATTACK_INTERVAL_MS = ARENA_ATTACK_INTERVAL_DEFAULT_MS;
   const ARENA_HP_MULTIPLIER = 10;
   const ARENA_START_DELAY_MS = 3000;
+  const GUILD_CREATE_COST = 10000;
+  const GUILD_BOSS_REWARD_GOLD = 10000;
+  const GUILD_BOSS_COOLDOWN_MS = 10 * 60 * 1000;
+  const GUILD_BOSS_HP_MULTIPLIER = 10;
+  const GUILD_UPGRADE_MAX_LEVEL = 10;
+  const GUILD_PROFILE_SYNC_INTERVAL_MS = 45000;
+  const GUILD_ROLE_LABELS = { king: "Rei Pirata", quartermaster: "Intendente", member: "Membro" };
+  const GUILD_ENTRY_LABELS = { open: "Aberta", application: "Solicitacao" };
+  const GUILD_TABS = ["summary", "members", "boss", "upgrades", "config"];
+  const GUILD_TAB_LABELS = { summary: "Resumo", members: "Membros", boss: "Boss", upgrades: "Melhorias", config: "Config" };
+  const GUILD_UPGRADE_META = {
+    damage: { label: "Aumento de Dano", shortLabel: "Dano", icon: "⚔", bonusKey: "damage", description: "Aumenta o dano dos membros da Irmandade." },
+    hp: { label: "Aumento de Vida", shortLabel: "Vida", icon: "◆", bonusKey: "hp", description: "Aumenta a vida maxima dos membros da Irmandade." },
+    xp: { label: "Aumento de Experiencia", shortLabel: "EXP", icon: "✦", bonusKey: "xp", description: "Aumenta a experiencia recebida pelos membros da Irmandade." }
+  };
   const PIRATE_NAME_MIN_LENGTH = 3;
   const PIRATE_NAME_MAX_LENGTH = 20;
   const PVP_SNAPSHOT_VERSION = 2;
@@ -2343,7 +2358,15 @@
   let prestigeConfirmationStage = 0;
   const leaderboardState = { status: "idle", entries: [], error: "", loadingPromise: null, lastLoadedAt: 0 };
   const arenaState = { expanded: false, status: "idle", opponents: [], error: "", loadingPromise: null, lastLoadedAt: 0, battle: null, previousCombat: null, result: null };
+  const guildState = { status: "idle", guilds: [], current: null, error: "", loadingPromise: null, lastLoadedAt: 0, actionPending: false };
   let leaderboardActiveTab = "ranking";
+  let guildPanelExpanded = false;
+  let guildActiveTab = "summary";
+  let guildBossSelectedIndex = 0;
+  let guildBossCombatPrevious = null;
+  let guildBossFinishPromise = null;
+  let lastGuildProfileSyncAt = 0;
+  let guildProfileSyncPromise = null;
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
   let lastCaptainEquipmentUpgrade = null;
@@ -2571,7 +2594,8 @@
     const prestige = getPrestigeBonuses();
     const equipment = getCaptainEquipmentRewardBonuses();
     const petBonuses = getActivePetBonuses();
-    return (1 + prestige.xp) * (1 + equipment.xp + percentFromPetBonus(petBonuses.xpPercent));
+    const guildBonuses = getGuildBonuses();
+    return (1 + prestige.xp) * (1 + equipment.xp + percentFromPetBonus(petBonuses.xpPercent) + guildBonuses.xp);
   }
   function calculateGoldRewardDetails(amount) {
     const raw = Math.max(0, Number(amount) || 0);
@@ -2678,9 +2702,10 @@
     const hpBonus = 1 + (hullLevel - 1) * .15;
     const prestigeBonuses = getPrestigeBonuses();
     const captainEquipmentBonuses = getCaptainEquipmentBonuses();
-    let damage = ship.damage * overall * damageBonus * (1 + prestigeBonuses.dps) * (1 + prestigeBonuses.shipDamage) * (1 + captainEquipmentBonuses.shipDamageBonus);
+    const guildBonuses = getGuildBonuses();
+    let damage = ship.damage * overall * damageBonus * (1 + prestigeBonuses.dps) * (1 + prestigeBonuses.shipDamage) * (1 + captainEquipmentBonuses.shipDamageBonus) * (1 + guildBonuses.damage);
     let speed = ship.speed * overall * speedBonus * (1 + prestigeBonuses.speed);
-    let maxHp = ship.hp * overall * hpBonus * (1 + captainEquipmentBonuses.shipHpBonus);
+    let maxHp = ship.hp * overall * hpBonus * (1 + captainEquipmentBonuses.shipHpBonus) * (1 + guildBonuses.hp);
     let armor = ship.armor + (hullLevel - 1) * 2.2 + (shipLevel - 1) * .7;
     let precision = Math.min(.98, .83 + (cannonLevel - 1) * .006);
     let crit = Math.min(.55, .06 + (cannonLevel - 1) * .005);
@@ -2962,6 +2987,7 @@
       ? { ...state, combat: JSON.parse(JSON.stringify(arenaState.previousCombat.combat)), lastSeen }
       : state;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(saveState)); } catch (error) { console.warn("Não foi possível salvar.", error); }
+    if (guildState.current?.guild) syncGuildPlayerProfile();
   }
 
   function closeOfflineModal() {
@@ -3006,6 +3032,16 @@
       tableName: String(raw.tableName || "pirate_leaderboard").trim() || "pirate_leaderboard",
       readRelationName: String(raw.readRelationName || raw.readTableName || "pirate_leaderboard_public").trim() || "pirate_leaderboard_public",
       arenaRelationName: String(raw.arenaRelationName || raw.arenaReadRelationName || "pirate_arena_public").trim() || "pirate_arena_public",
+      guildHomeRpcName: String(raw.guildHomeRpcName || "get_pirate_guild_home").trim() || "get_pirate_guild_home",
+      guildProfileRpcName: String(raw.guildProfileRpcName || "upsert_pirate_guild_profile").trim() || "upsert_pirate_guild_profile",
+      guildCreateRpcName: String(raw.guildCreateRpcName || "create_pirate_guild").trim() || "create_pirate_guild",
+      guildJoinRpcName: String(raw.guildJoinRpcName || "join_pirate_guild").trim() || "join_pirate_guild",
+      guildConfigRpcName: String(raw.guildConfigRpcName || "update_pirate_guild_config").trim() || "update_pirate_guild_config",
+      guildRoleRpcName: String(raw.guildRoleRpcName || "set_pirate_guild_role").trim() || "set_pirate_guild_role",
+      guildApplicationRpcName: String(raw.guildApplicationRpcName || "decide_pirate_guild_application").trim() || "decide_pirate_guild_application",
+      guildUpgradeRpcName: String(raw.guildUpgradeRpcName || "upgrade_pirate_guild_bonus").trim() || "upgrade_pirate_guild_bonus",
+      guildBossStartRpcName: String(raw.guildBossStartRpcName || "start_pirate_guild_boss_attempt").trim() || "start_pirate_guild_boss_attempt",
+      guildBossFinishRpcName: String(raw.guildBossFinishRpcName || "finish_pirate_guild_boss_attempt").trim() || "finish_pirate_guild_boss_attempt",
       limit: clamp(Math.floor(Number(raw.limit || LEADERBOARD_LIMIT)), 1, 100)
     };
   }
@@ -3088,6 +3124,261 @@
       body: JSON.stringify(record)
     });
     if (!response.ok) throw new Error(`Falha ao enviar ranking (${response.status})`);
+  }
+
+  async function callOnlineRpc(config, rpcName, payload = {}) {
+    if (config.provider === "supabase") {
+      const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/${rpcName}`, {
+        method: "POST",
+        headers: leaderboardHeaders(config),
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const message = await response.text().catch(() => "");
+        throw new Error(message || `Servico online indisponivel (${response.status})`);
+      }
+      if (response.status === 204) return null;
+      return response.json();
+    }
+    const response = await fetch(`${config.apiBaseUrl}/rpc/${rpcName}`, {
+      method: "POST",
+      headers: leaderboardHeaders(config),
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error(`Servico online indisponivel (${response.status})`);
+    return response.json();
+  }
+
+  function getGuildPirateName(fallback = "Pirata sem nome") {
+    const cleanName = sanitizePirateName(state.pirateName);
+    return isValidPirateName(cleanName) ? cleanName : getCurrentCaptain()?.name || fallback;
+  }
+
+  function buildGuildPlayerSnapshot(nowIso = new Date().toISOString()) {
+    const stats = getStats();
+    const ship = SHIPS[state.shipId];
+    const captain = getCurrentCaptain();
+    return {
+      player_id: state.playerId,
+      pirate_name: getGuildPirateName(),
+      level: Math.max(1, Math.floor(Number(state.pirateLevel || 1))),
+      captain_runtime_level: Math.max(1, Math.floor(Number(state.captainRuntimeLevel || 1))),
+      captain_name: captain?.name || "",
+      ship_id: ship?.id ?? state.shipId,
+      ship_name: ship?.name || "Navio",
+      ship_level: getShipUpgradeLevel("ship"),
+      naval_power: stats.power,
+      prestige_count: Math.max(0, Math.floor(Number(state.prestiges || 0))),
+      max_hp: stats.maxHp,
+      damage: stats.damage,
+      dps: stats.dps,
+      highest_map_unlocked: getJourneyMaxUnlockedMap(),
+      highest_map_name: REGIONS[getJourneyMaxUnlockedMap() - 1]?.name || "",
+      updated_at: nowIso
+    };
+  }
+
+  function normalizeGuildUpgrades(upgrades = {}) {
+    const source = upgrades && typeof upgrades === "object" && !Array.isArray(upgrades) ? upgrades : {};
+    return Object.fromEntries(Object.keys(GUILD_UPGRADE_META).map(key => [
+      key,
+      clamp(Math.floor(Number(source[key] || 0)), 0, GUILD_UPGRADE_MAX_LEVEL)
+    ]));
+  }
+
+  function normalizeGuildSnapshot(snapshot = {}) {
+    if (typeof snapshot === "string") {
+      try { snapshot = JSON.parse(snapshot); } catch (error) { snapshot = {}; }
+    }
+    const shipName = String(snapshot.ship_name || snapshot.shipName || snapshot.ship?.ship_name || "").trim();
+    return {
+      pirate_name: sanitizeArenaDisplayName(snapshot.pirate_name || snapshot.pirateName || ""),
+      level: Math.max(1, Math.floor(Number(snapshot.level ?? snapshot.pirate_level ?? snapshot.captain?.pirate_level ?? 1))),
+      ship_name: shipName || "Navio nao informado",
+      ship_level: Math.max(0, Math.floor(Number(snapshot.ship_level ?? snapshot.shipLevel ?? snapshot.ship?.ship_level ?? 0) || 0)),
+      naval_power: Math.max(0, Math.floor(Number(snapshot.naval_power ?? snapshot.combat_power ?? snapshot.ship?.naval_power ?? snapshot.combat?.naval_power ?? 0) || 0)),
+      prestige_count: Math.max(0, Math.floor(Number(snapshot.prestige_count ?? snapshot.prestiges ?? snapshot.prestige?.prestige_count ?? 0) || 0)),
+      updated_at: snapshot.updated_at || snapshot.updatedAt || ""
+    };
+  }
+
+  function normalizeGuildMember(row = {}) {
+    const snapshot = normalizeGuildSnapshot(row.player_snapshot || row.snapshot || {});
+    return {
+      player_id: String(row.player_id || row.playerId || ""),
+      pirate_name: sanitizeArenaDisplayName(row.pirate_name || snapshot.pirate_name || "Pirata sem nome"),
+      role: ["king", "quartermaster", "member"].includes(row.role) ? row.role : "member",
+      contribution: Math.max(0, Math.floor(Number(row.contribution || 0))),
+      boss_damage: Math.max(0, Math.floor(Number(row.boss_damage || row.bossDamage || 0))),
+      boss_participation_count: Math.max(0, Math.floor(Number(row.boss_participation_count || row.bossParticipationCount || 0))),
+      joined_at: row.joined_at || row.joinedAt || "",
+      updated_at: row.updated_at || row.updatedAt || snapshot.updated_at || "",
+      snapshot
+    };
+  }
+
+  function normalizeGuildBossState(raw = {}) {
+    const stateRow = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+    return {
+      day_key: String(stateRow.day_key || stateRow.dayKey || ""),
+      current_boss_index: clamp(Math.floor(Number(stateRow.current_boss_index ?? stateRow.currentBossIndex ?? 0)), 0, REGIONS.length),
+      boss_hp: Math.max(0, Math.floor(Number(stateRow.boss_hp ?? stateRow.bossHp ?? 0))),
+      boss_max_hp: Math.max(0, Math.floor(Number(stateRow.boss_max_hp ?? stateRow.bossMaxHp ?? 0))),
+      cooldown_until: stateRow.cooldown_until || stateRow.cooldownUntil || "",
+      damage_by_player: stateRow.damage_by_player || stateRow.damageByPlayer || {}
+    };
+  }
+
+  function normalizeGuildSummary(row = {}) {
+    const upgrades = normalizeGuildUpgrades(row.upgrades || {});
+    return {
+      id: String(row.id || row.guild_id || row.guildId || ""),
+      name: String(row.name || "Irmandade sem nome").trim().slice(0, 40) || "Irmandade sem nome",
+      description: String(row.description || "").trim().slice(0, 240),
+      level: Math.max(1, Math.floor(Number(row.level || 1))),
+      experience: Math.max(0, Math.floor(Number(row.experience || 0))),
+      entry_mode: row.entry_mode === "application" ? "application" : "open",
+      member_count: Math.max(0, Math.floor(Number(row.member_count ?? row.memberCount ?? 0))),
+      total_power: Math.max(0, Math.floor(Number(row.total_power ?? row.totalPower ?? 0))),
+      total_prestiges: Math.max(0, Math.floor(Number(row.total_prestiges ?? row.totalPrestiges ?? 0))),
+      total_contribution: Math.max(0, Math.floor(Number(row.total_contribution ?? row.totalContribution ?? 0))),
+      upgrades
+    };
+  }
+
+  function normalizeGuildApplication(row = {}) {
+    const snapshot = normalizeGuildSnapshot(row.player_snapshot || row.snapshot || {});
+    return {
+      player_id: String(row.player_id || row.playerId || ""),
+      pirate_name: sanitizeArenaDisplayName(row.pirate_name || snapshot.pirate_name || "Pirata sem nome"),
+      created_at: row.created_at || row.createdAt || "",
+      snapshot
+    };
+  }
+
+  function normalizeGuildHomeResponse(data = {}) {
+    const payload = data && typeof data === "object" ? data : {};
+    const current = payload.current || payload.membership || null;
+    const normalizedCurrent = current?.guild ? {
+      guild: normalizeGuildSummary(current.guild),
+      role: ["king", "quartermaster", "member"].includes(current.role) ? current.role : "member",
+      members: (Array.isArray(current.members) ? current.members : []).map(normalizeGuildMember).sort((a, b) => b.snapshot.prestige_count - a.snapshot.prestige_count || b.snapshot.naval_power - a.snapshot.naval_power),
+      applications: (Array.isArray(current.applications) ? current.applications : []).map(normalizeGuildApplication),
+      boss_state: normalizeGuildBossState(current.boss_state || current.bossState || {})
+    } : null;
+    return {
+      guilds: (Array.isArray(payload.guilds) ? payload.guilds : []).map(normalizeGuildSummary),
+      current: normalizedCurrent
+    };
+  }
+
+  function getCurrentGuild() {
+    return guildState.current?.guild || null;
+  }
+
+  function hasGuildManagerAccess() {
+    return ["king", "quartermaster"].includes(guildState.current?.role);
+  }
+
+  function getGuildUpgradeLevel(key) {
+    return clamp(Math.floor(Number(getCurrentGuild()?.upgrades?.[key] || 0)), 0, GUILD_UPGRADE_MAX_LEVEL);
+  }
+
+  function getGuildUpgradeCost(key) {
+    const level = getGuildUpgradeLevel(key);
+    if (!GUILD_UPGRADE_META[key] || level >= GUILD_UPGRADE_MAX_LEVEL) return null;
+    return getCaptainEquipmentPointCost(level + 1);
+  }
+
+  function getGuildUpgradeBonus(key) {
+    return getGuildUpgradeLevel(key) * .05;
+  }
+
+  function getGuildBonuses() {
+    if (!guildState.current?.guild) return { damage: 0, hp: 0, xp: 0 };
+    return Object.fromEntries(Object.keys(GUILD_UPGRADE_META).map(key => [key, getGuildUpgradeBonus(key)]));
+  }
+
+  async function syncGuildPlayerProfile(options = {}) {
+    const config = getOnlineConfig();
+    if (!isLeaderboardConfigured(config) || !guildState.current?.guild) return false;
+    if (!options.force && Date.now() - lastGuildProfileSyncAt < GUILD_PROFILE_SYNC_INTERVAL_MS) return true;
+    if (guildProfileSyncPromise) return guildProfileSyncPromise;
+    const snapshot = buildGuildPlayerSnapshot();
+    guildProfileSyncPromise = callOnlineRpc(config, config.guildProfileRpcName, {
+      p_player_id: state.playerId,
+      p_pirate_name: snapshot.pirate_name,
+      p_player_snapshot: snapshot
+    }).then(() => {
+      lastGuildProfileSyncAt = Date.now();
+      return true;
+    }).catch(error => {
+      console.warn("Perfil da Irmandade nao sincronizado.", error);
+      return false;
+    }).finally(() => {
+      guildProfileSyncPromise = null;
+    });
+    return guildProfileSyncPromise;
+  }
+
+  async function requestGuildHome(config) {
+    return callOnlineRpc(config, config.guildHomeRpcName, { p_player_id: state.playerId });
+  }
+
+  function renderGuildIfVisible() {
+    renderHomeGuildCard();
+    renderTopbar();
+    renderCombatHud();
+    if (currentScreen === "captain") renderCaptain();
+  }
+
+  async function refreshGuild(options = {}) {
+    const config = getOnlineConfig();
+    if (!isLeaderboardConfigured(config)) {
+      guildState.status = "unavailable";
+      guildState.error = "Irmandade online indisponivel no momento.";
+      renderGuildIfVisible();
+      return null;
+    }
+    if (guildState.loadingPromise) return guildState.loadingPromise;
+    if (!options.force && guildState.status === "ready" && Date.now() - guildState.lastLoadedAt < 30000) {
+      renderGuildIfVisible();
+      return guildState.current;
+    }
+    guildState.status = "loading";
+    guildState.error = "";
+    renderGuildIfVisible();
+    guildState.loadingPromise = (async () => {
+      if (guildState.current?.guild) await syncGuildPlayerProfile({ force: true });
+      const data = normalizeGuildHomeResponse(await requestGuildHome(config));
+      guildState.guilds = data.guilds;
+      guildState.current = data.current;
+      if (guildState.current?.boss_state) guildBossSelectedIndex = clamp(guildState.current.boss_state.current_boss_index, 0, REGIONS.length - 1);
+      guildState.status = "ready";
+      guildState.lastLoadedAt = Date.now();
+      return guildState.current;
+    })().catch(error => {
+      console.warn("Irmandade online indisponivel.", error);
+      guildState.guilds = [];
+      guildState.current = null;
+      guildState.status = "unavailable";
+      guildState.error = "Irmandade online indisponivel no momento. Verifique se a migracao do Supabase foi aplicada.";
+      return null;
+    }).finally(() => {
+      guildState.loadingPromise = null;
+      renderGuildIfVisible();
+    });
+    return guildState.loadingPromise;
+  }
+
+  function guildActionPayload(extra = {}) {
+    const snapshot = buildGuildPlayerSnapshot();
+    return {
+      p_player_id: state.playerId,
+      p_pirate_name: snapshot.pirate_name,
+      p_player_snapshot: snapshot,
+      ...extra
+    };
   }
 
   function normalizeLeaderboardRow(row = {}) {
@@ -7949,6 +8240,74 @@
     return checks.filter(([, owned, needed]) => owned < needed).map(([label, owned, needed]) => `${label}: ${formatNumber(owned)} / ${formatNumber(needed)}`);
   }
 
+  function getBossOriginalStats(regionIndex = state.regionIndex) {
+    const index = clamp(Math.floor(Number(regionIndex) || 0), 0, REGIONS.length - 1);
+    const region = REGIONS[index];
+    const mod = ENDGAME_ENEMY_MODS[index] || {};
+    const abyssDifficulty = getV2AbyssDifficultyMultiplier(index);
+    return {
+      hp: Math.max(1, Math.round(region.baseHp * 34 * (mod.bossHp || 1) * abyssDifficulty)),
+      damage: Math.max(1, Math.round(region.baseDamage * 3.5 * (mod.bossDamage || 1) * abyssDifficulty)),
+      armor: Math.max(0, Math.round((22 + index * 9) * (mod.bossArmor || 1) * abyssDifficulty)),
+      evasion: Math.min(.28, .035 + (mod.evasion || 0)),
+      attackSpeed: .82 * (mod.attackSpeed || 1),
+      skillResist: mod.skillResist || 0,
+      special: mod.special || ""
+    };
+  }
+
+  function getGuildBossMaxHp(regionIndex = 0) {
+    return getBossOriginalStats(regionIndex).hp * GUILD_BOSS_HP_MULTIPLIER;
+  }
+
+  function createGuildBossEnemy(regionIndex, bossState = {}) {
+    const index = clamp(Math.floor(Number(regionIndex) || 0), 0, REGIONS.length - 1);
+    const region = REGIONS[index];
+    const baseStats = getBossOriginalStats(index);
+    const visual = inferEnemyVisual(region.boss, region, "BOSS", 5, true);
+    const maxHp = Math.max(1, Math.floor(Number(bossState.boss_max_hp || bossState.bossMaxHp || getGuildBossMaxHp(index))));
+    const hp = clamp(Math.floor(Number(bossState.boss_hp || bossState.bossHp || maxHp)), 0, maxHp);
+    const spawnEndsAt = scene.time + BOSS_SPAWN_ANIMATION_SECONDS;
+    const enemy = {
+      name: region.boss,
+      kind: `BOSS ${visual.label}`,
+      category: "BOSS",
+      visual,
+      animation: createEnemySpriteAnimation(region.boss, index),
+      regionIndex: index,
+      visualKind: region.kind,
+      visualTier: 5,
+      isBoss: true,
+      isGuildBoss: true,
+      guildBossIndex: index,
+      guildBossDamageDealt: 0,
+      guildBossOnlineHpAtStart: hp,
+      spawnEndsAt,
+      maxHp,
+      hp,
+      damage: baseStats.damage,
+      armor: baseStats.armor,
+      evasion: baseStats.evasion,
+      attackSpeed: baseStats.attackSpeed,
+      skillResist: baseStats.skillResist,
+      special: baseStats.special,
+      goldMultiplier: 1,
+      xpMultiplier: 1,
+      bonusGoldDrops: {},
+      burnTime: 0,
+      burnDps: 0,
+      slowed: 0,
+      defeated: false
+    };
+    if (enemy.animation) {
+      enemy.animation.spawnStartedAt = scene.time;
+      enemy.animation.spawnUntil = spawnEndsAt;
+      enemy.animation.poseName = "spawn";
+      enemy.animation.poseChangedAt = scene.time;
+    }
+    return enemy;
+  }
+
   function spawnEnemy(isBoss = false, options = {}) {
     const region = getActiveCombatRegion();
     const variation = randomBetween(.9, 1.14);
@@ -8060,6 +8419,7 @@
     const damage = Math.max(1, Math.round(rawDamage * mitigation * skillPenalty));
     enemy.hp = Math.max(0, enemy.hp - damage);
     if (enemy.isArena && arenaState.battle) arenaState.battle.damageDealt += damage;
+    if (enemy.isGuildBoss) enemy.guildBossDamageDealt = Math.max(0, Number(enemy.guildBossDamageDealt || 0)) + damage;
     state.lifetime.highestDamage = Math.max(state.lifetime.highestDamage, damage);
     const hitTarget = enemy;
     const markHit = () => {
@@ -8311,7 +8671,84 @@
     if (healed) saveGame();
   }
 
+  function restoreAfterGuildBossCombat() {
+    const previous = guildBossCombatPrevious;
+    if (previous?.combat) {
+      state.combat = JSON.parse(JSON.stringify(previous.combat));
+      state.combat.enemy = null;
+      state.combat.repairing = false;
+      state.combat.playerHp = getStats().maxHp;
+      state.combat.spawnTimer = 0;
+      state.hasStarted = previous.hasStarted;
+    } else {
+      state.combat.enemy = null;
+      state.combat.repairing = false;
+      state.combat.running = false;
+      state.combat.playerHp = getStats().maxHp;
+      state.combat.spawnTimer = 0;
+    }
+    state.combat.specialCombatResumeRunning = false;
+    clearCombatTimers();
+    scene.resetPlayerShipAnimation();
+    const returnScreen = previous?.screen || "captain";
+    guildBossCombatPrevious = null;
+    navigate(returnScreen === "stats" ? "captain" : returnScreen);
+  }
+
+  function finishGuildBossCombat(options = {}) {
+    const enemy = state.combat.enemy;
+    if (!enemy?.isGuildBoss || guildBossFinishPromise) return Boolean(enemy?.isGuildBoss);
+    const guild = getCurrentGuild();
+    const bossIndex = clamp(Math.floor(Number(enemy.guildBossIndex || 0)), 0, REGIONS.length - 1);
+    const bossName = enemy.name || REGIONS[bossIndex]?.boss || "Boss da Irmandade";
+    const damage = Math.max(0, Math.floor(Number(enemy.guildBossDamageDealt || 0)));
+    const defeated = Boolean(options.defeated || enemy.hp <= 0);
+    const voluntary = Boolean(options.voluntary);
+    restoreAfterGuildBossCombat();
+    if (!guild || damage <= 0) {
+      addLog(voluntary ? `Tentativa contra ${bossName} encerrada sem dano.` : `Tentativa contra ${bossName} encerrada.`, "danger-text");
+      toast(damage > 0 ? "Tentativa da Irmandade encerrada." : "Nenhum dano valido aplicado ao Boss da Irmandade.", damage > 0 ? "gold-toast" : "danger-toast");
+      renderAll(false);
+      saveGame();
+      return true;
+    }
+    const config = getOnlineConfig();
+    guildBossFinishPromise = callOnlineRpc(config, config.guildBossFinishRpcName, {
+      p_player_id: state.playerId,
+      p_guild_id: guild.id,
+      p_boss_index: bossIndex,
+      p_damage: damage,
+      p_boss_max_hp: Math.max(1, Math.floor(Number(enemy.maxHp || getGuildBossMaxHp(bossIndex)))),
+      p_player_snapshot: buildGuildPlayerSnapshot()
+    }).then(async result => {
+      const rewardGranted = result?.reward_granted !== false;
+      const bossDefeated = Boolean(result?.boss_defeated || defeated);
+      if (rewardGranted) {
+        state.resources.ouro += GUILD_BOSS_REWARD_GOLD;
+        state.lifetime.gold += GUILD_BOSS_REWARD_GOLD;
+        trackAction("gold", { amount: GUILD_BOSS_REWARD_GOLD });
+      }
+      if (bossDefeated) trackAction("boss");
+      addLog(`${bossName}: ${formatNumber(damage)} de dano pela Irmandade${bossDefeated ? " e boss derrotado" : ""}.`, bossDefeated ? "loot" : "danger-text");
+      toast(rewardGranted ? `Participacao valida: +${formatNumber(GUILD_BOSS_REWARD_GOLD)} Ouro.` : "Dano sincronizado com a Irmandade.", rewardGranted ? "gold-toast" : "");
+      await refreshGuild({ force: true });
+      renderAll(false);
+      saveGame();
+    }).catch(error => {
+      console.warn("Nao foi possivel sincronizar o Boss da Irmandade.", error);
+      addLog(`Falha ao sincronizar dano contra ${bossName}.`, "danger-text");
+      toast("Nao foi possivel sincronizar o Boss da Irmandade.", "danger-toast");
+      renderAll(false);
+      saveGame();
+    }).finally(() => {
+      guildBossFinishPromise = null;
+    });
+    renderAll(false);
+    return true;
+  }
+
   function cancelBossBattle(options = {}) {
+    if (state.combat.enemy?.isGuildBoss) return finishGuildBossCombat(options);
     const bossName = state.combat.enemy?.name || "Boss";
     const voluntary = Boolean(options.voluntary);
     const disabledAuto = state.autoChallengeBoss;
@@ -8513,6 +8950,12 @@
       finishArenaBattle(true);
       return;
     }
+    if (enemy.isGuildBoss) {
+      scene.queueEnemyDeath(enemy);
+      scene.celebrateCaptain(2.8);
+      finishGuildBossCombat({ defeated: true });
+      return;
+    }
     scene.queueEnemyDeath(enemy);
     scene.celebrateCaptain(enemy.isBoss ? 2.8 : 1.65);
     const region = REGIONS[state.regionIndex];
@@ -8652,7 +9095,9 @@
     }
     if (enemy.burnTime > 0) {
       enemy.burnTime -= dt;
-      enemy.hp = Math.max(0, enemy.hp - enemy.burnDps * dt);
+      const burnDamage = Math.max(0, enemy.burnDps * dt);
+      enemy.hp = Math.max(0, enemy.hp - burnDamage);
+      if (enemy.isGuildBoss) enemy.guildBossDamageDealt = Math.max(0, Number(enemy.guildBossDamageDealt || 0)) + burnDamage;
       if (enemy.hp <= 0) defeatEnemy();
     }
     if (enemy.slowed > 0) enemy.slowed -= dt;
@@ -8952,7 +9397,7 @@
     if (button) {
       button.classList.toggle("hidden", !visible);
       button.disabled = !visible;
-      button.title = enemy?.isArena ? "Sair do duelo PvP sem aplicar vitoria." : "Sair da batalha contra o boss.";
+      button.title = enemy?.isArena ? "Sair do duelo PvP sem aplicar vitoria." : enemy?.isGuildBoss ? "Sair da tentativa contra o Boss da Irmandade." : "Sair da batalha contra o boss.";
     }
     if (nextMapButton) {
       const nextVisible = !visible && !isArenaSceneActive() && state.regionIndex + 1 < state.unlockedRegions;
@@ -8968,7 +9413,8 @@
     const enemy = state.combat.enemy;
     const region = REGIONS[state.regionIndex];
     const maxHp = getActivePlayerMaxHp(stats);
-    $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(state.regionIndex));
+    const visualRegionIndex = enemy?.isGuildBoss ? enemy.regionIndex : state.regionIndex;
+    $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(visualRegionIndex));
     $("#scene-region").textContent = getCombatHudRegionLabel();
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
     $("#player-health-fill").style.width = `${state.combat.playerHp / Math.max(1, maxHp) * 100}%`;
@@ -9267,7 +9713,8 @@
     const region = getActiveCombatRegion();
     const stats = getStats();
     const kills = state.regionKills[state.regionIndex];
-    $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(state.regionIndex));
+    const visualRegionIndex = state.combat.enemy?.isGuildBoss ? state.combat.enemy.regionIndex : state.regionIndex;
+    $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(visualRegionIndex));
     $("#scene-region").textContent = getCombatHudRegionLabel();
     $("#metric-damage").textContent = formatNumber(stats.damage);
     $("#metric-dps").textContent = formatNumber(stats.dps);
@@ -9277,6 +9724,7 @@
     const powerMetric = $("#metric-power");
     if (powerMetric) powerMetric.textContent = formatNumber(stats.power);
     renderHomeRecommendations();
+    renderHomeGuildCard();
     $("#kill-progress-text").textContent = `${Math.min(100, kills)} / 100`;
     $("#boss-progress-fill").style.width = `${Math.min(100, kills)}%`;
     $("#boss-name").textContent = region.boss;
@@ -9674,6 +10122,279 @@
     });
   }
 
+  function guildRoleLabel(role) {
+    return GUILD_ROLE_LABELS[role] || GUILD_ROLE_LABELS.member;
+  }
+
+  function guildEntryLabel(mode) {
+    return GUILD_ENTRY_LABELS[mode] || GUILD_ENTRY_LABELS.open;
+  }
+
+  function guildBonusText(key, level = getGuildUpgradeLevel(key)) {
+    return `+${Math.round(level * 5)}%`;
+  }
+
+  function guildCooldownRemainingText(value) {
+    const timestamp = Date.parse(value || "");
+    if (!timestamp || timestamp <= Date.now()) return "";
+    return formatDuration((timestamp - Date.now()) / 1000);
+  }
+
+  function renderHomeGuildCard() {
+    const title = $("#home-guild-title");
+    const status = $("#home-guild-status");
+    const stats = $("#home-guild-stats");
+    if (!title || !status || !stats) return;
+    const guild = getCurrentGuild();
+    if (guild) {
+      title.textContent = guild.name;
+      const currentBossIndex = Number(guildState.current.boss_state?.current_boss_index || 0);
+      const bossStatus = currentBossIndex >= REGIONS.length
+        ? "Bosses de hoje concluidos"
+        : `Boss atual: ${REGIONS[currentBossIndex]?.boss || "Boss regional"}`;
+      status.textContent = `${guildRoleLabel(guildState.current.role)} na Irmandade Pirata. ${bossStatus}.`;
+      stats.innerHTML = [
+        ["Membros", `${formatNumber(guild.member_count)}`],
+        ["Nivel", `${formatNumber(guild.level)}`],
+        ["Poder", formatNumber(guild.total_power)]
+      ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+      return;
+    }
+    if (guildState.status === "ready") {
+      title.textContent = "Irmandade Pirata";
+      status.textContent = guildState.guilds.length ? `${guildState.guilds.length} Irmandade${guildState.guilds.length === 1 ? "" : "s"} disponivel${guildState.guilds.length === 1 ? "" : "s"} online.` : "Crie ou encontre uma Irmandade online.";
+      stats.innerHTML = [
+        ["Abertas", guildState.guilds.filter(item => item.entry_mode === "open").length],
+        ["Total", guildState.guilds.length],
+        ["Custo", formatNumber(GUILD_CREATE_COST)]
+      ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+      return;
+    }
+    title.textContent = "Irmandade Pirata";
+    status.textContent = guildState.status === "unavailable" ? guildState.error : "Abra para carregar Irmandades online.";
+    stats.innerHTML = [
+      ["Membros", "--"],
+      ["Nivel", "--"],
+      ["Poder", "--"]
+    ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+  }
+
+  function guildEmptyStateHtml(message, danger = false) {
+    return `<div class="guild-status ${danger ? "danger" : ""}">${escapeHtml(message)}</div>`;
+  }
+
+  function guildCreatePanelHtml() {
+    const disabled = guildState.actionPending ? "disabled" : "";
+    return `<div class="guild-panel">
+      ${!isValidPirateName() ? guildEmptyStateHtml("Defina seu Nome de Pirata acima antes de criar, entrar ou solicitar entrada.", true) : ""}
+      <div class="guild-create-grid">
+        <label class="guild-field"><span>Nome da Irmandade</span><input id="guild-create-name" maxlength="32" placeholder="Ex.: Maré Dourada"></label>
+        <label class="guild-field"><span>Entrada</span><select id="guild-create-entry"><option value="open">Aberta</option><option value="application">Exige solicitacao</option></select></label>
+        <label class="guild-field wide"><span>Descricao</span><textarea id="guild-create-description" maxlength="180" placeholder="Mensagem curta para novos membros"></textarea></label>
+      </div>
+      <div class="guild-create-actions">
+        <button class="button primary" type="button" data-create-guild ${disabled}>Criar Irmandade</button>
+        <span class="cost-chip pirate-coin-cost">Custo: ${formatNumber(GUILD_CREATE_COST)} Moedas Pirata</span>
+        <span class="cost-chip">Saldo: ${formatNumber(state.pirateCoins)}</span>
+      </div>
+    </div>`;
+  }
+
+  function guildDiscoveryHtml() {
+    const rows = guildState.guilds.length ? guildState.guilds.map(guild => {
+      const label = guild.entry_mode === "open" ? "Entrar" : "Solicitar";
+      const disabled = guildState.actionPending || !isValidPirateName();
+      return `<article class="guild-row ${guild.entry_mode === "open" ? "available" : ""}">
+        <div class="guild-row-main">
+          <strong>${escapeHtml(guild.name)}</strong>
+          <small>Nivel ${formatNumber(guild.level)} • ${formatNumber(guild.member_count)} membros • Poder ${formatNumber(guild.total_power)} • ${guildEntryLabel(guild.entry_mode)}</small>
+        </div>
+        <button class="button ${guild.entry_mode === "open" ? "primary" : ""}" type="button" data-join-guild="${escapeHtml(guild.id)}" ${disabled ? "disabled" : ""}>${label}</button>
+      </article>`;
+    }).join("") : guildEmptyStateHtml("Nenhuma Irmandade criada ainda. Seja o primeiro Rei Pirata.");
+    return `<div class="guild-panel">
+      ${guildCreatePanelHtml()}
+      <div class="section-heading compact"><div><span class="eyebrow">IRMANDADES ONLINE</span><h2>Escolha uma tripulacao</h2></div><button class="button" type="button" data-refresh-guild ${guildState.actionPending ? "disabled" : ""}>Atualizar</button></div>
+      <div class="guild-list">${rows}</div>
+    </div>`;
+  }
+
+  function guildTabsHtml() {
+    const tabs = hasGuildManagerAccess() ? GUILD_TABS : GUILD_TABS.filter(key => key !== "config");
+    if (!tabs.includes(guildActiveTab)) guildActiveTab = "summary";
+    return `<div class="guild-tabs" role="tablist" aria-label="Abas da Irmandade">${tabs.map(key => `<button class="${guildActiveTab === key ? "active" : ""}" type="button" data-guild-tab="${key}" aria-selected="${guildActiveTab === key ? "true" : "false"}">${GUILD_TAB_LABELS[key]}</button>`).join("")}</div>`;
+  }
+
+  function guildSummaryTabHtml() {
+    const guild = getCurrentGuild();
+    const members = guildState.current.members || [];
+    const description = guild.description ? `<p>${escapeHtml(guild.description)}</p>` : "";
+    return `<div class="guild-panel">
+      <div class="section-heading compact"><div><span class="eyebrow">RESUMO</span><h2>${escapeHtml(guild.name)}</h2>${description}</div><button class="button" type="button" data-refresh-guild>Atualizar</button></div>
+      <div class="guild-summary-grid">
+        ${[
+          ["Nivel", guild.level],
+          ["Experiencia", guild.experience],
+          ["Membros", guild.member_count || members.length],
+          ["Poder naval", guild.total_power],
+          ["Prestigios", guild.total_prestiges],
+          ["Contribuicao", guild.total_contribution],
+          ["Entrada", guildEntryLabel(guild.entry_mode)],
+          ["Cargo", guildRoleLabel(guildState.current.role)]
+        ].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : escapeHtml(value)}</strong></div>`).join("")}
+      </div>
+    </div>`;
+  }
+
+  function guildMembersTabHtml() {
+    const members = guildState.current.members || [];
+    const totalContribution = members.reduce((sum, member) => sum + member.contribution, 0);
+    const rows = members.length ? members.map(member => `<article class="guild-member-row ${member.player_id === state.playerId ? "available" : ""}">
+      <div class="guild-member-main"><strong>${escapeHtml(member.pirate_name)}</strong><small>${guildRoleLabel(member.role)} • ${escapeHtml(member.snapshot.ship_name)} ${member.snapshot.ship_level ? `Nv. ${formatNumber(member.snapshot.ship_level)}` : ""}</small></div>
+      <div class="guild-member-stat"><span>Nivel</span><strong>${formatNumber(member.snapshot.level)}</strong></div>
+      <div class="guild-member-stat"><span>Prestigio</span><strong>${formatNumber(member.snapshot.prestige_count)}</strong></div>
+      <div class="guild-member-stat"><span>Poder</span><strong>${formatNumber(member.snapshot.naval_power)}</strong></div>
+      <div class="guild-member-stat"><span>Contrib.</span><strong>${formatNumber(member.contribution)}</strong></div>
+    </article>`).join("") : guildEmptyStateHtml("Nenhum membro sincronizado ainda.");
+    return `<div class="guild-panel">
+      <div class="guild-member-summary">
+        <div><span>Membros</span><strong>${formatNumber(members.length)}</strong></div>
+        <div><span>Contribuicao total</span><strong>${formatNumber(totalContribution)}</strong></div>
+        <div><span>Dano em Boss</span><strong>${formatNumber(members.reduce((sum, member) => sum + member.boss_damage, 0))}</strong></div>
+        <div><span>Ordenacao</span><strong>Prestigio</strong></div>
+      </div>
+      <div class="guild-member-list">${rows}</div>
+    </div>`;
+  }
+
+  function guildBossTabHtml() {
+    const bossState = guildState.current.boss_state || {};
+    const currentBossIndex = clamp(Math.floor(Number(bossState.current_boss_index || 0)), 0, REGIONS.length);
+    const allBossesCleared = currentBossIndex >= REGIONS.length;
+    guildBossSelectedIndex = clamp(guildBossSelectedIndex, 0, REGIONS.length - 1);
+    const selectedRegion = REGIONS[guildBossSelectedIndex];
+    const selectedIsCurrent = !allBossesCleared && guildBossSelectedIndex === currentBossIndex;
+    const selectedDefeated = allBossesCleared || guildBossSelectedIndex < currentBossIndex;
+    const selectedMaxHp = selectedIsCurrent ? Math.max(1, bossState.boss_max_hp || getGuildBossMaxHp(guildBossSelectedIndex)) : getGuildBossMaxHp(guildBossSelectedIndex);
+    const selectedHp = selectedIsCurrent ? Math.max(0, bossState.boss_hp || selectedMaxHp) : selectedDefeated ? 0 : selectedMaxHp;
+    const cooldownText = guildCooldownRemainingText(bossState.cooldown_until);
+    const canStart = selectedIsCurrent && !cooldownText && !guildState.actionPending;
+    const bossProgress = allBossesCleared ? `${REGIONS.length}/${REGIONS.length}` : `${currentBossIndex + 1}/ ${REGIONS.length}`;
+    const selectedTitle = allBossesCleared ? "Ciclo concluido" : selectedRegion.boss;
+    const selectedSubtitle = allBossesCleared
+      ? "Todos os bosses foram derrotados hoje. Reset ao meio-dia."
+      : `${escapeHtml(selectedRegion.name)} &bull; HP ${formatNumber(selectedHp)} / ${formatNumber(selectedMaxHp)}`;
+    const actionLabel = allBossesCleared ? "Concluido" : cooldownText ? "Em cooldown" : "Enfrentar";
+    const rows = REGIONS.map((region, index) => {
+      const defeated = allBossesCleared || index < currentBossIndex;
+      const current = !allBossesCleared && index === currentBossIndex;
+      const locked = !allBossesCleared && index > currentBossIndex;
+      const maxHp = current ? Math.max(1, bossState.boss_max_hp || getGuildBossMaxHp(index)) : getGuildBossMaxHp(index);
+      const hp = current ? Math.max(0, bossState.boss_hp || maxHp) : defeated ? 0 : maxHp;
+      const ratio = clamp(hp / Math.max(1, maxHp), 0, 1) * 100;
+      const status = defeated ? "Derrotado hoje" : current ? "Disponivel" : "Bloqueado";
+      return `<article class="guild-boss-row ${defeated ? "defeated" : current ? "current" : "locked"}">
+        <div class="guild-boss-main"><strong>${index + 1}. ${escapeHtml(region.boss)}</strong><small>${escapeHtml(region.name)} &bull; ${status} &bull; HP x${GUILD_BOSS_HP_MULTIPLIER}</small></div>
+        <div class="guild-boss-hp"><div class="guild-boss-hp-bar"><i style="width:${ratio}%"></i></div><small>${formatNumber(hp)} / ${formatNumber(maxHp)}</small></div>
+        <button class="button ${guildBossSelectedIndex === index ? "primary" : ""}" type="button" data-select-guild-boss="${index}" ${locked ? "disabled" : ""}>Ver</button>
+      </article>`;
+    }).join("");
+    return `<div class="guild-panel">
+      <div class="guild-boss-summary">
+        <div><span>Boss atual</span><strong>${bossProgress}</strong></div>
+        <div><span>Selecionado</span><strong>${guildBossSelectedIndex + 1}</strong></div>
+        <div><span>HP atual</span><strong>${formatNumber(selectedHp)}</strong></div>
+        <div><span>Cooldown</span><strong>${cooldownText || "Livre"}</strong></div>
+      </div>
+      <div class="section-heading compact"><div><span class="eyebrow">BOSS DA IRMANDADE</span><h2>${escapeHtml(selectedTitle)}</h2><p>${selectedSubtitle}</p></div><button class="button primary" type="button" data-start-guild-boss="${guildBossSelectedIndex}" ${canStart ? "" : "disabled"}>${actionLabel}</button></div>
+      <div class="guild-boss-list">${rows}</div>
+    </div>`;
+  }
+
+  function guildUpgradesTabHtml() {
+    const guild = getCurrentGuild();
+    const rows = Object.entries(GUILD_UPGRADE_META).map(([key, meta]) => {
+      const level = getGuildUpgradeLevel(key);
+      const cost = getGuildUpgradeCost(key);
+      const canUpgrade = cost !== null && guild.experience >= cost && !guildState.actionPending;
+      return `<article class="guild-upgrade-row ${canUpgrade ? "available" : ""}">
+        <div class="guild-upgrade-icon" aria-hidden="true">${meta.icon}</div>
+        <div class="guild-upgrade-main"><strong>${meta.label}</strong><small>${meta.description} Bonus atual ${guildBonusText(key, level)}${cost ? ` • custo ${cost} EXP` : " • nivel maximo"}</small></div>
+        <div class="guild-upgrade-level"><span>Nivel</span><strong>${level}/${GUILD_UPGRADE_MAX_LEVEL}</strong></div>
+        <button class="button ${canUpgrade ? "primary" : ""}" type="button" data-upgrade-guild-bonus="${key}" ${canUpgrade ? "" : "disabled"}>${cost ? "Melhorar" : "Maximo"}</button>
+      </article>`;
+    }).join("");
+    return `<div class="guild-panel">
+      <div class="guild-member-summary">
+        <div><span>EXP disponivel</span><strong>${formatNumber(guild.experience)}</strong></div>
+        <div><span>Dano</span><strong>${guildBonusText("damage")}</strong></div>
+        <div><span>Vida</span><strong>${guildBonusText("hp")}</strong></div>
+        <div><span>EXP</span><strong>${guildBonusText("xp")}</strong></div>
+      </div>
+      <div class="guild-upgrade-list">${rows}</div>
+    </div>`;
+  }
+
+  function guildConfigTabHtml() {
+    if (!hasGuildManagerAccess()) return guildEmptyStateHtml("A aba Config e exclusiva para Rei Pirata e Intendente.", true);
+    const guild = getCurrentGuild();
+    const members = guildState.current.members || [];
+    const memberOptions = members.map(member => `<option value="${escapeHtml(member.player_id)}">${escapeHtml(member.pirate_name)} - ${guildRoleLabel(member.role)}</option>`).join("");
+    const applications = guildState.current.applications.length ? guildState.current.applications.map(app => `<article class="guild-application-row">
+      <div class="guild-application-main"><strong>${escapeHtml(app.pirate_name)}</strong><small>Poder ${formatNumber(app.snapshot.naval_power)} • Prestigio ${formatNumber(app.snapshot.prestige_count)}</small></div>
+      <div class="guild-actions"><button class="button primary" type="button" data-guild-application="approve" data-guild-application-player="${escapeHtml(app.player_id)}">Aprovar</button><button class="button danger" type="button" data-guild-application="reject" data-guild-application-player="${escapeHtml(app.player_id)}">Recusar</button></div>
+    </article>`).join("") : guildEmptyStateHtml("Nenhuma solicitacao pendente.");
+    return `<div class="guild-panel">
+      <div class="guild-config-grid">
+        <label class="guild-field"><span>Nome</span><input id="guild-config-name" maxlength="32" value="${escapeHtml(guild.name)}"></label>
+        <label class="guild-field"><span>Entrada</span><select id="guild-config-entry"><option value="open" ${guild.entry_mode === "open" ? "selected" : ""}>Aberta</option><option value="application" ${guild.entry_mode === "application" ? "selected" : ""}>Exige solicitacao</option></select></label>
+        <label class="guild-field wide"><span>Descricao</span><textarea id="guild-config-description" maxlength="180">${escapeHtml(guild.description)}</textarea></label>
+      </div>
+      <div class="guild-config-actions"><button class="button primary" type="button" data-save-guild-config ${guildState.actionPending ? "disabled" : ""}>Salvar Config</button></div>
+      <div class="guild-config-grid">
+        <label class="guild-field"><span>Novo Rei Pirata</span><select id="guild-king-select">${memberOptions}</select></label>
+        <label class="guild-field"><span>Novo Intendente</span><select id="guild-quartermaster-select">${memberOptions}</select></label>
+      </div>
+      <div class="guild-config-actions"><button class="button" type="button" data-set-guild-role="king" ${guildState.actionPending ? "disabled" : ""}>Definir Rei Pirata</button><button class="button" type="button" data-set-guild-role="quartermaster" ${guildState.actionPending ? "disabled" : ""}>Definir Intendente</button></div>
+      <div class="section-heading compact"><div><span class="eyebrow">SOLICITACOES</span><h2>Aplicacoes pendentes</h2></div></div>
+      <div class="guild-application-list">${applications}</div>
+    </div>`;
+  }
+
+  function guildCurrentPanelHtml() {
+    return `<div class="guild-panel">
+      ${guildTabsHtml()}
+      ${guildActiveTab === "members" ? guildMembersTabHtml() : guildActiveTab === "boss" ? guildBossTabHtml() : guildActiveTab === "upgrades" ? guildUpgradesTabHtml() : guildActiveTab === "config" ? guildConfigTabHtml() : guildSummaryTabHtml()}
+    </div>`;
+  }
+
+  function renderCaptainGuildSection() {
+    if (guildPanelExpanded && guildState.status === "idle") setTimeout(() => refreshGuild({ force: true }), 0);
+    const guild = getCurrentGuild();
+    const summary = guild
+      ? `${guild.name} • ${guildRoleLabel(guildState.current.role)} • Nivel ${formatNumber(guild.level)}`
+      : guildState.status === "loading" ? "Carregando dados online..." : "Crie, entre ou solicite uma Irmandade online";
+    const toggle = captainCollapsibleToggleHtml({
+      expanded: guildPanelExpanded,
+      attr: "data-toggle-captain-guild",
+      icon: "☠",
+      eyebrow: "ONLINE",
+      title: "Irmandade Pirata",
+      summary,
+      countLabel: guild ? "NIVEL" : "CUSTO",
+      countValue: guild ? formatNumber(guild.level) : formatNumber(GUILD_CREATE_COST)
+    });
+    const body = !guildPanelExpanded ? "" : guildState.status === "loading"
+      ? guildEmptyStateHtml("Carregando Irmandade online...")
+      : guildState.status === "unavailable"
+        ? `<div class="guild-panel">${guildEmptyStateHtml(guildState.error || "Irmandade online indisponivel.", true)}<button class="button" type="button" data-refresh-guild>Atualizar</button></div>`
+        : guild ? guildCurrentPanelHtml() : guildDiscoveryHtml();
+    return `<section class="captain-equipment-section captain-guild-section captain-collapsible-section ${guildPanelExpanded ? "expanded" : ""}">
+      ${toggle}
+      <div class="captain-section-body">${body}</div>
+    </section>`;
+  }
+
   function renderCaptainPetsSection() {
     const current = getEquippedPet();
     const summary = current
@@ -9749,7 +10470,7 @@
       content.innerHTML = `${captainIdentityHtml()}<div class="captain-choice-grid">${Object.entries(CAPTAIN_GENDERS).map(([gender, meta]) => {
         const level = getCaptainLevelData(1);
         return `<article class="captain-choice"><div class="captain-choice-image">${captainSpriteCanvasHtml(1, gender, "choice")}</div><div><span class="eyebrow">VISUAL INICIAL</span><h2>${meta.choice}</h2><p>${getCaptainName(1, gender)}</p><div class="captain-choice-bonuses">${captainLevelBonusText(level)}</div></div><button class="button primary" data-select-captain-gender="${gender}">Escolher</button></article>`;
-      }).join("")}</div>${renderCaptainPetsSection()}${renderCaptainManualSkillSection(true)}${renderCaptainEquipmentSection(true)}`;
+      }).join("")}</div>${renderCaptainGuildSection()}${renderCaptainPetsSection()}${renderCaptainManualSkillSection(true)}${renderCaptainEquipmentSection(true)}`;
       finalizeCaptainRender(content);
       return;
     }
@@ -9759,7 +10480,7 @@
     const nextPreview = next
       ? `<div class="captain-next"><div class="captain-next-image">${captainSpriteCanvasHtml(next.level, next.gender, "next")}</div><div><span class="eyebrow">PRÓXIMO NÍVEL</span><h3>${next.name}</h3><p>${captainLevelBonusText(next)}</p><strong>☠ ${formatNumber(cost)} Moedas Pirata</strong></div></div>`
       : `<div class="captain-next max"><div><span class="eyebrow">NÍVEL MÁXIMO</span><h3>Pirata lendário completo</h3><p>Todos os bônus permanentes do Capitão estão ativos.</p></div></div>`;
-    content.innerHTML = `${captainIdentityHtml()}${renderCaptainOverviewSection(current, next, cost, canUpgrade, nextPreview)}${renderCaptainPetsSection()}${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
+    content.innerHTML = `${captainIdentityHtml()}${renderCaptainOverviewSection(current, next, cost, canUpgrade, nextPreview)}${renderCaptainGuildSection()}${renderCaptainPetsSection()}${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
     finalizeCaptainRender(content);
   }
 
@@ -10899,6 +11620,83 @@
     toast(`Prestígio concluído! +${formatNumber(reward)} Moedas Pirata.`, "gold-toast");
   }
 
+  async function startGuildBossAttempt(rawIndex = guildBossSelectedIndex) {
+    const guild = getCurrentGuild();
+    if (!guildState.current || !guild) return toast("Entre em uma Irmandade antes de enfrentar Boss da Irmandade.", "danger-toast");
+    if (!isValidPirateName()) return toast("Defina seu Nome de Pirata na tela de Capitao antes de usar a Irmandade.", "danger-toast");
+    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || pendingBossChallengeTimer || state.combat.enemy || isArenaSceneActive()) return toast("Finalize o combate especial atual antes de enfrentar Boss da Irmandade.", "danger-toast");
+    const bossIndex = clamp(Math.floor(Number(rawIndex) || 0), 0, REGIONS.length - 1);
+    const bossState = guildState.current.boss_state || {};
+    const currentBossIndex = clamp(Math.floor(Number(bossState.current_boss_index || 0)), 0, REGIONS.length);
+    if (currentBossIndex >= REGIONS.length) return toast("Todos os Bosses da Irmandade ja foram derrotados hoje.", "gold-toast");
+    if (bossIndex !== currentBossIndex) return toast("A Irmandade precisa derrotar os bosses em sequencia.", "danger-toast");
+    const cooldownUntil = Date.parse(bossState.cooldown_until || "");
+    if (cooldownUntil && cooldownUntil > Date.now()) {
+      toast(`Boss da Irmandade recarrega em ${formatDuration((cooldownUntil - Date.now()) / 1000)}.`, "danger-toast");
+      return;
+    }
+    const config = getOnlineConfig();
+    if (!isLeaderboardConfigured(config)) return toast("Irmandade online indisponivel no momento.", "danger-toast");
+    guildState.actionPending = true;
+    renderGuildIfVisible();
+    try {
+      const maxHp = getGuildBossMaxHp(bossIndex);
+      const region = REGIONS[bossIndex];
+      const result = await callOnlineRpc(config, config.guildBossStartRpcName, {
+        p_player_id: state.playerId,
+        p_guild_id: guild.id,
+        p_boss_index: bossIndex,
+        p_boss_max_hp: maxHp,
+        p_boss_payload: {
+          boss_name: region.boss,
+          map_index: bossIndex + 1,
+          map_name: region.name,
+          base_hp: getBossOriginalStats(bossIndex).hp,
+          guild_hp_multiplier: GUILD_BOSS_HP_MULTIPLIER
+        },
+        p_player_snapshot: buildGuildPlayerSnapshot()
+      });
+      const freshBossState = normalizeGuildBossState(result?.boss_state || result);
+      guildState.current.boss_state = freshBossState;
+      if (freshBossState.current_boss_index !== bossIndex) {
+        guildBossSelectedIndex = clamp(freshBossState.current_boss_index, 0, REGIONS.length - 1);
+        toast("Outro membro avancou a sequencia. Boss atualizado.", "gold-toast");
+        await refreshGuild({ force: true });
+        return;
+      }
+      queueRegionPreload(bossIndex);
+      guildBossCombatPrevious = {
+        screen: currentScreen,
+        hasStarted: state.hasStarted,
+        combat: JSON.parse(JSON.stringify(state.combat))
+      };
+      state.combat.running = true;
+      state.combat.repairing = false;
+      state.combat.repairStarted = 0;
+      state.combat.enemy = createGuildBossEnemy(bossIndex, freshBossState);
+      state.combat.attackTimer = 0;
+      state.combat.petAttackTimer = 0;
+      state.combat.enemyAttackTimer = 0;
+      state.combat.spawnTimer = 0;
+      state.combat.specialCombatResumeRunning = Boolean(guildBossCombatPrevious.combat?.running);
+      state.combat.playerHp = clamp(Number(state.combat.playerHp || getStats().maxHp), 1, getStats().maxHp);
+      state.hasStarted = true;
+      scene.resetPlayerShipAnimation();
+      scene.triggerBossWarningAlert(BOSS_WARNING_DURATION_MS);
+      navigate("home");
+      addLog(`Boss da Irmandade iniciado: ${region.boss}. HP online ${formatNumber(freshBossState.boss_hp || maxHp)} / ${formatNumber(freshBossState.boss_max_hp || maxHp)}.`, "danger-text");
+      renderAll(false);
+      saveGame();
+    } catch (error) {
+      console.warn("Nao foi possivel iniciar Boss da Irmandade.", error);
+      toast("Nao foi possivel iniciar o Boss da Irmandade. Atualizando dados online.", "danger-toast");
+      await refreshGuild({ force: true });
+    } finally {
+      guildState.actionPending = false;
+      renderGuildIfVisible();
+    }
+  }
+
   function arenaOpponentCardHtml(opponent) {
     const attackSpeed = (opponent.attack_interval_ms / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
     const badge = opponent.is_bot ? `<span class="arena-bot-badge">Bot</span>` : `<span class="arena-real-badge">Real</span>`;
@@ -10988,10 +11786,12 @@
   }
 
   function getActiveCombatRegion() {
+    if (state.combat.enemy?.isGuildBoss) return REGIONS[state.combat.enemy.regionIndex] || REGIONS[state.regionIndex];
     return isArenaSceneActive() ? getArenaSceneRegion() : REGIONS[state.regionIndex];
   }
 
   function getActiveCombatRegionLabel() {
+    if (state.combat.enemy?.isGuildBoss) return `Irmandade - ${getCombatRegionLabel(REGIONS[state.combat.enemy.regionIndex] || REGIONS[state.regionIndex])}`;
     return isArenaSceneActive() ? "Arena - Duelo Pirata" : getCombatRegionLabel(REGIONS[state.regionIndex]);
   }
 
@@ -11172,9 +11972,6 @@
     scene.resetPlayerShipAnimation();
     navigate(returnScreen === "stats" ? "home" : returnScreen);
     renderAll(false);
-    if (voluntary) addLog(`Voce saiu do combate contra ${bossName}.`, "danger-text");
-    if (voluntary || disabledAuto) toast(voluntary ? "Combate contra boss encerrado." : "Derrota para o boss. Boss Auto foi desligado.", "danger-toast");
-    renderAll(false);
     saveGame();
   }
 
@@ -11196,6 +11993,12 @@
     if (key === "quests" && statsPanelsExpanded[key]) renderMissions();
   }
 
+  function toggleCaptainGuildPanel() {
+    guildPanelExpanded = !guildPanelExpanded;
+    renderCaptain();
+    if (guildPanelExpanded) refreshGuild({ force: guildState.status === "idle" || Date.now() - guildState.lastLoadedAt > 10000 });
+  }
+
   function toggleCaptainPetsPanel() {
     captainPetsExpanded = !captainPetsExpanded;
     renderCaptain();
@@ -11214,6 +12017,147 @@
   function toggleCaptainEquipmentPanel() {
     captainEquipmentExpanded = !captainEquipmentExpanded;
     renderCaptain();
+  }
+
+  function sanitizeGuildName(value = "") {
+    const text = String(value);
+    const normalized = text.normalize ? text.normalize("NFKC") : text;
+    return normalized.replace(/[\u0000-\u001f\u007f<>`"'&]/g, "").replace(/\s+/g, " ").trim().slice(0, 32);
+  }
+
+  function sanitizeGuildDescription(value = "") {
+    const text = String(value);
+    const normalized = text.normalize ? text.normalize("NFKC") : text;
+    return normalized.replace(/[\u0000-\u001f\u007f<>`]/g, "").replace(/\s+/g, " ").trim().slice(0, 180);
+  }
+
+  async function runGuildAction(task, fallbackMessage = "Acao da Irmandade indisponivel no momento.") {
+    if (guildState.actionPending) return;
+    const config = getOnlineConfig();
+    if (!isLeaderboardConfigured(config)) return toast("Irmandade online indisponivel no momento.", "danger-toast");
+    guildState.actionPending = true;
+    renderGuildIfVisible();
+    try {
+      await task(config);
+      await refreshGuild({ force: true });
+    } catch (error) {
+      console.warn(fallbackMessage, error);
+      toast(fallbackMessage, "danger-toast");
+    } finally {
+      guildState.actionPending = false;
+      renderGuildIfVisible();
+    }
+  }
+
+  function createGuild() {
+    const name = sanitizeGuildName($("#guild-create-name")?.value || "");
+    const description = sanitizeGuildDescription($("#guild-create-description")?.value || "");
+    const entryMode = $("#guild-create-entry")?.value === "application" ? "application" : "open";
+    if (!isValidPirateName()) return toast("Defina seu Nome de Pirata antes de criar uma Irmandade.", "danger-toast");
+    if (name.length < 3) return toast("Nome da Irmandade precisa ter pelo menos 3 caracteres.", "danger-toast");
+    if (state.pirateCoins < GUILD_CREATE_COST) return toast(`Faltam ${formatNumber(GUILD_CREATE_COST - state.pirateCoins)} Moedas Pirata para criar a Irmandade.`, "danger-toast");
+    runGuildAction(async config => {
+      const result = await callOnlineRpc(config, config.guildCreateRpcName, guildActionPayload({
+        p_name: name,
+        p_description: description,
+        p_entry_mode: entryMode
+      }));
+      if (result?.ok === false) throw new Error(result?.message || "Criacao recusada.");
+      state.pirateCoins -= GUILD_CREATE_COST;
+      guildActiveTab = "summary";
+      addLog(`${name} foi fundada. Cargo recebido: Rei Pirata.`, "loot");
+      toast(`${name} criada! Voce e o Rei Pirata.`, "gold-toast");
+      saveGame();
+    }, "Nao foi possivel criar a Irmandade.");
+  }
+
+  function joinGuild(guildId) {
+    if (!isValidPirateName()) return toast("Defina seu Nome de Pirata antes de entrar em uma Irmandade.", "danger-toast");
+    runGuildAction(async config => {
+      const result = await callOnlineRpc(config, config.guildJoinRpcName, guildActionPayload({ p_guild_id: guildId }));
+      const applied = result?.status === "applied" || result?.application_created;
+      toast(applied ? "Solicitacao enviada para a Irmandade." : "Voce entrou na Irmandade!", applied ? "" : "gold-toast");
+      addLog(applied ? "Solicitacao de Irmandade enviada." : "Voce entrou em uma Irmandade Pirata.", applied ? "" : "loot");
+    }, "Nao foi possivel entrar ou solicitar entrada.");
+  }
+
+  function saveGuildConfig() {
+    const guild = getCurrentGuild();
+    if (!guild || !hasGuildManagerAccess()) return toast("Apenas Rei Pirata e Intendente podem alterar Config.", "danger-toast");
+    const name = sanitizeGuildName($("#guild-config-name")?.value || guild.name);
+    const description = sanitizeGuildDescription($("#guild-config-description")?.value || "");
+    const entryMode = $("#guild-config-entry")?.value === "application" ? "application" : "open";
+    if (name.length < 3) return toast("Nome da Irmandade precisa ter pelo menos 3 caracteres.", "danger-toast");
+    runGuildAction(async config => {
+      await callOnlineRpc(config, config.guildConfigRpcName, {
+        p_player_id: state.playerId,
+        p_guild_id: guild.id,
+        p_name: name,
+        p_description: description,
+        p_entry_mode: entryMode
+      });
+      toast("Config da Irmandade salva.", "gold-toast");
+    }, "Nao foi possivel salvar a Config da Irmandade.");
+  }
+
+  function setGuildRole(role) {
+    const guild = getCurrentGuild();
+    if (!guild || !hasGuildManagerAccess()) return toast("Apenas Rei Pirata e Intendente podem gerir cargos.", "danger-toast");
+    const selectId = role === "king" ? "#guild-king-select" : "#guild-quartermaster-select";
+    const targetPlayerId = $(selectId)?.value || "";
+    if (!targetPlayerId) return toast("Selecione um membro da Irmandade.", "danger-toast");
+    runGuildAction(async config => {
+      await callOnlineRpc(config, config.guildRoleRpcName, {
+        p_player_id: state.playerId,
+        p_guild_id: guild.id,
+        p_target_player_id: targetPlayerId,
+        p_role: role
+      });
+      toast(`${guildRoleLabel(role)} definido.`, "gold-toast");
+    }, "Nao foi possivel alterar o cargo.");
+  }
+
+  function decideGuildApplication(playerId, approve) {
+    const guild = getCurrentGuild();
+    if (!guild || !hasGuildManagerAccess()) return toast("Apenas Rei Pirata e Intendente podem avaliar solicitacoes.", "danger-toast");
+    runGuildAction(async config => {
+      await callOnlineRpc(config, config.guildApplicationRpcName, {
+        p_player_id: state.playerId,
+        p_guild_id: guild.id,
+        p_applicant_player_id: playerId,
+        p_approve: Boolean(approve)
+      });
+      toast(approve ? "Solicitacao aprovada." : "Solicitacao recusada.", approve ? "gold-toast" : "");
+    }, "Nao foi possivel avaliar a solicitacao.");
+  }
+
+  function upgradeGuildBonus(key) {
+    const guild = getCurrentGuild();
+    const cost = getGuildUpgradeCost(key);
+    if (!guild || !GUILD_UPGRADE_META[key] || cost === null) return;
+    if (guild.experience < cost) return toast(`Faltam ${cost - guild.experience} EXP da Irmandade para melhorar.`, "danger-toast");
+    runGuildAction(async config => {
+      await callOnlineRpc(config, config.guildUpgradeRpcName, {
+        p_player_id: state.playerId,
+        p_guild_id: guild.id,
+        p_upgrade_key: key,
+        p_cost: cost
+      });
+      state.combat.playerHp = Math.min(state.combat.playerHp, getStats().maxHp);
+      toast(`${GUILD_UPGRADE_META[key].label} melhorada.`, "gold-toast");
+    }, "Nao foi possivel melhorar a Irmandade.");
+  }
+
+  function selectGuildBoss(index) {
+    guildBossSelectedIndex = clamp(Math.floor(Number(index) || 0), 0, REGIONS.length - 1);
+    if (currentScreen === "captain") renderCaptain();
+  }
+
+  function openGuildFromHome() {
+    guildPanelExpanded = true;
+    guildActiveTab = "summary";
+    navigate("captain");
+    refreshGuild({ force: true });
   }
 
   function renderStats() {
@@ -11654,8 +12598,53 @@
     }
     const target = event.target.closest("button");
     if (!target) return;
+    if (target.dataset.openGuild !== undefined) {
+      openGuildFromHome();
+      return;
+    }
     if (target.dataset.leaderboardTab) {
       selectLeaderboardTab(target.dataset.leaderboardTab);
+      return;
+    }
+    if (target.dataset.guildTab) {
+      guildActiveTab = target.dataset.guildTab;
+      renderCaptain();
+      return;
+    }
+    if (target.dataset.refreshGuild !== undefined) {
+      refreshGuild({ force: true });
+      return;
+    }
+    if (target.dataset.createGuild !== undefined) {
+      createGuild();
+      return;
+    }
+    if (target.dataset.joinGuild) {
+      joinGuild(target.dataset.joinGuild);
+      return;
+    }
+    if (target.dataset.saveGuildConfig !== undefined) {
+      saveGuildConfig();
+      return;
+    }
+    if (target.dataset.setGuildRole) {
+      setGuildRole(target.dataset.setGuildRole);
+      return;
+    }
+    if (target.dataset.guildApplication && target.dataset.guildApplicationPlayer) {
+      decideGuildApplication(target.dataset.guildApplicationPlayer, target.dataset.guildApplication === "approve");
+      return;
+    }
+    if (target.dataset.upgradeGuildBonus) {
+      upgradeGuildBonus(target.dataset.upgradeGuildBonus);
+      return;
+    }
+    if (target.dataset.selectGuildBoss !== undefined) {
+      selectGuildBoss(target.dataset.selectGuildBoss);
+      return;
+    }
+    if (target.dataset.startGuildBoss !== undefined) {
+      startGuildBossAttempt(target.dataset.startGuildBoss);
       return;
     }
     if (target.dataset.manualBasicAttackTutorial !== undefined) {
@@ -11700,6 +12689,10 @@
     }
     if (target.dataset.toggleCaptainPets !== undefined) {
       toggleCaptainPetsPanel();
+      return;
+    }
+    if (target.dataset.toggleCaptainGuild !== undefined) {
+      toggleCaptainGuildPanel();
       return;
     }
     if (target.dataset.toggleCaptainOverview !== undefined) {
@@ -11961,6 +12954,7 @@
   renderAll(true);
   updateMobileCombatFullscreen();
   refreshLeaderboard({ force: true });
+  refreshGuild({ force: true });
   beginCombatAssetPreload();
   if ("requestIdleCallback" in window) window.requestIdleCallback(preloadChestSprites, { timeout: 2200 });
   else window.setTimeout(preloadChestSprites, 900);

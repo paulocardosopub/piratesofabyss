@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v193-chest-animation";
+const CACHE = "pirates-abyss-v195-guild-system";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=110",
-  "game.js?v=205",
+  "styles.css?v=111",
+  "game.js?v=207",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",
