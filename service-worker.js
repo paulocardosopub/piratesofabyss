@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v189-v2-difficulty";
+const CACHE = "pirates-abyss-v190-single-toast";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=109",
-  "game.js?v=201",
+  "game.js?v=202",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

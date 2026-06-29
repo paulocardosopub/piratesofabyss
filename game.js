@@ -2927,7 +2927,7 @@
     const node = document.createElement("div");
     node.className = `toast ${type}`;
     node.textContent = message;
-    region.append(node);
+    region.replaceChildren(node);
     setTimeout(() => node.remove(), 3300);
   }
 
