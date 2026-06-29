@@ -44,6 +44,9 @@
   const EMERGENCY_REPAIR_COOLDOWN_SECONDS = 15;
   const EMERGENCY_REPAIR_DURATION_MS = 5000;
   const AUTO_REPAIR_DURATION_MS = 4000;
+  const BOSS_WARNING_DURATION_MS = 1000;
+  const COMBAT_MAP_TRANSITION_DURATION_MS = 620;
+  const COMBAT_MAP_TRANSITION_SWAP_MS = 260;
   const AUTO_REPAIR_FEES = [
     { maxMap: 5, gold: 100 },
     { maxMap: 10, gold: 500 },
@@ -2202,6 +2205,10 @@
   let activeMapInfoIndex = null;
   let pendingBossMapAdvanceTimer = 0;
   let pendingSurpriseBossTimer = 0;
+  let pendingBossChallengeTimer = 0;
+  let pendingBossChallengeRegionIndex = -1;
+  let combatMapTransitionTimer = 0;
+  let combatMapTransitionSwapTimer = 0;
   let manualAttackTutorialStartedAt = Date.now();
   let manualAttackTutorialDismissed = false;
 
@@ -2534,7 +2541,7 @@
   }
 
   function isCurrentBossChallengeAvailable() {
-    return !isArenaSceneActive() && state.regionKills[state.regionIndex] >= 100 && !state.bossesDefeated[state.regionIndex] && !state.combat.enemy;
+    return !pendingBossChallengeTimer && !isArenaSceneActive() && state.regionKills[state.regionIndex] >= 100 && !state.bossesDefeated[state.regionIndex] && !state.combat.enemy;
   }
 
   function maybeAutoChallengeBoss() {
@@ -3650,6 +3657,54 @@
   function clearCurrentEnemy() {
     state.combat.enemy = null;
     state.combat.spawnTimer = 0;
+  }
+
+  function cancelPendingBossChallenge() {
+    if (pendingBossChallengeTimer) window.clearTimeout(pendingBossChallengeTimer);
+    pendingBossChallengeTimer = 0;
+    pendingBossChallengeRegionIndex = -1;
+    const stage = $("#battle-stage");
+    stage?.classList.remove("boss-warning-alert");
+    stage?.style.removeProperty("--boss-warning-duration");
+  }
+
+  function playCombatMapTransition(applyChange, options = {}) {
+    const stage = $("#battle-stage");
+    const duration = Math.max(180, Number(options.duration || COMBAT_MAP_TRANSITION_DURATION_MS));
+    const swapAt = clamp(Number(options.swapAt || COMBAT_MAP_TRANSITION_SWAP_MS), 80, duration - 80);
+    const runChange = () => {
+      try {
+        applyChange?.();
+      } catch (error) {
+        console.error("Erro ao trocar mapa do combate.", error);
+      }
+    };
+
+    if (!stage) {
+      runChange();
+      return;
+    }
+
+    if (combatMapTransitionTimer) window.clearTimeout(combatMapTransitionTimer);
+    if (combatMapTransitionSwapTimer) window.clearTimeout(combatMapTransitionSwapTimer);
+    combatMapTransitionTimer = 0;
+    combatMapTransitionSwapTimer = 0;
+
+    stage.style.setProperty("--combat-map-transition-duration", `${duration}ms`);
+    stage.classList.remove("combat-map-transition");
+    void stage.offsetWidth;
+    stage.classList.add("combat-map-transition");
+
+    combatMapTransitionSwapTimer = window.setTimeout(() => {
+      combatMapTransitionSwapTimer = 0;
+      runChange();
+    }, swapAt);
+
+    combatMapTransitionTimer = window.setTimeout(() => {
+      combatMapTransitionTimer = 0;
+      stage.classList.remove("combat-map-transition");
+      stage.style.removeProperty("--combat-map-transition-duration");
+    }, duration + 80);
   }
 
   function clearPendingChests() {
@@ -5422,6 +5477,22 @@
         void stage.offsetWidth;
         stage.classList.add("boss-surprise-shake");
         window.setTimeout(() => stage.classList.remove("boss-surprise-shake"), 720);
+      }
+    }
+
+    triggerBossWarningAlert(durationMs = BOSS_WARNING_DURATION_MS) {
+      this.bursts.push({ x: this.width * .70, y: this.height * .52, age: 0, color: "#ff5a4e" });
+      this.aquaticBursts.push({ x: this.width * .69, y: this.height * .56, age: 0, color: "#ff5a4e", kind: "boss-warning" });
+      const stage = $("#battle-stage");
+      if (stage) {
+        stage.style.setProperty("--boss-warning-duration", `${Math.max(220, Number(durationMs) || BOSS_WARNING_DURATION_MS)}ms`);
+        stage.classList.remove("boss-warning-alert");
+        void stage.offsetWidth;
+        stage.classList.add("boss-warning-alert");
+        window.setTimeout(() => {
+          stage.classList.remove("boss-warning-alert");
+          stage.style.removeProperty("--boss-warning-duration");
+        }, durationMs + 80);
       }
     }
 
@@ -7511,7 +7582,7 @@
   function canTriggerSurpriseBoss() {
     const enemy = state.combat.enemy;
     if (state.combat.repairing || state.combat.playerHp <= 0) return false;
-    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || isBossIntroActive(enemy)) return false;
+    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || pendingBossChallengeTimer || isBossIntroActive(enemy)) return false;
     if (enemy?.isBoss || enemy?.defeated) return false;
     return true;
   }
@@ -7771,12 +7842,17 @@
   function moveToPreviousMapAfterSinking() {
     const previousRegion = state.regionIndex;
     if (previousRegion <= 0) return false;
-    state.regionIndex = Math.max(0, previousRegion - 1);
-    state.combat.enemy = null;
-    state.combat.spawnTimer = 0;
-    addLog(`Navio recuou para ${getCombatRegionLabel(REGIONS[state.regionIndex])} apos afundar.`, "danger-text");
-    queueRegionPreload(state.regionIndex);
-    scheduleNearbyRegionPreload();
+    const nextRegionIndex = Math.max(0, previousRegion - 1);
+    addLog(`Navio recuou para ${getCombatRegionLabel(REGIONS[nextRegionIndex])} apos afundar.`, "danger-text");
+    queueRegionPreload(nextRegionIndex);
+    playCombatMapTransition(() => {
+      state.regionIndex = nextRegionIndex;
+      state.combat.enemy = null;
+      state.combat.spawnTimer = 0;
+      syncCaptainEquipmentState(state);
+      scheduleNearbyRegionPreload();
+      renderAll(false);
+    });
     return true;
   }
 
@@ -7927,6 +8003,7 @@
     state.combat.spawnTimer = -advanceDelay;
     pendingBossMapAdvanceTimer = window.setTimeout(() => {
       pendingBossMapAdvanceTimer = 0;
+      let applyBossAutoTravel = null;
       if (defeatedRegionIndex < REGIONS.length - 1) {
         const completedPrologue = defeatedRegionIndex === PRIMITIVE_REGIONS.length - 1;
         const nextRegionIndex = defeatedRegionIndex + 1;
@@ -7934,9 +8011,13 @@
         state.unlockedRegions = Math.max(state.unlockedRegions, nextRegionIndex + 1);
         state.maxRegionReached = Math.max(state.maxRegionReached, nextRegionIndex);
         if (shouldAutoTravel) {
-          state.regionIndex = nextRegionIndex;
-          state.combat.enemy = null;
-          state.combat.spawnTimer = -700;
+          applyBossAutoTravel = () => {
+            state.regionIndex = nextRegionIndex;
+            state.combat.enemy = null;
+            state.combat.spawnTimer = -700;
+            syncCaptainEquipmentState(state);
+            scheduleNearbyRegionPreload();
+          };
         }
         queueRegionPreload(nextRegionIndex);
         scheduleNearbyRegionPreload();
@@ -7948,8 +8029,16 @@
         if (state.regionIndex === defeatedRegionIndex) state.combat.running = false;
         toast("Você conquistou o Abismo e se tornou uma lenda!", "gold-toast");
       }
-      renderAll(false);
-      saveGame();
+      if (applyBossAutoTravel) {
+        playCombatMapTransition(() => {
+          applyBossAutoTravel();
+          renderAll(false);
+          saveGame();
+        });
+      } else {
+        renderAll(false);
+        saveGame();
+      }
     }, advanceDelay);
   }
 
@@ -8082,6 +8171,7 @@
     }
     if (!state.combat.enemy) {
       if (isArenaSceneActive()) return;
+      if (pendingBossChallengeTimer) return;
       if (!ensureCriticalCombatAssetsReady()) {
         state.combat.spawnTimer = 0;
         return;
@@ -8536,11 +8626,6 @@
     const current = currentTier?.bonuses || {};
     const next = nextTier?.bonuses || {};
     const bonusDelta = bonusKey => Math.max(0, Number(next[bonusKey] || 0) - Number(current[bonusKey] || 0));
-    if (key === "lightHands") {
-      const currentRewardMultiplier = getGoldGainMultiplier() + getXpGainMultiplier();
-      const rewardDelta = bonusDelta("goldGainBonus") + bonusDelta("xpGainBonus");
-      return currentRewardMultiplier * rewardDelta * 100 / cost;
-    }
     if (key === "sword") {
       return Math.max(1, Number(nextStats.damage || 0) - Number(currentStats.damage || 0)) / cost;
     }
@@ -8553,9 +8638,8 @@
   }
 
   function captainRecommendationPriority(candidate) {
-    if (candidate?.kind === "captainEquipment" && candidate.key === "lightHands") return 0;
-    if (candidate?.kind === "captainEquipment" && candidate.key === "sword") return 1;
-    if (candidate?.kind === "captainEquipment") return 2;
+    if (candidate?.kind === "captainEquipment" && candidate.key === "sword") return 0;
+    if (candidate?.kind === "captainEquipment") return 1;
     if (candidate?.kind === "captainManualSkill" && candidate.key === CAPTAIN_MANUAL_SKILL_KEY) return 4;
     if (candidate?.kind === "captainManualSkill") return 3;
     return 5;
@@ -8744,10 +8828,12 @@
     $("#boss-name").textContent = region.boss;
     const defeated = state.bossesDefeated[state.regionIndex];
     const available = kills >= 100 && !defeated;
+    const bossPending = Boolean(pendingBossChallengeTimer && pendingBossChallengeRegionIndex === state.regionIndex);
     $("#progress-title").textContent = defeated ? "Região conquistada" : available ? "O boss emergiu!" : "O boss aguarda";
     $("#boss-status").textContent = defeated ? "Boss derrotado • continue farmando" : available ? "Desafio disponível agora" : `Faltam ${Math.max(0, 100 - kills)} vitórias`;
-    $("#boss-button").disabled = !available || Boolean(state.combat.enemy?.isBoss);
-    $("#boss-button").textContent = defeated ? "Boss derrotado" : state.combat.enemy?.isBoss ? "Em combate" : "Desafiar boss";
+    if (bossPending) $("#boss-status").textContent = "Alerta de perigo";
+    $("#boss-button").disabled = !available || bossPending || Boolean(state.combat.enemy?.isBoss);
+    $("#boss-button").textContent = defeated ? "Boss derrotado" : bossPending ? "Preparando..." : state.combat.enemy?.isBoss ? "Em combate" : "Desafiar boss";
     const prevMapButton = $("#boss-prev-map");
     const nextMapButton = $("#boss-next-map");
     if (prevMapButton) {
@@ -10292,6 +10378,7 @@
     };
     cancelPendingBossMapAdvance();
     cancelPendingSurpriseBoss();
+    cancelPendingBossChallenge();
     clearPendingChests();
     state = createDefaultState();
     Object.assign(state, permanent);
@@ -10456,7 +10543,7 @@
   }
 
   function startArenaChallenge(playerId) {
-    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer) return toast("Aguarde o evento atual terminar antes de entrar na Arena.", "danger-toast");
+    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || pendingBossChallengeTimer) return toast("Aguarde o evento atual terminar antes de entrar na Arena.", "danger-toast");
     if (isArenaSceneActive()) return toast("Um duelo da Arena já está em andamento.", "danger-toast");
     const opponent = getArenaOpponentById(playerId);
     if (!opponent) return toast("Esse inimigo da Arena não está mais disponível.", "danger-toast");
@@ -11000,7 +11087,13 @@
     if (index === state.regionIndex) return;
     cancelPendingBossMapAdvance();
     cancelPendingSurpriseBoss();
+    cancelPendingBossChallenge();
     const issues = endgameRequirementIssues(index);
+    if (combatMapTransitionTimer || combatMapTransitionSwapTimer) return;
+    activeMapInfoIndex = null;
+    if (currentScreen === "maps") renderMaps();
+    queueRegionPreload(index);
+    playCombatMapTransition(() => {
     state.regionIndex = index;
     activeMapInfoIndex = null;
     syncCaptainEquipmentState(state);
@@ -11009,16 +11102,24 @@
     toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa regiao.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
     if (issues.length) addLog(`Alerta de endgame: recomenda-se evoluir antes de avancar. ${issues.join(" - ")}.`, "danger-text");
     commitGame(true);
+    });
   }
 
   function handleMapSelection(target) {
-    if (!target.dataset.selectMap) return;
+    if (target.dataset.selectMap === undefined) return;
     if (isArenaSceneActive()) return toast("Volte ao mapa normal antes de trocar de rota.", "danger-toast");
     const index = Number(target.dataset.selectMap);
+    if (!Number.isInteger(index) || index < 0 || index >= REGIONS.length || index === state.regionIndex) return;
     if (!(index < state.unlockedRegions)) return;
     cancelPendingBossMapAdvance();
     cancelPendingSurpriseBoss();
+    cancelPendingBossChallenge();
     const issues = endgameRequirementIssues(index);
+    if (combatMapTransitionTimer || combatMapTransitionSwapTimer) return;
+    activeMapInfoIndex = null;
+    if (currentScreen === "maps") renderMaps();
+    queueRegionPreload(index);
+    playCombatMapTransition(() => {
     state.regionIndex = index;
     activeMapInfoIndex = null;
     syncCaptainEquipmentState(state);
@@ -11027,6 +11128,7 @@
     toast(issues.length ? `Rota definida: ${REGIONS[index].name}. Poder Naval baixo para essa região.` : `Rota definida: ${REGIONS[index].name}.`, issues.length ? "danger-toast" : "");
     if (issues.length) addLog(`Alerta de endgame: recomenda-se evoluir antes de avançar. ${issues.join(" • ")}.`, "danger-text");
     commitGame(true);
+    });
   }
 
   function handleGlobalButtonClick(event) {
@@ -11218,6 +11320,7 @@
 
   function challengeBoss(options = {}) {
     const automatic = Boolean(options?.automatic);
+    if (pendingBossChallengeTimer) return true;
     if (shouldShowInitialCaptainGate()) {
       if (!automatic) toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
       return false;
@@ -11235,12 +11338,38 @@
       renderAll(false);
       return false;
     }
+    const targetRegionIndex = state.regionIndex;
+    const startBossAfterWarning = () => {
+      pendingBossChallengeTimer = 0;
+      pendingBossChallengeRegionIndex = -1;
+      if (isArenaSceneActive() || state.regionIndex !== targetRegionIndex || state.regionKills[targetRegionIndex] < 100 || state.bossesDefeated[targetRegionIndex]) {
+        renderAll(false);
+        return;
+      }
+      if (!ensureCriticalCombatAssetsReady()) {
+        pendingBossChallengeRegionIndex = targetRegionIndex;
+        pendingBossChallengeTimer = window.setTimeout(startBossAfterWarning, 250);
+        return;
+      }
+      state.combat.running = true;
+      state.hasStarted = true;
+      state.combat.repairing = false;
+      state.combat.enemy = null;
+      state.combat.spawnTimer = 0;
+      scene.resetPlayerShipAnimation();
+      spawnEnemy(true);
+      renderAll(false);
+    };
     state.combat.running = true;
     state.hasStarted = true;
     trackAction("firstCombat");
     state.combat.repairing = false;
+    state.combat.enemy = null;
+    state.combat.spawnTimer = -BOSS_WARNING_DURATION_MS;
     scene.resetPlayerShipAnimation();
-    spawnEnemy(true);
+    scene.triggerBossWarningAlert(BOSS_WARNING_DURATION_MS);
+    pendingBossChallengeRegionIndex = targetRegionIndex;
+    pendingBossChallengeTimer = window.setTimeout(startBossAfterWarning, BOSS_WARNING_DURATION_MS);
     renderAll(false);
     return true;
   }
@@ -11249,6 +11378,7 @@
     localStorage.removeItem(SAVE_KEY);
     cancelPendingBossMapAdvance();
     cancelPendingSurpriseBoss();
+    cancelPendingBossChallenge();
     clearPendingChests();
     state = createDefaultState();
     $("#confirm-modal").classList.add("hidden");
