@@ -255,10 +255,15 @@
   }
 
   const CHEST_SPRITE_PATH = "assets/chests/";
-  const CHEST_SPRITE_VERSION = "3";
+  const CHEST_SPRITE_VERSION = "4";
   const CHEST_DROP_CHANCES = { monster: .05, boss: .30 };
   const CHEST_PIRATE_COIN_CHANCE = .10;
-  const CHEST_OPEN_DURATION = .85;
+  const CHEST_OPEN_DURATION = .95;
+  const CHEST_FRAME_ANCHOR_Y = .742;
+  const CHEST_IDLE_GLOW_CYCLE = 1.9;
+  const CHEST_OPEN_CROSSFADE = .24;
+  const CHEST_BOB_SPEED = 1.05;
+  const CHEST_BOB_AMOUNT = 1.65;
   const CHEST_DEFINITIONS = {
     common: { id: "common", rarity: "comum", rarityKey: "common", file: "baumonstrocomum.png", gold: 5000, width: 72 },
     uncommon: { id: "uncommon", rarity: "incomum", rarityKey: "uncommon", file: "baumonstroincomum.png", gold: 15000, width: 74 },
@@ -287,6 +292,10 @@
 
   function getChestSprite(id) {
     return CHEST_SPRITES[id];
+  }
+
+  function preloadChestSprites() {
+    Object.values(CHEST_SPRITES).forEach(requestChestSprite);
   }
 
   function measureChestSpriteFrameBounds(sprite, source) {
@@ -4249,11 +4258,14 @@
   }
 
   function openMissionRewardShortcut() {
-    activeMissionFilter = "Concluídas";
-    statsPanelsExpanded.quests = true;
-    navigate("missions");
-    claimAllMissionRewards();
-    requestAnimationFrame(() => $("[data-stats-panel=\"quests\"]")?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
+    statsPanelsExpanded.quests = false;
+    navigate("stats");
+    requestAnimationFrame(() => {
+      syncStatsPanelExpansion($("#screen-stats"));
+      const claimButton = $(".stats-quick-claim-button");
+      claimButton?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      claimButton?.focus?.({ preventScroll: true });
+    });
   }
 
   function normalizeText(value = "") {
@@ -5945,7 +5957,7 @@
       const waterlineY = y ?? (chest?.yRatio ?? .66) * this.height;
       return {
         x: centerX - targetWidth * .5,
-        y: waterlineY - targetHeight * .72,
+        y: waterlineY - targetHeight * CHEST_FRAME_ANCHOR_Y,
         width: targetWidth,
         height: targetHeight * .9
       };
@@ -6117,7 +6129,6 @@
       const y = (chest?.yRatio ?? .66) * this.height - 8;
       const color = rewards[0]?.color || "#ffe268";
       this.bursts.push({ x, y: y - 24, age: 0, color });
-      this.aquaticBursts.push({ x, y: y + 4, age: 0, color, kind: "chest" });
       rewards.forEach((reward, index) => {
         this.lootFloaters.push({ text: reward.text, x, y: y + index * 24, age: 0, color: reward.color || color });
       });
@@ -6285,6 +6296,36 @@
       ctx.restore();
     }
 
+    drawChestSpriteFrame(ctx, source, sprite, frame, targetWidth, targetHeight, alpha = 1) {
+      const sourceWidth = source.width || source.naturalWidth;
+      const sourceHeight = source.height || source.naturalHeight;
+      const frameCount = Math.max(1, sprite.frames || 3);
+      const frameWidth = Math.floor(sourceWidth / frameCount);
+      const frameHeight = sourceHeight;
+      if (!frameWidth || !frameHeight || alpha <= 0) return;
+      measureChestSpriteFrameBounds(sprite, source);
+      const frameBounds = sprite.frameBounds?.[frame];
+      const referenceBounds = sprite.referenceBounds;
+      const frameScale = targetWidth / frameWidth;
+      const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
+      const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
+      ctx.save();
+      ctx.globalAlpha *= alpha;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        source,
+        frame * frameWidth,
+        0,
+        frameWidth,
+        frameHeight,
+        -targetWidth * .5 + anchorOffsetX,
+        -targetHeight * CHEST_FRAME_ANCHOR_Y + anchorOffsetY,
+        targetWidth,
+        targetHeight
+      );
+      ctx.restore();
+    }
+
     drawChest(ctx, chest) {
       const definition = CHEST_DEFINITIONS[chest.chestId];
       if (!definition) return;
@@ -6293,47 +6334,33 @@
       const loaded = image?.complete && image.naturalWidth;
       const x = clamp((chest.xRatio ?? .52) * this.width, 24, this.width - 24);
       const baseY = clamp((chest.yRatio ?? .66) * this.height, this.height * .42 + 34, this.height - 12);
-      const bob = Math.sin(this.time * 2.25 + chest.seed) * 3.2;
+      const bob = Math.sin(this.time * CHEST_BOB_SPEED + chest.seed) * CHEST_BOB_AMOUNT;
       const y = baseY + bob;
       const targetWidth = definition.width * this.getChestScale();
       const targetHeight = targetWidth;
-      const frame = chest.opened ? 2 : Math.floor((this.time + chest.seed) / .42) % 2;
-      const openPulse = chest.opened ? Math.sin(clamp(chest.openAge / .28, 0, 1) * Math.PI) * .08 : 0;
+      const glowCycle = ((this.time + chest.seed) % CHEST_IDLE_GLOW_CYCLE) / CHEST_IDLE_GLOW_CYCLE;
+      const glowAlpha = Math.sin(glowCycle * Math.PI) ** 2;
+      const frame = chest.opened ? 2 : (glowAlpha > .48 ? 1 : 0);
+      const openBlend = chest.opened ? clamp(chest.openAge / CHEST_OPEN_CROSSFADE, 0, 1) : 0;
+      const openEase = openBlend * openBlend * (3 - 2 * openBlend);
+      const openPulse = chest.opened ? Math.sin(clamp(chest.openAge / .34, 0, 1) * Math.PI) * .045 : 0;
       const fade = chest.opened && chest.openAge > .56 ? clamp(1 - (chest.openAge - .56) / Math.max(.01, CHEST_OPEN_DURATION - .56), 0, 1) : 1;
       chest.hitbox = this.getChestRect(chest, x, y);
       ctx.save();
       ctx.translate(x, y);
       ctx.globalAlpha = fade;
-      ctx.fillStyle = "rgba(3,18,28,.24)";
-      ctx.beginPath();
-      ctx.ellipse(0, targetWidth * .09, targetWidth * .42, targetWidth * .105, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(223,255,247,.58)";
-      ctx.lineWidth = Math.max(1.2, targetWidth * .022);
-      for (let i = 0; i < 2; i++) {
-        ctx.globalAlpha = fade * (.46 - i * .16);
-        ctx.beginPath();
-        ctx.ellipse(0, targetWidth * (.08 + i * .035), targetWidth * (.35 + i * .13), targetWidth * (.045 + i * .015), 0, Math.PI * .04, Math.PI * .96);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = fade;
       ctx.scale(1 + openPulse, 1 + openPulse);
       ctx.shadowColor = RARITY_COLORS[definition.rarityKey] || "#ffd37a";
-      ctx.shadowBlur = chest.opened ? 16 : frame === 1 ? 10 : 4;
+      ctx.shadowBlur = chest.opened ? 14 : 4 + glowAlpha * 7;
       if (loaded) {
         const source = sprite.canvas || image;
-        const sourceWidth = source.width || image.naturalWidth;
-        const sourceHeight = source.height || image.naturalHeight;
-        const frameWidth = Math.floor(sourceWidth / 3);
-        const frameHeight = sourceHeight;
-        const frameScale = targetWidth / frameWidth;
-        measureChestSpriteFrameBounds(sprite, source);
-        const frameBounds = sprite.frameBounds?.[frame];
-        const referenceBounds = sprite.referenceBounds;
-        const anchorOffsetX = frameBounds && referenceBounds ? (referenceBounds.centerX - frameBounds.centerX) * frameScale : 0;
-        const anchorOffsetY = frameBounds && referenceBounds ? (referenceBounds.bottomY - frameBounds.bottomY) * frameScale : 0;
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(source, frame * frameWidth, 0, frameWidth, frameHeight, -targetWidth * .5 + anchorOffsetX, -targetHeight * .72 + anchorOffsetY, targetWidth, targetHeight);
+        if (chest.opened) {
+          this.drawChestSpriteFrame(ctx, source, sprite, 1, targetWidth, targetHeight, 1 - openEase);
+          this.drawChestSpriteFrame(ctx, source, sprite, 2, targetWidth, targetHeight, openEase);
+        } else {
+          this.drawChestSpriteFrame(ctx, source, sprite, 0, targetWidth, targetHeight, 1);
+          this.drawChestSpriteFrame(ctx, source, sprite, 1, targetWidth, targetHeight, glowAlpha * .72);
+        }
       } else {
         this.drawChestFallback(ctx, targetWidth, frame, definition);
       }
@@ -11935,6 +11962,8 @@
   updateMobileCombatFullscreen();
   refreshLeaderboard({ force: true });
   beginCombatAssetPreload();
+  if ("requestIdleCallback" in window) window.requestIdleCallback(preloadChestSprites, { timeout: 2200 });
+  else window.setTimeout(preloadChestSprites, 900);
   preloadMapBoardAssets();
   scheduleNearbyRegionPreload();
   requestAnimationFrame(gameLoop);

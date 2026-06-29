@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v191-quest-shortcut";
+const CACHE = "pirates-abyss-v193-chest-animation";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=110",
-  "game.js?v=203",
+  "game.js?v=205",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",
