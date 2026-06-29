@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v180-captain-editor-final";
+const CACHE = "pirates-abyss-v181-combat-cues";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=106",
-  "game.js?v=184",
+  "styles.css?v=108",
+  "game.js?v=190",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/reparo_barco_3sprites.png",
