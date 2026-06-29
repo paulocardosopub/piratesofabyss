@@ -1,9 +1,9 @@
-const CACHE = "pirates-abyss-v185-jornada-abismo";
+const CACHE = "pirates-abyss-v186-xp-sprite-log";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=108",
-  "game.js?v=194",
+  "game.js?v=198",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

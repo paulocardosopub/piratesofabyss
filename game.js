@@ -346,16 +346,16 @@
     { name: "Baía dos Corsários", weather: "Fumaça de canhões", description: "Esconderijos rochosos e a elite dos contrabandistas.", boss: "Almirante Negro", enemies: ["Corveta Corsária", "Brigantina Negra", "Contrabandista de Armas", "Carrasco da Baía"], drops: { ferro: .20, polvora: .15 }, baseHp: 740, baseDamage: 61, gold: 72, goldRange: [50, 95], bossGold: [4000, 7500], xp: 135, sky: "#bd7964", sea: "#294b5d", land: "#4a4540", kind: "CORSÁRIO" },
     { name: "Oceano Profundo", weather: "Correntes abissais", description: "Águas escuras habitadas por feras e caçadores.", boss: "Megalodon Ancestral", enemies: ["Baleeiro Sombrio", "Caçador Abissal", "Serpente Marinha", "Nau do Recife"], drops: { perola: .075, cristal: .08 }, baseHp: 1550, baseDamage: 125, gold: 108, goldRange: [75, 140], bossGold: [7500, 12000], xp: 278, sky: "#2f6680", sea: "#092f48", land: "#364f52", kind: "CRIATURA" },
     { name: "Triângulo Maldito", weather: "Névoa espectral", description: "Navios fantasmas surgem e somem dentro da névoa.", boss: "Holandês Voador", enemies: ["Escuna Fantasma", "Tripulação Perdida", "Nau Espectral", "Vulto do Triângulo"], drops: { ambar: .045, cristal: .095 }, baseHp: 3250, baseDamage: 254, gold: 145, goldRange: [100, 190], bossGold: [12000, 20000], xp: 568, sky: "#536b6e", sea: "#173f4b", land: "#455653", kind: "FANTASMA" },
-    { name: "Mar Imperial", weather: "Ventos de guerra", description: "Fortificações e frotas militares dominam o horizonte.", boss: "Grande Armada Imperial", enemies: ["Fragata Imperial", "Galeão Real", "Navio de Linha", "Encouraçado Imperial", "Frota Imperial"], drops: { ferro: .24, cristal: .095 }, baseHp: 22000, baseDamage: 1300, gold: 190, goldRange: [130, 250], bossGold: [20000, 35000], xp: 1650, sky: "#8ca7bb", sea: "#2b5c78", land: "#6c7568", kind: "MARINHA" },
-    { name: "Arquipélago Vulcânico", weather: "Cinzas no ar", description: "Rochas negras, lava e criaturas cobertas de magma.", boss: "Dragão Marinho Vulcânico", enemies: ["Corsário Vulcânico", "Bote Flamejante", "Guardião de Lava", "Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .2, ferro: .22, cristal: .1 }, baseHp: 52000, baseDamage: 3200, gold: 240, goldRange: [160, 320], bossGold: [35000, 60000], xp: 3600, sky: "#8c4d3e", sea: "#373743", land: "#342e2b", kind: "VULCÂNICO" },
-    { name: "Reino Congelado", weather: "Nevasca cortante", description: "Icebergs, monstros gelados e navios presos no gelo.", boss: "Jormungandr de Gelo", enemies: ["Navio Congelado", "Corsário de Gelo", "Serpente Glacial", "Guardião Congelado", "Fragata Ártica"], drops: { cristal: .12, gema: .045 }, baseHp: 125000, baseDamage: 7200, gold: 335, goldRange: [220, 450], bossGold: [60000, 100000], xp: 7800, sky: "#b4d4df", sea: "#447b91", land: "#d2e2e1", kind: "GLACIAL" },
-    { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Criatura Abissal", "Navio Amaldiçoado", "Tentáculo Menor", "Leviatã Jovem", "Guardião do Abismo", "Frota Fantasma"], drops: { fragmentos: .008, gema: .05, cristal: .13 }, baseHp: 320000, baseDamage: 18000, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 18000, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" },
-    { name: "Costa das Couraças", weather: "Couraças ancestrais", description: "Répteis gigantes cercam a entrada da nova sequência do Abismo.", boss: "Deinosuchus do Mangue", enemies: ["Réptil das Raízes", "Ictiossauro"], drops: { cristal: .14, perola: .085, gema: .052, fragmentos: .01 }, baseHp: 370000, baseDamage: 21500, gold: 560, goldRange: [360, 760], bossGold: [150000, 240000], xp: 23000, sky: "#516f67", sea: "#0c3340", land: "#334d3e", kind: "ABISSAL" },
-    { name: "Mar de Ventosa", weather: "Redemoinhos ocultos", description: "Tentáculos misteriosos rasgam a superfície de um mar escuro.", boss: "Leviatã Jurássico", enemies: ["Tentáculo Guardião", "Leviatã Menor"], drops: { cristal: .15, perola: .092, gema: .056, fragmentos: .012 }, baseHp: 430000, baseDamage: 25000, gold: 650, goldRange: [420, 890], bossGold: [190000, 300000], xp: 29500, sky: "#263d56", sea: "#061d35", land: "#202e40", kind: "ABISSAL" },
-    { name: "Mandíbula Serpente", weather: "Mar de escamas", description: "Serpentes marinhas e mosassauros dominam águas agressivas.", boss: "Mosasaurus Jovem", enemies: ["Plesiossauro", "Serpente Marinha"], drops: { cristal: .16, perola: .1, gema: .06, fragmentos: .014 }, baseHp: 500000, baseDamage: 29000, gold: 760, goldRange: [500, 1040], bossGold: [240000, 380000], xp: 38000, sky: "#35596d", sea: "#073044", land: "#2b4652", kind: "CRIATURA" },
-    { name: "Caldeira Viva", weather: "Cinzas abissais", description: "Monstros marinhos vulcânicos atravessam lava, fumaça e mar fervente.", boss: "Dragão Marinho Vulcânico", enemies: ["Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .24, cristal: .18, gema: .065, fragmentos: .016 }, baseHp: 590000, baseDamage: 34000, gold: 900, goldRange: [590, 1220], bossGold: [310000, 480000], xp: 49000, sky: "#753e35", sea: "#211b24", land: "#3d2924", kind: "VULCÂNICO" },
-    { name: "Presas de Gelo", weather: "Nevasca profunda", description: "Criaturas congeladas e navios espectrais quebram o gelo do Abismo.", boss: "Jormungandr de Gelo", enemies: ["Serpente de Gelo", "Navio Fantasma do Gelo"], drops: { cristal: .19, gema: .075, perola: .11, fragmentos: .018 }, baseHp: 700000, baseDamage: 41000, gold: 1080, goldRange: [710, 1450], bossGold: [400000, 620000], xp: 63500, sky: "#95bdcb", sea: "#1c526b", land: "#b8d2d5", kind: "GLACIAL" },
-    { name: "Covil da Morte", weather: "Predador desperto", description: "O covil do predador reúne culto sombrio, leviatãs e a ameaça final.", boss: "Kraken Primordial", enemies: ["Leviatã Menor", "Cultista do Kraken"], drops: { fragmentos: .024, gema: .09, cristal: .21, perola: .12 }, baseHp: 840000, baseDamage: 52000, gold: 1320, goldRange: [860, 1760], bossGold: [520000, 820000], xp: 82000, sky: "#111d31", sea: "#04152a", land: "#1b2230", kind: "ABISSAL" }
+    { name: "Mar Imperial", weather: "Ventos de guerra", description: "Fortificações e frotas militares dominam o horizonte.", boss: "Grande Armada Imperial", enemies: ["Fragata Imperial", "Galeão Real", "Navio de Linha", "Encouraçado Imperial", "Frota Imperial"], drops: { ferro: .24, cristal: .095 }, baseHp: 22000, baseDamage: 1300, gold: 190, goldRange: [130, 250], bossGold: [20000, 35000], xp: 602, sky: "#8ca7bb", sea: "#2b5c78", land: "#6c7568", kind: "MARINHA" },
+    { name: "Arquipélago Vulcânico", weather: "Cinzas no ar", description: "Rochas negras, lava e criaturas cobertas de magma.", boss: "Dragão Marinho Vulcânico", enemies: ["Corsário Vulcânico", "Bote Flamejante", "Guardião de Lava", "Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .2, ferro: .22, cristal: .1 }, baseHp: 52000, baseDamage: 3200, gold: 240, goldRange: [160, 320], bossGold: [35000, 60000], xp: 638, sky: "#8c4d3e", sea: "#373743", land: "#342e2b", kind: "VULCÂNICO" },
+    { name: "Reino Congelado", weather: "Nevasca cortante", description: "Icebergs, monstros gelados e navios presos no gelo.", boss: "Jormungandr de Gelo", enemies: ["Navio Congelado", "Corsário de Gelo", "Serpente Glacial", "Guardião Congelado", "Fragata Ártica"], drops: { cristal: .12, gema: .045 }, baseHp: 125000, baseDamage: 7200, gold: 335, goldRange: [220, 450], bossGold: [60000, 100000], xp: 676, sky: "#b4d4df", sea: "#447b91", land: "#d2e2e1", kind: "GLACIAL" },
+    { name: "Abismo do Kraken", weather: "O abismo desperta", description: "Redemoinhos, tentáculos e riquezas lendárias.", boss: "Kraken Primordial", enemies: ["Criatura Abissal", "Navio Amaldiçoado", "Tentáculo Menor", "Leviatã Jovem", "Guardião do Abismo", "Frota Fantasma"], drops: { fragmentos: .008, gema: .05, cristal: .13 }, baseHp: 320000, baseDamage: 18000, gold: 475, goldRange: [300, 650], bossGold: [100000, 180000], xp: 717, sky: "#18293f", sea: "#071f38", land: "#242b38", kind: "ABISSAL" },
+    { name: "Costa das Couraças", weather: "Couraças ancestrais", description: "Répteis gigantes cercam a entrada da nova sequência do Abismo.", boss: "Deinosuchus do Mangue", enemies: ["Réptil das Raízes", "Ictiossauro"], drops: { cristal: .14, perola: .085, gema: .052, fragmentos: .01 }, baseHp: 370000, baseDamage: 21500, gold: 560, goldRange: [360, 760], bossGold: [150000, 240000], xp: 760, sky: "#516f67", sea: "#0c3340", land: "#334d3e", kind: "ABISSAL" },
+    { name: "Mar de Ventosa", weather: "Redemoinhos ocultos", description: "Tentáculos misteriosos rasgam a superfície de um mar escuro.", boss: "Leviatã Jurássico", enemies: ["Tentáculo Guardião", "Leviatã Menor"], drops: { cristal: .15, perola: .092, gema: .056, fragmentos: .012 }, baseHp: 430000, baseDamage: 25000, gold: 650, goldRange: [420, 890], bossGold: [190000, 300000], xp: 805, sky: "#263d56", sea: "#061d35", land: "#202e40", kind: "ABISSAL" },
+    { name: "Mandíbula Serpente", weather: "Mar de escamas", description: "Serpentes marinhas e mosassauros dominam águas agressivas.", boss: "Mosasaurus Jovem", enemies: ["Plesiossauro", "Serpente Marinha"], drops: { cristal: .16, perola: .1, gema: .06, fragmentos: .014 }, baseHp: 500000, baseDamage: 29000, gold: 760, goldRange: [500, 1040], bossGold: [240000, 380000], xp: 854, sky: "#35596d", sea: "#073044", land: "#2b4652", kind: "CRIATURA" },
+    { name: "Caldeira Viva", weather: "Cinzas abissais", description: "Monstros marinhos vulcânicos atravessam lava, fumaça e mar fervente.", boss: "Dragão Marinho Vulcânico", enemies: ["Carapaça Vulcânica", "Dragão Marinho Jovem"], drops: { pedra: .24, cristal: .18, gema: .065, fragmentos: .016 }, baseHp: 590000, baseDamage: 34000, gold: 900, goldRange: [590, 1220], bossGold: [310000, 480000], xp: 905, sky: "#753e35", sea: "#211b24", land: "#3d2924", kind: "VULCÂNICO" },
+    { name: "Presas de Gelo", weather: "Nevasca profunda", description: "Criaturas congeladas e navios espectrais quebram o gelo do Abismo.", boss: "Jormungandr de Gelo", enemies: ["Serpente de Gelo", "Navio Fantasma do Gelo"], drops: { cristal: .19, gema: .075, perola: .11, fragmentos: .018 }, baseHp: 700000, baseDamage: 41000, gold: 1080, goldRange: [710, 1450], bossGold: [400000, 620000], xp: 959, sky: "#95bdcb", sea: "#1c526b", land: "#b8d2d5", kind: "GLACIAL" },
+    { name: "Covil da Morte", weather: "Predador desperto", description: "O covil do predador reúne culto sombrio, leviatãs e a ameaça final.", boss: "Kraken Primordial", enemies: ["Leviatã Menor", "Cultista do Kraken"], drops: { fragmentos: .024, gema: .09, cristal: .21, perola: .12 }, baseHp: 840000, baseDamage: 52000, gold: 1320, goldRange: [860, 1760], bossGold: [520000, 820000], xp: 1017, sky: "#111d31", sea: "#04152a", land: "#1b2230", kind: "ABISSAL" }
   ];
   const FIXED_BACKGROUND_PATH = "assets/newbackgrounds/";
   const ARENA_BACKGROUND_FILE = "00 - Arena.png";
@@ -4445,7 +4445,7 @@
     "06_Ictiossauro_sprite_9frames.png",
     "07_Reptil_das_Raizes_sprite_9frames.png",
     "07_Saqueador_da_Selva_sprite_9frames.png",
-    "08_Boss_Deinosuchus_do_Mangue_sprite_9frames.png",
+    "08_Boss_Deinosuchus_do_Mangue_sprite_5frames.png",
     "08_Boss_Mosasaurus_Jovem_sprite_9frames.png",
     "MAP-03_01_Canoa_de_Guerra_sprite_9frames.png",
     "MAP-03_02_Plesiossauro_sprite_9frames.png",
@@ -8093,7 +8093,6 @@
     const previousRegion = state.regionIndex;
     if (previousRegion <= 0) return false;
     const nextRegionIndex = Math.max(0, previousRegion - 1);
-    addLog(`Navio recuou para ${getCombatRegionLabel(REGIONS[nextRegionIndex])} apos afundar.`, "danger-text");
     queueRegionPreload(nextRegionIndex);
     playCombatMapTransition(() => {
       state.regionIndex = nextRegionIndex;
@@ -8103,7 +8102,7 @@
       scheduleNearbyRegionPreload();
       renderAll(false);
     });
-    return true;
+    return nextRegionIndex;
   }
 
   function applyPausedHpRegen(dt) {
@@ -8166,7 +8165,7 @@
     const resumeRunning = Boolean(state.combat.running);
     const willRetreat = defeatedRegionIndex > 0;
     chargeAutoRepairFee(defeatedRegionIndex, willRetreat);
-    moveToPreviousMapAfterSinking();
+    const retreatRegionIndex = moveToPreviousMapAfterSinking();
     state.combat.repairing = true;
     state.combat.repairStarted = performance.now();
     state.combat.repairDuration = AUTO_REPAIR_DURATION_MS;
@@ -8177,8 +8176,12 @@
     state.combat.running = false;
     scene.showRepairEffect(AUTO_REPAIR_DURATION_MS / 1000);
     trackAction("repair");
-    addLog(`Derrota contra ${defeatedBy}. Reparo iniciado.`, "danger-text");
-    toast("Navio destruído — reparo automático em andamento.", "danger-toast");
+    const defeatMapLabel = `${defeatedRegionIndex + 1} - ${REGIONS[defeatedRegionIndex]?.name || "Mapa atual"}`;
+    const retreatMapLabel = retreatRegionIndex !== false ? `${retreatRegionIndex + 1} - ${REGIONS[retreatRegionIndex]?.name || "mapa anterior"}` : "";
+    addLog(retreatMapLabel
+      ? `Derrota contra ${defeatedBy} no mapa ${defeatMapLabel}. Voce voltou para o mapa ${retreatMapLabel}. Reparo iniciado.`
+      : `Derrota contra ${defeatedBy}. Reparo iniciado.`, "danger-text");
+    toast(retreatMapLabel ? `Navio destruído — voltando para ${REGIONS[retreatRegionIndex].name}.` : "Navio destruído — reparo automático em andamento.", "danger-toast");
   }
 
   function finishRepair(forced = false) {
@@ -10986,7 +10989,7 @@
     const list = items => items.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
     const powerBreakdown = stats.powerBreakdown || getNavalPowerV2Breakdown(stats);
     $("#combat-stats").innerHTML = list([
-      ["Poder Naval", formatNumber(stats.power)], ["Ofensiva", formatNumber(powerBreakdown.offense)], ["Resistência", formatNumber(powerBreakdown.survival)], ["Bônus", formatNumber(powerBreakdown.bonuses)], ["Vida atual / máxima", `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`], ["Dano do navio", formatNumber(stats.damage)], ["DPS do navio", formatNumber(stats.shipDps)], ["DPS das skills", formatNumber(stats.skillDps)], ["DPS do pet", formatNumber(stats.petDps)], ["DPS total", formatNumber(stats.dps)], ["Velocidade", formatNumber(stats.speed)], ["Intervalo ataque", `${Math.round(stats.attackInterval)}ms`], ["Bônus vel. ataque", `+${Math.round(stats.attackSpeedBonus * 100)}%`], ["Armadura", formatNumber(stats.armor)], ["Redução de dano", `${Math.round(stats.armorReduction * 100)}%`], ["Precisão", `${Math.round(stats.precision * 100)}%`], ["Crítico", `${Math.round(stats.crit * 100)}%`], ["Evasão", `${Math.round(stats.evasion * 100)}%`], ["Ataque duplo", `${Math.round(stats.doubleAttackChance * 100)}%`]
+      ["Poder Naval", formatNumber(stats.power)], ["Ofensiva", formatNumber(powerBreakdown.offense)], ["Resistência", formatNumber(powerBreakdown.survival)], ["Bônus", formatNumber(powerBreakdown.bonuses)], ["Vida atual / máxima", `${formatNumber(state.combat.playerHp)} / ${formatNumber(stats.maxHp)}`], ["Dano do navio", formatNumber(stats.damage)], ["DPS do navio", formatNumber(stats.shipDps)], ["DPS das skills", formatNumber(stats.skillDps)], ["DPS do pet", formatNumber(stats.petDps)], ["DPS total", formatNumber(stats.dps)], ["Velocidade", formatNumber(stats.speed)], ["Intervalo ataque", `${Math.round(stats.attackInterval)}ms`], ["Bônus vel. ataque", `+${Math.round(stats.attackSpeedBonus * 100)}%`], ["Armadura", formatNumber(stats.armor)], ["Redução de dano", `${Math.round(stats.armorReduction * 100)}%`], ["Precisão", `${Math.round(stats.precision * 100)}%`], ["Crítico", `${Math.round(stats.crit * 100)}%`]
     ]);
     $("#progression-stats").innerHTML = list([
       ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", state.levels.ship], ["Nível dos canhões", state.levels.cannons], ["Nível das velas", state.levels.sails], ["Nível do casco", state.levels.hull], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
