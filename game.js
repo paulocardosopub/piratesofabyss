@@ -8561,8 +8561,24 @@
     return 5;
   }
 
+  function progressRecommendationPriority(candidate) {
+    if (candidate?.kind === "fleetShip") return 0;
+    if (candidate?.kind === "fleetUpgrade") return 1;
+    if (candidate?.kind === "fleetSkill") return 2;
+    return 3;
+  }
+
   function recommendationActionMatches(candidate, attr) {
     return Boolean(candidate?.actionAttrs && candidate.actionAttrs.includes(attr));
+  }
+
+  function canRecommendFleetShip(ship) {
+    if (!ship || state.ownedShips.includes(ship.id)) return false;
+    if (!isShipUnlockedInCurrentJourney(ship)) return false;
+    const nextShip = getNextFleetShip();
+    if (!nextShip || ship.id !== nextShip.id) return false;
+    if (getShipProgressionIssues(ship).length) return false;
+    return true;
   }
 
   function buildProgressRecommendationCandidates() {
@@ -8574,7 +8590,7 @@
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const action = upgradeTableActionState("upgrade", key, cost);
       const canBuy = canAfford(cost);
-      candidates.push({ category, title: `${title} Nv. ${state.levels[key] + 1}`, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactText(getImprovementRows(key), `${formatNumber(currentStats.power)} -> ${formatNumber(nextStats.power)} poder`), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
+      candidates.push({ kind: "fleetUpgrade", category, title: `${title} Nv. ${state.levels[key] + 1}`, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactText(getImprovementRows(key), `${formatNumber(currentStats.power)} -> ${formatNumber(nextStats.power)} poder`), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
     });
     Object.entries(EQUIPMENT_META).forEach(([key, item]) => {
       if (state.equipment[key]) return;
@@ -8583,7 +8599,7 @@
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const action = upgradeTableActionState("equipment", key, cost);
       const canBuy = canAfford(cost);
-      candidates.push({ category: "Equipamento do Navio", title: item.name, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, item.effect), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
+      candidates.push({ kind: "fleetEquipment", category: "Equipamento do Navio", title: item.name, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, item.effect), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
     });
     Object.entries(SKILL_META).forEach(([key, meta]) => {
       const unlocked = isSkillUnlocked(key);
@@ -8592,18 +8608,21 @@
       const powerGain = Math.max(1, unlocked ? nextStats.power - currentStats.power : 1);
       const action = upgradeTableActionState("skill", key, cost, { blocked: !unlocked });
       const canBuy = unlocked && canAfford(cost);
-      candidates.push({ category: "Skill do Navio", title: `${meta.name} Nv. ${state.skills[key].level + 1}`, cost, powerGain, canBuy, blocked: !unlocked, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: shipSkillRecommendationImpactText(key, state.skills[key].level), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy, !unlocked) });
+      candidates.push({ kind: "fleetSkill", category: "Skill do Navio", title: `${meta.name} Nv. ${state.skills[key].level + 1}`, cost, powerGain, canBuy, blocked: !unlocked, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: shipSkillRecommendationImpactText(key, state.skills[key].level), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy, !unlocked) });
     });
     const nextShip = getNextFleetShip();
-    if (nextShip) {
-      const issues = getShipProgressionIssues(nextShip);
+    if (canRecommendFleetShip(nextShip)) {
       const nextStats = getStats(nextShip.id);
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
-      const canBuy = issues.length === 0 && canAfford(nextShip.costs);
-      const action = upgradeTableActionState("ship", nextShip.id, nextShip.costs, { blocked: issues.length > 0 });
-      candidates.push({ category: "Frota", title: nextShip.name, cost: nextShip.costs, powerGain, canBuy, blocked: issues.length > 0, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, `Novo navio: +${formatNumber(powerGain)} poder`, ["damage", "maxHp", "dps", "speed", "armor"]), score: recommendationScore(powerGain, estimateCostValue(nextShip.costs), canBuy, issues.length > 0) });
+      const action = upgradeTableActionState("ship", nextShip.id, nextShip.costs);
+      const canBuy = canAfford(nextShip.costs);
+      candidates.push({ kind: "fleetShip", category: "Frota", title: nextShip.name, cost: nextShip.costs, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, `Novo navio: +${formatNumber(powerGain)} poder`, ["damage", "maxHp", "dps", "speed", "armor"]), score: Number.MAX_SAFE_INTEGER });
     }
-    return candidates.sort((a, b) => Number(b.canBuy) - Number(a.canBuy) || b.score - a.score);
+    return candidates.sort((a, b) =>
+      progressRecommendationPriority(a) - progressRecommendationPriority(b)
+      || Number(b.canBuy) - Number(a.canBuy)
+      || b.score - a.score
+    );
   }
 
   function buildCaptainRecommendationCandidates() {
