@@ -3,12 +3,14 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const output = path.join(root, "dist-web");
+const packageData = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const runtimeFiles = [
   ".nojekyll",
   "index.html",
   "styles.css",
   "game.js",
   "auth.js",
+  "version.js",
   "online-config.js",
   "service-worker.js",
   "manifest.webmanifest",
@@ -32,6 +34,11 @@ for (const file of runtimeFiles) {
   const source = path.join(root, file);
   if (fs.existsSync(source)) fs.copyFileSync(source, path.join(output, file));
 }
+
+fs.writeFileSync(
+  path.join(output, "version.js"),
+  `window.PIRATES_APP_VERSION = ${JSON.stringify(packageData.version || "0.0.0")};\n`
+);
 
 for (const directory of runtimeDirectories) {
   const source = path.join(root, directory);

@@ -154,6 +154,7 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
+      additionalArguments: [`--pirates-version=${encodeURIComponent(app.getVersion())}`],
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,

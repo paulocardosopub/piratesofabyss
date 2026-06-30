@@ -1,6 +1,6 @@
 {
   "name": "pirates-of-the-abyss",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Idle RPG naval em portugues para web e desktop.",
   "author": "paulocardosopub",
   "private": true,
@@ -13,7 +13,7 @@
     "build:icons": "node scripts/build-icons.js",
     "build:desktop": "npm run build:web && npm run build:icons && electron-builder --dir",
     "dist": "npm run package:windows",
-    "package:windows": "npm run build:web && npm run build:icons && electron-builder --win nsis portable",
+    "package:windows": "npm run build:web && npm run build:icons && electron-builder --win nsis portable --publish never",
     "release:windows": "npm run build:web && npm run build:icons && electron-builder --win nsis portable --publish always"
   },
   "build": {

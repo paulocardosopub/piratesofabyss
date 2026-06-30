@@ -6,6 +6,9 @@
   const DESKTOP_DOWNLOAD_DISMISS_KEY = "pirates-of-the-abyss-desktop-download-hidden-until";
   const DESKTOP_DOWNLOAD_DISMISS_MS = 24 * 60 * 60 * 1000;
   const DESKTOP_DOWNLOAD_URL = "https://drive.usercontent.google.com/download?id=16DRNmFmgj6QOEmpXLZlxl5e7SmtaiCQ8&export=download&authuser=0";
+  const DEFAULT_APP_VERSION = "1.0.3";
+  const APP_VERSION = String(window.PIRATES_APP_VERSION || window.PiratesDesktop?.version || DEFAULT_APP_VERSION).trim() || DEFAULT_APP_VERSION;
+  const APP_VERSION_LABEL = `Versao ${APP_VERSION}`;
   const LEADERBOARD_LIMIT = 50;
   const ARENA_OPPONENT_LIMIT = 10;
   const ARENA_MIN_OPPONENTS = 5;
@@ -105,6 +108,12 @@
   const nonPassiveListener = { passive: false };
   const TEXT_EDITING_SELECTOR = "input, textarea, select, [contenteditable]";
   let pendingTextEditRender = false;
+
+  function syncAppVersionLabels(root = document) {
+    $$("[data-app-version]", root).forEach(node => {
+      node.textContent = APP_VERSION_LABEL;
+    });
+  }
 
   function isTextEditingTarget(target) {
     const element = target?.nodeType === 3 ? target.parentElement : target;
@@ -13208,7 +13217,7 @@
     $("#progression-stats").innerHTML = list([
       ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", getShipUpgradeLevel("ship")], ["Nível dos canhões", getShipUpgradeLevel("cannons")], ["Nível das velas", getShipUpgradeLevel("sails")], ["Nível do casco", getShipUpgradeLevel("hull")], ["Nível dos escudos", getShipUpgradeLevel("shields")], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
-    $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
+    $("#career-stats").innerHTML = [["Versao do jogo", APP_VERSION_LABEL], ["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
     renderAccountPanel();
     renderMissions();
     syncStatsPanelExpansion($("#screen-stats"));
@@ -14192,6 +14201,7 @@
   window.addEventListener("beforeunload", saveGame);
 
   AUTH_MANAGER?.initLoginScreen?.();
+  syncAppVersionLabels();
   if (!isGameAuthenticated()) return;
   setupNativeTooltipSuppression();
   setCombatMinimized(combatMinimized, false);
