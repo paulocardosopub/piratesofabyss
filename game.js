@@ -5,7 +5,7 @@
   const COMBAT_MINIMIZED_KEY = "pirates-of-the-abyss-combat-minimized";
   const DESKTOP_DOWNLOAD_DISMISS_KEY = "pirates-of-the-abyss-desktop-download-hidden-until";
   const DESKTOP_DOWNLOAD_DISMISS_MS = 24 * 60 * 60 * 1000;
-  const DESKTOP_DOWNLOAD_URL = "https://drive.usercontent.google.com/download?id=16DRNmFmgj6QOEmpXLZlxl5e7SmtaiCQ8&export=download&authuser=0";
+  const DESKTOP_DOWNLOAD_URL = "https://drive.google.com/file/d/1wbu4ac3NjrVQQPidXAoB4KN2gnt_3cfM/view?usp=drive_link";
   const DEFAULT_APP_VERSION = "1.0.3";
   const APP_VERSION = String(window.PIRATES_APP_VERSION || window.PiratesDesktop?.version || DEFAULT_APP_VERSION).trim() || DEFAULT_APP_VERSION;
   const APP_VERSION_LABEL = `Versao ${APP_VERSION}`;
@@ -3290,13 +3290,22 @@
     const nodeTarget = getHelpTooltipTarget(target);
     const text = nodeTarget?.dataset?.helpTooltip || nodeTarget?.dataset?.nativeTitle;
     if (!nodeTarget || !text) return;
-    if (helpTooltipTarget === nodeTarget && helpTooltipNode) return;
+    if (helpTooltipTarget === nodeTarget && helpTooltipNode) {
+      helpTooltipNode.textContent = text;
+      positionHelpTooltip(nodeTarget);
+      return;
+    }
     hideHelpTooltip();
     helpTooltipTarget = nodeTarget;
     helpTooltipNode = document.createElement("div");
     helpTooltipNode.className = "help-tooltip";
     helpTooltipNode.textContent = text;
     document.body.appendChild(helpTooltipNode);
+    positionHelpTooltip(nodeTarget);
+  }
+
+  function positionHelpTooltip(nodeTarget) {
+    if (!helpTooltipNode || !nodeTarget) return;
     const targetRect = nodeTarget.getBoundingClientRect();
     const tipRect = helpTooltipNode.getBoundingClientRect();
     const gap = 8;
@@ -3307,6 +3316,21 @@
     const left = clamp(center - tipRect.width / 2, 8, Math.max(8, window.innerWidth - tipRect.width - 8));
     helpTooltipNode.style.left = `${left}px`;
     helpTooltipNode.style.top = `${Math.max(8, top)}px`;
+  }
+
+  function setHelpTooltipText(node, text) {
+    if (!node) return;
+    const normalized = String(text || "").trim();
+    if (normalized) {
+      node.dataset.helpTooltip = normalized;
+      node.setAttribute("aria-label", normalized);
+    } else {
+      delete node.dataset.helpTooltip;
+    }
+    if (helpTooltipTarget === node && helpTooltipNode) {
+      helpTooltipNode.textContent = normalized;
+      positionHelpTooltip(node);
+    }
   }
 
   function handleHelpTooltipPointerEnter(event) {
@@ -9957,18 +9981,44 @@
     container.innerHTML = recommendations.map(combatQuickRecommendationButtonHtml).join("");
   }
 
+  function getBossProgressState() {
+    const required = SHIP_UNLOCK_KILL_REQUIREMENT;
+    const kills = clamp(Math.floor(Number(state.regionKills[state.regionIndex]) || 0), 0, required);
+    const defeated = Boolean(state.bossesDefeated[state.regionIndex]);
+    const bossPending = Boolean(pendingBossChallengeTimer && pendingBossChallengeRegionIndex === state.regionIndex);
+    const inBoss = Boolean(state.combat.enemy?.isBoss);
+    const ready = kills >= required && !defeated;
+    return {
+      required,
+      kills,
+      remaining: Math.max(0, required - kills),
+      defeated,
+      bossPending,
+      inBoss,
+      ready,
+      bossName: REGIONS[state.regionIndex]?.boss || "Boss"
+    };
+  }
+
+  function getBossActionHelpText() {
+    const progress = getBossProgressState();
+    if (isArenaSceneActive()) return "Finalize a Arena antes de desafiar o boss do mapa.";
+    if (progress.defeated) return `Boss derrotado: ${progress.bossName}. Proximo mapa disponivel.`;
+    if (progress.bossPending) return `Boss sendo preparado: ${progress.bossName}.`;
+    if (progress.inBoss) return `Boss em combate: ${progress.bossName}.`;
+    if (progress.ready) return `Boss liberado: ${progress.bossName}. Derrote o boss para passar de mapa.`;
+    return `Faltam ${formatNumber(progress.remaining)} monstros para liberar o boss. Progresso: ${formatNumber(progress.kills)} / ${formatNumber(progress.required)}.`;
+  }
+
   function syncCombatQuickActions() {
     const bossButton = $("#combat-quick-boss");
     if (bossButton) {
-      const defeated = state.bossesDefeated[state.regionIndex];
-      const kills = Math.max(0, Number(state.regionKills[state.regionIndex]) || 0);
-      const available = kills >= 100 && !defeated;
-      const bossPending = Boolean(pendingBossChallengeTimer && pendingBossChallengeRegionIndex === state.regionIndex);
-      const inBoss = Boolean(state.combat.enemy?.isBoss);
-      bossButton.disabled = !available || bossPending || inBoss || isArenaSceneActive();
-      bossButton.classList.toggle("ready", available && !bossPending && !inBoss && !isArenaSceneActive());
+      const progress = getBossProgressState();
+      const available = progress.ready;
+      bossButton.disabled = !available || progress.bossPending || progress.inBoss || isArenaSceneActive();
+      bossButton.classList.toggle("ready", available && !progress.bossPending && !progress.inBoss && !isArenaSceneActive());
       bossButton.classList.toggle("locked", bossButton.disabled);
-      bossButton.title = defeated ? "Boss derrotado neste mapa" : bossPending ? "Boss sendo preparado" : inBoss ? "Boss em combate" : available ? "Desafiar Boss" : `Faltam ${Math.max(0, 100 - kills)} vitorias`;
+      setHelpTooltipText(bossButton, getBossActionHelpText());
     }
 
     const prevMapButton = $("#combat-quick-prev-map");
@@ -10000,12 +10050,8 @@
     const label = $("#combat-boss-progress-label");
     const fill = $("#combat-boss-progress-fill");
     if (!shell || !label || !fill) return;
-    const required = SHIP_UNLOCK_KILL_REQUIREMENT;
-    const kills = clamp(Math.floor(Number(state.regionKills[state.regionIndex]) || 0), 0, required);
-    const defeated = Boolean(state.bossesDefeated[state.regionIndex]);
-    const ready = kills >= required && !defeated;
+    const { required, kills, defeated, ready, bossName } = getBossProgressState();
     const progress = defeated ? 1 : clamp(kills / Math.max(1, required), 0, 1);
-    const bossName = REGIONS[state.regionIndex]?.boss || "Boss";
     const text = defeated
       ? `Boss derrotado: ${bossName} - Próximo mapa disponível!`
       : ready
@@ -10334,7 +10380,8 @@
   function renderHome() {
     const region = getActiveCombatRegion();
     const stats = getStats();
-    const kills = state.regionKills[state.regionIndex];
+    const bossProgress = getBossProgressState();
+    const kills = bossProgress.kills;
     const visualRegionIndex = state.combat.enemy?.isGuildBoss ? state.combat.enemy.regionIndex : state.regionIndex;
     $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(visualRegionIndex));
     $("#scene-region").textContent = getCombatHudRegionLabel();
@@ -10348,17 +10395,19 @@
     renderHomeRecommendations();
     renderHomeGuildCard();
     syncHomeHelpTooltips($("#screen-home") || document);
-    $("#kill-progress-text").textContent = `${Math.min(100, kills)} / 100`;
-    $("#boss-progress-fill").style.width = `${Math.min(100, kills)}%`;
+    $("#kill-progress-text").textContent = `${formatNumber(kills)} / ${formatNumber(bossProgress.required)}`;
+    $("#boss-progress-fill").style.width = `${clamp(kills / Math.max(1, bossProgress.required), 0, 1) * 100}%`;
     $("#boss-name").textContent = region.boss;
-    const defeated = state.bossesDefeated[state.regionIndex];
-    const available = kills >= 100 && !defeated;
-    const bossPending = Boolean(pendingBossChallengeTimer && pendingBossChallengeRegionIndex === state.regionIndex);
+    const defeated = bossProgress.defeated;
+    const available = bossProgress.ready;
+    const bossPending = bossProgress.bossPending;
     $("#progress-title").textContent = defeated ? "Região conquistada" : available ? "O boss emergiu!" : "O boss aguarda";
-    $("#boss-status").textContent = defeated ? "Boss derrotado • continue farmando" : available ? "Desafio disponível agora" : `Faltam ${Math.max(0, 100 - kills)} vitórias`;
+    $("#boss-status").textContent = defeated ? "Boss derrotado • continue farmando" : available ? "Desafio disponível agora" : `Faltam ${formatNumber(bossProgress.remaining)} monstros`;
     if (bossPending) $("#boss-status").textContent = "Alerta de perigo";
-    $("#boss-button").disabled = !available || bossPending || Boolean(state.combat.enemy?.isBoss);
-    $("#boss-button").textContent = defeated ? "Boss derrotado" : bossPending ? "Preparando..." : state.combat.enemy?.isBoss ? "Em combate" : "Desafiar boss";
+    const bossButton = $("#boss-button");
+    bossButton.disabled = !available || bossPending || bossProgress.inBoss;
+    bossButton.textContent = defeated ? "Boss derrotado" : bossPending ? "Preparando..." : bossProgress.inBoss ? "Em combate" : "Desafiar boss";
+    setHelpTooltipText(bossButton, getBossActionHelpText());
     const prevMapButton = $("#boss-prev-map");
     const nextMapButton = $("#boss-next-map");
     if (prevMapButton) {
