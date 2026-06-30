@@ -1,10 +1,10 @@
-const CACHE = "pirates-abyss-v213-shield-status";
+const CACHE = "pirates-abyss-v215-reload-guard";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=118",
   "auth.js?v=6",
-  "game.js?v=223",
+  "game.js?v=225",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

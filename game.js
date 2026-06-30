@@ -82,6 +82,7 @@
   const V2_ABYSS_FIRST_MAP = 16;
   const V2_ABYSS_LAST_MAP = 21;
   const V2_ABYSS_COMMON_MONSTER_SCALE = 1.2;
+  const V2_ABYSS_DIFFICULTY_EASE = { 16: .5, 17: .6, 18: .7 };
   const CAPTAIN_HP_REGEN_INTERVAL_SECONDS = 5;
   const AUTO_ATTACK_CAPTAIN_LEVEL_REQUIRED = 2;
   const MANUAL_ATTACK_TUTORIAL_DURATION_MS = 30000;
@@ -2437,11 +2438,47 @@
   const VISUAL_AUDIT_CONFIG = getCaptainVisualAuditConfig();
   const AUTH_MANAGER = typeof window !== "undefined" ? window.PiratesAuth : null;
   const AUTH_BOOTSTRAP = AUTH_MANAGER?.prepareInitialSave?.({ bypass: Boolean(VISUAL_AUDIT_CONFIG) }) || { authenticated: true, bypassed: true };
+  const AUTH_SERVER_SYNC_RELOAD_KEY = "pirates-abyss-auth-sync-reload-at";
+  const AUTH_SERVER_SYNC_RELOAD_COOLDOWN_MS = 15000;
   let authServerSyncReady = !AUTH_BOOTSTRAP?.serverSyncPending;
+
+  function canReloadAfterServerSync() {
+    if (VISUAL_AUDIT_CONFIG || typeof window === "undefined") return false;
+    try {
+      const session = window.sessionStorage;
+      if (!session) return false;
+      const now = Date.now();
+      const lastReloadAt = Number(session.getItem(AUTH_SERVER_SYNC_RELOAD_KEY) || 0);
+      if (lastReloadAt && now - lastReloadAt < AUTH_SERVER_SYNC_RELOAD_COOLDOWN_MS) return false;
+      session.setItem(AUTH_SERVER_SYNC_RELOAD_KEY, String(now));
+      return true;
+    } catch (error) {
+      console.warn("Nao foi possivel preparar o reload seguro do save.", error);
+      return false;
+    }
+  }
+
+  function clearServerSyncReloadGuard() {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage?.removeItem(AUTH_SERVER_SYNC_RELOAD_KEY);
+    } catch (error) {
+      console.warn("Nao foi possivel limpar a trava de reload do save.", error);
+    }
+  }
+
   if (AUTH_BOOTSTRAP?.serverSync) {
     AUTH_BOOTSTRAP.serverSync.then(result => {
       authServerSyncReady = true;
-      if (!VISUAL_AUDIT_CONFIG && result?.changed) window.setTimeout(() => window.location.reload(), 80);
+      if (!result?.changed) {
+        clearServerSyncReloadGuard();
+        return;
+      }
+      if (canReloadAfterServerSync()) {
+        window.setTimeout(() => window.location.reload(), 80);
+      } else {
+        console.warn("Reload automatico do save ignorado para evitar loop de atualizacao.");
+      }
     }).catch(error => {
       authServerSyncReady = true;
       console.warn("Nao foi possivel conferir o save do servidor.", error);
@@ -6745,14 +6782,8 @@
       const frameWidth = Math.floor(sourceWidth / frameCount);
       const frameHeight = sourceHeight;
       if (!frameWidth || !frameHeight || alpha <= 0) return;
-      measureChestSpriteFrameBounds(sprite, source);
-      const frameBounds = sprite.frameBounds?.[frame];
-      const referenceBounds = sprite.referenceBounds;
-      const drawWidth = Math.max(1, Math.round(targetWidth));
-      const drawHeight = Math.max(1, Math.round(targetHeight));
-      const frameScale = drawWidth / frameWidth;
-      const anchorOffsetX = frameBounds && referenceBounds ? Math.round((referenceBounds.centerX - frameBounds.centerX) * frameScale) : 0;
-      const anchorOffsetY = frameBounds && referenceBounds ? Math.round((referenceBounds.bottomY - frameBounds.bottomY) * frameScale) : 0;
+      const drawWidth = Math.max(1, targetWidth);
+      const drawHeight = Math.max(1, targetHeight);
       ctx.save();
       ctx.globalAlpha *= alpha;
       ctx.imageSmoothingEnabled = false;
@@ -6762,8 +6793,8 @@
         0,
         frameWidth,
         frameHeight,
-        Math.round(-drawWidth * .5 + anchorOffsetX),
-        Math.round(-drawHeight * CHEST_FRAME_ANCHOR_Y + anchorOffsetY),
+        -drawWidth * .5,
+        -drawHeight * CHEST_FRAME_ANCHOR_Y,
         drawWidth,
         drawHeight
       );
@@ -6787,13 +6818,11 @@
       const frame = chest.opened ? 2 : (glowAlpha > .48 ? 1 : 0);
       const openBlend = chest.opened ? clamp(chest.openAge / CHEST_OPEN_CROSSFADE, 0, 1) : 0;
       const openEase = openBlend * openBlend * (3 - 2 * openBlend);
-      const openPulse = chest.opened ? Math.sin(clamp(chest.openAge / .34, 0, 1) * Math.PI) * .045 : 0;
       const fade = chest.opened && chest.openAge > .56 ? clamp(1 - (chest.openAge - .56) / Math.max(.01, CHEST_OPEN_DURATION - .56), 0, 1) : 1;
       chest.hitbox = this.getChestRect(chest, x, y);
       ctx.save();
       ctx.translate(x, y);
       ctx.globalAlpha = fade;
-      ctx.scale(1 + openPulse, 1 + openPulse);
       ctx.shadowColor = RARITY_COLORS[definition.rarityKey] || "#ffd37a";
       ctx.shadowBlur = chest.opened ? 14 : 4 + glowAlpha * 7;
       if (loaded) {
@@ -8373,7 +8402,7 @@
   function getV2AbyssDifficultyMultiplier(regionIndex) {
     const mapNumber = Math.floor(Number(regionIndex) || 0) + 1;
     if (mapNumber < V2_ABYSS_FIRST_MAP || mapNumber > V2_ABYSS_LAST_MAP) return 1;
-    return mapNumber - 14;
+    return (mapNumber - 14) * (V2_ABYSS_DIFFICULTY_EASE[mapNumber] || 1);
   }
 
   function endgameRequirementIssues(index) {
