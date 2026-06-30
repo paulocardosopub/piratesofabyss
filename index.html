@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=118">
+  <link rel="stylesheet" href="styles.css?v=119">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -44,6 +44,7 @@
         <button class="button primary" type="submit" data-auth-login>Entrar</button>
         <button class="button" type="button" data-auth-create>Criar Conta</button>
       </div>
+      <button class="button auth-guest-button" type="button" data-auth-guest>Iniciar sem login</button>
       <button class="auth-forgot" type="button" data-auth-forgot>Esqueci minha senha</button>
       <p class="auth-status" data-auth-status aria-live="polite"></p>
     </form>
@@ -167,6 +168,7 @@
         <h1 class="sr-only" id="home-title">Combate naval</h1>
         <div class="dashboard-grid home-clean-grid">
           <article class="card home-recommendation-card" id="home-recommendation-card">
+            <div class="home-section-divider">Progresso</div>
             <div class="card-heading compact">
               <div><span class="eyebrow">PROGRESSO</span><h2>Melhoria recomendada</h2></div>
             </div>
@@ -174,6 +176,7 @@
           </article>
 
           <article class="card progression-card">
+            <div class="home-section-divider">Boss</div>
             <div class="card-heading">
               <div><span class="eyebrow">BOSS</span><h2 id="progress-title">O boss aguarda</h2></div>
               <strong class="progress-count" id="kill-progress-text">0 / 100</strong>
@@ -191,19 +194,20 @@
           </article>
 
           <article class="card home-guild-card" id="home-guild-card" data-home-panel="guild">
+            <div class="home-section-divider">Irmandade</div>
             <div class="home-guild-head">
               <div class="home-guild-copy">
                 <span class="eyebrow">IRMANDADE PIRATA</span>
                 <h2 id="home-guild-title">Sua tripulacao online</h2>
                 <p id="home-guild-status">Entre em uma Irmandade, enfrente bosses diarios e libere bonus permanentes.</p>
               </div>
-              <button class="home-panel-toggle" type="button" data-toggle-home-panel="guild" aria-expanded="false" aria-label="Expandir Irmandade"><span class="home-panel-toggle-icon" aria-hidden="true">+</span></button>
             </div>
             <div class="home-guild-stats" id="home-guild-stats">
               <div><span>Membros</span><strong>--</strong></div>
               <div><span>Nivel</span><strong>--</strong></div>
               <div><span>Poder</span><strong>--</strong></div>
             </div>
+            <button class="home-panel-toggle home-guild-toggle" type="button" data-toggle-home-panel="guild" aria-expanded="false" aria-label="Expandir Irmandade"><span class="home-panel-toggle-icon" aria-hidden="true">+</span></button>
             <div class="home-panel-body hidden" data-home-panel-body="guild">
               <div class="guild-list home-guild-list" id="home-guild-list"></div>
               <div class="home-panel-actions">
@@ -215,6 +219,7 @@
           </article>
 
           <article class="card leaderboard-card home-leaderboard-card" data-home-panel="leaderboard">
+            <div class="home-section-divider">Ranking</div>
             <div class="leaderboard-heading">
               <div><span class="eyebrow">RANKING ONLINE</span><h2>Ranking dos Piratas</h2><p>Ordenado pelo Poder Naval registrado no Prestígio</p></div>
               <button class="home-panel-toggle" type="button" data-toggle-home-panel="leaderboard" aria-expanded="false" aria-label="Expandir Ranking dos Piratas"><span class="home-panel-toggle-icon" aria-hidden="true">+</span></button>
@@ -246,6 +251,7 @@
           </article>
 
           <article class="card log-card">
+            <div class="home-section-divider">Resumo</div>
             <div class="card-heading compact"><div><span class="eyebrow">RESUMO</span><h2>Últimos eventos</h2></div></div>
             <ol id="battle-log" class="battle-log" aria-live="polite"></ol>
           </article>
@@ -383,6 +389,17 @@
                   <div><strong>Mudar de conta</strong><span>Seu progresso sera salvo antes de voltar para o login.</span></div>
                   <button class="button primary" type="button" data-logout-account>Mudar de conta</button>
                 </div>
+                <div class="account-register-form hidden" id="account-register-form">
+                  <label class="account-register-field"><span>Usuario</span><input id="account-register-username" maxlength="24" autocomplete="username"></label>
+                  <label class="account-register-field"><span>Senha</span><input id="account-register-password" type="password" maxlength="80" autocomplete="new-password"></label>
+                  <label class="account-register-field"><span>Email opcional</span><input id="account-register-email" type="email" maxlength="120" autocomplete="email"></label>
+                  <label class="account-register-remember"><input id="account-register-remember" type="checkbox"><span>Lembrar-me</span></label>
+                  <div class="account-register-actions">
+                    <button class="button primary" type="button" data-account-auth-action="create">Criar conta</button>
+                    <button class="button" type="button" data-account-auth-action="login">Entrar em conta</button>
+                  </div>
+                  <small id="account-register-status" aria-live="polite"></small>
+                </div>
                 <div class="account-credentials">
                   <div class="account-credential-row"><span>Usuario atual</span><strong id="account-current-username">--</strong></div>
                   <div class="account-credential-row password-row">
@@ -486,7 +503,7 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="auth.js?v=6"></script>
-  <script src="game.js?v=227"></script>
+  <script src="auth.js?v=7"></script>
+  <script src="game.js?v=228"></script>
 </body>
 </html>

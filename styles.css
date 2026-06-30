@@ -185,6 +185,10 @@ body.auth-ready .auth-screen {
   min-width: 0;
 }
 
+.auth-guest-button {
+  width: 100%;
+}
+
 .auth-forgot {
   justify-self: center;
   min-height: 30px;
@@ -2792,6 +2796,19 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .danger-zone { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-top: 20px; padding: 16px 20px; border: 1px solid rgba(224,82,82,.18); border-radius: 13px; }
 .account-zone { display: grid; border-color: rgba(53,212,207,.2); background: rgba(53,212,207,.05); }
 .account-zone-main { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.account-register-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.account-register-field { display: grid; gap: 6px; min-width: 0; }
+.account-register-field span,
+.account-register-remember span { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.account-register-field input { min-width: 0; min-height: 38px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: #edf8f5; background: rgba(0,0,0,.2); font-size: 12px; font-weight: 750; }
+.account-register-field input:focus { outline: 2px solid rgba(110,239,226,.25); border-color: rgba(110,239,226,.42); }
+.account-register-remember { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.account-register-remember input { width: 17px; height: 17px; accent-color: var(--gold); }
+.account-register-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.account-register-actions,
+.account-register-form small { grid-column: 1 / -1; }
+.account-register-form small { min-height: 15px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.account-register-form small.danger { color: #ff8d86; }
 .account-credentials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
 .account-credential-row { min-width: 0; padding: 10px 12px; border: 1px solid rgba(160,203,202,.14); border-radius: 9px; background: rgba(0,0,0,.14); }
 .account-credential-row span { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
@@ -3137,6 +3154,8 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .danger-zone { align-items: stretch; flex-direction: column; }
   .account-zone-main { align-items: stretch; flex-direction: column; }
   .account-zone-main .button { width: 100%; }
+  .account-register-form { grid-template-columns: 1fr; }
+  .account-register-actions .button { flex: 1 1 150px; }
   .account-credentials { grid-template-columns: 1fr; }
   .account-email-form { grid-template-columns: 1fr; }
   .offline-rewards { grid-template-columns: repeat(2, 1fr); }
@@ -5896,6 +5915,47 @@ body {
   border-right: 0;
 }
 
+.home-clean-grid > .card {
+  position: relative;
+}
+
+.home-section-divider {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 18px;
+  margin: -1px 0 11px;
+  padding-bottom: 8px;
+  color: #ffe09a;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .13em;
+  line-height: 1;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(247, 189, 74, .18);
+}
+
+.home-section-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, rgba(247, 189, 74, .55), rgba(110, 239, 226, .18), transparent);
+}
+
+.home-guild-card {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .55fr) auto;
+}
+
+.home-guild-head {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.home-guild-toggle {
+  align-self: center;
+  justify-self: end;
+}
+
 .combat-exit-button,
 .combat-next-map-button {
   min-height: 30px;
@@ -5939,6 +5999,20 @@ body {
   .log-card {
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .home-guild-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .home-guild-stats {
+    grid-column: 1 / -1;
+  }
+
+  .home-guild-toggle {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
   }
 }
 

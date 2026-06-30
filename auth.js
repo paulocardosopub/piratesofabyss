@@ -4,6 +4,7 @@
   const SAVE_KEY = "pirates-of-the-abyss-save-v1";
   const USERS_KEY = "pirates-of-the-abyss-auth-users-v1";
   const SESSION_KEY = "pirates-of-the-abyss-auth-session-v1";
+  const GUEST_KEY = "pirates-of-the-abyss-auth-guest-v1";
   const LEGACY_BACKUP_PREFIX = "pirates-of-the-abyss-legacy-save-backup-v1:";
   const PBKDF2_ITERATIONS = 150000;
   const REMEMBER_SESSION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -627,6 +628,20 @@
     currentSession = null;
   }
 
+  function setGuestMode(enabled) {
+    const local = getLocalStorage();
+    if (!local) return false;
+    if (enabled) return storageSet(local, GUEST_KEY, "1");
+    storageRemove(local, GUEST_KEY);
+    return true;
+  }
+
+  function isGuestMode() {
+    if (currentUser) return false;
+    const local = getLocalStorage();
+    return Boolean(local && storageGet(local, GUEST_KEY) === "1");
+  }
+
   function readStoredSession() {
     const session = getSessionStorage();
     const local = getLocalStorage();
@@ -653,6 +668,7 @@
     const target = remember ? local : session;
     if (!target) throw new Error("Nao foi possivel criar a sessao.");
     writeJsonToStorage(target, SESSION_KEY, sessionData);
+    setGuestMode(false);
 
     const users = loadUsers();
     const stored = users.users[user.id];
@@ -698,6 +714,10 @@
     }
     const user = getValidSessionUser();
     if (!user) {
+      if (isGuestMode()) {
+        setAuthLocked(false);
+        return { authenticated: true, guest: true, user: null };
+      }
       setAuthLocked(true);
       return { authenticated: false, user: null };
     }
@@ -719,6 +739,14 @@
     return result;
   }
 
+  function startGuest() {
+    clearSession();
+    currentUser = null;
+    setGuestMode(true);
+    setAuthLocked(false);
+    return { ok: true, guest: true, user: null };
+  }
+
   async function createAccount({ username, password, email = "", remember = false } = {}) {
     const cleanUsername = normalizeUsername(username);
     const cleanKey = usernameKey(cleanUsername);
@@ -734,6 +762,8 @@
 
     const salt = randomBase64(16);
     const passwordHash = await hashPassword(cleanPassword, salt);
+    const activeSave = readLocalSave(SAVE_KEY);
+    const saveData = isMeaningfulSave(activeSave) ? stripVolatileSaveMetadata(activeSave) : null;
 
     if (isAccountServerConfigured()) {
       const created = await createServerAccount({
@@ -743,12 +773,12 @@
         salt,
         passwordHash,
         iterations: PBKDF2_ITERATIONS,
-        saveData: null
+        saveData
       });
       const serverUser = normalizeServerUser(created);
-      storeServerUser(serverUser, { salt, hash: passwordHash, iterations: PBKDF2_ITERATIONS }, created?.save_data || null, remember, {
+      storeServerUser(serverUser, { salt, hash: passwordHash, iterations: PBKDF2_ITERATIONS }, created?.save_data || saveData, remember, {
         allowRecoverableFallback: false,
-        clearActiveSaveIfEmpty: true
+        clearActiveSaveIfEmpty: !saveData
       });
       return { ok: true, user: { id: serverUser.id, username: cleanUsername } };
     }
@@ -773,7 +803,12 @@
     users.usersByName[cleanKey] = id;
     saveUsers(users);
     writeSession(user, remember);
-    clearActiveGameSave({ backup: true, reason: "new-account-start-clean" });
+    if (saveData) {
+      saveUserSave(user, saveData, { force: true, migrated: true });
+      writeLocalSave(SAVE_KEY, decorateSave(saveData, user));
+    } else {
+      clearActiveGameSave({ backup: true, reason: "new-account-start-clean" });
+    }
     return { ok: true, user: { id, username: cleanUsername } };
   }
 
@@ -865,6 +900,7 @@
     pendingServerSave = null;
     if (options.clearActiveSave) clearActiveGameSave({ backup: true, reason: "logout-active-save" });
     clearSession();
+    setGuestMode(false);
     currentUser = null;
     setAuthLocked(true);
   }
@@ -913,7 +949,7 @@
   }
 
   function isAuthenticated() {
-    return Boolean(getCurrentUser());
+    return Boolean(getCurrentUser() || isGuestMode());
   }
 
   function initLoginScreen(options = {}) {
@@ -927,6 +963,7 @@
     const rememberInput = screen.querySelector("[data-auth-remember]");
     const loginButton = screen.querySelector("[data-auth-login]");
     const createButton = screen.querySelector("[data-auth-create]");
+    const guestButton = screen.querySelector("[data-auth-guest]");
     const forgotButton = screen.querySelector("[data-auth-forgot]");
     const status = screen.querySelector("[data-auth-status]");
     let mode = "login";
@@ -958,7 +995,7 @@
 
     const setPending = value => {
       pending = Boolean(value);
-      [usernameInput, passwordInput, emailInput, rememberInput, loginButton, createButton, forgotButton].forEach(item => {
+      [usernameInput, passwordInput, emailInput, rememberInput, loginButton, createButton, guestButton, forgotButton].forEach(item => {
         if (item) item.disabled = pending;
       });
     };
@@ -1010,6 +1047,18 @@
       }
     }
 
+    function submitGuest() {
+      if (pending) return;
+      setPending(true);
+      try {
+        const result = startGuest();
+        finishAuthenticated(result);
+      } catch (error) {
+        setStatus(error.message || "Nao foi possivel iniciar sem login.", true);
+        setPending(false);
+      }
+    }
+
     form?.addEventListener("submit", event => {
       event.preventDefault();
       submitLogin();
@@ -1021,6 +1070,10 @@
     createButton?.addEventListener("click", event => {
       event.preventDefault();
       submitCreate();
+    });
+    guestButton?.addEventListener("click", event => {
+      event.preventDefault();
+      submitGuest();
     });
     forgotButton?.addEventListener("click", event => {
       event.preventDefault();
@@ -1043,7 +1096,9 @@
     createAccount,
     login,
     logout,
+    startGuest,
     isAuthenticated,
+    isGuest: isGuestMode,
     getCurrentUser,
     updateEmail,
     saveCurrentGame,

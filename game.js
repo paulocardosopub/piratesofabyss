@@ -361,6 +361,8 @@
   const CHEST_PIRATE_COIN_CHANCE = .10;
   const CHEST_OPEN_DURATION = .95;
   const CHEST_FRAME_ANCHOR_Y = .742;
+  const CHEST_BOB_SPEED = .58;
+  const CHEST_BOB_AMOUNT = 1.45;
   const CHEST_DEFINITIONS = {
     common: { id: "common", rarity: "comum", rarityKey: "common", file: "baumonstrocomum.png", gold: 5000, width: 72 },
     uncommon: { id: "uncommon", rarity: "incomum", rarityKey: "uncommon", file: "baumonstroincomum.png", gold: 15000, width: 74 },
@@ -6513,6 +6515,7 @@
         age: 0,
         openAge: 0,
         opened: false,
+        seed: randomBetween(0, Math.PI * 2),
         hitbox: null
       });
       this.chests = this.chests.slice(-4);
@@ -6811,7 +6814,9 @@
       const image = requestChestSprite(sprite);
       const loaded = image?.complete && image.naturalWidth;
       const x = clamp((chest.xRatio ?? .52) * this.width, 24, this.width - 24);
-      const y = clamp((chest.yRatio ?? .66) * this.height, this.height * .42 + 34, this.height - 12);
+      const baseY = clamp((chest.yRatio ?? .66) * this.height, this.height * .42 + 34, this.height - 12);
+      const bob = Math.sin(this.time * CHEST_BOB_SPEED + (chest.seed || 0)) * CHEST_BOB_AMOUNT;
+      const y = baseY + bob;
       const targetWidth = definition.width * this.getChestScale();
       const targetHeight = targetWidth;
       const frame = chest.opened ? 2 : 0;
@@ -12628,6 +12633,15 @@
 
   function renderAccountPanel() {
     const account = AUTH_MANAGER?.getCurrentUser?.();
+    const hasAccount = Boolean(account);
+    const panel = $("[data-stats-panel=\"account\"]");
+    const panelTitle = panel ? $(".stats-panel-toggle strong", panel) : null;
+    const panelSummary = panel ? $(".stats-panel-toggle small", panel) : null;
+    const mainTitle = $(".account-zone-main strong");
+    const mainText = $(".account-zone-main span");
+    const logoutButton = $("[data-logout-account]");
+    const registerForm = $("#account-register-form");
+    const credentials = $(".account-credentials");
     const username = $("#account-current-username");
     const password = $("#account-current-password");
     const email = $("#account-current-email");
@@ -12637,6 +12651,25 @@
     const note = $("#account-password-note");
     const button = $("[data-show-account-password]");
     const hasEmail = Boolean(account?.email);
+
+    if (panelTitle) panelTitle.textContent = hasAccount ? "Mudar de conta" : "Criar conta";
+    if (panelSummary) panelSummary.textContent = hasAccount ? "Sair para relogar ou entrar em outra conta" : "Registre este progresso ou entre em uma conta existente";
+    if (mainTitle) mainTitle.textContent = hasAccount ? "Mudar de conta" : "Registrar progresso";
+    if (mainText) mainText.textContent = hasAccount ? "Seu progresso sera salvo antes de voltar para o login." : "Crie uma conta para proteger este progresso ou entre em uma conta existente.";
+    logoutButton?.classList.toggle("hidden", !hasAccount);
+    credentials?.classList.toggle("hidden", !hasAccount);
+    registerForm?.classList.toggle("hidden", hasAccount);
+
+    if (!hasAccount) {
+      const registerStatus = $("#account-register-status");
+      if (registerStatus) {
+        registerStatus.textContent = "Jogando sem login. Seu progresso fica salvo neste navegador ate voce registrar uma conta.";
+        registerStatus.classList.remove("danger");
+      }
+      if (note) note.classList.add("hidden");
+      return;
+    }
+
     if (username) username.textContent = account?.username || "Conta atual";
     if (password) password.textContent = "••••••••";
     if (email) {
@@ -12692,6 +12725,41 @@
       toast(error.message || "Nao foi possivel salvar o email.", "danger-toast");
     } finally {
       if (button) button.disabled = false;
+    }
+  }
+
+  async function submitAccountAuth(action = "create", button = null) {
+    if (!AUTH_MANAGER) return toast("Sistema de contas indisponivel neste navegador.", "danger-toast");
+    const form = $("#account-register-form");
+    const status = $("#account-register-status");
+    const buttons = $$("[data-account-auth-action]", form || document);
+    const payload = {
+      username: $("#account-register-username")?.value || "",
+      password: $("#account-register-password")?.value || "",
+      email: $("#account-register-email")?.value || "",
+      remember: Boolean($("#account-register-remember")?.checked)
+    };
+    buttons.forEach(item => { item.disabled = true; });
+    if (button) button.disabled = true;
+    if (status) {
+      status.textContent = action === "login" ? "Entrando na conta..." : "Criando conta...";
+      status.classList.remove("danger");
+    }
+    try {
+      saveGame();
+      if (action === "login") await AUTH_MANAGER.login?.(payload);
+      else await AUTH_MANAGER.createAccount?.(payload);
+      if (status) status.textContent = action === "login" ? "Conta carregada. Atualizando..." : "Conta criada. Atualizando...";
+      toast(action === "login" ? "Conta carregada." : "Conta criada e progresso registrado.", "gold-toast");
+      window.setTimeout(() => window.location.reload(), 220);
+    } catch (error) {
+      const message = error.message || (action === "login" ? "Nao foi possivel entrar na conta." : "Nao foi possivel criar a conta.");
+      if (status) {
+        status.textContent = message;
+        status.classList.add("danger");
+      }
+      toast(message, "danger-toast");
+      buttons.forEach(item => { item.disabled = false; });
     }
   }
 
@@ -13159,6 +13227,10 @@
     }
     if (target.dataset.saveAccountEmail !== undefined) {
       saveAccountEmail(target);
+      return;
+    }
+    if (target.dataset.accountAuthAction) {
+      submitAccountAuth(target.dataset.accountAuthAction, target);
       return;
     }
     if (target.dataset.logoutAccount !== undefined) {
