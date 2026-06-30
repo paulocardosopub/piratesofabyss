@@ -13292,10 +13292,11 @@
     const button = $("[data-show-account-password]");
     const hasEmail = Boolean(account?.email);
 
-    if (panelTitle) panelTitle.textContent = hasAccount ? "Mudar de conta" : "Criar conta";
-    if (panelSummary) panelSummary.textContent = hasAccount ? "Sair para relogar ou entrar em outra conta" : "Registre este progresso ou entre em uma conta existente";
-    if (mainTitle) mainTitle.textContent = hasAccount ? "Mudar de conta" : "Registrar progresso";
-    if (mainText) mainText.textContent = hasAccount ? "Seu progresso sera salvo antes de voltar para o login." : "Crie uma conta para proteger este progresso ou entre em uma conta existente.";
+    if (panelTitle) panelTitle.textContent = hasAccount ? "Sair da conta" : "Criar conta";
+    if (panelSummary) panelSummary.textContent = hasAccount ? "Voltar para a tela de login" : "Registre este progresso ou entre em uma conta existente";
+    if (mainTitle) mainTitle.textContent = hasAccount ? "Sair da conta" : "Registrar progresso";
+    if (mainText) mainText.textContent = hasAccount ? "Seu progresso sera salvo antes de voltar para a tela de login." : "Crie uma conta para proteger este progresso ou entre em uma conta existente.";
+    if (logoutButton) logoutButton.textContent = "Sair da conta";
     logoutButton?.classList.toggle("hidden", !hasAccount);
     credentials?.classList.toggle("hidden", !hasAccount);
     registerForm?.classList.toggle("hidden", hasAccount);

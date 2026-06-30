@@ -1,10 +1,11 @@
-const CACHE = "pirates-abyss-v247-desktop-download";
+const CACHE = "pirates-abyss-v248-desktop-download";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=139",
+  "styles.css?v=140",
+  "version.js?v=2",
   "auth.js?v=7",
-  "game.js?v=245",
+  "game.js?v=247",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",
