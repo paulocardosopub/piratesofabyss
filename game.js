@@ -361,10 +361,6 @@
   const CHEST_PIRATE_COIN_CHANCE = .10;
   const CHEST_OPEN_DURATION = .95;
   const CHEST_FRAME_ANCHOR_Y = .742;
-  const CHEST_IDLE_GLOW_CYCLE = 1.9;
-  const CHEST_OPEN_CROSSFADE = .24;
-  const CHEST_BOB_SPEED = 1.05;
-  const CHEST_BOB_AMOUNT = 1.65;
   const CHEST_DEFINITIONS = {
     common: { id: "common", rarity: "comum", rarityKey: "common", file: "baumonstrocomum.png", gold: 5000, width: 72 },
     uncommon: { id: "uncommon", rarity: "incomum", rarityKey: "uncommon", file: "baumonstroincomum.png", gold: 15000, width: 74 },
@@ -3456,6 +3452,15 @@
     return guildState.current?.guild || null;
   }
 
+  function getCombatPlayerDisplayName() {
+    const guildName = sanitizeArenaDisplayName(getCurrentGuild()?.name || "", "");
+    const pirateName = sanitizePirateName(state.pirateName);
+    const accountName = sanitizeArenaDisplayName(AUTH_MANAGER?.getCurrentUser?.()?.username || "", "");
+    const captain = getCurrentCaptain();
+    const playerName = isValidPirateName(pirateName) ? pirateName : accountName || captain?.name || "Pirata";
+    return `${guildName ? `[${guildName}] ` : ""}${playerName}`;
+  }
+
   function hasGuildManagerAccess() {
     return ["king", "quartermaster"].includes(guildState.current?.role);
   }
@@ -6508,7 +6513,6 @@
         age: 0,
         openAge: 0,
         opened: false,
-        seed: randomBetween(0, 10),
         hitbox: null
       });
       this.chests = this.chests.slice(-4);
@@ -6747,7 +6751,6 @@
 
     drawChestFallback(ctx, targetWidth, frame, definition) {
       const open = frame === 2;
-      const glow = frame === 1;
       const rarityColor = RARITY_COLORS[definition.rarityKey] || "#ffd37a";
       ctx.save();
       ctx.translate(0, -targetWidth * .28);
@@ -6763,7 +6766,7 @@
       ctx.roundRect(-targetWidth * .39, -targetWidth * .27, targetWidth * .78, targetWidth * .23, targetWidth * .09);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = glow ? "#fff1ba" : "#edc36f";
+      ctx.fillStyle = "#edc36f";
       ctx.fillRect(-targetWidth * .045, -targetWidth * .22, targetWidth * .09, targetWidth * .43);
       if (open) {
         ctx.globalAlpha = .7;
@@ -6808,32 +6811,16 @@
       const image = requestChestSprite(sprite);
       const loaded = image?.complete && image.naturalWidth;
       const x = clamp((chest.xRatio ?? .52) * this.width, 24, this.width - 24);
-      const baseY = clamp((chest.yRatio ?? .66) * this.height, this.height * .42 + 34, this.height - 12);
-      const bob = Math.sin(this.time * CHEST_BOB_SPEED + chest.seed) * CHEST_BOB_AMOUNT;
-      const y = baseY + bob;
+      const y = clamp((chest.yRatio ?? .66) * this.height, this.height * .42 + 34, this.height - 12);
       const targetWidth = definition.width * this.getChestScale();
       const targetHeight = targetWidth;
-      const glowCycle = ((this.time + chest.seed) % CHEST_IDLE_GLOW_CYCLE) / CHEST_IDLE_GLOW_CYCLE;
-      const glowAlpha = Math.sin(glowCycle * Math.PI) ** 2;
-      const frame = chest.opened ? 2 : (glowAlpha > .48 ? 1 : 0);
-      const openBlend = chest.opened ? clamp(chest.openAge / CHEST_OPEN_CROSSFADE, 0, 1) : 0;
-      const openEase = openBlend * openBlend * (3 - 2 * openBlend);
-      const fade = chest.opened && chest.openAge > .56 ? clamp(1 - (chest.openAge - .56) / Math.max(.01, CHEST_OPEN_DURATION - .56), 0, 1) : 1;
+      const frame = chest.opened ? 2 : 0;
       chest.hitbox = this.getChestRect(chest, x, y);
       ctx.save();
       ctx.translate(x, y);
-      ctx.globalAlpha = fade;
-      ctx.shadowColor = RARITY_COLORS[definition.rarityKey] || "#ffd37a";
-      ctx.shadowBlur = chest.opened ? 14 : 4 + glowAlpha * 7;
       if (loaded) {
         const source = sprite.canvas || image;
-        if (chest.opened) {
-          this.drawChestSpriteFrame(ctx, source, sprite, 1, targetWidth, targetHeight, 1 - openEase);
-          this.drawChestSpriteFrame(ctx, source, sprite, 2, targetWidth, targetHeight, openEase);
-        } else {
-          this.drawChestSpriteFrame(ctx, source, sprite, 0, targetWidth, targetHeight, 1);
-          this.drawChestSpriteFrame(ctx, source, sprite, 1, targetWidth, targetHeight, glowAlpha * .72);
-        }
+        this.drawChestSpriteFrame(ctx, source, sprite, frame, targetWidth, targetHeight, 1);
       } else {
         this.drawChestFallback(ctx, targetWidth, frame, definition);
       }
@@ -9638,7 +9625,11 @@
         repairProgressFill.style.width = "0%";
       }
     }
-    $("#ship-name").textContent = ship.name;
+    const shipNameLabel = $("#ship-name");
+    if (shipNameLabel) {
+      shipNameLabel.textContent = getCombatPlayerDisplayName();
+      shipNameLabel.title = ship?.name || "";
+    }
     $("#enemy-floating-health")?.classList.toggle("hidden", !enemy);
     if (enemy) {
       $("#enemy-name").textContent = enemy.name;
