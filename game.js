@@ -2600,8 +2600,7 @@
 
   function getShipBlockChance(level = getShipUpgradeLevel("shields")) {
     const cleanLevel = clamp(Math.floor(Number(level) || 1), 1, SHIP_UPGRADE_MAX_LEVEL);
-    const chance = cleanLevel <= 5 ? cleanLevel * .03 : .15 + (cleanLevel - 5) * .01;
-    return Math.min(.30, chance);
+    return Math.min(.30, cleanLevel * .01);
   }
 
   function getShipPrestigeRequirement(ship) {
@@ -11139,10 +11138,11 @@
     const current = getStats();
     const next = getStatsPreview({ [type]: getShipUpgradeLevel(type) + 1 });
     const row = (label, key) => ({ label, value: `${formatNumber(current[key])} → ${formatNumber(next[key])}`, delta: formatStatDelta(next[key] - current[key]) });
+    const percentValue = value => `+${Math.max(0, Math.round((Number(value) || 0) * 100))}%`;
     if (type === "ship") return [row("Dano", "damage"), row("Vida", "maxHp"), row("Veloc.", "speed"), row("Defesa", "armor")];
     if (type === "cannons") return [row("Dano", "damage"), { label: "Crítico", value: `${Math.round(current.crit * 100)}% → ${Math.round(next.crit * 100)}%`, delta: `+${Math.max(0, Math.round((next.crit - current.crit) * 100))}%` }, { label: "DPS", value: `${formatNumber(current.shipDps)} → ${formatNumber(next.shipDps)}`, delta: formatStatDelta(next.shipDps - current.shipDps) }];
     if (type === "sails") return [row("Veloc.", "speed"), { label: "Evasão", value: `${Math.round(current.evasion * 100)}% → ${Math.round(next.evasion * 100)}%`, delta: `+${Math.max(0, Math.round((next.evasion - current.evasion) * 100))}%` }, { label: "DPS", value: `${formatNumber(current.shipDps)} → ${formatNumber(next.shipDps)}`, delta: formatStatDelta(next.shipDps - current.shipDps) }];
-    if (type === "shields") return [{ label: "Bloqueio", value: `${Math.round(current.blockChance * 100)}% → ${Math.round(next.blockChance * 100)}%`, delta: `+${Math.max(0, Math.round((next.blockChance - current.blockChance) * 100))}%` }, { label: "Poder", value: `${formatNumber(current.power)} → ${formatNumber(next.power)}`, delta: formatStatDelta(next.power - current.power) }];
+    if (type === "shields") return [{ label: "Bloqueio", value: `${percentValue(current.blockChance)} > ${percentValue(next.blockChance)}`, delta: `+${Math.max(0, Math.round((next.blockChance - current.blockChance) * 100))}%` }, { label: "Poder", value: `${formatNumber(current.power)} → ${formatNumber(next.power)}`, delta: formatStatDelta(next.power - current.power) }];
     return [row("Vida", "maxHp"), row("Defesa", "armor"), { label: "Poder", value: `${formatNumber(current.power)} → ${formatNumber(next.power)}`, delta: formatStatDelta(next.power - current.power) }];
   }
 
@@ -11312,7 +11312,8 @@
     const maxed = level >= SHIP_UPGRADE_MAX_LEVEL;
     if (maxed) {
       const stats = getStats();
-      const rows = getImprovementRows(item.key).filter(row => row.label !== "Poder").slice(0, 3);
+      const rows = getImprovementRows(item.key).filter(row => row.label !== "Poder").slice(0, 3)
+        .map(row => ({ ...row, delta: row.value || row.delta }));
       return upgradeTableRowHtml({
         classes: "completed",
         icon: item.icon,
@@ -11340,7 +11341,8 @@
       .filter(row => row.label !== "Poder")
       .filter(row => row.delta && !["+0", "+0%"].includes(row.delta))
       .slice(0, 3);
-    const visibleRows = summaryRows.length ? summaryRows : rows.filter(row => row.label !== "Poder").slice(0, 3);
+    const visibleRows = (summaryRows.length ? summaryRows : rows.filter(row => row.label !== "Poder").slice(0, 3))
+      .map(row => ({ ...row, delta: row.value || row.delta }));
     const recommendation = buildProgressRecommendationCandidates()[0];
     const recommended = recommendationActionMatches(recommendation, `data-upgrade="${item.key}"`) ||
       (recommendationActionMatches(recommendation, `data-smart-upgrade="upgrade"`) && recommendationActionMatches(recommendation, `data-smart-upgrade-id="${item.key}"`));
