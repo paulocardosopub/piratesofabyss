@@ -12180,6 +12180,36 @@
     refreshGuild({ force: true });
   }
 
+  function renderAccountPanel() {
+    const account = AUTH_MANAGER?.getCurrentUser?.();
+    const username = $("#account-current-username");
+    const password = $("#account-current-password");
+    const note = $("#account-password-note");
+    const button = $("[data-show-account-password]");
+    if (username) username.textContent = account?.username || "Conta atual";
+    if (password) password.textContent = "••••••••";
+    if (note) {
+      note.textContent = "";
+      note.classList.add("hidden");
+    }
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Mostrar";
+    }
+  }
+
+  function showAccountPasswordNotice(button) {
+    const password = $("#account-current-password");
+    const note = $("#account-password-note");
+    if (password) password.textContent = "Senha protegida";
+    if (note) {
+      note.textContent = "Por seguranca, a senha atual nao fica salva em texto puro e nao pode ser exibida. Ela e validada por hash.";
+      note.classList.remove("hidden");
+    }
+    if (button) button.textContent = "Protegida";
+    toast("Senha protegida por hash. Ela nao pode ser exibida.", "gold-toast");
+  }
+
   function renderStats() {
     syncCaptainRuntimeState(state);
     const stats = getStats();
@@ -12200,6 +12230,7 @@
       ["Navio atual", SHIPS[state.shipId].name], ["Capitão", captain ? `${captain.name} (${captain.level}/${CAPTAIN_MAX_LEVEL})` : "Não escolhido"], ["Nível temp. Capitão", state.captainRuntimeLevel], ["Pontos de Nível", getAvailableLevelPoints()], ["Bônus ouro equip.", `+${formatCaptainPercent(rewardBonuses.gold)}`], ["Bônus XP equip.", `+${formatCaptainPercent(rewardBonuses.xp)}`], ["Nível do navio", getShipUpgradeLevel("ship")], ["Nível dos canhões", getShipUpgradeLevel("cannons")], ["Nível das velas", getShipUpgradeLevel("sails")], ["Nível do casco", getShipUpgradeLevel("hull")], ["Nível dos escudos", getShipUpgradeLevel("shields")], ["Nível do pirata", state.pirateLevel], ["XP atual / necessária", `${formatNumber(state.xp)} / ${formatNumber(xpNeeded())}`], ["Skills / níveis somados", `${Object.keys(SKILL_META).filter(isSkillUnlocked).length} / ${skillLevels}`], ["Região atual", REGIONS[state.regionIndex].name]
     ]);
     $("#career-stats").innerHTML = [["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
+    renderAccountPanel();
     renderMissions();
     syncStatsPanelExpansion($("#screen-stats"));
     renderArenaPanel();
@@ -12618,6 +12649,10 @@
     }
     const target = event.target.closest("button");
     if (!target) return;
+    if (target.dataset.showAccountPassword !== undefined) {
+      showAccountPasswordNotice(target);
+      return;
+    }
     if (target.dataset.logoutAccount !== undefined) {
       logoutAccount();
       return;

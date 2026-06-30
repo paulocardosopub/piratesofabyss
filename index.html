@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=113">
+  <link rel="stylesheet" href="styles.css?v=114">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -363,8 +363,19 @@
             </button>
             <div class="stats-panel-body" data-stats-panel-body="account">
               <div class="danger-zone account-zone">
-                <div><strong>Mudar de conta</strong><span>Seu progresso sera salvo antes de voltar para o login.</span></div>
-                <button class="button primary" type="button" data-logout-account>Mudar de conta</button>
+                <div class="account-zone-main">
+                  <div><strong>Mudar de conta</strong><span>Seu progresso sera salvo antes de voltar para o login.</span></div>
+                  <button class="button primary" type="button" data-logout-account>Mudar de conta</button>
+                </div>
+                <div class="account-credentials">
+                  <div class="account-credential-row"><span>Usuario atual</span><strong id="account-current-username">--</strong></div>
+                  <div class="account-credential-row password-row">
+                    <span>Senha</span>
+                    <strong id="account-current-password">••••••••</strong>
+                    <button class="button" type="button" data-show-account-password>Mostrar</button>
+                  </div>
+                </div>
+                <p class="account-password-note hidden" id="account-password-note" aria-live="polite"></p>
               </div>
             </div>
           </section>
@@ -451,6 +462,6 @@
 
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=1"></script>
-  <script src="game.js?v=209"></script>
+  <script src="game.js?v=210"></script>
 </body>
 </html>

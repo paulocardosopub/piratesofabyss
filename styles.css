@@ -2707,7 +2707,16 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .arena-result-summary span { color: var(--muted); font-size: 11px; }
 .arena-result-summary strong { color: var(--gold); font-size: 12px; text-align: right; }
 .danger-zone { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-top: 20px; padding: 16px 20px; border: 1px solid rgba(224,82,82,.18); border-radius: 13px; }
-.account-zone { border-color: rgba(53,212,207,.2); background: rgba(53,212,207,.05); }
+.account-zone { display: grid; border-color: rgba(53,212,207,.2); background: rgba(53,212,207,.05); }
+.account-zone-main { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.account-credentials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.account-credential-row { min-width: 0; padding: 10px 12px; border: 1px solid rgba(160,203,202,.14); border-radius: 9px; background: rgba(0,0,0,.14); }
+.account-credential-row span { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.account-credential-row strong { margin-top: 4px; min-width: 0; overflow: hidden; color: #edf8f5; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.password-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: end; }
+.password-row span { grid-column: 1 / -1; }
+.password-row .button { min-height: 30px; padding: 6px 10px; font-size: 10px; }
+.account-password-note { margin: 0; color: var(--gold); font-size: 11px; font-weight: 750; line-height: 1.35; }
 .danger-zone strong, .danger-zone span { display: block; }
 .danger-zone span { margin-top: 3px; color: var(--muted); font-size: 11px; }
 
@@ -3033,6 +3042,9 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .ship-card { min-height: 420px; }
   .resource-card { min-height: 170px; }
   .danger-zone { align-items: stretch; flex-direction: column; }
+  .account-zone-main { align-items: stretch; flex-direction: column; }
+  .account-zone-main .button { width: 100%; }
+  .account-credentials { grid-template-columns: 1fr; }
   .offline-rewards { grid-template-columns: repeat(2, 1fr); }
   .pets-grid { grid-template-columns: 1fr; }
   .pet-card { min-height: 485px; }
