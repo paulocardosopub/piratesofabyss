@@ -9,6 +9,7 @@
   const REMEMBER_SESSION_MS = 30 * 24 * 60 * 60 * 1000;
   const BROWSER_SESSION_MS = 12 * 60 * 60 * 1000;
   const SERVER_SAVE_THROTTLE_MS = 8000;
+  const SERVER_REQUEST_TIMEOUT_MS = 12000;
   const MIN_USERNAME_LENGTH = 3;
   const MAX_USERNAME_LENGTH = 24;
   const MIN_PASSWORD_LENGTH = 4;
@@ -75,18 +76,46 @@
     return Boolean(config.supabaseUrl && config.supabaseAnonKey);
   }
 
+  function createAccountServerUnavailableError(error) {
+    const timedOut = error?.name === "AbortError";
+    const wrapped = new Error(timedOut
+      ? "Servidor de contas demorou para responder. Verifique sua conexao e tente novamente."
+      : "Servidor de contas indisponivel. Verifique sua conexao e tente novamente.");
+    wrapped.serverUnavailable = true;
+    wrapped.cause = error;
+    return wrapped;
+  }
+
+  function isAccountServerUnavailableError(error) {
+    if (error?.serverUnavailable) return true;
+    const message = String(error?.message || error || "");
+    return /Servidor de contas indisponivel|demorou para responder|Failed to fetch|NetworkError|Load failed|fetch failed|AbortError|TypeError: Failed/i.test(message);
+  }
+
   async function callAccountRpc(rpcName, payload = {}) {
     const config = getOnlineConfig();
     if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error("Servidor de contas indisponivel.");
-    const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/${rpcName}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": config.supabaseAnonKey,
-        "Authorization": `Bearer ${config.supabaseAnonKey}`
-      },
-      body: JSON.stringify(payload)
-    });
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = controller ? window.setTimeout(() => controller.abort(), SERVER_REQUEST_TIMEOUT_MS) : 0;
+    let response = null;
+    try {
+      response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/${rpcName}`, {
+        method: "POST",
+        mode: "cors",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": config.supabaseAnonKey,
+          "Authorization": `Bearer ${config.supabaseAnonKey}`
+        },
+        body: JSON.stringify(payload),
+        signal: controller?.signal
+      });
+    } catch (error) {
+      throw createAccountServerUnavailableError(error);
+    } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    }
     if (!response.ok) {
       const message = await response.text().catch(() => "");
       let parsed = null;
@@ -97,7 +126,7 @@
       throw new Error(message || `Servidor de contas indisponivel (${response.status}).`);
     }
     if (response.status === 204) return null;
-    return response.json();
+    return response.json().catch(() => null);
   }
 
   function bytesToBase64(bytes) {
@@ -219,7 +248,7 @@
       const belongsToUser = user
         ? (!save._authUserId || save._authUserId === userId || save._authUsername === username)
         : !save._authUserId;
-      if (!belongsToUser && reason !== "active-save") return;
+      if (!belongsToUser) return;
       saves.push({ key, reason, save, score: getSaveScore(save), updatedAt: Number(save._saveUpdatedAt || save._backedUpAt || save.lastSeen || 0) });
     };
     pushSave(SAVE_KEY, "active-save");
@@ -265,7 +294,7 @@
     };
   }
 
-  function storeServerUser(serverUser, credentials = {}, saveData = null, remember = false) {
+  function storeServerUser(serverUser, credentials = {}, saveData = null, remember = false, options = {}) {
     if (!serverUser?.id || !serverUser.usernameKey) throw new Error("Conta do servidor invalida.");
     const users = loadUsers();
     const oldId = users.usersByName[serverUser.usernameKey];
@@ -287,10 +316,13 @@
     saveUsers(users);
     currentUser = localUser;
     writeSession(localUser, remember);
-    const save = saveData || getBestRecoverableSave(localUser);
+    const save = saveData || (options.allowRecoverableFallback === false ? null : getBestRecoverableSave(localUser));
     if (save) {
       writeLocalSave(getUserSaveKey(localUser), decorateSave(save, localUser));
       writeLocalSave(SAVE_KEY, decorateSave(save, localUser));
+    } else if (options.clearActiveSaveIfEmpty) {
+      const local = getLocalStorage();
+      if (local) storageRemove(local, SAVE_KEY);
     }
     return localUser;
   }
@@ -427,6 +459,11 @@
     const userSave = readLocalSave(getUserSaveKey(user));
     const legacyIsForeign = legacySave?._authUserId && legacySave._authUserId !== user.id;
 
+    if (legacyIsForeign) {
+      backupLegacySave(legacySave, "foreign-user-save");
+      storageRemove(local, SAVE_KEY);
+    }
+
     if (isMeaningfulSave(userSave)) {
       if (isMeaningfulSave(legacySave) && !legacyIsForeign && !sameSave(legacySave, userSave)) {
         backupLegacySave(legacySave, "before-user-save-load");
@@ -448,10 +485,7 @@
       return recoveredSave;
     }
 
-    if (legacyIsForeign) {
-      backupLegacySave(legacySave, "foreign-user-save");
-      storageRemove(local, SAVE_KEY);
-    } else if (userSave) {
+    if (userSave) {
       writeLocalSave(SAVE_KEY, decorateSave(userSave, user));
       return userSave;
     }
@@ -658,6 +692,7 @@
   async function login({ username, password, remember = false } = {}) {
     const cleanKey = usernameKey(username);
     const cleanPassword = String(password || "");
+    let accountServerUnavailable = false;
 
     if (isAccountServerConfigured()) {
       try {
@@ -667,12 +702,27 @@
         const passwordHash = await hashPassword(cleanPassword, salt, iterations);
         const logged = await loginServerAccount({ usernameKey: cleanKey, passwordHash });
         const serverUser = normalizeServerUser(logged);
-        storeServerUser(serverUser, { salt, hash: passwordHash, iterations }, logged?.save_data || null, remember);
+        const users = loadUsers();
+        const localId = users.usersByName[serverUser.usernameKey];
+        const localUser = localId ? users.users[localId] : null;
+        const localSave = localUser ? readLocalSave(getUserSaveKey(localUser)) : null;
+        const loginSave = logged?.save_data || (isMeaningfulSave(localSave) ? localSave : null);
+        storeServerUser(serverUser, { salt, hash: passwordHash, iterations }, loginSave, remember, {
+          allowRecoverableFallback: false,
+          clearActiveSaveIfEmpty: true
+        });
         return { ok: true, user: { id: serverUser.id, username: serverUser.username } };
       } catch (serverError) {
         const message = String(serverError?.message || "");
-        const canFallbackLocal = /nao encontrada|não encontrada|Usuario nao encontrado|usu[aá]rio nao encontrado|Servidor de contas indisponivel/i.test(message);
+        const serverUnavailable = isAccountServerUnavailableError(serverError);
+        const canFallbackLocal = serverUnavailable || /nao encontrada|não encontrada|Usuario nao encontrado|usu[aá]rio nao encontrado/i.test(message);
         if (!canFallbackLocal) throw serverError;
+        if (serverUnavailable) {
+          accountServerUnavailable = true;
+          const users = loadUsers();
+          const userId = users.usersByName[cleanKey];
+          if (!userId || !users.users[userId]) throw serverError;
+        }
       }
     }
 
@@ -684,7 +734,7 @@
     const passwordHash = await hashPassword(cleanPassword, stored.salt, stored.iterations || PBKDF2_ITERATIONS);
     if (!timingSafeEqual(passwordHash, stored.hash || "")) throw new Error("Senha incorreta.");
 
-    if (isAccountServerConfigured()) {
+    if (isAccountServerConfigured() && !accountServerUnavailable) {
       try {
         const migrated = await migrateLocalUserToServer(user, remember);
         return { ok: true, user: { id: migrated.id, username: migrated.username } };
@@ -702,6 +752,8 @@
     if (options.clearActiveSave) {
       const activeSave = readLocalSave(SAVE_KEY);
       if (activeSave) backupLegacySave(activeSave, "logout-active-save");
+      const local = getLocalStorage();
+      if (local) storageRemove(local, SAVE_KEY);
     }
     clearSession();
     currentUser = null;
@@ -709,8 +761,9 @@
   }
 
   function saveCurrentGame(saveState) {
-    if (!currentUser) return false;
+    if (!currentUser || !saveState || typeof saveState !== "object") return false;
     const saved = saveUserSave(currentUser, saveState);
+    writeLocalSave(SAVE_KEY, decorateSave(saveState, currentUser));
     scheduleServerSave(saveState);
     return saved;
   }

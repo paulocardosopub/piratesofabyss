@@ -775,10 +775,21 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .boss-map-button:disabled { cursor: not-allowed; opacity: .38; }
 .home-guild-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, .55fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .55fr);
   align-items: center;
   gap: 13px;
   padding: 16px 18px;
+  overflow: hidden;
+}
+.home-guild-head,
+.leaderboard-heading {
+  min-width: 0;
+}
+.home-guild-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
 }
 .home-guild-copy { min-width: 0; }
 .home-guild-copy h2 { margin: 3px 0 4px; font: 700 20px Georgia, serif; color: #f5dfaa; }
@@ -804,6 +815,38 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 }
 .home-guild-stats span { color: var(--muted); font-size: 7px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .home-guild-stats strong { margin-top: 3px; color: var(--gold); font-size: 12px; font-variant-numeric: tabular-nums; }
+.home-panel-toggle {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(110,239,226,.28);
+  border-radius: 8px;
+  color: #061421;
+  background: var(--cyan-2);
+  cursor: pointer;
+  font: 900 18px/1 var(--font, system-ui);
+}
+.home-panel-toggle:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.home-panel-body {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+.home-panel-body.hidden { display: none; }
+.home-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.home-guild-list {
+  max-height: min(280px, 36vh);
+  overflow: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
 
 .button { min-height: 39px; padding: 9px 15px; border: 1px solid rgba(169, 210, 209, .23); border-radius: 9px; background: rgba(255,255,255,.06); font-size: 12px; font-weight: 800; cursor: pointer; transition: .18s ease; }
 .button:hover:not(:disabled) { border-color: rgba(110,239,226,.5); transform: translateY(-1px); background: rgba(255,255,255,.1); }
@@ -2658,12 +2701,15 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .career-grid > div { padding: 16px; text-align: center; border: 1px solid var(--line); border-radius: 11px; background: rgba(0,0,0,.12); }
 .career-grid span { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; }
 .career-grid strong { display: block; margin-top: 5px; color: var(--gold); font-size: 22px; }
-.leaderboard-card { padding: 21px; }
-.home-leaderboard-card { min-height: 142px; }
+.leaderboard-card { padding: 21px; overflow: hidden; }
+.home-leaderboard-card { min-height: 0; }
+.home-leaderboard-card.minimized { padding-bottom: 16px; }
 .leaderboard-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
+.home-leaderboard-card.minimized .leaderboard-heading { margin-bottom: 0; }
 .leaderboard-heading h2 { margin: 4px 0 3px; font: 700 22px Georgia, serif; }
 .leaderboard-heading p { margin: 0; color: var(--muted); font-size: 11px; }
 .leaderboard-heading .button { flex: 0 0 auto; min-height: 34px; padding: 7px 12px; }
+.leaderboard-actions { margin-bottom: -2px; }
 .leaderboard-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin: 0 0 10px; padding: 4px; border: 1px solid rgba(110,239,226,.14); border-radius: 7px; background: rgba(0,0,0,.14); }
 .leaderboard-tabs button { min-height: 30px; padding: 5px 8px; border: 0; border-radius: 5px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 900; text-transform: uppercase; cursor: pointer; }
 .leaderboard-tabs button.active { color: #061421; background: var(--cyan-2); box-shadow: 0 6px 14px rgba(0,0,0,.16); }
@@ -2839,6 +2885,9 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .dashboard-grid, .home-clean-grid { grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
   .home-clean-grid { grid-template-areas: "controls" "boss" "guild" "leaderboard" "log"; }
   .progression-card, .controls-card, .captain-card, .home-guild-card, .log-card { padding: 14px; }
+  .home-guild-card { grid-template-columns: 1fr; align-items: stretch; }
+  .home-guild-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .home-panel-actions .button { flex: 1 1 132px; }
   .boss-row { grid-template-columns: auto 1fr; }
   .boss-map-controls { grid-column: 1 / -1; }
   .boss-map-button { flex: 1; }

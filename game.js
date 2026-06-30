@@ -1954,6 +1954,7 @@
   let captainOverviewExpanded = false;
   let captainManualSkillsExpanded = false;
   let captainEquipmentExpanded = false;
+  const homePanelsExpanded = { guild: false, leaderboard: false };
   const statsPanelsExpanded = { quests: false, combat: false, progression: false, career: false, account: false, reset: false };
 
   function rewardText(reward = {}) {
@@ -9834,7 +9835,9 @@
     $("#battle-log").innerHTML = homeLogs.length ? homeLogs.map(item => `<li class="${item.type}"><time>${item.time}</time>${item.message}</li>`).join("") : "<li>Sem eventos importantes ainda.</li>";
     renderLeaderboard();
     renderArenaPanel();
-    if (currentScreen === "home") refreshLeaderboard();
+    syncHomePanelExpansion();
+    if (currentScreen === "home" && homePanelsExpanded.leaderboard) refreshLeaderboard();
+    if (currentScreen === "home" && homePanelsExpanded.guild) refreshGuild();
     renderSkillDock();
   }
 
@@ -10218,6 +10221,8 @@
         ["Nivel", `${formatNumber(guild.level)}`],
         ["Poder", formatNumber(guild.total_power)]
       ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+      renderHomeGuildPreview(guild);
+      syncHomePanelExpansion();
       return;
     }
     if (guildState.status === "ready") {
@@ -10228,6 +10233,8 @@
         ["Total", guildState.guilds.length],
         ["Custo", `${formatNumber(GUILD_CREATE_GOLD_COST)} Ouro`]
       ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+      renderHomeGuildPreview(null);
+      syncHomePanelExpansion();
       return;
     }
     title.textContent = "Irmandade Pirata";
@@ -10237,6 +10244,34 @@
       ["Nivel", "--"],
       ["Poder", "--"]
     ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+    renderHomeGuildPreview(null);
+    syncHomePanelExpansion();
+  }
+
+  function syncHomePanelExpansion(root = document) {
+    Object.entries(homePanelsExpanded).forEach(([key, expanded]) => {
+      const panel = $(`[data-home-panel="${key}"]`, root);
+      const toggle = $(`[data-toggle-home-panel="${key}"]`, panel || root);
+      const body = $(`[data-home-panel-body="${key}"]`, panel || root);
+      const icon = $(".home-panel-toggle-icon", toggle);
+      panel?.classList.toggle("expanded", expanded);
+      panel?.classList.toggle("minimized", !expanded);
+      body?.classList.toggle("hidden", !expanded);
+      toggle?.setAttribute("aria-expanded", expanded ? "true" : "false");
+      toggle?.setAttribute("aria-label", `${expanded ? "Minimizar" : "Expandir"} ${key === "guild" ? "Irmandade" : "Ranking dos Piratas"}`);
+      if (icon) icon.textContent = expanded ? "-" : "+";
+    });
+  }
+
+  function toggleHomePanel(key) {
+    if (!(key in homePanelsExpanded)) return;
+    const shouldExpand = !homePanelsExpanded[key];
+    Object.keys(homePanelsExpanded).forEach(panelKey => { homePanelsExpanded[panelKey] = false; });
+    homePanelsExpanded[key] = shouldExpand;
+    syncHomePanelExpansion();
+    if (!shouldExpand) return;
+    if (key === "guild") refreshGuild({ force: guildState.status === "idle" || Date.now() - guildState.lastLoadedAt > 30000 });
+    if (key === "leaderboard") refreshLeaderboard({ force: leaderboardState.status === "idle" || Date.now() - leaderboardState.lastLoadedAt > 30000 });
   }
 
   function guildEmptyStateHtml(message, danger = false) {
@@ -10249,6 +10284,47 @@
 
   function guildFullMessage() {
     return `Esta Irmandade ja atingiu o limite maximo de ${GUILD_MAX_MEMBERS} membros.`;
+  }
+
+  function guildJoinRowHtml(guild) {
+    const label = guild.entry_mode === "open" ? "Entrar" : "Solicitar";
+    const full = isGuildFull(guild);
+    const disabled = guildState.actionPending || !isValidPirateName() || full;
+    const actionLabel = full ? "Cheia" : label;
+    return `<article class="guild-row ${guild.entry_mode === "open" ? "available" : ""}">
+      <div class="guild-row-main">
+        <strong>${escapeHtml(guild.name)}</strong>
+        <small>Nivel ${formatNumber(guild.level)} &bull; ${formatNumber(guild.member_count)}/${GUILD_MAX_MEMBERS} membros &bull; Poder ${formatNumber(guild.total_power)} &bull; ${full ? "Lotada" : guildEntryLabel(guild.entry_mode)}</small>
+      </div>
+      <button class="button ${guild.entry_mode === "open" && !full ? "primary" : ""}" type="button" data-join-guild="${escapeHtml(guild.id)}" ${disabled ? "disabled" : ""}>${actionLabel}</button>
+    </article>`;
+  }
+
+  function renderHomeGuildPreview(guild = getCurrentGuild()) {
+    const list = $("#home-guild-list");
+    if (!list) return;
+    if (guild) {
+      list.innerHTML = `<article class="guild-row available">
+        <div class="guild-row-main"><strong>${escapeHtml(guild.name)}</strong><small>${guildRoleLabel(guildState.current?.role)} &bull; ${formatNumber(guild.member_count)}/${GUILD_MAX_MEMBERS} membros &bull; Poder ${formatNumber(guild.total_power)}</small></div>
+        <button class="button primary" type="button" data-open-guild>Gerenciar</button>
+      </article>`;
+      return;
+    }
+    if (guildState.status === "loading") {
+      list.innerHTML = guildEmptyStateHtml("Carregando Irmandades online...");
+      return;
+    }
+    if (guildState.status === "unavailable") {
+      list.innerHTML = guildEmptyStateHtml(guildState.error || "Irmandade online indisponivel.", true);
+      return;
+    }
+    if (guildState.status !== "ready") {
+      list.innerHTML = guildEmptyStateHtml("Expanda e atualize para carregar as Irmandades online.");
+      return;
+    }
+    list.innerHTML = guildState.guilds.length
+      ? guildState.guilds.map(guildJoinRowHtml).join("")
+      : guildEmptyStateHtml("Nenhuma Irmandade criada ainda. Seja o primeiro Rei Pirata.");
   }
 
   function guildCreatePanelHtml() {
@@ -10284,9 +10360,9 @@
       </article>`;
     }).join("") : guildEmptyStateHtml("Nenhuma Irmandade criada ainda. Seja o primeiro Rei Pirata.");
     return `<div class="guild-panel">
-      ${guildCreatePanelHtml()}
       <div class="section-heading compact"><div><span class="eyebrow">IRMANDADES ONLINE</span><h2>Escolha uma tripulacao</h2></div><button class="button" type="button" data-refresh-guild ${guildState.actionPending ? "disabled" : ""}>Atualizar</button></div>
       <div class="guild-list">${rows}</div>
+      ${guildCreatePanelHtml()}
     </div>`;
   }
 
@@ -10343,6 +10419,7 @@
     const currentBossIndex = clamp(Math.floor(Number(bossState.current_boss_index || 0)), 0, REGIONS.length);
     const allBossesCleared = currentBossIndex >= REGIONS.length;
     guildBossSelectedIndex = clamp(guildBossSelectedIndex, 0, REGIONS.length - 1);
+    if (!allBossesCleared && guildBossSelectedIndex > currentBossIndex) guildBossSelectedIndex = currentBossIndex;
     const selectedRegion = REGIONS[guildBossSelectedIndex];
     const selectedIsCurrent = !allBossesCleared && guildBossSelectedIndex === currentBossIndex;
     const selectedDefeated = allBossesCleared || guildBossSelectedIndex < currentBossIndex;
@@ -11700,7 +11777,8 @@
     const guild = getCurrentGuild();
     if (!guildState.current || !guild) return toast("Entre em uma Irmandade antes de enfrentar Boss da Irmandade.", "danger-toast");
     if (!isValidPirateName()) return toast("Defina seu Nome de Pirata na tela de Capitao antes de usar a Irmandade.", "danger-toast");
-    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || pendingBossChallengeTimer || state.combat.enemy || isArenaSceneActive()) return toast("Finalize o combate especial atual antes de enfrentar Boss da Irmandade.", "danger-toast");
+    const activeEnemy = state.combat.enemy;
+    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || pendingBossChallengeTimer || activeEnemy?.isBoss || activeEnemy?.isArena || isArenaSceneActive()) return toast("Finalize o boss ou duelo especial atual antes de enfrentar Boss da Irmandade.", "danger-toast");
     const bossIndex = clamp(Math.floor(Number(rawIndex) || 0), 0, REGIONS.length - 1);
     const bossState = guildState.current.boss_state || {};
     const currentBossIndex = clamp(Math.floor(Number(bossState.current_boss_index || 0)), 0, REGIONS.length);
@@ -12064,34 +12142,46 @@
 
   function toggleStatsPanel(key) {
     if (!(key in statsPanelsExpanded)) return;
-    statsPanelsExpanded[key] = !statsPanelsExpanded[key];
+    const shouldExpand = !statsPanelsExpanded[key];
+    Object.keys(statsPanelsExpanded).forEach(panelKey => { statsPanelsExpanded[panelKey] = false; });
+    statsPanelsExpanded[key] = shouldExpand;
     syncStatsPanelExpansion();
     if (key === "quests" && statsPanelsExpanded[key]) renderMissions();
   }
 
+  function setCaptainPanelExpansion(key, expanded) {
+    const shouldExpand = Boolean(expanded);
+    captainOverviewExpanded = key === "overview" && shouldExpand;
+    guildPanelExpanded = key === "guild" && shouldExpand;
+    captainPetsExpanded = key === "pets" && shouldExpand;
+    captainManualSkillsExpanded = key === "manualSkills" && shouldExpand;
+    captainEquipmentExpanded = key === "equipment" && shouldExpand;
+  }
+
   function toggleCaptainGuildPanel() {
-    guildPanelExpanded = !guildPanelExpanded;
+    const shouldExpand = !guildPanelExpanded;
+    setCaptainPanelExpansion("guild", shouldExpand);
     renderCaptain();
-    if (guildPanelExpanded) refreshGuild({ force: guildState.status === "idle" || Date.now() - guildState.lastLoadedAt > 10000 });
+    if (shouldExpand) refreshGuild({ force: guildState.status === "idle" || Date.now() - guildState.lastLoadedAt > 10000 });
   }
 
   function toggleCaptainPetsPanel() {
-    captainPetsExpanded = !captainPetsExpanded;
+    setCaptainPanelExpansion("pets", !captainPetsExpanded);
     renderCaptain();
   }
 
   function toggleCaptainOverviewPanel() {
-    captainOverviewExpanded = !captainOverviewExpanded;
+    setCaptainPanelExpansion("overview", !captainOverviewExpanded);
     renderCaptain();
   }
 
   function toggleCaptainManualSkillsPanel() {
-    captainManualSkillsExpanded = !captainManualSkillsExpanded;
+    setCaptainPanelExpansion("manualSkills", !captainManualSkillsExpanded);
     renderCaptain();
   }
 
   function toggleCaptainEquipmentPanel() {
-    captainEquipmentExpanded = !captainEquipmentExpanded;
+    setCaptainPanelExpansion("equipment", !captainEquipmentExpanded);
     renderCaptain();
   }
 
@@ -12295,7 +12385,7 @@
   }
 
   function openGuildFromHome() {
-    guildPanelExpanded = true;
+    setCaptainPanelExpansion("guild", true);
     guildActiveTab = "summary";
     navigate("captain");
     refreshGuild({ force: true });
@@ -12837,6 +12927,10 @@
     }
     if (target.dataset.logoutAccount !== undefined) {
       logoutAccount();
+      return;
+    }
+    if (target.dataset.toggleHomePanel) {
+      toggleHomePanel(target.dataset.toggleHomePanel);
       return;
     }
     if (target.dataset.openGuild !== undefined) {

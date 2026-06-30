@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=115">
+  <link rel="stylesheet" href="styles.css?v=116">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -189,25 +189,38 @@
             </div>
           </article>
 
-          <article class="card home-guild-card" id="home-guild-card">
-            <div class="home-guild-copy">
-              <span class="eyebrow">IRMANDADE PIRATA</span>
-              <h2 id="home-guild-title">Sua tripulacao online</h2>
-              <p id="home-guild-status">Entre em uma Irmandade, enfrente bosses diarios e libere bonus permanentes.</p>
+          <article class="card home-guild-card" id="home-guild-card" data-home-panel="guild">
+            <div class="home-guild-head">
+              <div class="home-guild-copy">
+                <span class="eyebrow">IRMANDADE PIRATA</span>
+                <h2 id="home-guild-title">Sua tripulacao online</h2>
+                <p id="home-guild-status">Entre em uma Irmandade, enfrente bosses diarios e libere bonus permanentes.</p>
+              </div>
+              <button class="home-panel-toggle" type="button" data-toggle-home-panel="guild" aria-expanded="false" aria-label="Expandir Irmandade"><span class="home-panel-toggle-icon" aria-hidden="true">+</span></button>
             </div>
             <div class="home-guild-stats" id="home-guild-stats">
               <div><span>Membros</span><strong>--</strong></div>
               <div><span>Nivel</span><strong>--</strong></div>
               <div><span>Poder</span><strong>--</strong></div>
             </div>
-            <button class="button primary" type="button" data-open-guild>Abrir Irmandade</button>
+            <div class="home-panel-body hidden" data-home-panel-body="guild">
+              <div class="guild-list home-guild-list" id="home-guild-list"></div>
+              <div class="home-panel-actions">
+                <button class="button primary" type="button" data-open-guild>Abrir Irmandade</button>
+                <button class="button" type="button" data-refresh-guild>Atualizar</button>
+              </div>
+            </div>
           </article>
 
-          <article class="card leaderboard-card home-leaderboard-card">
+          <article class="card leaderboard-card home-leaderboard-card" data-home-panel="leaderboard">
             <div class="leaderboard-heading">
               <div><span class="eyebrow">RANKING ONLINE</span><h2>Ranking dos Piratas</h2><p>Ordenado pelo Poder Naval registrado no Prestígio</p></div>
-              <button class="button" id="leaderboard-refresh" type="button">Atualizar</button>
+              <button class="home-panel-toggle" type="button" data-toggle-home-panel="leaderboard" aria-expanded="false" aria-label="Expandir Ranking dos Piratas"><span class="home-panel-toggle-icon" aria-hidden="true">+</span></button>
             </div>
+            <div class="home-panel-body hidden" data-home-panel-body="leaderboard">
+              <div class="home-panel-actions leaderboard-actions">
+                <button class="button" id="leaderboard-refresh" type="button">Atualizar</button>
+              </div>
             <div class="leaderboard-tabs" role="tablist" aria-label="Ranking e Arena">
               <button class="active" type="button" data-leaderboard-tab="ranking">Ranking</button>
               <button type="button" data-leaderboard-tab="arena">Arena</button>
@@ -226,6 +239,7 @@
               </div>
               <div class="arena-status" id="arena-status">Clique para buscar inimigos da Arena.</div>
               <div class="arena-list hidden" id="arena-list"></div>
+            </div>
             </div>
           </article>
 
@@ -470,7 +484,7 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="auth.js?v=4"></script>
-  <script src="game.js?v=217"></script>
+  <script src="auth.js?v=5"></script>
+  <script src="game.js?v=218"></script>
 </body>
 </html>
