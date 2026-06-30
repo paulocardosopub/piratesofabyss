@@ -1,0 +1,9 @@
+node_modules/
+dist-web/
+release/
+build/*.ico
+build/*.png
+tmp-visual-check/
+tmp-gif-tests/
+npm-debug.log*
+*.log

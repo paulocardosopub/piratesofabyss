@@ -14139,5 +14139,5 @@
   scheduleNearbyRegionPreload();
   requestAnimationFrame(gameLoop);
 
-  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("service-worker.js").catch(() => {});
+  if (!window.PiratesDesktop?.isDesktop && "serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("service-worker.js").catch(() => {});
 })();
