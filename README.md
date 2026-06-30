@@ -43,12 +43,55 @@ Os arquivos finais ficam em `release/`:
 - Instalador Windows NSIS com atalho na area de trabalho, menu iniciar e desinstalador.
 - Versao portatil `.exe`, sem instalacao.
 
+### Publicar atualizacao automatica no GitHub Releases
+
+A atualizacao automatica usa GitHub Releases e funciona na versao instalada pelo instalador NSIS. A versao portatil continua disponivel, mas nao deve ser usada como canal principal de auto-update.
+
+O projeto tambem inclui um workflow do GitHub Actions que publica a Release automaticamente quando uma tag `v*` e enviada.
+
+Fluxo recomendado:
+
+```powershell
+npm version patch --no-git-tag-version
+git add package.json package-lock.json
+git commit -m "chore(release): bump version"
+git push origin main
+git tag vVERSAO
+git push origin vVERSAO
+```
+
+Depois do push da tag, o GitHub Actions roda `npm run release:windows`, cria a Release e envia os arquivos necessarios para o auto-update.
+
+Para publicar localmente, o comando `release:windows` precisa de um token do GitHub com permissao para criar releases, por exemplo:
+
+```powershell
+$env:GH_TOKEN="SEU_TOKEN_DO_GITHUB"
+npm run release:windows
+```
+
+Se preferir publicar manualmente, rode `npm run package:windows`, crie uma release no GitHub com a tag `vVERSAO` e envie estes arquivos da pasta `release/`:
+
+- `Pirates-of-the-Abyss-Setup-VERSAO-x64.exe`
+- `Pirates-of-the-Abyss-Setup-VERSAO-x64.exe.blockmap`
+- `latest.yml`
+- `Pirates-of-the-Abyss-VERSAO-x64-portable.exe` opcional
+
+O arquivo `.blockmap` permite que o app baixe apenas os blocos alterados entre uma versao e outra. Se o patch diferencial nao puder ser usado por algum motivo, o updater baixa o instalador completo como fallback.
+
+Para o jogador, o fluxo fica assim:
+
+1. Instala o jogo uma vez pelo instalador.
+2. Abre o jogo normalmente.
+3. Quando houver release nova, o app baixa a atualizacao em segundo plano.
+4. Quando terminar, o app pede para reiniciar e aplicar a atualizacao.
+
 ### Scripts disponiveis
 
 - `npm run dev:desktop`: abre o app desktop em modo local.
 - `npm run build:web`: copia somente os arquivos necessarios do jogo para `dist-web` e otimiza assets do build.
 - `npm run build:desktop`: gera uma pasta desktop desempacotada para validacao.
 - `npm run package:windows`: gera instalador e executavel portatil.
+- `npm run release:windows`: gera instalador/portatil e publica no GitHub Releases.
 - `npm run optimize:assets`: otimiza os assets fonte do jogo.
 - `npm run dist`: atalho para `package:windows`.
 

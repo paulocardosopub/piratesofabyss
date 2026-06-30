@@ -41,10 +41,20 @@ async function optimizePng(filePath) {
   return { changed: true, before: original.length, after: optimized.length };
 }
 
-function frameStepForGif(pages) {
-  if (pages >= 60) return 3;
-  if (pages >= 16) return 2;
-  return 1;
+function targetFrameCountForGif(filePath, pages) {
+  const fileName = path.basename(filePath).toLowerCase();
+  if (fileName === "mapa_idle_animado_barquinho_agua_vento.gif") return Math.min(pages, 24);
+  if (pages >= 16) return 9;
+  return pages;
+}
+
+function selectGifPages(pages, targetFrames) {
+  const selected = [];
+  for (let index = 0; index < targetFrames; index += 1) {
+    const page = Math.floor((index * pages) / targetFrames);
+    if (!selected.includes(page)) selected.push(page);
+  }
+  return selected;
 }
 
 async function optimizeGif(filePath) {
@@ -59,9 +69,7 @@ async function optimizeGif(filePath) {
 
   const targetWidth = Math.min(width, gifMaxWidth);
   const targetHeight = Math.max(1, Math.round(pageHeight * (targetWidth / width)));
-  const step = frameStepForGif(pages);
-  const selectedPages = [];
-  for (let page = 0; page < pages; page += step) selectedPages.push(page);
+  const selectedPages = selectGifPages(pages, targetFrameCountForGif(filePath, pages));
 
   const frames = [];
   const delays = [];

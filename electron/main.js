@@ -1,12 +1,18 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { app, BrowserWindow, Menu, net, protocol, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, net, protocol, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 
 const APP_SCHEME = "pirates";
 const APP_HOST = "abyss";
 const APP_URL = `${APP_SCHEME}://${APP_HOST}/index.html`;
 const PRODUCT_NAME = "Pirates of the Abyss";
+const UPDATE_CHECK_DELAY_MS = 12000;
+
+let mainWindow = null;
+let updateReadyPromptOpen = false;
+let autoUpdateSetupDone = false;
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -65,6 +71,75 @@ function openExternalUrl(url) {
   shell.openExternal(url).catch(() => {});
 }
 
+function writeUpdateLog(level, message) {
+  const line = `[${new Date().toISOString()}] ${level}: ${String(message)}\n`;
+  try {
+    const logPath = path.join(app.getPath("userData"), "updates.log");
+    fs.appendFile(logPath, line, () => {});
+  } catch (_) {}
+}
+
+function getUpdateLogger() {
+  return {
+    info: message => writeUpdateLog("info", message),
+    warn: message => writeUpdateLog("warn", message),
+    error: message => writeUpdateLog("error", message),
+    debug: message => writeUpdateLog("debug", message)
+  };
+}
+
+function setupAutoUpdates(win) {
+  if (autoUpdateSetupDone) return;
+  autoUpdateSetupDone = true;
+  if (!app.isPackaged || process.env.PIRATES_DISABLE_AUTO_UPDATE === "1") {
+    writeUpdateLog("info", "Atualizacao automatica ignorada fora do app instalado.");
+    return;
+  }
+  if (process.env.PORTABLE_EXECUTABLE_FILE || process.env.PORTABLE_EXECUTABLE_DIR) {
+    writeUpdateLog("info", "Atualizacao automatica ignorada na versao portatil.");
+    return;
+  }
+
+  autoUpdater.logger = getUpdateLogger();
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.disableDifferentialDownload = false;
+
+  autoUpdater.on("checking-for-update", () => writeUpdateLog("info", "Verificando atualizacoes."));
+  autoUpdater.on("update-available", info => writeUpdateLog("info", `Atualizacao encontrada: ${info.version}.`));
+  autoUpdater.on("update-not-available", info => writeUpdateLog("info", `App atualizado: ${info.version}.`));
+  autoUpdater.on("download-progress", progress => {
+    const percent = Number(progress.percent || 0).toFixed(1);
+    writeUpdateLog("info", `Baixando atualizacao: ${percent}%.`);
+  });
+  autoUpdater.on("error", error => writeUpdateLog("error", error?.stack || error?.message || error));
+  autoUpdater.on("update-downloaded", info => {
+    writeUpdateLog("info", `Atualizacao pronta para instalar: ${info.version}.`);
+    if (updateReadyPromptOpen) return;
+    updateReadyPromptOpen = true;
+    dialog.showMessageBox(win, {
+      type: "info",
+      title: "Atualizacao pronta",
+      message: "Uma nova versao de Pirates of the Abyss foi baixada.",
+      detail: "Reinicie o jogo para instalar a atualizacao. Seu save online e sua conta serao mantidos.",
+      buttons: ["Reiniciar e atualizar", "Depois"],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true
+    }).then(result => {
+      updateReadyPromptOpen = false;
+      if (result.response === 0) autoUpdater.quitAndInstall(false, true);
+    }).catch(error => {
+      updateReadyPromptOpen = false;
+      writeUpdateLog("error", error?.stack || error?.message || error);
+    });
+  });
+
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(error => writeUpdateLog("error", error?.stack || error?.message || error));
+  }, UPDATE_CHECK_DELAY_MS);
+}
+
 function createWindow() {
   const iconPath = getBuildAssetPath(process.platform === "win32" ? "icon.ico" : "icon.png");
   const win = new BrowserWindow({
@@ -106,6 +181,7 @@ function createWindow() {
   });
 
   win.loadURL(APP_URL);
+  setupAutoUpdates(win);
   return win;
 }
 
@@ -115,10 +191,10 @@ app.commandLine.appendSwitch("disable-http-cache");
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   registerAppProtocol();
-  createWindow();
+  mainWindow = createWindow();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow();
   });
 });
 
