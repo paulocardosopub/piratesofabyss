@@ -158,6 +158,48 @@
 
   installMobileGestureGuards();
 
+  let lastSourceProtectionNoticeAt = 0;
+
+  function showSourceProtectionNotice() {
+    const now = Date.now();
+    if (now - lastSourceProtectionNoticeAt < 1800) return;
+    lastSourceProtectionNoticeAt = now;
+    if (typeof toast === "function") toast("Inspecao e codigo-fonte bloqueados nesta versao.", "danger-toast", { mobileAllowed: true });
+  }
+
+  function isProtectedSourceShortcut(event) {
+    const key = String(event.key || "").toLowerCase();
+    const ctrlOrMeta = Boolean(event.ctrlKey || event.metaKey);
+    const devCombo = ctrlOrMeta && event.shiftKey && ["i", "j", "c", "k"].includes(key);
+    const sourceCombo = ctrlOrMeta && key === "u";
+    const macDevCombo = event.metaKey && event.altKey && ["i", "j", "c", "u"].includes(key);
+    return key === "f12" || devCombo || sourceCombo || macDevCombo;
+  }
+
+  function blockSourceInspectionEvent(event) {
+    if (VISUAL_AUDIT_CONFIG) return;
+    const shouldBlock = event.type === "contextmenu"
+      || event.type === "dragstart"
+      || event.type === "selectstart"
+      || event.type === "keydown" && isProtectedSourceShortcut(event);
+    if (!shouldBlock) return;
+    event.preventDefault();
+    event.stopPropagation();
+    showSourceProtectionNotice();
+  }
+
+  function installSourceProtectionGuards() {
+    document.addEventListener("contextmenu", blockSourceInspectionEvent, true);
+    document.addEventListener("dragstart", blockSourceInspectionEvent, true);
+    document.addEventListener("keydown", blockSourceInspectionEvent, true);
+    document.addEventListener("selectstart", event => {
+      if (isTextEditingTarget(event.target)) return;
+      blockSourceInspectionEvent(event);
+    }, true);
+  }
+
+  installSourceProtectionGuards();
+
   function createPlayerId() {
     const webCrypto = typeof crypto !== "undefined" ? crypto : null;
     if (webCrypto?.randomUUID) return webCrypto.randomUUID();

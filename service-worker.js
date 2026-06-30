@@ -1,10 +1,10 @@
-const CACHE = "pirates-abyss-v211-security-hardening";
+const CACHE = "pirates-abyss-v212-source-guard";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=118",
   "auth.js?v=6",
-  "game.js?v=221",
+  "game.js?v=222",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",
