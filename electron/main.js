@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { app, BrowserWindow, Menu, dialog, net, protocol, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, net, protocol, screen, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 
 const APP_SCHEME = "pirates";
@@ -13,6 +13,8 @@ const UPDATE_CHECK_DELAY_MS = 12000;
 let mainWindow = null;
 let updateReadyPromptOpen = false;
 let autoUpdateSetupDone = false;
+let manualUpdateCheckPromise = null;
+let normalWindowState = null;
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -79,6 +81,11 @@ function writeUpdateLog(level, message) {
   } catch (_) {}
 }
 
+function sendDesktopUpdateStatus(win, status, message, extra = {}) {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.send("desktop-update-status", { status, message, ...extra });
+}
+
 function getUpdateLogger() {
   return {
     info: message => writeUpdateLog("info", message),
@@ -105,16 +112,30 @@ function setupAutoUpdates(win) {
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.disableDifferentialDownload = false;
 
-  autoUpdater.on("checking-for-update", () => writeUpdateLog("info", "Verificando atualizacoes."));
-  autoUpdater.on("update-available", info => writeUpdateLog("info", `Atualizacao encontrada: ${info.version}.`));
-  autoUpdater.on("update-not-available", info => writeUpdateLog("info", `App atualizado: ${info.version}.`));
+  autoUpdater.on("checking-for-update", () => {
+    writeUpdateLog("info", "Verificando atualizacoes.");
+    sendDesktopUpdateStatus(win, "checking", "Verificando atualizacoes...");
+  });
+  autoUpdater.on("update-available", info => {
+    writeUpdateLog("info", `Atualizacao encontrada: ${info.version}.`);
+    sendDesktopUpdateStatus(win, "available", `Atualizacao ${info.version || ""} encontrada. Baixando...`.trim(), { version: info.version || "" });
+  });
+  autoUpdater.on("update-not-available", info => {
+    writeUpdateLog("info", `App atualizado: ${info.version}.`);
+    sendDesktopUpdateStatus(win, "current", "Seu jogo ja esta atualizado.", { version: info.version || "" });
+  });
   autoUpdater.on("download-progress", progress => {
     const percent = Number(progress.percent || 0).toFixed(1);
     writeUpdateLog("info", `Baixando atualizacao: ${percent}%.`);
+    sendDesktopUpdateStatus(win, "downloading", `Baixando atualizacao: ${percent}%.`, { percent: Number(progress.percent || 0) });
   });
-  autoUpdater.on("error", error => writeUpdateLog("error", error?.stack || error?.message || error));
+  autoUpdater.on("error", error => {
+    writeUpdateLog("error", error?.stack || error?.message || error);
+    sendDesktopUpdateStatus(win, "error", "Nao foi possivel verificar atualizacoes agora.");
+  });
   autoUpdater.on("update-downloaded", info => {
     writeUpdateLog("info", `Atualizacao pronta para instalar: ${info.version}.`);
+    sendDesktopUpdateStatus(win, "ready", `Atualizacao ${info.version || ""} pronta para instalar.`.trim(), { version: info.version || "" });
     if (updateReadyPromptOpen) return;
     updateReadyPromptOpen = true;
     dialog.showMessageBox(win, {
@@ -140,6 +161,110 @@ function setupAutoUpdates(win) {
   }, UPDATE_CHECK_DELAY_MS);
 }
 
+function getMiniOverlayBounds(win) {
+  const display = screen.getDisplayMatching(win.getBounds());
+  const workArea = display?.workArea || screen.getPrimaryDisplay().workArea;
+  const width = Math.max(280, Math.min(420, Math.round(workArea.width * 0.22)));
+  const height = Math.max(78, Math.min(118, Math.round(width * 0.28)));
+  const margin = Math.max(8, Math.round(Math.min(workArea.width, workArea.height) * 0.012));
+  return {
+    width,
+    height,
+    x: Math.round(workArea.x + workArea.width - width - margin),
+    y: Math.round(workArea.y + workArea.height - height - margin)
+  };
+}
+
+function captureNormalWindowState(win) {
+  return {
+    bounds: win.getBounds(),
+    maximized: win.isMaximized(),
+    fullscreen: win.isFullScreen(),
+    resizable: win.isResizable()
+  };
+}
+
+async function enterMiniOverlay(win) {
+  if (!win || win.isDestroyed()) return { ok: false, message: "Janela indisponivel." };
+  if (!normalWindowState) normalWindowState = captureNormalWindowState(win);
+  if (win.isFullScreen()) win.setFullScreen(false);
+  if (win.isMaximized()) win.unmaximize();
+  win.setResizable(false);
+  win.setMinimumSize(280, 70);
+  win.setAlwaysOnTop(true, "floating");
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setSkipTaskbar(true);
+  win.setHasShadow(false);
+  win.setBackgroundColor("#00000000");
+  win.setBounds(getMiniOverlayBounds(win), true);
+  win.show();
+  win.focus();
+  return { ok: true };
+}
+
+async function exitMiniOverlay(win) {
+  if (!win || win.isDestroyed()) return { ok: false, message: "Janela indisponivel." };
+  const restore = normalWindowState;
+  normalWindowState = null;
+  win.setAlwaysOnTop(false);
+  win.setVisibleOnAllWorkspaces(false);
+  win.setSkipTaskbar(false);
+  win.setHasShadow(true);
+  win.setResizable(restore?.resizable ?? true);
+  win.setMinimumSize(960, 600);
+  if (restore?.bounds) win.setBounds(restore.bounds, true);
+  if (restore?.maximized) win.maximize();
+  if (restore?.fullscreen) win.setFullScreen(true);
+  win.show();
+  win.focus();
+  return { ok: true };
+}
+
+async function checkForUpdatesFromRenderer(win) {
+  if (!win || win.isDestroyed()) return { ok: false, status: "error", message: "Janela indisponivel." };
+  if (!app.isPackaged || process.env.PIRATES_DISABLE_AUTO_UPDATE === "1") {
+    const message = "Busca de atualizacao disponivel somente no app instalado.";
+    sendDesktopUpdateStatus(win, "unavailable", message);
+    return { ok: false, status: "unavailable", message };
+  }
+  if (process.env.PORTABLE_EXECUTABLE_FILE || process.env.PORTABLE_EXECUTABLE_DIR) {
+    const message = "A versao portatil nao instala atualizacoes automaticas.";
+    sendDesktopUpdateStatus(win, "unavailable", message);
+    return { ok: false, status: "unavailable", message };
+  }
+  setupAutoUpdates(win);
+  if (manualUpdateCheckPromise) {
+    return { ok: true, status: "checking", message: "Verificacao de atualizacao ja em andamento." };
+  }
+  sendDesktopUpdateStatus(win, "checking", "Verificando atualizacoes...");
+  manualUpdateCheckPromise = autoUpdater.checkForUpdates()
+    .then(() => ({ ok: true, status: "checking", message: "Busca de atualizacao iniciada." }))
+    .catch(error => {
+      writeUpdateLog("error", error?.stack || error?.message || error);
+      const message = "Nao foi possivel verificar atualizacoes agora.";
+      sendDesktopUpdateStatus(win, "error", message);
+      return { ok: false, status: "error", message };
+    })
+    .finally(() => {
+      manualUpdateCheckPromise = null;
+    });
+  return manualUpdateCheckPromise;
+}
+
+function registerDesktopIpcHandlers() {
+  ipcMain.handle("desktop-enter-mini-overlay", event => enterMiniOverlay(BrowserWindow.fromWebContents(event.sender)));
+  ipcMain.handle("desktop-exit-mini-overlay", event => exitMiniOverlay(BrowserWindow.fromWebContents(event.sender)));
+  ipcMain.handle("desktop-check-for-updates", event => checkForUpdatesFromRenderer(BrowserWindow.fromWebContents(event.sender)));
+  ipcMain.handle("desktop-window-action", (event, action) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) return { ok: false };
+    if (action === "minimize") win.minimize();
+    else if (action === "maximize") win.isMaximized() ? win.unmaximize() : win.maximize();
+    else if (action === "close") win.close();
+    return { ok: true };
+  });
+}
+
 function createWindow() {
   const iconPath = getBuildAssetPath(process.platform === "win32" ? "icon.ico" : "icon.png");
   const win = new BrowserWindow({
@@ -148,7 +273,9 @@ function createWindow() {
     height: 800,
     minWidth: 960,
     minHeight: 600,
-    backgroundColor: "#061421",
+    frame: false,
+    transparent: true,
+    backgroundColor: "#00000000",
     icon: iconPath || undefined,
     show: false,
     autoHideMenuBar: true,
@@ -158,7 +285,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      webSecurity: true
+      webSecurity: true,
+      backgroundThrottling: false
     }
   });
 
@@ -192,6 +320,7 @@ app.commandLine.appendSwitch("disable-http-cache");
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   registerAppProtocol();
+  registerDesktopIpcHandlers();
   mainWindow = createWindow();
 
   app.on("activate", () => {

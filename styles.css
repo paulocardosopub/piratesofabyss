@@ -7704,3 +7704,286 @@ body.mobile-combat-fullscreen .battle-stage .combat-quest-alert {
     padding-top: 44px;
   }
 }
+
+.desktop-window-bar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 1200;
+  height: 30px;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 0 10px;
+  color: #dffefa;
+  background: rgba(3, 14, 22, .96);
+  border-bottom: 1px solid rgba(110, 239, 226, .16);
+  -webkit-app-region: drag;
+}
+
+body.desktop-executable .desktop-window-bar:not(.hidden) {
+  display: flex;
+}
+
+.desktop-window-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-window-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.desktop-window-actions button {
+  width: 38px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  color: #dffefa;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.desktop-window-actions button:hover,
+.desktop-window-actions button:focus-visible {
+  background: rgba(110, 239, 226, .13);
+}
+
+.desktop-window-actions button[data-desktop-window-action="close"]:hover,
+.desktop-window-actions button[data-desktop-window-action="close"]:focus-visible {
+  color: #fff;
+  background: rgba(224, 82, 82, .82);
+}
+
+body.desktop-executable:not(.desktop-mini-overlay) .app-shell {
+  inset: 30px 0 0 0;
+  height: calc(100dvh - 30px);
+  max-height: calc(100dvh - 30px);
+}
+
+body.desktop-executable.auth-locked .auth-screen {
+  inset: 30px 0 0 0;
+}
+
+.combat-desktop-mini-toggle {
+  position: absolute;
+  top: 10px;
+  right: 50px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(110, 239, 226, .42);
+  border-radius: 9px;
+  color: var(--cyan-2);
+  background: rgba(5, 24, 35, .78);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, .24), 0 0 14px rgba(110, 239, 226, .12);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  touch-action: manipulation;
+}
+
+.combat-desktop-mini-toggle span {
+  display: block;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.combat-desktop-mini-toggle:hover,
+.combat-desktop-mini-toggle:focus-visible {
+  border-color: rgba(177, 255, 247, .9);
+  color: #eafffb;
+  background: rgba(8, 36, 51, .9);
+  box-shadow: 0 0 0 2px rgba(110, 239, 226, .14), 0 10px 20px rgba(0, 0, 0, .28), 0 0 18px rgba(110, 239, 226, .2);
+}
+
+.desktop-mini-drag-strip,
+.desktop-mini-controls {
+  display: none;
+}
+
+.desktop-update-zone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(110, 239, 226, .18);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, .14);
+}
+
+.desktop-update-zone div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.desktop-update-zone strong {
+  color: #f4dfae;
+  font-size: 13px;
+}
+
+.desktop-update-zone span,
+.desktop-update-zone small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.desktop-update-zone small.danger {
+  color: #ff9c89;
+}
+
+html.desktop-mini-overlay,
+body.desktop-mini-overlay {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+body.desktop-mini-overlay {
+  min-width: 0;
+  min-height: 0;
+}
+
+body.desktop-mini-overlay .desktop-window-bar,
+body.desktop-mini-overlay .auth-screen,
+body.desktop-mini-overlay .topbar,
+body.desktop-mini-overlay .bottom-nav.main-tabs,
+body.desktop-mini-overlay .combat-status-strip,
+body.desktop-mini-overlay .screen,
+body.desktop-mini-overlay .initial-captain-gate,
+body.desktop-mini-overlay .scene-vignette,
+body.desktop-mini-overlay .combat-map-title,
+body.desktop-mini-overlay .combat-boss-progress,
+body.desktop-mini-overlay .floating-health,
+body.desktop-mini-overlay .manual-attack-tutorial,
+body.desktop-mini-overlay .manual-skill-dock,
+body.desktop-mini-overlay .skill-dock,
+body.desktop-mini-overlay .combat-auto-actions,
+body.desktop-mini-overlay .combat-quick-actions,
+body.desktop-mini-overlay .combat-guild-toggle,
+body.desktop-mini-overlay .combat-desktop-mini-toggle,
+body.desktop-mini-overlay .combat-quest-alert,
+body.desktop-mini-overlay .combat-exit-button,
+body.desktop-mini-overlay .boss-defeated-banner,
+body.desktop-mini-overlay .toast-region,
+body.desktop-mini-overlay .modal-backdrop {
+  display: none !important;
+}
+
+body.desktop-mini-overlay .app-shell {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+body.desktop-mini-overlay .main-content,
+body.desktop-mini-overlay .persistent-combat {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+  display: block;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+body.desktop-mini-overlay .persistent-combat .battle-stage {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh !important;
+  min-width: 0;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+body.desktop-mini-overlay #sea-canvas {
+  width: 100%;
+  height: 100%;
+  display: block !important;
+  cursor: default;
+}
+
+body.desktop-mini-overlay .desktop-mini-drag-strip {
+  position: absolute;
+  top: 0;
+  right: 46px;
+  left: 0;
+  z-index: 24;
+  height: 22px;
+  display: block;
+  -webkit-app-region: drag;
+}
+
+body.desktop-mini-overlay .desktop-mini-controls {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 26;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity .16s ease, transform .16s ease;
+  -webkit-app-region: no-drag;
+}
+
+body.desktop-mini-overlay .battle-stage:hover .desktop-mini-controls,
+body.desktop-mini-overlay .desktop-mini-controls:focus-within {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+body.desktop-mini-overlay .desktop-mini-controls button {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(226, 252, 255, .26);
+  border-radius: 5px;
+  color: #eafffb;
+  background: rgba(3, 14, 22, .58);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .28);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+body.desktop-mini-overlay .desktop-mini-controls button:hover,
+body.desktop-mini-overlay .desktop-mini-controls button:focus-visible {
+  border-color: rgba(110, 239, 226, .72);
+  background: rgba(8, 36, 51, .84);
+}

@@ -14,10 +14,19 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=139">
+  <link rel="stylesheet" href="styles.css?v=140">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
+  <div class="desktop-window-bar hidden" id="desktop-window-bar" aria-label="Controles da janela desktop">
+    <div class="desktop-window-title">Pirates of the Abyss</div>
+    <div class="desktop-window-actions">
+      <button type="button" data-desktop-window-action="minimize" aria-label="Minimizar janela" title="Minimizar">&#x2212;</button>
+      <button type="button" data-desktop-window-action="maximize" aria-label="Maximizar ou restaurar janela" title="Maximizar">&#x25A1;</button>
+      <button type="button" data-desktop-window-action="close" aria-label="Fechar jogo" title="Fechar">&#x00D7;</button>
+    </div>
+  </div>
+
   <section class="auth-screen" id="auth-screen" data-auth-mode="login" aria-labelledby="auth-title">
     <form class="auth-card" data-auth-form autocomplete="on">
       <div class="auth-heading">
@@ -74,7 +83,13 @@
         <div class="battle-stage" id="battle-stage">
           <canvas id="sea-canvas" aria-label="Duelo naval automático."></canvas>
           <div class="scene-vignette"></div>
+          <button class="combat-desktop-mini-toggle hidden" id="desktop-mini-toggle" type="button" data-desktop-mini-enter aria-label="Abrir miniatura desktop" data-help-tooltip="Mostra somente o combate em uma faixa pequena por cima do desktop."><span aria-hidden="true">&#x25AD;</span></button>
           <button class="combat-guild-toggle" id="combat-guild-toggle" type="button" data-screen-target="guild" aria-label="Abrir Irmandade Pirata" data-help-tooltip="Abre a pagina da Irmandade Pirata."><span aria-hidden="true">&#x2620;</span></button>
+          <div class="desktop-mini-drag-strip" data-combat-ui aria-hidden="true"></div>
+          <div class="desktop-mini-controls" id="desktop-mini-controls" data-combat-ui aria-label="Controles da miniatura">
+            <button type="button" data-desktop-mini-exit aria-label="Restaurar janela normal" title="Restaurar">&#x25A1;</button>
+            <button type="button" data-desktop-mini-exit aria-label="Sair da miniatura" title="Sair da miniatura">&#x00D7;</button>
+          </div>
           <button class="combat-quest-alert hidden" id="combat-quest-alert" type="button" aria-label="Recompensas de missões disponíveis" title="Coletar recompensas de missões" data-mission-reward-shortcut><span aria-hidden="true">!</span></button>
 
           <div class="combat-map-title" id="scene-region" aria-live="polite">1 - Lagoa dos Primeiros Remadores</div>
@@ -424,6 +439,19 @@
             </div>
           </section>
 
+          <section class="stats-panel desktop-update-panel hidden" id="desktop-update-panel" data-stats-panel="desktopUpdate">
+            <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="desktopUpdate" aria-expanded="false">
+              <span><span class="eyebrow">EXECUTAVEL</span><strong>Atualizacao</strong><small id="desktop-update-summary">Buscar nova versao do jogo</small></span>
+              <i class="stats-panel-indicator" aria-hidden="true">+</i>
+            </button>
+            <div class="stats-panel-body" data-stats-panel-body="desktopUpdate">
+              <div class="desktop-update-zone">
+                <div><strong>Buscar atualizacao</strong><span>Verifica uma nova versao sem fechar o jogo.</span><small id="desktop-update-status" aria-live="polite"></small></div>
+                <button class="button primary" type="button" data-desktop-check-update>Buscar atualizacao</button>
+              </div>
+            </div>
+          </section>
+
           <section class="stats-panel danger-stats-panel" data-stats-panel="reset">
             <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="reset" aria-expanded="false">
               <span><span class="eyebrow">NOVO COMEÇO</span><strong>Novo começo</strong><small>Apaga o progresso salvo neste dispositivo</small></span>
@@ -507,6 +535,6 @@
   <script src="version.js?v=1"></script>
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=7"></script>
-  <script src="game.js?v=245"></script>
+  <script src="game.js?v=246"></script>
 </body>
 </html>

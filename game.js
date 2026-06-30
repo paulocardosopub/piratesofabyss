@@ -2011,7 +2011,7 @@
   let captainManualSkillsExpanded = false;
   let captainEquipmentExpanded = false;
   const homePanelsExpanded = { guild: false, leaderboard: false };
-  const statsPanelsExpanded = { quests: false, combat: false, progression: false, career: false, account: false, reset: false };
+  const statsPanelsExpanded = { quests: false, combat: false, progression: false, career: false, account: false, desktopUpdate: false, reset: false };
 
   function rewardText(reward = {}) {
     const parts = Object.entries(goldOnlyBundle(reward.resources || {})).filter(([, value]) => value > 0).map(([, value]) => `${formatNumber(calculateGoldReward(value))} Gold`);
@@ -2527,6 +2527,9 @@
   let mobileCombatFullscreen = false;
   let mobileCombatPanelOpen = false;
   let mobileCombatPreviousMinimized = false;
+  let desktopMiniOverlayMode = false;
+  let desktopUpdateState = { status: "idle", message: "Buscar nova versao do jogo" };
+  let removeDesktopUpdateStatusListener = null;
   let lastCombatQuickActionButton = null;
   let combatQuickFeedbackTimer = 0;
   let helpTooltipNode = null;
@@ -4484,6 +4487,119 @@
     return Boolean(window.PiratesDesktop?.isDesktop || location.protocol === "pirates:");
   }
 
+  function isDesktopMiniOverlayMode() {
+    return Boolean(desktopMiniOverlayMode);
+  }
+
+  function canUseDesktopMiniOverlay() {
+    return Boolean(
+      isDesktopExecutable()
+      && !isMobileCombatDevice()
+      && !mobileCombatFullscreen
+      && !combatFullscreen
+      && window.PiratesDesktop?.enterMiniOverlay
+      && window.PiratesDesktop?.exitMiniOverlay
+    );
+  }
+
+  function setDesktopUpdateStatus(status = "idle", message = "") {
+    desktopUpdateState = { status, message: message || "Buscar nova versao do jogo" };
+    syncDesktopUpdatePanel();
+  }
+
+  function syncDesktopUpdatePanel() {
+    const panel = $("#desktop-update-panel");
+    const summary = $("#desktop-update-summary");
+    const status = $("#desktop-update-status");
+    const button = $("[data-desktop-check-update]");
+    const desktop = isDesktopExecutable();
+    panel?.classList.toggle("hidden", !desktop);
+    if (summary) summary.textContent = desktopUpdateState.message || "Buscar nova versao do jogo";
+    if (status) {
+      status.textContent = desktop ? desktopUpdateState.message || "" : "";
+      status.classList.toggle("danger", desktopUpdateState.status === "error" || desktopUpdateState.status === "unavailable");
+    }
+    if (button) {
+      const busy = desktopUpdateState.status === "checking" || desktopUpdateState.status === "downloading";
+      button.disabled = !desktop || busy;
+      button.textContent = busy ? "Verificando..." : "Buscar atualizacao";
+    }
+  }
+
+  function syncDesktopExecutableUi() {
+    const desktop = isDesktopExecutable();
+    const app = $("#app");
+    [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("desktop-executable", desktop));
+    [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("desktop-mini-overlay", desktopMiniOverlayMode));
+    $("#desktop-window-bar")?.classList.toggle("hidden", !desktop || desktopMiniOverlayMode);
+    $("#desktop-mini-toggle")?.classList.toggle("hidden", !canUseDesktopMiniOverlay() || desktopMiniOverlayMode);
+    $("#desktop-mini-controls")?.classList.toggle("hidden", !desktopMiniOverlayMode);
+    syncDesktopUpdatePanel();
+  }
+
+  function installDesktopUpdateStatusListener() {
+    if (removeDesktopUpdateStatusListener || !window.PiratesDesktop?.onUpdateStatus) return;
+    removeDesktopUpdateStatusListener = window.PiratesDesktop.onUpdateStatus(payload => {
+      if (!payload) return;
+      setDesktopUpdateStatus(payload.status || "idle", payload.message || "");
+    });
+  }
+
+  async function enterDesktopMiniOverlay() {
+    if (!isDesktopExecutable()) return;
+    if (!canUseDesktopMiniOverlay()) {
+      toast("Miniatura desktop indisponivel neste modo.", "danger-toast");
+      return;
+    }
+    if (combatMinimized) setCombatMinimized(false, false);
+    desktopMiniOverlayMode = true;
+    syncDesktopExecutableUi();
+    resizeCombatViewport();
+    try {
+      const result = await window.PiratesDesktop.enterMiniOverlay();
+      if (result && result.ok === false) throw new Error(result.message || "Falha ao ativar miniatura.");
+      resizeCombatViewport();
+      toast("Miniatura desktop ativada.", "gold-toast");
+    } catch (error) {
+      desktopMiniOverlayMode = false;
+      syncDesktopExecutableUi();
+      resizeCombatViewport();
+      console.warn("Nao foi possivel ativar a miniatura desktop.", error);
+      toast("Nao foi possivel ativar a miniatura desktop.", "danger-toast");
+    }
+  }
+
+  async function exitDesktopMiniOverlay() {
+    if (!desktopMiniOverlayMode) return;
+    desktopMiniOverlayMode = false;
+    syncDesktopExecutableUi();
+    resizeCombatViewport();
+    try {
+      const result = await window.PiratesDesktop?.exitMiniOverlay?.();
+      if (result && result.ok === false) throw new Error(result.message || "Falha ao restaurar janela.");
+    } catch (error) {
+      console.warn("Nao foi possivel restaurar a janela desktop.", error);
+    }
+    resizeCombatViewport();
+  }
+
+  async function checkDesktopUpdate() {
+    if (!isDesktopExecutable() || !window.PiratesDesktop?.checkForUpdates) return;
+    setDesktopUpdateStatus("checking", "Verificando atualizacoes...");
+    try {
+      const result = await window.PiratesDesktop.checkForUpdates();
+      if (result?.message) setDesktopUpdateStatus(result.status || (result.ok ? "checking" : "error"), result.message);
+    } catch (error) {
+      console.warn("Nao foi possivel buscar atualizacoes.", error);
+      setDesktopUpdateStatus("error", "Nao foi possivel verificar atualizacoes agora.");
+    }
+  }
+
+  function handleDesktopWindowAction(action) {
+    if (!isDesktopExecutable() || !window.PiratesDesktop?.windowAction) return;
+    window.PiratesDesktop.windowAction(action).catch(error => console.warn("Acao da janela desktop falhou.", error));
+  }
+
   function getDesktopDownloadHiddenUntil() {
     try { return Math.max(0, Number(localStorage.getItem(DESKTOP_DOWNLOAD_DISMISS_KEY)) || 0); } catch (error) {}
     return 0;
@@ -4588,6 +4704,7 @@
     if (fullscreenButton) fullscreenButton.setAttribute("aria-pressed", String(combatFullscreen));
     syncMobilePanelState();
     syncDesktopDownloadNotice();
+    syncDesktopExecutableUi();
     resizeCombatViewport();
   }
 
@@ -6564,25 +6681,65 @@
     resize() {
       const rect = this.canvas.getBoundingClientRect();
       this.dpr = Math.min(2, window.devicePixelRatio || 1);
-      this.width = Math.max(320, rect.width);
-      this.height = Math.max(120, rect.height);
+      const mini = isDesktopMiniOverlayMode();
+      this.width = Math.max(mini ? 260 : 320, rect.width);
+      this.height = Math.max(mini ? 70 : 120, rect.height);
       this.canvas.width = this.width * this.dpr;
       this.canvas.height = this.height * this.dpr;
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     }
 
+    getCombatSceneLayout(w = this.width, h = this.height) {
+      const mini = isDesktopMiniOverlayMode();
+      if (mini) {
+        const scaleBase = clamp(Math.min(w / 620, h / 122) * 1.22, .45, .86);
+        return {
+          mini,
+          compactStage: true,
+          horizon: h * .34,
+          playerX: w * .27,
+          enemyX: w * .77,
+          playerY: h * .86,
+          enemyY: h * .77,
+          playerScale: scaleBase,
+          enemyScale: clamp(scaleBase * .95, .42, .78),
+          petX: w * .43
+        };
+      }
+      const compactStage = w < 620 || h < 240;
+      return {
+        mini,
+        compactStage,
+        horizon: h * .42,
+        playerX: w * .29,
+        enemyX: w * .71,
+        playerY: h * (compactStage ? .73 : .69),
+        enemyY: h * (compactStage ? .64 : .60),
+        playerScale: Math.min(1.15, w / 950, h / 300),
+        enemyScale: Math.min(1.02, w / 1050, h / 300),
+        petX: w * .43
+      };
+    }
+
     fire(fromPlayer, color = "#ffd37a") {
-      const start = fromPlayer ? { x: this.width * .31, y: this.height * .64 } : { x: this.width * .71, y: this.height * .49 };
-      const end = fromPlayer ? { x: this.width * .68, y: this.height * .50 } : { x: this.width * .32, y: this.height * .65 };
+      const layout = this.getCombatSceneLayout();
+      const start = fromPlayer
+        ? { x: layout.playerX + this.width * .03, y: layout.playerY - this.height * .15 }
+        : { x: layout.enemyX, y: layout.enemyY - this.height * .22 };
+      const end = fromPlayer
+        ? { x: layout.enemyX - this.width * .03, y: layout.enemyY - this.height * .18 }
+        : { x: layout.playerX + this.width * .02, y: layout.playerY - this.height * .14 };
       this.projectiles.push({ start, end, age: 0, duration: .52, color, fromPlayer });
     }
 
     burst(atEnemy = true, color = "#f4a34c") {
-      this.bursts.push({ x: this.width * (atEnemy ? .70 : .30), y: this.height * (atEnemy ? .52 : .65), age: 0, color });
+      const layout = this.getCombatSceneLayout();
+      this.bursts.push({ x: atEnemy ? layout.enemyX : layout.playerX, y: atEnemy ? layout.enemyY - this.height * .18 : layout.playerY - this.height * .16, age: 0, color });
     }
 
     sabotageEnemy(color = "#b68cff") {
-      this.sabotageEffects.push({ x: this.width * .70, y: this.height * .52, age: 0, color });
+      const layout = this.getCombatSceneLayout();
+      this.sabotageEffects.push({ x: layout.enemyX, y: layout.enemyY - this.height * .18, age: 0, color });
       this.sabotageEffects = this.sabotageEffects.slice(-4);
     }
 
@@ -6622,11 +6779,13 @@
     }
 
     manualAttackFeedback(color = "#9ff4e9") {
-      this.bursts.push({ x: this.width * .31, y: this.height * .64, age: 0, color });
+      const layout = this.getCombatSceneLayout();
+      this.bursts.push({ x: layout.playerX, y: layout.playerY - this.height * .16, age: 0, color });
     }
 
     floatDamage(amount, atEnemy = true, color = "#fff0bc") {
-      this.floaters.push({ text: amount, x: this.width * (atEnemy ? .70 : .30) + randomBetween(-25, 25), y: this.height * (atEnemy ? .47 : .60), age: 0, color });
+      const layout = this.getCombatSceneLayout();
+      this.floaters.push({ text: amount, x: (atEnemy ? layout.enemyX : layout.playerX) + randomBetween(-25, 25), y: atEnemy ? layout.enemyY - this.height * .22 : layout.playerY - this.height * .2, age: 0, color });
     }
 
     markEnemyHit(enemy) {
@@ -6759,14 +6918,8 @@
     findChestSpawnPoint(dropType, definition) {
       const w = this.width;
       const h = this.height;
-      const horizon = h * .42;
-      const compactStage = w < 620 || h < 240;
-      const playerX = w * .29;
-      const enemyX = w * .71;
-      const playerY = h * (compactStage ? .73 : .69);
-      const enemyY = h * (compactStage ? .64 : .60);
-      const playerScale = Math.min(1.15, w / 950, h / 300);
-      const enemyScale = Math.min(1.02, w / 1050, h / 300);
+      const layout = this.getCombatSceneLayout(w, h);
+      const { horizon, compactStage, playerX, enemyX, playerY, enemyY, playerScale, enemyScale } = layout;
       const chestWidth = (definition?.width || 74) * this.getChestScale();
       const baseX = w * (dropType === "boss" ? .56 : .50);
       const directProgress = clamp((baseX - playerX) / Math.max(1, enemyX - playerX), 0, 1);
@@ -7123,11 +7276,15 @@
       const w = this.width;
       const h = this.height;
       const region = getActiveCombatRegion();
-      const horizon = h * .42;
+      const layout = this.getCombatSceneLayout(w, h);
+      const { horizon } = layout;
+      const miniOverlay = layout.mini;
       const day = this.getDayState(region);
       if (isCaptainEditorEnabled()) this.captainEditorInfo = null;
       ctx.clearRect(0, 0, w, h);
 
+      ctx.save();
+      if (miniOverlay) ctx.globalAlpha = .62;
       if (this.drawFixedBackground(ctx, w, h, region)) {
         this.drawEnvironmentEvents(ctx, horizon, w, h);
       } else {
@@ -7174,31 +7331,28 @@
         if (state.regionIndex === 8) this.drawSnow(ctx, w, h);
         if (state.regionIndex === 5) this.drawFog(ctx, w, h);
       }
+      ctx.restore();
 
       const bobPlayer = Math.sin(this.time * 1.55) * 3;
-      const compactStage = w < 620 || h < 240;
-      const playerY = h * (compactStage ? .73 : .69);
-      const enemyY = h * (compactStage ? .64 : .60);
-      const playerScale = Math.min(1.15, w / 950, h / 300);
-      const enemyScale = Math.min(1.02, w / 1050, h / 300);
-      this.drawPlayerShip(ctx, w * .29, playerY + bobPlayer, playerScale, SHIPS[state.shipId]);
+      const { compactStage, playerY, enemyY, playerScale, enemyScale } = layout;
+      this.drawPlayerShip(ctx, layout.playerX, playerY + bobPlayer, playerScale, SHIPS[state.shipId]);
       const pet = getEquippedPet();
       if (pet) {
         const attackAdvance = Math.sin(this.petLunge * Math.PI) * w * .12;
-        const petScale = Math.min(1.1, w / 850, h / 290);
+        const petScale = miniOverlay ? clamp(playerScale * .72, .35, .58) : Math.min(1.1, w / 850, h / 290);
         const desiredWaterline = playerY + Math.max(58, playerScale * (compactStage ? 78 : 92));
         const minimumWaterline = playerY + Math.max(24, playerScale * (compactStage ? 34 : 42));
         const maximumWaterline = h - Math.max(18, petScale * 18);
         const petWaterlineY = maximumWaterline > minimumWaterline ? clamp(desiredWaterline, minimumWaterline, maximumWaterline) : maximumWaterline;
-        this.drawPet(ctx, w * .43 + attackAdvance, petWaterlineY, pet, petScale);
+        this.drawPet(ctx, layout.petX + attackAdvance, petWaterlineY, pet, petScale);
       }
       if (!isArenaSceneActive()) this.drawChests(ctx);
       this.enemyDeathAnimations.forEach(item => {
         if (item.age < 0) return;
-        this.drawEnemy(ctx, w * .71, enemyY, enemyScale, item.enemy);
+        this.drawEnemy(ctx, layout.enemyX, enemyY, enemyScale, item.enemy);
       });
       const enemy = state.combat.enemy;
-      if (enemy) this.drawEnemy(ctx, w * .71, enemyY, enemyScale, enemy);
+      if (enemy) this.drawEnemy(ctx, layout.enemyX, enemyY, enemyScale, enemy);
 
       this.projectiles.forEach(item => {
         const t = item.age / item.duration;
@@ -8196,11 +8350,12 @@
 
     enemySceneScale(baseScale, enemy, sourceWidth = 280) {
       const sizedScale = baseScale * this.enemySizeFactor(enemy);
-      if (enemy.isBoss) return sizedScale;
+      const layout = this.getCombatSceneLayout();
+      if (enemy.isBoss) return layout.mini ? sizedScale * .78 : sizedScale;
       const playerSprite = getPlayerShipSpritesheet(SHIPS[state.shipId].name);
-      const playerSceneScale = Math.min(1.15, this.width / 950);
+      const playerSceneScale = layout.mini ? layout.playerScale : Math.min(1.15, this.width / 950);
       const playerWidth = (playerSprite?.width || 250) * playerSceneScale;
-      const maxEnemyWidth = playerWidth * (isV2AbyssRegionIndex(enemy.regionIndex ?? state.regionIndex) ? 1.02 : .82);
+      const maxEnemyWidth = playerWidth * (layout.mini ? .95 : isV2AbyssRegionIndex(enemy.regionIndex ?? state.regionIndex) ? 1.02 : .82);
       const projectedWidth = sourceWidth * sizedScale;
       return projectedWidth > maxEnemyWidth ? sizedScale * (maxEnemyWidth / projectedWidth) : sizedScale;
     }
@@ -9791,11 +9946,11 @@
     const stage = $("#battle-stage");
     const w = scene.width || stage?.clientWidth || 320;
     const h = scene.height || stage?.clientHeight || 180;
-    const compactStage = w < 620 || h < 240;
-    const playerY = h * (compactStage ? .73 : .69) + Math.sin(scene.time * 1.55) * 3;
-    const enemyY = h * (compactStage ? .64 : .60);
-    const playerScale = Math.min(1.15, w / 950, h / 300);
-    const enemyBaseScale = Math.min(1.02, w / 1050, h / 300);
+    const layout = scene.getCombatSceneLayout(w, h);
+    const { compactStage, playerScale } = layout;
+    const playerY = layout.playerY + Math.sin(scene.time * 1.55) * 3;
+    const enemyY = layout.enemyY;
+    const enemyBaseScale = layout.enemyScale;
     const playerSprite = getPlayerShipSpritesheet(SHIPS[state.shipId].name);
     const playerHeight = (playerSprite?.width || 240) * playerScale * getSpritesheetFrameAspect(playerSprite, .72);
     const playerAnchorY = playerSprite?.anchorY ?? .64;
@@ -9822,8 +9977,8 @@
       width: w,
       height: h,
       compactStage,
-      player: { x: w * .29, y: playerTop - (compactStage ? 7 : 12) },
-      enemy: { x: w * .71, y: enemyTop - (compactStage ? 7 : 12) }
+      player: { x: layout.playerX, y: playerTop - (compactStage ? 7 : 12) },
+      enemy: { x: layout.enemyX, y: enemyTop - (compactStage ? 7 : 12) }
     };
   }
 
@@ -10114,6 +10269,7 @@
     updateSpecialCombatExitButton();
     syncCombatQuickActions();
     syncDesktopDownloadNotice();
+    syncDesktopExecutableUi();
     updateFloatingCombatHudPositions();
   }
 
@@ -13269,6 +13425,7 @@
     $("#career-stats").innerHTML = [["Versao do jogo", APP_VERSION_LABEL], ["Prestígios", state.prestiges], ["Moedas Pirata", state.pirateCoins], ["Tempo ativo total", formatDuration(state.totalActivePlaySeconds || state.lifetime.playSeconds || 0)], ["Inimigos derrotados", state.lifetime.enemies], ["Bosses derrotados", state.lifetime.bosses], ["Recursos coletados", state.lifetime.resources], ["Ouro total", state.lifetime.gold], ["Maior dano", state.lifetime.highestDamage], ["Navios construídos", state.ownedShips.length], ["Pets comprados", state.ownedPets.length], ["Ataques de pets", state.lifetime.petAttacks], ["Vitórias com pet", state.lifetime.petKills], ["Bosses com pet", state.lifetime.bossesWithPet], ["Regiões abertas", state.unlockedRegions], ["Tempo navegando", formatDuration(state.lifetime.playSeconds)]].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : value}</strong></div>`).join("");
     renderAccountPanel();
     renderMissions();
+    syncDesktopUpdatePanel();
     syncStatsPanelExpansion($("#screen-stats"));
     renderArenaPanel();
   }
@@ -13758,6 +13915,22 @@
     const target = event.target.closest("button");
     if (!target) return;
     rememberCombatQuickActionButton(target);
+    if (target.dataset.desktopWindowAction) {
+      handleDesktopWindowAction(target.dataset.desktopWindowAction);
+      return;
+    }
+    if (target.dataset.desktopMiniEnter !== undefined) {
+      enterDesktopMiniOverlay();
+      return;
+    }
+    if (target.dataset.desktopMiniExit !== undefined) {
+      exitDesktopMiniOverlay();
+      return;
+    }
+    if (target.dataset.desktopCheckUpdate !== undefined) {
+      checkDesktopUpdate();
+      return;
+    }
     if (target.dataset.mobilePanelClose !== undefined) {
       closeMobileCombatPanel();
       return;
@@ -14242,7 +14415,8 @@
     renderCaptainPreviewCanvases();
     renderPetPreviewCanvases();
     updateMobileCombatFullscreen();
-    if (combatFullscreen) resizeCombatViewport();
+    syncDesktopExecutableUi();
+    if (combatFullscreen || desktopMiniOverlayMode) resizeCombatViewport();
   });
   window.addEventListener("orientationchange", updateMobileCombatFullscreen);
   window.screen?.orientation?.addEventListener?.("change", updateMobileCombatFullscreen);
@@ -14251,6 +14425,8 @@
 
   AUTH_MANAGER?.initLoginScreen?.();
   syncAppVersionLabels();
+  installDesktopUpdateStatusListener();
+  syncDesktopExecutableUi();
   if (!isGameAuthenticated()) return;
   setupNativeTooltipSuppression();
   setCombatMinimized(combatMinimized, false);
