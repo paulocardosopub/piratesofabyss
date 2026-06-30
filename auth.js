@@ -766,7 +766,7 @@
     let pending = false;
 
     ["keydown", "keyup", "keypress", "input", "pointerdown", "touchstart"].forEach(type => {
-      screen.addEventListener(type, event => event.stopPropagation(), true);
+      screen.addEventListener(type, event => event.stopPropagation());
     });
 
     const setStatus = (message = "", danger = false) => {

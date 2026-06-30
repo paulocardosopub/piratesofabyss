@@ -92,9 +92,38 @@
   const randomBetween = (min, max) => min + Math.random() * (max - min);
   const integerBetween = (min, max) => Math.floor(randomBetween(min, max + 1));
   const nonPassiveListener = { passive: false };
+  const TEXT_EDITING_SELECTOR = "input, textarea, select, [contenteditable]";
+  let pendingTextEditRender = false;
 
   function isTextEditingTarget(target) {
-    return Boolean(target?.closest?.("input, textarea, select, [contenteditable='true'], [contenteditable=''], [data-auth-form]"));
+    const element = target?.nodeType === 3 ? target.parentElement : target;
+    if (!element?.closest) return false;
+    if (element.closest(TEXT_EDITING_SELECTOR)) return true;
+    return Boolean(element.closest("[data-auth-form]"));
+  }
+
+  function getActiveTextEditingElement() {
+    const active = document.activeElement;
+    if (!active || active === document.body || active === document.documentElement) return null;
+    const element = active?.nodeType === 3 ? active.parentElement : active;
+    if (!element?.closest) return null;
+    const field = element.closest(TEXT_EDITING_SELECTOR);
+    return field || null;
+  }
+
+  function isActiveTextEditingInside(root) {
+    const active = getActiveTextEditingElement();
+    return Boolean(active && root?.contains?.(active));
+  }
+
+  function markRenderDeferredForTextEditing() {
+    pendingTextEditRender = true;
+  }
+
+  function flushDeferredTextEditRender() {
+    if (!pendingTextEditRender || getActiveTextEditingElement()) return;
+    pendingTextEditRender = false;
+    renderAll(false);
   }
 
   function preventCancelableDefault(event) {
@@ -2372,6 +2401,8 @@
   const leaderboardState = { status: "idle", entries: [], error: "", loadingPromise: null, lastLoadedAt: 0 };
   const arenaState = { expanded: false, status: "idle", opponents: [], error: "", loadingPromise: null, lastLoadedAt: 0, battle: null, previousCombat: null, result: null };
   const guildState = { status: "idle", guilds: [], current: null, error: "", loadingPromise: null, lastLoadedAt: 0, actionPending: false };
+  const guildCreateDraft = { name: "", description: "", entryMode: "open" };
+  const guildConfigDraft = { guildId: "", name: "", description: "", entryMode: "open", dirty: false };
   let leaderboardActiveTab = "ranking";
   let guildPanelExpanded = false;
   let guildActiveTab = "summary";
@@ -3345,7 +3376,14 @@
     renderHomeGuildCard();
     renderTopbar();
     renderCombatHud();
-    if (currentScreen === "captain") renderCaptain();
+    if (currentScreen === "captain") {
+      const captainScreen = $("#screen-captain");
+      if (isActiveTextEditingInside(captainScreen)) {
+        markRenderDeferredForTextEditing();
+        return;
+      }
+      renderCaptain();
+    }
   }
 
   async function refreshGuild(options = {}) {
@@ -10215,12 +10253,13 @@
 
   function guildCreatePanelHtml() {
     const disabled = guildState.actionPending ? "disabled" : "";
+    const entryMode = guildCreateDraft.entryMode === "application" ? "application" : "open";
     return `<div class="guild-panel">
       ${!isValidPirateName() ? guildEmptyStateHtml("Defina seu Nome de Pirata acima antes de criar, entrar ou solicitar entrada.", true) : ""}
       <div class="guild-create-grid">
-        <label class="guild-field"><span>Nome da Irmandade</span><input id="guild-create-name" maxlength="32" placeholder="Ex.: Maré Dourada"></label>
-        <label class="guild-field"><span>Entrada</span><select id="guild-create-entry"><option value="open">Aberta</option><option value="application">Exige solicitacao</option></select></label>
-        <label class="guild-field wide"><span>Descricao</span><textarea id="guild-create-description" maxlength="180" placeholder="Mensagem curta para novos membros"></textarea></label>
+        <label class="guild-field"><span>Nome da Irmandade</span><input id="guild-create-name" maxlength="32" value="${escapeHtml(guildCreateDraft.name)}" placeholder="Ex.: Maré Dourada"></label>
+        <label class="guild-field"><span>Entrada</span><select id="guild-create-entry"><option value="open" ${entryMode === "open" ? "selected" : ""}>Aberta</option><option value="application" ${entryMode === "application" ? "selected" : ""}>Exige solicitacao</option></select></label>
+        <label class="guild-field wide"><span>Descricao</span><textarea id="guild-create-description" maxlength="180" placeholder="Mensagem curta para novos membros">${escapeHtml(guildCreateDraft.description)}</textarea></label>
       </div>
       <div class="guild-create-actions">
         <button class="button primary" type="button" data-create-guild ${disabled}>Criar Irmandade</button>
@@ -10370,6 +10409,7 @@
   function guildConfigTabHtml() {
     if (!hasGuildManagerAccess()) return guildEmptyStateHtml("A aba Config e exclusiva para Rei Pirata e Intendente.", true);
     const guild = getCurrentGuild();
+    const draft = ensureGuildConfigDraft(guild);
     const members = guildState.current.members || [];
     const memberOptions = members.map(member => `<option value="${escapeHtml(member.player_id)}">${escapeHtml(member.pirate_name)} - ${guildRoleLabel(member.role)}</option>`).join("");
     const full = isGuildFull(guild);
@@ -10379,9 +10419,9 @@
     </article>`).join("") : guildEmptyStateHtml("Nenhuma solicitacao pendente.");
     return `<div class="guild-panel">
       <div class="guild-config-grid">
-        <label class="guild-field"><span>Nome</span><input id="guild-config-name" maxlength="32" value="${escapeHtml(guild.name)}"></label>
-        <label class="guild-field"><span>Entrada</span><select id="guild-config-entry"><option value="open" ${guild.entry_mode === "open" ? "selected" : ""}>Aberta</option><option value="application" ${guild.entry_mode === "application" ? "selected" : ""}>Exige solicitacao</option></select></label>
-        <label class="guild-field wide"><span>Descricao</span><textarea id="guild-config-description" maxlength="180">${escapeHtml(guild.description)}</textarea></label>
+        <label class="guild-field"><span>Nome</span><input id="guild-config-name" maxlength="32" value="${escapeHtml(draft.name)}"></label>
+        <label class="guild-field"><span>Entrada</span><select id="guild-config-entry"><option value="open" ${draft.entryMode === "open" ? "selected" : ""}>Aberta</option><option value="application" ${draft.entryMode === "application" ? "selected" : ""}>Exige solicitacao</option></select></label>
+        <label class="guild-field wide"><span>Descricao</span><textarea id="guild-config-description" maxlength="180">${escapeHtml(draft.description)}</textarea></label>
       </div>
       <div class="guild-config-actions"><button class="button primary" type="button" data-save-guild-config ${guildState.actionPending ? "disabled" : ""}>Salvar Config</button></div>
       <div class="guild-config-grid">
@@ -11212,6 +11252,8 @@
       `<div class="ship-upgrade-category-panel">${categories[activeShipUpgradeCategory]}</div>`
     ].join("");
     $$("[data-next-ship-preview]", $("#upgrade-feed")).forEach(canvas => renderShipPreview(canvas, SHIPS[Number(canvas.dataset.nextShipPreview)], true));
+    if (isActiveTextEditingInside($("#screen-resources"))) markRenderDeferredForTextEditing();
+    else renderResources();
   }
 
   function getShipRequirements(ship) {
@@ -11351,7 +11393,7 @@
       const sellTotal = selected * price.sell;
       const canBuy = state.resources.ouro >= buyTotal;
       const canSell = state.resources[key] >= selected;
-      return `<article class="trade-card" data-trade-card="${key}" style="--trade-color:${RARITY_COLORS[meta.rarityKey]}"><div class="trade-card-header"><div class="trade-icon">${meta.icon}</div><div><h3>${meta.name}</h3><span class="trade-stock">No porão: <strong>${formatNumber(state.resources[key])}</strong></span></div><span class="trade-rarity">${meta.rarity}</span></div><div class="trade-prices"><div class="trade-price"><span>COMPRAR / UN.</span><strong>${formatNumber(price.buy)} Ouro</strong></div><div class="trade-price sell"><span>VENDER / UN.</span><strong>${formatNumber(price.sell)} Ouro</strong></div></div><label class="quantity-label" for="trade-qty-${key}">QUANTIDADE</label><div class="trade-quantity-control"><button type="button" data-trade-step="-1" data-trade-resource="${key}" aria-label="Diminuir quantidade">−</button><input class="trade-quantity-input" id="trade-qty-${key}" data-trade-input="${key}" type="number" inputmode="numeric" pattern="[0-9]*" min="1" step="1" value="${selected}" aria-label="Quantidade de ${meta.name}"><button type="button" data-trade-step="1" data-trade-resource="${key}" aria-label="Aumentar quantidade">+</button></div><div class="trade-live-totals"><div><span>Custo da compra</span><strong data-buy-total>${formatNumber(buyTotal)} Ouro</strong><small data-buy-balance>Saldo: ${formatNumber(state.resources.ouro)} → ${formatNumber(Math.max(0, state.resources.ouro - buyTotal))}</small></div><div><span>Receita da venda</span><strong data-sell-total>${formatNumber(sellTotal)} Ouro</strong><small data-sell-balance>Estoque: ${formatNumber(state.resources[key])} → ${formatNumber(Math.max(0, state.resources[key] - selected))}</small></div></div><div class="trade-error" data-trade-error>${!canBuy ? "Ouro insuficiente para comprar esta quantidade." : !canSell ? "Recurso insuficiente para vender esta quantidade." : "Quantidade válida para compra e venda."}</div><div class="trade-actions"><button class="button primary" data-trade-action="buy" data-trade-resource="${key}" ${canBuy ? "" : "disabled"}>Comprar</button><button class="button sell-button" data-trade-action="sell" data-trade-resource="${key}" ${canSell ? "" : "disabled"}>Vender</button></div></article>`;
+      return `<article class="trade-card" data-trade-card="${key}" style="--trade-color:${RARITY_COLORS[meta.rarityKey]}"><div class="trade-card-header"><div class="trade-icon">${meta.icon}</div><div><h3>${meta.name}</h3><span class="trade-stock">No porão: <strong>${formatNumber(state.resources[key])}</strong></span></div><span class="trade-rarity">${meta.rarity}</span></div><div class="trade-prices"><div class="trade-price"><span>COMPRAR / UN.</span><strong>${formatNumber(price.buy)} Ouro</strong></div><div class="trade-price sell"><span>VENDER / UN.</span><strong>${formatNumber(price.sell)} Ouro</strong></div></div><label class="quantity-label" for="trade-qty-${key}">QUANTIDADE</label><div class="trade-quantity-control"><button type="button" data-trade-step="-1" data-trade-resource="${key}" aria-label="Diminuir quantidade">−</button><input class="trade-quantity-input" id="trade-qty-${key}" data-trade-input="${key}" type="text" inputmode="numeric" pattern="[0-9]*" value="${selected}" aria-label="Quantidade de ${meta.name}"><button type="button" data-trade-step="1" data-trade-resource="${key}" aria-label="Aumentar quantidade">+</button></div><div class="trade-live-totals"><div><span>Custo da compra</span><strong data-buy-total>${formatNumber(buyTotal)} Ouro</strong><small data-buy-balance>Saldo: ${formatNumber(state.resources.ouro)} → ${formatNumber(Math.max(0, state.resources.ouro - buyTotal))}</small></div><div><span>Receita da venda</span><strong data-sell-total>${formatNumber(sellTotal)} Ouro</strong><small data-sell-balance>Estoque: ${formatNumber(state.resources[key])} → ${formatNumber(Math.max(0, state.resources[key] - selected))}</small></div></div><div class="trade-error" data-trade-error>${!canBuy ? "Ouro insuficiente para comprar esta quantidade." : !canSell ? "Recurso insuficiente para vender esta quantidade." : "Quantidade válida para compra e venda."}</div><div class="trade-actions"><button class="button primary" data-trade-action="buy" data-trade-resource="${key}" ${canBuy ? "" : "disabled"}>Comprar</button><button class="button sell-button" data-trade-action="sell" data-trade-resource="${key}" ${canSell ? "" : "disabled"}>Vender</button></div></article>`;
     }).join("");
   }
 
@@ -12065,6 +12107,45 @@
     return normalized.replace(/[\u0000-\u001f\u007f<>`]/g, "").replace(/\s+/g, " ").trim().slice(0, 180);
   }
 
+  function resetGuildCreateDraft() {
+    guildCreateDraft.name = "";
+    guildCreateDraft.description = "";
+    guildCreateDraft.entryMode = "open";
+  }
+
+  function ensureGuildConfigDraft(guild) {
+    if (!guild) return guildConfigDraft;
+    if (guildConfigDraft.guildId !== guild.id || !guildConfigDraft.dirty) {
+      guildConfigDraft.guildId = guild.id;
+      guildConfigDraft.name = guild.name || "";
+      guildConfigDraft.description = guild.description || "";
+      guildConfigDraft.entryMode = guild.entry_mode === "application" ? "application" : "open";
+      guildConfigDraft.dirty = false;
+    }
+    return guildConfigDraft;
+  }
+
+  function handleTextDraftInput(event) {
+    const target = event.target;
+    if (!target?.matches) return;
+    if (target.matches("#guild-create-name")) {
+      guildCreateDraft.name = target.value || "";
+    } else if (target.matches("#guild-create-description")) {
+      guildCreateDraft.description = target.value || "";
+    } else if (target.matches("#guild-create-entry")) {
+      guildCreateDraft.entryMode = target.value === "application" ? "application" : "open";
+    } else if (target.matches("#guild-config-name")) {
+      guildConfigDraft.name = target.value || "";
+      guildConfigDraft.dirty = true;
+    } else if (target.matches("#guild-config-description")) {
+      guildConfigDraft.description = target.value || "";
+      guildConfigDraft.dirty = true;
+    } else if (target.matches("#guild-config-entry")) {
+      guildConfigDraft.entryMode = target.value === "application" ? "application" : "open";
+      guildConfigDraft.dirty = true;
+    }
+  }
+
   function guildOnlineErrorMessage(error) {
     const rawMessage = String(error?.message || "");
     try {
@@ -12097,6 +12178,9 @@
     const name = sanitizeGuildName($("#guild-create-name")?.value || "");
     const description = sanitizeGuildDescription($("#guild-create-description")?.value || "");
     const entryMode = $("#guild-create-entry")?.value === "application" ? "application" : "open";
+    guildCreateDraft.name = $("#guild-create-name")?.value ?? guildCreateDraft.name;
+    guildCreateDraft.description = $("#guild-create-description")?.value ?? guildCreateDraft.description;
+    guildCreateDraft.entryMode = entryMode;
     if (!isValidPirateName()) return toast("Defina seu Nome de Pirata antes de criar uma Irmandade.", "danger-toast");
     if (name.length < 3) return toast("Nome da Irmandade precisa ter pelo menos 3 caracteres.", "danger-toast");
     if (state.resources.ouro < GUILD_CREATE_GOLD_COST) return toast(`Faltam ${formatNumber(GUILD_CREATE_GOLD_COST - state.resources.ouro)} Ouro para criar a Irmandade.`, "danger-toast");
@@ -12109,6 +12193,7 @@
       if (result?.ok === false) throw new Error(result?.message || "Criacao recusada.");
       state.resources.ouro -= GUILD_CREATE_GOLD_COST;
       guildActiveTab = "summary";
+      resetGuildCreateDraft();
       addLog(`${name} foi fundada. Cargo recebido: Rei Pirata.`, "loot");
       toast(`${name} criada! Voce e o Rei Pirata.`, "gold-toast");
       saveGame();
@@ -12133,6 +12218,11 @@
     const name = sanitizeGuildName($("#guild-config-name")?.value || guild.name);
     const description = sanitizeGuildDescription($("#guild-config-description")?.value || "");
     const entryMode = $("#guild-config-entry")?.value === "application" ? "application" : "open";
+    guildConfigDraft.guildId = guild.id;
+    guildConfigDraft.name = $("#guild-config-name")?.value ?? guildConfigDraft.name;
+    guildConfigDraft.description = $("#guild-config-description")?.value ?? guildConfigDraft.description;
+    guildConfigDraft.entryMode = entryMode;
+    guildConfigDraft.dirty = true;
     if (name.length < 3) return toast("Nome da Irmandade precisa ter pelo menos 3 caracteres.", "danger-toast");
     runGuildAction(async config => {
       await callOnlineRpc(config, config.guildConfigRpcName, {
@@ -12142,6 +12232,10 @@
         p_description: description,
         p_entry_mode: entryMode
       });
+      guildConfigDraft.name = name;
+      guildConfigDraft.description = description;
+      guildConfigDraft.entryMode = entryMode;
+      guildConfigDraft.dirty = false;
       toast("Config da Irmandade salva.", "gold-toast");
     }, "Nao foi possivel salvar a Config da Irmandade.");
   }
@@ -12225,7 +12319,7 @@
       email.classList.toggle("missing", !hasEmail);
     }
     emailForm?.classList.toggle("hidden", hasEmail);
-    if (emailInput && !hasEmail) emailInput.value = "";
+    if (emailInput && hasEmail) emailInput.value = "";
     if (emailStatus) {
       emailStatus.textContent = hasEmail ? "Email pronto para recuperacao futura." : "Adicione um email para recuperar a senha futuramente.";
       emailStatus.classList.remove("danger");
@@ -12320,7 +12414,7 @@
   }
 
   function setActiveScreen(screen) {
-    $$(".screen").forEach(node => node.classList.toggle("active", node.id === `screen-${screen}`));
+    $$(".screen").forEach(node => node.classList.toggle("active", node.id === `screen-${screen}` || (screen === "upgrades" && node.id === "screen-resources")));
     $$("[data-screen-target]").forEach(node => node.classList.toggle("active", node.dataset.screenTarget === screen));
   }
 
@@ -12329,13 +12423,31 @@
   }
 
   function renderAll(expensive = false) {
+    const activeField = getActiveTextEditingElement();
+    const activeScreen = activeField?.closest?.(".screen");
+    const activeScreenId = activeScreen?.id?.replace(/^screen-/, "");
     renderTopbar();
-    renderHome();
+    if (activeScreenId === "home") markRenderDeferredForTextEditing();
+    else renderHome();
     renderCombatHud();
     updateMissionRewardShortcut();
     renderInitialCaptainGate();
-    if (expensive && shouldRenderInactiveScreens()) Object.values(SCREEN_RENDERERS).forEach(render => render());
-    else renderScreen();
+    if (expensive && shouldRenderInactiveScreens()) {
+      Object.entries(SCREEN_RENDERERS).forEach(([screen, render]) => {
+        const screenNode = $(`#screen-${screen}`);
+        const linkedResourcesNode = screen === "upgrades" ? $("#screen-resources") : null;
+        if (activeField && (screenNode?.contains(activeField) || linkedResourcesNode?.contains(activeField))) {
+          markRenderDeferredForTextEditing();
+          return;
+        }
+        render();
+      });
+    } else {
+      const screenNode = $(`#screen-${currentScreen}`);
+      const linkedResourcesNode = currentScreen === "upgrades" ? $("#screen-resources") : null;
+      if (activeField && (screenNode?.contains(activeField) || linkedResourcesNode?.contains(activeField))) markRenderDeferredForTextEditing();
+      else renderScreen();
+    }
     setActiveScreen(currentScreen);
   }
 
@@ -12886,7 +12998,10 @@
 
   function preventInvalidTradeInput(event) {
     if (isTextEditingTarget(event.target) && !event.target.matches("[data-trade-input], #pirate-name-input, #account-email-input")) return;
-    if (event.target.matches("[data-trade-input]") && ["e", "E", "+", "-", ".", ","].includes(event.key)) event.preventDefault();
+    if (event.target.matches("[data-trade-input]")) {
+      const allowedControlKey = event.ctrlKey || event.metaKey || ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "Tab", "Enter"].includes(event.key);
+      if (!allowedControlKey && event.key.length === 1 && !/^\d$/.test(event.key)) event.preventDefault();
+    }
     if (event.target.matches("#pirate-name-input") && event.key === "Enter") {
       event.preventDefault();
       savePirateNameFromInput();
@@ -12901,9 +13016,19 @@
     const input = event.target.closest("[data-trade-input]");
     if (!input) return;
     const key = input.dataset.tradeInput;
-    const value = Math.max(1, Math.floor(Number(input.value) || 1));
-    input.value = String(value);
+    const rawValue = String(input.value || "").trim();
+    const value = rawValue ? Math.max(1, Math.floor(Number(rawValue) || 1)) : 1;
     tradeQuantities[key] = value;
+    updateTradeCard(key);
+  }
+
+  function normalizeTradeInputOnCommit(event) {
+    const input = event.target.closest("[data-trade-input]");
+    if (!input) return;
+    const key = input.dataset.tradeInput;
+    const value = Math.max(1, Math.floor(Number(input.value) || tradeQuantities[key] || 1));
+    tradeQuantities[key] = value;
+    input.value = String(value);
     updateTradeCard(key);
   }
 
@@ -13051,6 +13176,10 @@
   document.addEventListener("click", handleGlobalButtonClick);
   document.addEventListener("keydown", preventInvalidTradeInput);
   document.addEventListener("input", handleTradeInput);
+  document.addEventListener("input", handleTextDraftInput);
+  document.addEventListener("change", handleTextDraftInput);
+  document.addEventListener("change", normalizeTradeInputOnCommit);
+  document.addEventListener("focusout", () => window.setTimeout(flushDeferredTextEditRender, 0), true);
   document.addEventListener("pointerdown", startTradeHold);
   ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
 
