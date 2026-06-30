@@ -2716,6 +2716,13 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .password-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: end; }
 .password-row span { grid-column: 1 / -1; }
 .password-row .button { min-height: 30px; padding: 6px 10px; font-size: 10px; }
+.account-email-row { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.account-email-row strong.missing { color: var(--muted); }
+.account-email-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.account-email-form input { min-width: 0; min-height: 36px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: #edf8f5; background: rgba(0,0,0,.2); font-size: 12px; font-weight: 750; }
+.account-email-form input:focus { outline: 2px solid rgba(110,239,226,.25); border-color: rgba(110,239,226,.42); }
+.account-email-row small { min-height: 15px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.account-email-row small.danger { color: #ff8d86; }
 .account-password-note { margin: 0; color: var(--gold); font-size: 11px; font-weight: 750; line-height: 1.35; }
 .danger-zone strong, .danger-zone span { display: block; }
 .danger-zone span { margin-top: 3px; color: var(--muted); font-size: 11px; }
@@ -3045,6 +3052,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .account-zone-main { align-items: stretch; flex-direction: column; }
   .account-zone-main .button { width: 100%; }
   .account-credentials { grid-template-columns: 1fr; }
+  .account-email-form { grid-template-columns: 1fr; }
   .offline-rewards { grid-template-columns: repeat(2, 1fr); }
   .pets-grid { grid-template-columns: 1fr; }
   .pet-card { min-height: 485px; }

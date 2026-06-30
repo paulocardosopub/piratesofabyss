@@ -434,6 +434,23 @@
     return currentUser ? { id: currentUser.id, username: currentUser.username, email: currentUser.email || "" } : null;
   }
 
+  function updateEmail(email = "") {
+    if (!currentUser) getValidSessionUser();
+    if (!currentUser) throw new Error("Entre na conta antes de salvar o email.");
+    const cleanEmail = String(email || "").trim().slice(0, 120);
+    if (!cleanEmail) throw new Error("Informe um email para recuperacao.");
+    if (!isValidEmail(cleanEmail)) throw new Error("Informe um email valido.");
+    const users = loadUsers();
+    const stored = users.users[currentUser.id];
+    if (!stored) throw new Error("Conta nao encontrada.");
+    if (stored.email) throw new Error("Esta conta ja tem email cadastrado.");
+    stored.email = cleanEmail;
+    stored.updatedAt = Date.now();
+    if (!saveUsers(users)) throw new Error("Nao foi possivel salvar o email.");
+    currentUser = stored;
+    return { id: stored.id, username: stored.username, email: stored.email };
+  }
+
   function isAuthenticated() {
     return Boolean(getCurrentUser());
   }
@@ -567,6 +584,7 @@
     logout,
     isAuthenticated,
     getCurrentUser,
+    updateEmail,
     saveCurrentGame,
     deleteCurrentSave
   };

@@ -12184,10 +12184,25 @@
     const account = AUTH_MANAGER?.getCurrentUser?.();
     const username = $("#account-current-username");
     const password = $("#account-current-password");
+    const email = $("#account-current-email");
+    const emailForm = $("#account-email-form");
+    const emailInput = $("#account-email-input");
+    const emailStatus = $("#account-email-status");
     const note = $("#account-password-note");
     const button = $("[data-show-account-password]");
+    const hasEmail = Boolean(account?.email);
     if (username) username.textContent = account?.username || "Conta atual";
     if (password) password.textContent = "••••••••";
+    if (email) {
+      email.textContent = hasEmail ? account.email : "Nenhum email cadastrado";
+      email.classList.toggle("missing", !hasEmail);
+    }
+    emailForm?.classList.toggle("hidden", hasEmail);
+    if (emailInput && !hasEmail) emailInput.value = "";
+    if (emailStatus) {
+      emailStatus.textContent = hasEmail ? "Email pronto para recuperacao futura." : "Adicione um email para recuperar a senha futuramente.";
+      emailStatus.classList.remove("danger");
+    }
     if (note) {
       note.textContent = "";
       note.classList.add("hidden");
@@ -12208,6 +12223,30 @@
     }
     if (button) button.textContent = "Protegida";
     toast("Senha protegida por hash. Ela nao pode ser exibida.", "gold-toast");
+  }
+
+  async function saveAccountEmail(button) {
+    const input = $("#account-email-input");
+    const status = $("#account-email-status");
+    const email = input?.value || "";
+    if (button) button.disabled = true;
+    if (status) {
+      status.textContent = "Salvando email...";
+      status.classList.remove("danger");
+    }
+    try {
+      AUTH_MANAGER?.updateEmail?.(email);
+      renderAccountPanel();
+      toast("Email de recuperacao salvo.", "gold-toast");
+    } catch (error) {
+      if (status) {
+        status.textContent = error.message || "Nao foi possivel salvar o email.";
+        status.classList.add("danger");
+      }
+      toast(error.message || "Nao foi possivel salvar o email.", "danger-toast");
+    } finally {
+      if (button) button.disabled = false;
+    }
   }
 
   function renderStats() {
@@ -12653,6 +12692,10 @@
       showAccountPasswordNotice(target);
       return;
     }
+    if (target.dataset.saveAccountEmail !== undefined) {
+      saveAccountEmail(target);
+      return;
+    }
     if (target.dataset.logoutAccount !== undefined) {
       logoutAccount();
       return;
@@ -12815,11 +12858,15 @@
   }
 
   function preventInvalidTradeInput(event) {
-    if (isTextEditingTarget(event.target) && !event.target.matches("[data-trade-input], #pirate-name-input")) return;
+    if (isTextEditingTarget(event.target) && !event.target.matches("[data-trade-input], #pirate-name-input, #account-email-input")) return;
     if (event.target.matches("[data-trade-input]") && ["e", "E", "+", "-", ".", ","].includes(event.key)) event.preventDefault();
     if (event.target.matches("#pirate-name-input") && event.key === "Enter") {
       event.preventDefault();
       savePirateNameFromInput();
+    }
+    if (event.target.matches("#account-email-input") && event.key === "Enter") {
+      event.preventDefault();
+      saveAccountEmail($("[data-save-account-email]"));
     }
   }
 

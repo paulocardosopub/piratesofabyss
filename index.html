@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=114">
+  <link rel="stylesheet" href="styles.css?v=115">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -374,6 +374,15 @@
                     <strong id="account-current-password">••••••••</strong>
                     <button class="button" type="button" data-show-account-password>Mostrar</button>
                   </div>
+                  <div class="account-credential-row account-email-row">
+                    <span>Email de recuperacao</span>
+                    <strong id="account-current-email">Nenhum email cadastrado</strong>
+                    <div class="account-email-form" id="account-email-form">
+                      <input id="account-email-input" type="email" autocomplete="email" maxlength="120" placeholder="email@exemplo.com">
+                      <button class="button primary" type="button" data-save-account-email>Salvar email</button>
+                    </div>
+                    <small id="account-email-status" aria-live="polite"></small>
+                  </div>
                 </div>
                 <p class="account-password-note hidden" id="account-password-note" aria-live="polite"></p>
               </div>
@@ -461,7 +470,7 @@
   </div>
 
   <script src="online-config.js?v=1"></script>
-  <script src="auth.js?v=1"></script>
-  <script src="game.js?v=210"></script>
+  <script src="auth.js?v=2"></script>
+  <script src="game.js?v=211"></script>
 </body>
 </html>
