@@ -1,10 +1,10 @@
-const CACHE = "pirates-abyss-v199-account-email";
+const CACHE = "pirates-abyss-v200-server-accounts";
 const APP_SHELL = [
   "./",
   "index.html",
   "styles.css?v=115",
-  "auth.js?v=2",
-  "game.js?v=211",
+  "auth.js?v=3",
+  "game.js?v=212",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

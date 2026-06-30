@@ -12,7 +12,8 @@
   const ARENA_BALANCED_ATTACK_INTERVAL_MS = ARENA_ATTACK_INTERVAL_DEFAULT_MS;
   const ARENA_HP_MULTIPLIER = 10;
   const ARENA_START_DELAY_MS = 3000;
-  const GUILD_CREATE_COST = 10000;
+  const GUILD_CREATE_GOLD_COST = 10000;
+  const GUILD_MAX_MEMBERS = 20;
   const GUILD_BOSS_REWARD_GOLD = 10000;
   const GUILD_BOSS_COOLDOWN_MS = 10 * 60 * 1000;
   const GUILD_BOSS_HP_MULTIPLIER = 10;
@@ -3175,6 +3176,7 @@
     return {
       player_id: state.playerId,
       pirate_name: getGuildPirateName(),
+      gold: Math.max(0, Math.floor(Number(state.resources?.ouro || 0))),
       level: Math.max(1, Math.floor(Number(state.pirateLevel || 1))),
       captain_runtime_level: Math.max(1, Math.floor(Number(state.captainRuntimeLevel || 1))),
       captain_name: captain?.name || "",
@@ -10174,7 +10176,7 @@
         : `Boss atual: ${REGIONS[currentBossIndex]?.boss || "Boss regional"}`;
       status.textContent = `${guildRoleLabel(guildState.current.role)} na Irmandade Pirata. ${bossStatus}.`;
       stats.innerHTML = [
-        ["Membros", `${formatNumber(guild.member_count)}`],
+        ["Membros", `${formatNumber(guild.member_count)}/${GUILD_MAX_MEMBERS}`],
         ["Nivel", `${formatNumber(guild.level)}`],
         ["Poder", formatNumber(guild.total_power)]
       ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
@@ -10186,7 +10188,7 @@
       stats.innerHTML = [
         ["Abertas", guildState.guilds.filter(item => item.entry_mode === "open").length],
         ["Total", guildState.guilds.length],
-        ["Custo", formatNumber(GUILD_CREATE_COST)]
+        ["Custo", `${formatNumber(GUILD_CREATE_GOLD_COST)} Ouro`]
       ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
       return;
     }
@@ -10203,6 +10205,14 @@
     return `<div class="guild-status ${danger ? "danger" : ""}">${escapeHtml(message)}</div>`;
   }
 
+  function isGuildFull(guild) {
+    return Math.floor(Number(guild?.member_count || 0)) >= GUILD_MAX_MEMBERS;
+  }
+
+  function guildFullMessage() {
+    return `Esta Irmandade ja atingiu o limite maximo de ${GUILD_MAX_MEMBERS} membros.`;
+  }
+
   function guildCreatePanelHtml() {
     const disabled = guildState.actionPending ? "disabled" : "";
     return `<div class="guild-panel">
@@ -10214,8 +10224,8 @@
       </div>
       <div class="guild-create-actions">
         <button class="button primary" type="button" data-create-guild ${disabled}>Criar Irmandade</button>
-        <span class="cost-chip pirate-coin-cost">Custo: ${formatNumber(GUILD_CREATE_COST)} Moedas Pirata</span>
-        <span class="cost-chip">Saldo: ${formatNumber(state.pirateCoins)}</span>
+        <span class="cost-chip pirate-coin-cost">Custo: ${formatNumber(GUILD_CREATE_GOLD_COST)} Ouro</span>
+        <span class="cost-chip">Saldo: ${formatNumber(state.resources.ouro)} Ouro</span>
       </div>
     </div>`;
   }
@@ -10223,13 +10233,15 @@
   function guildDiscoveryHtml() {
     const rows = guildState.guilds.length ? guildState.guilds.map(guild => {
       const label = guild.entry_mode === "open" ? "Entrar" : "Solicitar";
-      const disabled = guildState.actionPending || !isValidPirateName();
+      const full = isGuildFull(guild);
+      const disabled = guildState.actionPending || !isValidPirateName() || full;
+      const actionLabel = full ? "Cheia" : label;
       return `<article class="guild-row ${guild.entry_mode === "open" ? "available" : ""}">
         <div class="guild-row-main">
           <strong>${escapeHtml(guild.name)}</strong>
-          <small>Nivel ${formatNumber(guild.level)} • ${formatNumber(guild.member_count)} membros • Poder ${formatNumber(guild.total_power)} • ${guildEntryLabel(guild.entry_mode)}</small>
+          <small>Nivel ${formatNumber(guild.level)} • ${formatNumber(guild.member_count)}/${GUILD_MAX_MEMBERS} membros • Poder ${formatNumber(guild.total_power)} • ${full ? "Lotada" : guildEntryLabel(guild.entry_mode)}</small>
         </div>
-        <button class="button ${guild.entry_mode === "open" ? "primary" : ""}" type="button" data-join-guild="${escapeHtml(guild.id)}" ${disabled ? "disabled" : ""}>${label}</button>
+        <button class="button ${guild.entry_mode === "open" && !full ? "primary" : ""}" type="button" data-join-guild="${escapeHtml(guild.id)}" ${disabled ? "disabled" : ""}>${actionLabel}</button>
       </article>`;
     }).join("") : guildEmptyStateHtml("Nenhuma Irmandade criada ainda. Seja o primeiro Rei Pirata.");
     return `<div class="guild-panel">
@@ -10255,7 +10267,7 @@
         ${[
           ["Nivel", guild.level],
           ["Experiencia", guild.experience],
-          ["Membros", guild.member_count || members.length],
+          ["Membros", `${formatNumber(guild.member_count || members.length)}/${GUILD_MAX_MEMBERS}`],
           ["Poder naval", guild.total_power],
           ["Prestigios", guild.total_prestiges],
           ["Contribuicao", guild.total_contribution],
@@ -10360,9 +10372,10 @@
     const guild = getCurrentGuild();
     const members = guildState.current.members || [];
     const memberOptions = members.map(member => `<option value="${escapeHtml(member.player_id)}">${escapeHtml(member.pirate_name)} - ${guildRoleLabel(member.role)}</option>`).join("");
+    const full = isGuildFull(guild);
     const applications = guildState.current.applications.length ? guildState.current.applications.map(app => `<article class="guild-application-row">
       <div class="guild-application-main"><strong>${escapeHtml(app.pirate_name)}</strong><small>Poder ${formatNumber(app.snapshot.naval_power)} • Prestigio ${formatNumber(app.snapshot.prestige_count)}</small></div>
-      <div class="guild-actions"><button class="button primary" type="button" data-guild-application="approve" data-guild-application-player="${escapeHtml(app.player_id)}">Aprovar</button><button class="button danger" type="button" data-guild-application="reject" data-guild-application-player="${escapeHtml(app.player_id)}">Recusar</button></div>
+      <div class="guild-actions"><button class="button primary" type="button" data-guild-application="approve" data-guild-application-player="${escapeHtml(app.player_id)}" ${full ? "disabled" : ""}>Aprovar</button><button class="button danger" type="button" data-guild-application="reject" data-guild-application-player="${escapeHtml(app.player_id)}">Recusar</button></div>
     </article>`).join("") : guildEmptyStateHtml("Nenhuma solicitacao pendente.");
     return `<div class="guild-panel">
       <div class="guild-config-grid">
@@ -10377,6 +10390,7 @@
       </div>
       <div class="guild-config-actions"><button class="button" type="button" data-set-guild-role="king" ${guildState.actionPending ? "disabled" : ""}>Definir Rei Pirata</button><button class="button" type="button" data-set-guild-role="quartermaster" ${guildState.actionPending ? "disabled" : ""}>Definir Intendente</button></div>
       <div class="section-heading compact"><div><span class="eyebrow">SOLICITACOES</span><h2>Aplicacoes pendentes</h2></div></div>
+      ${full ? guildEmptyStateHtml(guildFullMessage(), true) : ""}
       <div class="guild-application-list">${applications}</div>
     </div>`;
   }
@@ -10402,7 +10416,7 @@
       title: "Irmandade Pirata",
       summary,
       countLabel: guild ? "NIVEL" : "CUSTO",
-      countValue: guild ? formatNumber(guild.level) : formatNumber(GUILD_CREATE_COST)
+      countValue: guild ? formatNumber(guild.level) : `${formatNumber(GUILD_CREATE_GOLD_COST)} Ouro`
     });
     const body = !guildPanelExpanded ? "" : guildState.status === "loading"
       ? guildEmptyStateHtml("Carregando Irmandade online...")
@@ -12051,6 +12065,15 @@
     return normalized.replace(/[\u0000-\u001f\u007f<>`]/g, "").replace(/\s+/g, " ").trim().slice(0, 180);
   }
 
+  function guildOnlineErrorMessage(error) {
+    const rawMessage = String(error?.message || "");
+    try {
+      const payload = JSON.parse(rawMessage);
+      if (payload?.message) return String(payload.message);
+    } catch (_) {}
+    return rawMessage;
+  }
+
   async function runGuildAction(task, fallbackMessage = "Acao da Irmandade indisponivel no momento.") {
     if (guildState.actionPending) return;
     const config = getOnlineConfig();
@@ -12062,7 +12085,8 @@
       await refreshGuild({ force: true });
     } catch (error) {
       console.warn(fallbackMessage, error);
-      toast(fallbackMessage, "danger-toast");
+      const onlineMessage = guildOnlineErrorMessage(error);
+      toast(onlineMessage && onlineMessage.length < 180 ? onlineMessage : fallbackMessage, "danger-toast");
     } finally {
       guildState.actionPending = false;
       renderGuildIfVisible();
@@ -12075,7 +12099,7 @@
     const entryMode = $("#guild-create-entry")?.value === "application" ? "application" : "open";
     if (!isValidPirateName()) return toast("Defina seu Nome de Pirata antes de criar uma Irmandade.", "danger-toast");
     if (name.length < 3) return toast("Nome da Irmandade precisa ter pelo menos 3 caracteres.", "danger-toast");
-    if (state.pirateCoins < GUILD_CREATE_COST) return toast(`Faltam ${formatNumber(GUILD_CREATE_COST - state.pirateCoins)} Moedas Pirata para criar a Irmandade.`, "danger-toast");
+    if (state.resources.ouro < GUILD_CREATE_GOLD_COST) return toast(`Faltam ${formatNumber(GUILD_CREATE_GOLD_COST - state.resources.ouro)} Ouro para criar a Irmandade.`, "danger-toast");
     runGuildAction(async config => {
       const result = await callOnlineRpc(config, config.guildCreateRpcName, guildActionPayload({
         p_name: name,
@@ -12083,7 +12107,7 @@
         p_entry_mode: entryMode
       }));
       if (result?.ok === false) throw new Error(result?.message || "Criacao recusada.");
-      state.pirateCoins -= GUILD_CREATE_COST;
+      state.resources.ouro -= GUILD_CREATE_GOLD_COST;
       guildActiveTab = "summary";
       addLog(`${name} foi fundada. Cargo recebido: Rei Pirata.`, "loot");
       toast(`${name} criada! Voce e o Rei Pirata.`, "gold-toast");
@@ -12093,6 +12117,8 @@
 
   function joinGuild(guildId) {
     if (!isValidPirateName()) return toast("Defina seu Nome de Pirata antes de entrar em uma Irmandade.", "danger-toast");
+    const guild = guildState.guilds.find(item => item.id === guildId);
+    if (isGuildFull(guild)) return toast(guildFullMessage(), "danger-toast");
     runGuildAction(async config => {
       const result = await callOnlineRpc(config, config.guildJoinRpcName, guildActionPayload({ p_guild_id: guildId }));
       const applied = result?.status === "applied" || result?.application_created;
@@ -12140,6 +12166,7 @@
   function decideGuildApplication(playerId, approve) {
     const guild = getCurrentGuild();
     if (!guild || !hasGuildManagerAccess()) return toast("Apenas Rei Pirata e Intendente podem avaliar solicitacoes.", "danger-toast");
+    if (approve && isGuildFull(guild)) return toast(guildFullMessage(), "danger-toast");
     runGuildAction(async config => {
       await callOnlineRpc(config, config.guildApplicationRpcName, {
         p_player_id: state.playerId,
@@ -12932,8 +12959,9 @@
     else commitGame(false);
   }
 
-  function logoutAccount() {
+  async function logoutAccount() {
     saveGame();
+    await AUTH_MANAGER?.flushCurrentGameSave?.(state);
     AUTH_MANAGER?.logout?.({ clearActiveSave: true });
     window.location.reload();
   }
@@ -12994,8 +13022,8 @@
     return true;
   }
 
-  function wipeProgress() {
-    AUTH_MANAGER?.deleteCurrentSave?.();
+  async function wipeProgress() {
+    await AUTH_MANAGER?.deleteCurrentSave?.();
     localStorage.removeItem(SAVE_KEY);
     cancelPendingBossMapAdvance();
     cancelPendingSurpriseBoss();

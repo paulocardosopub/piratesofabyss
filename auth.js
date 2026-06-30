@@ -8,12 +8,16 @@
   const PBKDF2_ITERATIONS = 150000;
   const REMEMBER_SESSION_MS = 30 * 24 * 60 * 60 * 1000;
   const BROWSER_SESSION_MS = 12 * 60 * 60 * 1000;
+  const SERVER_SAVE_THROTTLE_MS = 8000;
   const MIN_USERNAME_LENGTH = 3;
   const MAX_USERNAME_LENGTH = 24;
   const MIN_PASSWORD_LENGTH = 4;
 
   let currentUser = null;
   let currentSession = null;
+  let serverSaveTimer = 0;
+  let serverSavePromise = null;
+  let pendingServerSave = null;
 
   const textEncoder = typeof TextEncoder !== "undefined" ? new TextEncoder() : null;
 
@@ -57,6 +61,43 @@
 
   function cloneData(value) {
     try { return JSON.parse(JSON.stringify(value)); } catch { return value; }
+  }
+
+  function getOnlineConfig() {
+    const raw = window.PIRATES_ONLINE_CONFIG || {};
+    const supabaseUrl = String(raw.supabaseUrl || raw.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+    const supabaseAnonKey = String(raw.supabaseAnonKey || raw.SUPABASE_ANON_KEY || "").trim();
+    return { supabaseUrl, supabaseAnonKey };
+  }
+
+  function isAccountServerConfigured() {
+    const config = getOnlineConfig();
+    return Boolean(config.supabaseUrl && config.supabaseAnonKey);
+  }
+
+  async function callAccountRpc(rpcName, payload = {}) {
+    const config = getOnlineConfig();
+    if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error("Servidor de contas indisponivel.");
+    const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/${rpcName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": config.supabaseAnonKey,
+        "Authorization": `Bearer ${config.supabaseAnonKey}`
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      const message = await response.text().catch(() => "");
+      let parsed = null;
+      try {
+        parsed = JSON.parse(message);
+      } catch (_) {}
+      if (parsed?.message || parsed?.details) throw new Error(parsed.message || parsed.details);
+      throw new Error(message || `Servidor de contas indisponivel (${response.status}).`);
+    }
+    if (response.status === 204) return null;
+    return response.json();
   }
 
   function bytesToBase64(bytes) {
@@ -166,6 +207,35 @@
     return writeJsonToStorage(local, `${LEGACY_BACKUP_PREFIX}${Date.now()}`, backup);
   }
 
+  function listRecoverableSaves(user = null) {
+    const local = getLocalStorage();
+    if (!local) return [];
+    const saves = [];
+    const userId = user?.id || "";
+    const username = user?.username || "";
+    const pushSave = (key, reason) => {
+      const save = readJsonFromStorage(local, key, null);
+      if (!isMeaningfulSave(save)) return;
+      const belongsToUser = user
+        ? (!save._authUserId || save._authUserId === userId || save._authUsername === username)
+        : !save._authUserId;
+      if (!belongsToUser && reason !== "active-save") return;
+      saves.push({ key, reason, save, score: getSaveScore(save), updatedAt: Number(save._saveUpdatedAt || save._backedUpAt || save.lastSeen || 0) });
+    };
+    pushSave(SAVE_KEY, "active-save");
+    if (user) pushSave(getUserSaveKey(user), "user-save");
+    for (let index = 0; index < local.length; index += 1) {
+      const key = local.key(index);
+      if (key?.startsWith(LEGACY_BACKUP_PREFIX)) pushSave(key, "backup");
+      if (userId && key === `pirates-of-the-abyss-user-save-v1:${userId}`) pushSave(key, "user-save");
+    }
+    return saves.sort((a, b) => b.score - a.score || b.updatedAt - a.updatedAt);
+  }
+
+  function getBestRecoverableSave(user = null) {
+    return listRecoverableSaves(user)[0]?.save || null;
+  }
+
   function decorateSave(save, user) {
     return {
       ...cloneData(save || {}),
@@ -175,11 +245,140 @@
     };
   }
 
+  function normalizeServerUser(payload = {}) {
+    const account = payload.account || payload.user || payload;
+    const id = String(account.id || account.account_id || "").trim();
+    const username = normalizeUsername(account.username || "");
+    const key = usernameKey(account.username_key || username);
+    return {
+      id,
+      username,
+      usernameKey: key,
+      email: String(account.email || "").trim(),
+      saveKey: `pirates-of-the-abyss-user-save-v1:${id}`,
+      server: {
+        accountId: id,
+        sessionToken: String(payload.session_token || account.session_token || ""),
+        sessionExpiresAt: payload.session_expires_at || account.session_expires_at || "",
+        syncedAt: Date.now()
+      }
+    };
+  }
+
+  function storeServerUser(serverUser, credentials = {}, saveData = null, remember = false) {
+    if (!serverUser?.id || !serverUser.usernameKey) throw new Error("Conta do servidor invalida.");
+    const users = loadUsers();
+    const oldId = users.usersByName[serverUser.usernameKey];
+    const previous = oldId ? users.users[oldId] : null;
+    const localUser = {
+      ...(previous || {}),
+      ...serverUser,
+      password: {
+        algorithm: "PBKDF2-SHA256",
+        iterations: credentials.iterations || previous?.password?.iterations || PBKDF2_ITERATIONS,
+        salt: credentials.salt || previous?.password?.salt || "",
+        hash: credentials.hash || previous?.password?.hash || ""
+      },
+      updatedAt: Date.now()
+    };
+    if (oldId && oldId !== localUser.id) delete users.users[oldId];
+    users.users[localUser.id] = localUser;
+    users.usersByName[localUser.usernameKey] = localUser.id;
+    saveUsers(users);
+    currentUser = localUser;
+    writeSession(localUser, remember);
+    const save = saveData || getBestRecoverableSave(localUser);
+    if (save) {
+      writeLocalSave(getUserSaveKey(localUser), decorateSave(save, localUser));
+      writeLocalSave(SAVE_KEY, decorateSave(save, localUser));
+    }
+    return localUser;
+  }
+
+  async function getServerChallenge(cleanKey) {
+    return callAccountRpc("get_pirate_account_challenge", { p_username_key: cleanKey });
+  }
+
+  async function createServerAccount({ username, usernameKey: cleanKey, email, salt, passwordHash, iterations, saveData }) {
+    return callAccountRpc("create_pirate_account", {
+      p_username: username,
+      p_username_key: cleanKey,
+      p_email: email || "",
+      p_password_salt: salt,
+      p_password_hash: passwordHash,
+      p_password_iterations: iterations,
+      p_save_data: saveData || null
+    });
+  }
+
+  async function loginServerAccount({ usernameKey: cleanKey, passwordHash }) {
+    return callAccountRpc("login_pirate_account", {
+      p_username_key: cleanKey,
+      p_password_hash: passwordHash
+    });
+  }
+
+  function getServerAuth(user = currentUser) {
+    const token = user?.server?.sessionToken || "";
+    const accountId = user?.server?.accountId || user?.id || "";
+    return token && accountId ? { accountId, token } : null;
+  }
+
+  async function saveGameToServer(saveState, options = {}) {
+    const auth = getServerAuth();
+    if (!auth || !saveState || typeof saveState !== "object" || !isAccountServerConfigured()) return false;
+    const result = await callAccountRpc("save_pirate_account_game", {
+      p_account_id: auth.accountId,
+      p_session_token: auth.token,
+      p_save_data: saveState
+    });
+    const serverSave = result?.save_data || result?.saveData || null;
+    if (serverSave && result?.kept_existing) {
+      writeLocalSave(getUserSaveKey(currentUser), decorateSave(serverSave, currentUser));
+      writeLocalSave(SAVE_KEY, decorateSave(serverSave, currentUser));
+    }
+    if (currentUser?.server) currentUser.server.syncedAt = Date.now();
+    if (options.force && currentUser) {
+      const users = loadUsers();
+      if (users.users[currentUser.id]) {
+        users.users[currentUser.id] = currentUser;
+        saveUsers(users);
+      }
+    }
+    return true;
+  }
+
+  function scheduleServerSave(saveState) {
+    if (!getServerAuth() || !isAccountServerConfigured()) return;
+    pendingServerSave = cloneData(saveState);
+    if (serverSaveTimer) return;
+    serverSaveTimer = window.setTimeout(() => {
+      serverSaveTimer = 0;
+      const next = pendingServerSave;
+      pendingServerSave = null;
+      serverSavePromise = saveGameToServer(next).catch(error => console.warn("Nao foi possivel salvar progresso no servidor.", error)).finally(() => {
+        serverSavePromise = null;
+        if (pendingServerSave) scheduleServerSave(pendingServerSave);
+      });
+    }, SERVER_SAVE_THROTTLE_MS);
+  }
+
+  async function flushCurrentGameSave(saveState) {
+    if (serverSaveTimer) {
+      clearTimeout(serverSaveTimer);
+      serverSaveTimer = 0;
+    }
+    if (serverSavePromise) await serverSavePromise.catch(() => {});
+    const save = saveState || pendingServerSave || readLocalSave(SAVE_KEY);
+    pendingServerSave = null;
+    if (save) await saveGameToServer(save, { force: true }).catch(error => console.warn("Nao foi possivel sincronizar progresso no servidor.", error));
+  }
+
   function shouldKeepExistingSave(nextSave, existingSave) {
     if (!existingSave || !isMeaningfulSave(existingSave)) return false;
     const nextScore = getSaveScore(nextSave);
     const existingScore = getSaveScore(existingSave);
-    return existingScore >= 8 && nextScore <= 1;
+    return existingScore >= 8 && (nextScore <= 3 || (existingScore >= 20 && nextScore < existingScore * .55));
   }
 
   function saveUserSave(user, save, options = {}) {
@@ -201,11 +400,23 @@
     return true;
   }
 
-  function deleteCurrentSave() {
+  async function deleteCurrentSave() {
     if (!currentUser) return;
+    if (serverSaveTimer) {
+      clearTimeout(serverSaveTimer);
+      serverSaveTimer = 0;
+    }
+    pendingServerSave = null;
+    if (serverSavePromise) await serverSavePromise.catch(() => {});
+    const auth = getServerAuth();
     const local = getLocalStorage();
-    if (!local) return;
-    storageRemove(local, getUserSaveKey(currentUser));
+    if (local) storageRemove(local, getUserSaveKey(currentUser));
+    if (auth && isAccountServerConfigured()) {
+      await callAccountRpc("clear_pirate_account_save", {
+        p_account_id: auth.accountId,
+        p_session_token: auth.token
+      }).catch(error => console.warn("Nao foi possivel limpar progresso no servidor.", error));
+    }
   }
 
   function prepareUserSaveForLoad(user) {
@@ -228,6 +439,13 @@
       saveUserSave(user, legacySave, { force: true, migrated: true });
       writeLocalSave(SAVE_KEY, decorateSave(legacySave, user));
       return legacySave;
+    }
+
+    const recoveredSave = getBestRecoverableSave(user);
+    if (isMeaningfulSave(recoveredSave)) {
+      saveUserSave(user, recoveredSave, { force: true, migrated: true });
+      writeLocalSave(SAVE_KEY, decorateSave(recoveredSave, user));
+      return recoveredSave;
     }
 
     if (legacyIsForeign) {
@@ -376,6 +594,23 @@
 
     const salt = randomBase64(16);
     const passwordHash = await hashPassword(cleanPassword, salt);
+    const initialSave = getBestRecoverableSave(null);
+
+    if (isAccountServerConfigured()) {
+      const created = await createServerAccount({
+        username: cleanUsername,
+        usernameKey: cleanKey,
+        email: cleanEmail,
+        salt,
+        passwordHash,
+        iterations: PBKDF2_ITERATIONS,
+        saveData: initialSave
+      });
+      const serverUser = normalizeServerUser(created);
+      storeServerUser(serverUser, { salt, hash: passwordHash, iterations: PBKDF2_ITERATIONS }, created?.save_data || initialSave, remember);
+      return { ok: true, user: { id: serverUser.id, username: cleanUsername } };
+    }
+
     const id = createId("pirate");
     const user = {
       id,
@@ -400,33 +635,84 @@
     return { ok: true, user: { id, username: cleanUsername } };
   }
 
+  async function migrateLocalUserToServer(user, remember = false) {
+    if (!user?.password?.salt || !user?.password?.hash || !isAccountServerConfigured()) return user;
+    const saveData = prepareUserSaveForLoad(user) || getBestRecoverableSave(user);
+    const created = await createServerAccount({
+      username: user.username,
+      usernameKey: user.usernameKey,
+      email: user.email || "",
+      salt: user.password.salt,
+      passwordHash: user.password.hash,
+      iterations: user.password.iterations || PBKDF2_ITERATIONS,
+      saveData
+    });
+    const serverUser = normalizeServerUser(created);
+    return storeServerUser(serverUser, {
+      salt: user.password.salt,
+      hash: user.password.hash,
+      iterations: user.password.iterations || PBKDF2_ITERATIONS
+    }, created?.save_data || saveData, remember);
+  }
+
   async function login({ username, password, remember = false } = {}) {
     const cleanKey = usernameKey(username);
+    const cleanPassword = String(password || "");
+
+    if (isAccountServerConfigured()) {
+      try {
+        const challenge = await getServerChallenge(cleanKey);
+        const salt = challenge?.password_salt || challenge?.salt || "";
+        const iterations = Number(challenge?.password_iterations || challenge?.iterations || PBKDF2_ITERATIONS);
+        const passwordHash = await hashPassword(cleanPassword, salt, iterations);
+        const logged = await loginServerAccount({ usernameKey: cleanKey, passwordHash });
+        const serverUser = normalizeServerUser(logged);
+        storeServerUser(serverUser, { salt, hash: passwordHash, iterations }, logged?.save_data || null, remember);
+        return { ok: true, user: { id: serverUser.id, username: serverUser.username } };
+      } catch (serverError) {
+        const message = String(serverError?.message || "");
+        const canFallbackLocal = /nao encontrada|não encontrada|Usuario nao encontrado|usu[aá]rio nao encontrado|Servidor de contas indisponivel/i.test(message);
+        if (!canFallbackLocal) throw serverError;
+      }
+    }
+
     const users = loadUsers();
     const userId = users.usersByName[cleanKey];
     const user = userId ? users.users[userId] : null;
     if (!user) throw new Error("Usuario nao encontrado.");
     const stored = user.password || {};
-    const passwordHash = await hashPassword(String(password || ""), stored.salt, stored.iterations || PBKDF2_ITERATIONS);
+    const passwordHash = await hashPassword(cleanPassword, stored.salt, stored.iterations || PBKDF2_ITERATIONS);
     if (!timingSafeEqual(passwordHash, stored.hash || "")) throw new Error("Senha incorreta.");
+
+    if (isAccountServerConfigured()) {
+      try {
+        const migrated = await migrateLocalUserToServer(user, remember);
+        return { ok: true, user: { id: migrated.id, username: migrated.username } };
+      } catch (error) {
+        console.warn("Nao foi possivel migrar a conta local para o servidor.", error);
+      }
+    }
+
     writeSession(user, remember);
     prepareUserSaveForLoad(currentUser || user);
     return { ok: true, user: { id: user.id, username: user.username } };
   }
 
   function logout(options = {}) {
+    if (options.clearActiveSave) {
+      const activeSave = readLocalSave(SAVE_KEY);
+      if (activeSave) backupLegacySave(activeSave, "logout-active-save");
+    }
     clearSession();
     currentUser = null;
-    if (options.clearActiveSave) {
-      const local = getLocalStorage();
-      if (local) storageRemove(local, SAVE_KEY);
-    }
     setAuthLocked(true);
   }
 
   function saveCurrentGame(saveState) {
     if (!currentUser) return false;
-    return saveUserSave(currentUser, saveState);
+    const saved = saveUserSave(currentUser, saveState);
+    scheduleServerSave(saveState);
+    return saved;
   }
 
   function getCurrentUser() {
@@ -448,6 +734,14 @@
     stored.updatedAt = Date.now();
     if (!saveUsers(users)) throw new Error("Nao foi possivel salvar o email.");
     currentUser = stored;
+    const auth = getServerAuth(stored);
+    if (auth && isAccountServerConfigured()) {
+      callAccountRpc("update_pirate_account_email", {
+        p_account_id: auth.accountId,
+        p_session_token: auth.token,
+        p_email: cleanEmail
+      }).catch(error => console.warn("Nao foi possivel salvar email no servidor.", error));
+    }
     return { id: stored.id, username: stored.username, email: stored.email };
   }
 
@@ -586,6 +880,7 @@
     getCurrentUser,
     updateEmail,
     saveCurrentGame,
+    flushCurrentGameSave,
     deleteCurrentSave
   };
 })();

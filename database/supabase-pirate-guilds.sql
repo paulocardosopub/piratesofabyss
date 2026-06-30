@@ -1,5 +1,13 @@
 create extension if not exists pgcrypto;
 
+create or replace function public.pirate_guild_full_message()
+returns text
+language sql
+immutable
+as $$
+  select 'Esta Irmandade ja atingiu o limite maximo de 20 membros.';
+$$;
+
 create table if not exists public.pirate_guilds (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(trim(name)) between 3 and 32),
@@ -286,6 +294,9 @@ declare
 begin
   if length(v_player_id) < 8 then raise exception 'player_id invalido'; end if;
   if char_length(v_name) < 3 or char_length(v_name) > 32 then raise exception 'nome invalido'; end if;
+  if public.pirate_guild_number_from_snapshot(coalesce(p_player_snapshot, '{}'::jsonb), 'gold') < 10000 then
+    raise exception 'Ouro insuficiente para criar a Irmandade.';
+  end if;
   if exists (select 1 from public.pirate_guild_members where player_id = v_player_id) then
     raise exception 'jogador ja esta em uma irmandade';
   end if;
@@ -315,13 +326,22 @@ as $$
 declare
   v_player_id text := trim(coalesce(p_player_id, ''));
   v_guild public.pirate_guilds%rowtype;
+  v_member_count integer;
 begin
   if exists (select 1 from public.pirate_guild_members where player_id = v_player_id) then
     raise exception 'jogador ja esta em uma irmandade';
   end if;
 
-  select * into v_guild from public.pirate_guilds where id = p_guild_id;
+  select * into v_guild from public.pirate_guilds where id = p_guild_id for update;
   if v_guild.id is null then raise exception 'irmandade nao encontrada'; end if;
+
+  select count(*)::integer into v_member_count
+  from public.pirate_guild_members
+  where guild_id = p_guild_id;
+
+  if v_member_count >= 20 then
+    raise exception '%', public.pirate_guild_full_message();
+  end if;
 
   if v_guild.entry_mode = 'open' then
     insert into public.pirate_guild_members (guild_id, player_id, pirate_name, role, player_snapshot)
@@ -427,6 +447,7 @@ as $$
 declare
   v_role text;
   v_application public.pirate_guild_applications%rowtype;
+  v_member_count integer;
 begin
   select role into v_role
   from public.pirate_guild_members
@@ -441,6 +462,15 @@ begin
   if v_application.player_id is null then raise exception 'solicitacao nao encontrada'; end if;
 
   if p_approve then
+    perform 1 from public.pirate_guilds where id = p_guild_id for update;
+    select count(*)::integer into v_member_count
+    from public.pirate_guild_members
+    where guild_id = p_guild_id;
+
+    if v_member_count >= 20 then
+      raise exception '%', public.pirate_guild_full_message();
+    end if;
+
     insert into public.pirate_guild_members (guild_id, player_id, pirate_name, role, player_snapshot)
     values (p_guild_id, v_application.player_id, v_application.pirate_name, 'member', v_application.player_snapshot);
   end if;
@@ -696,6 +726,7 @@ end;
 $$;
 
 revoke all on function public.get_pirate_guild_home(text) from public;
+revoke all on function public.pirate_guild_full_message() from public;
 revoke all on function public.upsert_pirate_guild_profile(text, text, jsonb) from public;
 revoke all on function public.create_pirate_guild(text, text, jsonb, text, text, text) from public;
 revoke all on function public.join_pirate_guild(text, text, jsonb, uuid) from public;
@@ -707,6 +738,7 @@ revoke all on function public.start_pirate_guild_boss_attempt(text, uuid, intege
 revoke all on function public.finish_pirate_guild_boss_attempt(text, uuid, integer, numeric, numeric, jsonb) from public;
 
 grant execute on function public.get_pirate_guild_home(text) to anon, authenticated;
+grant execute on function public.pirate_guild_full_message() to anon, authenticated;
 grant execute on function public.upsert_pirate_guild_profile(text, text, jsonb) to anon, authenticated;
 grant execute on function public.create_pirate_guild(text, text, jsonb, text, text, text) to anon, authenticated;
 grant execute on function public.join_pirate_guild(text, text, jsonb, uuid) to anon, authenticated;
