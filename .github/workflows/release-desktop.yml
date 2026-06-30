@@ -26,8 +26,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build and publish Windows release
-        run: npm run release:windows
+      - name: Build Windows package
+        run: npm run package:windows
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          make_latest: true
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: |
+            release/latest.yml
+            release/Pirates-of-the-Abyss-Setup-*.exe
+            release/Pirates-of-the-Abyss-Setup-*.exe.blockmap
+            release/Pirates-of-the-Abyss-*-portable.exe
