@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=116">
+  <link rel="stylesheet" href="styles.css?v=118">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -78,6 +78,7 @@
           <button class="combat-fullscreen-exit hidden" id="combat-fullscreen-exit" type="button" aria-label="Sair da tela cheia" title="Sair da tela cheia"><span aria-hidden="true">&times;</span></button>
 
           <div class="combat-map-title" id="scene-region" aria-live="polite">1 - Lagoa dos Primeiros Remadores</div>
+          <div class="boss-defeated-banner hidden" id="boss-defeated-banner" aria-live="assertive">Boss Derrotado</div>
 
           <div class="floating-health enemy-floating-health" id="enemy-floating-health" aria-label="Vida do inimigo">
             <h2 id="enemy-name">Saqueador da Costa</h2>
@@ -207,6 +208,7 @@
               <div class="guild-list home-guild-list" id="home-guild-list"></div>
               <div class="home-panel-actions">
                 <button class="button primary" type="button" data-open-guild>Abrir Irmandade</button>
+                <button class="button home-guild-boss-button" id="home-guild-boss-button" type="button" data-start-guild-boss="0" disabled>Desafiar Boss</button>
                 <button class="button" type="button" data-refresh-guild>Atualizar</button>
               </div>
             </div>
@@ -485,6 +487,6 @@
 
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=5"></script>
-  <script src="game.js?v=218"></script>
+  <script src="game.js?v=220"></script>
 </body>
 </html>

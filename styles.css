@@ -508,6 +508,23 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   animation: boss-warning-red var(--boss-warning-duration, 1150ms) ease-out both;
   will-change: opacity;
 }
+.boss-defeated-banner {
+  position: absolute;
+  inset: 0;
+  z-index: 17;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: #ff2f2f;
+  font: 900 clamp(32px, 9vw, 92px)/1 Georgia, serif;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 0 18px rgba(255, 42, 42, .92), 0 5px 0 rgba(10, 0, 0, .72), 0 12px 32px rgba(0, 0, 0, .8);
+  animation: boss-defeated-banner 1.9s ease-out both;
+}
+.boss-defeated-banner.hidden { display: none; }
+.persistent-combat.combat-minimized .boss-defeated-banner { display: none; }
 .battle-stage.combat-map-transition::after {
   content: "";
   position: absolute;
@@ -538,6 +555,12 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   0%, 100% { opacity: 0; }
   10% { opacity: 1; }
   72% { opacity: .9; }
+}
+@keyframes boss-defeated-banner {
+  0% { opacity: 0; transform: scale(.72); filter: blur(5px); }
+  14% { opacity: 1; transform: scale(1.08); filter: blur(0); }
+  58% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(.94); }
 }
 @keyframes combat-map-transition-fade {
   0%, 100% { opacity: 0; }
@@ -855,6 +878,20 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .button.subtle { color: #b6c7c7; background: transparent; }
 .button.danger { color: #ffd7d0; border-color: rgba(224,82,82,.45); background: rgba(224,82,82,.12); }
 .boss-button:not(:disabled) { color: #2c1707; border-color: #ffcb61; background: linear-gradient(135deg, #ffd56f, #e89a37); box-shadow: 0 0 22px rgba(247,189,74,.18); }
+.home-guild-boss-button:not(:disabled),
+.guild-boss-action-button:not(:disabled) {
+  color: #2c0707;
+  border-color: #ff7d6e;
+  background: linear-gradient(135deg, #ffb06f, #e84848);
+  box-shadow: 0 0 20px rgba(232, 72, 72, .18);
+}
+.home-guild-boss-button:disabled.cooldown,
+.guild-boss-action-button:disabled.cooldown {
+  opacity: .78;
+  color: #ffd8d2;
+  border-color: rgba(255, 125, 110, .4);
+  background: rgba(106, 30, 36, .34);
+}
 
 .metric-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .compact-metrics { grid-template-columns: repeat(3, 1fr); }
@@ -5450,7 +5487,24 @@ body {
   line-height: 1.35;
 }
 
+.initial-captain-gate-panel .captain-identity-panel {
+  grid-column: 2;
+  width: 100%;
+  grid-template-columns: 1fr;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.initial-captain-gate-panel .captain-identity-panel h2 {
+  font-size: 17px;
+}
+
+.initial-captain-gate-panel .captain-identity-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .initial-captain-options {
+  grid-column: 2;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -5544,6 +5598,10 @@ body {
     max-height: none;
   }
 
+  .persistent-combat.captain-gate-active .initial-captain-gate {
+    height: max(var(--mobile-combat-height, 210px), 330px);
+  }
+
   .screen {
     width: calc(100% - 24px);
     margin-top: 12px;
@@ -5552,13 +5610,22 @@ body {
 
 @media (max-width: 560px) {
   .initial-captain-gate {
-    height: max(var(--mobile-combat-height, 178px), 230px);
+    height: max(var(--mobile-combat-height, 178px), 380px);
     padding: 10px;
   }
 
   .initial-captain-gate-panel {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .initial-captain-gate-panel .captain-identity-panel,
+  .initial-captain-options {
+    grid-column: 1;
+  }
+
+  .initial-captain-gate-panel .captain-identity-form {
+    grid-template-columns: 1fr;
   }
 
   .initial-captain-gate-heading {

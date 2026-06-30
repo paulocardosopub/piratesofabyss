@@ -1,10 +1,10 @@
-const CACHE = "pirates-abyss-v208-guild-panels";
+const CACHE = "pirates-abyss-v210-captain-guild-fixes";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=116",
+  "styles.css?v=118",
   "auth.js?v=5",
-  "game.js?v=218",
+  "game.js?v=220",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

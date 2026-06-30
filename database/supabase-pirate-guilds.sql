@@ -495,14 +495,18 @@ set search_path = public
 as $$
 declare
   v_guild public.pirate_guilds%rowtype;
+  v_actor_role text;
   v_current_level integer;
   v_expected_cost integer;
   v_next_level integer;
 begin
   if p_upgrade_key not in ('damage', 'hp', 'xp') then raise exception 'melhoria invalida'; end if;
-  if not exists (select 1 from public.pirate_guild_members where guild_id = p_guild_id and player_id = trim(coalesce(p_player_id, ''))) then
-    raise exception 'jogador fora da irmandade';
-  end if;
+  select role into v_actor_role
+  from public.pirate_guild_members
+  where guild_id = p_guild_id and player_id = trim(coalesce(p_player_id, ''));
+
+  if v_actor_role is null then raise exception 'jogador fora da irmandade'; end if;
+  if v_actor_role not in ('king', 'quartermaster') then raise exception 'Apenas Rei Pirata e Intendente podem distribuir EXP da Irmandade.'; end if;
 
   select * into v_guild from public.pirate_guilds where id = p_guild_id for update;
   if v_guild.id is null then raise exception 'irmandade nao encontrada'; end if;

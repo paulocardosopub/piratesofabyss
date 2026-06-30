@@ -2392,6 +2392,7 @@
   let mobileCombatPreviousMinimized = false;
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
+  let lastGuildCooldownUiRefresh = 0;
   let lastSave = performance.now();
   let hiddenAt = 0;
   let offlineModalAutoHideTimer = 0;
@@ -2425,6 +2426,7 @@
   let pendingBossChallengeRegionIndex = -1;
   let combatMapTransitionTimer = 0;
   let combatMapTransitionSwapTimer = 0;
+  let bossDefeatedBannerTimer = 0;
   let manualAttackTutorialStartedAt = Date.now();
   let manualAttackTutorialDismissed = false;
 
@@ -8787,6 +8789,7 @@
         trackAction("gold", { amount: GUILD_BOSS_REWARD_GOLD });
       }
       if (bossDefeated) trackAction("boss");
+      if (bossDefeated && !defeated) showBossDefeatedBanner();
       addLog(`${bossName}: ${formatNumber(damage)} de dano pela Irmandade${bossDefeated ? " e boss derrotado" : ""}.`, bossDefeated ? "loot" : "danger-text");
       toast(rewardGranted ? `Participacao valida: +${formatNumber(GUILD_BOSS_REWARD_GOLD)} Ouro.` : "Dano sincronizado com a Irmandade.", rewardGranted ? "gold-toast" : "");
       await refreshGuild({ force: true });
@@ -9011,6 +9014,7 @@
     if (enemy.isGuildBoss) {
       scene.queueEnemyDeath(enemy);
       scene.celebrateCaptain(2.8);
+      showBossDefeatedBanner();
       finishGuildBossCombat({ defeated: true });
       return;
     }
@@ -9029,6 +9033,7 @@
       trackAction("boss");
       if (getEquippedPet()) state.lifetime.bossesWithPet += 1;
       if (!isSurpriseBoss) state.bossesDefeated[state.regionIndex] = true;
+      showBossDefeatedBanner();
       gainXp(region.xp * 35);
       trySpawnChestDrop("boss", enemy);
       addLog(`${isSurpriseBoss ? "Boss surpresa derrotado" : "Boss derrotado"}: ${region.boss}. Drop: ${goldDropText(rewardDetails)}.`, "loot");
@@ -9201,6 +9206,7 @@
     combatTick(dt, timestamp);
     scene.draw();
     if (timestamp - lastUiRefresh > 110) { renderCombatHud(); updateSkillCooldowns(); lastUiRefresh = timestamp; }
+    if (timestamp - lastGuildCooldownUiRefresh > 1000) { updateGuildCooldownLabels(); lastGuildCooldownUiRefresh = timestamp; }
     if (timestamp - lastSave > 5000) { saveGame(); lastSave = timestamp; }
     requestAnimationFrame(gameLoop);
   }
@@ -9249,6 +9255,20 @@
     if (hours) return `${hours}h ${minutes}min`;
     if (minutes) return remainingSeconds ? `${minutes}min ${remainingSeconds}s` : `${minutes}min`;
     return `${remainingSeconds || total}s`;
+  }
+
+  function showBossDefeatedBanner(message = "Boss Derrotado") {
+    const banner = $("#boss-defeated-banner");
+    if (!banner) return;
+    window.clearTimeout(bossDefeatedBannerTimer);
+    banner.textContent = message;
+    banner.classList.add("hidden");
+    void banner.offsetWidth;
+    banner.classList.remove("hidden");
+    bossDefeatedBannerTimer = window.setTimeout(() => {
+      banner.classList.add("hidden");
+      bossDefeatedBannerTimer = 0;
+    }, 1900);
   }
 
   // Renderização da interface
@@ -9732,7 +9752,8 @@
 
   function initialCaptainGateCardHtml([gender, meta]) {
     const level = getCaptainLevelData(1);
-    return `<button class="initial-captain-card" type="button" data-select-captain-gender="${gender}" aria-label="Escolher ${meta.choice}">
+    const missingName = !isValidPirateName();
+    return `<button class="initial-captain-card" type="button" data-select-captain-gender="${gender}" aria-label="Escolher ${meta.choice}" ${missingName ? "disabled" : ""} title="${missingName ? "Escolha um Nome de Pirata antes de escolher o sexo." : ""}">
       <span class="initial-captain-card-image">${captainSpriteCanvasHtml(1, gender, "choice")}</span>
       <span class="initial-captain-card-copy">
         <span class="eyebrow">CAPITÃO INICIAL</span>
@@ -9762,8 +9783,10 @@
         <h2 id="initial-captain-title">Escolha seu Capitão</h2>
         <p>Seu capitão liderará sua jornada pirata.</p>
       </div>
+      ${captainIdentityHtml("initial-pirate-name-input")}
       <div class="initial-captain-options">${Object.entries(CAPTAIN_GENDERS).map(initialCaptainGateCardHtml).join("")}</div>
     </section>`;
+    bindCaptainIdentityControls(gate);
     renderCaptainPreviewCanvases(gate);
   }
 
@@ -10108,7 +10131,7 @@
     </section>`;
   }
 
-  function captainIdentityHtml() {
+  function captainIdentityHtml(inputId = "pirate-name-input") {
     const cleanName = sanitizePirateName(state.pirateName);
     const missing = !isValidPirateName(cleanName);
     const account = AUTH_MANAGER?.getCurrentUser?.();
@@ -10117,13 +10140,13 @@
       <div>
         <span class="eyebrow">IDENTIDADE ONLINE</span>
         <h2>${cleanName ? escapeHtml(cleanName) : "Nome de Pirata"}</h2>
-        <p>${missing ? "Escolha seu Nome de Pirata para aparecer no ranking online." : "Esse nome será usado no Ranking dos Piratas no próximo Prestígio registrado."}</p>
+        <p>${missing ? "Escolha seu Nome de Pirata antes de definir o sexo do capitão." : "Esse nome será usado em Ranking, Arena e Irmandade Pirata."}</p>
       </div>
       <div class="captain-identity-form">
-        <label for="pirate-name-input"><span>Nome de Pirata</span><input class="pirate-name-input" id="pirate-name-input" maxlength="${PIRATE_NAME_MAX_LENGTH}" value="${escapeHtml(cleanName)}" autocomplete="nickname" placeholder="3 a 20 caracteres"></label>
+        <label for="${inputId}"><span>Nome de Pirata</span><input class="pirate-name-input" id="${inputId}" maxlength="${PIRATE_NAME_MAX_LENGTH}" value="${escapeHtml(cleanName)}" autocomplete="nickname" placeholder="Ex.: Barba Azul"></label>
         <button class="button primary" type="button" data-save-pirate-name>Salvar</button>
         ${accountHtml}
-        <small>Mínimo ${PIRATE_NAME_MIN_LENGTH}, máximo ${PIRATE_NAME_MAX_LENGTH} caracteres.</small>
+        <small>Pode usar espaço entre palavras. Mínimo ${PIRATE_NAME_MIN_LENGTH}, máximo ${PIRATE_NAME_MAX_LENGTH} caracteres.</small>
       </div>
     </section>`;
   }
@@ -10136,52 +10159,67 @@
     const title = $("h2", panel);
     const copy = $("p", panel);
     if (title) title.textContent = cleanName || "Nome de Pirata";
+    updateCaptainChoiceButtons(cleanName);
     if (copy) copy.textContent = missing
-      ? "Escolha seu Nome de Pirata para aparecer no ranking online."
-      : "Esse nome será usado no Ranking dos Piratas no próximo Prestígio registrado.";
+      ? "Escolha seu Nome de Pirata antes de definir o sexo do capitão."
+      : "Esse nome será usado em Ranking, Arena e Irmandade Pirata.";
   }
 
-  function persistPirateNameFromInput({ feedback = false, render = false } = {}) {
-    const input = $("#pirate-name-input");
+  function updateCaptainChoiceButtons(cleanName = sanitizePirateName(state.pirateName)) {
+    const missing = !isValidPirateName(cleanName);
+    $$("[data-select-captain-gender]").forEach(button => {
+      button.disabled = missing;
+      button.title = missing ? "Escolha um Nome de Pirata antes de escolher o sexo." : "";
+    });
+  }
+
+  function persistPirateNameFromInput({ feedback = false, render = false, input = null } = {}) {
+    const activeInput = document.activeElement?.matches?.(".pirate-name-input") ? document.activeElement : null;
+    input = input || activeInput || $("#pirate-name-input") || $(".pirate-name-input");
     const cleanName = sanitizePirateName(input?.value || "");
     if (!isValidPirateName(cleanName)) {
       if (input) input.value = cleanName;
       if (feedback) toast(`Nome de Pirata precisa ter entre ${PIRATE_NAME_MIN_LENGTH} e ${PIRATE_NAME_MAX_LENGTH} caracteres.`, "danger-toast");
+      updateCaptainIdentityPreview(cleanName);
       return false;
     }
     state.pirateName = cleanName;
     if (input) input.value = cleanName;
     saveGame();
     renderTopbar();
-    if (render) renderCaptain();
-    else updateCaptainIdentityPreview(cleanName);
+    if (render) {
+      renderCaptain();
+      updateCaptainIdentityPreview(cleanName);
+    } else {
+      updateCaptainIdentityPreview(cleanName);
+    }
     if (feedback) toast("Nome de Pirata salvo.", "gold-toast");
     return true;
   }
 
   function bindCaptainIdentityControls(root = document) {
-    const input = $("#pirate-name-input", root);
+    const input = $(".pirate-name-input", root);
     const button = $("[data-save-pirate-name]", root);
     const saveFromControl = event => {
       event.preventDefault();
       event.stopPropagation();
-      savePirateNameFromInput();
+      savePirateNameFromInput(input);
     };
     button?.addEventListener("pointerdown", saveFromControl);
     button?.addEventListener("click", saveFromControl);
     input?.addEventListener("input", () => {
       const cleanName = sanitizePirateName(input.value || "");
-      if (isValidPirateName(cleanName)) persistPirateNameFromInput();
-      else updateCaptainIdentityPreview("");
+      if (isValidPirateName(cleanName)) persistPirateNameFromInput({ input });
+      else updateCaptainIdentityPreview(cleanName);
     });
     input?.addEventListener("blur", () => {
-      if (isValidPirateName(input.value || "")) persistPirateNameFromInput();
+      if (isValidPirateName(input.value || "")) persistPirateNameFromInput({ input });
     });
     input?.addEventListener("keydown", event => {
       if (event.key !== "Enter") return;
       event.preventDefault();
       event.stopPropagation();
-      savePirateNameFromInput();
+      savePirateNameFromInput(input);
     });
   }
 
@@ -10197,10 +10235,74 @@
     return `+${Math.round(level * 5)}%`;
   }
 
-  function guildCooldownRemainingText(value) {
+  function guildCooldownRemainingSeconds(value) {
     const timestamp = Date.parse(value || "");
-    if (!timestamp || timestamp <= Date.now()) return "";
-    return formatDuration((timestamp - Date.now()) / 1000);
+    if (!timestamp || timestamp <= Date.now()) return 0;
+    return Math.ceil((timestamp - Date.now()) / 1000);
+  }
+
+  function guildCooldownRemainingText(value) {
+    const seconds = guildCooldownRemainingSeconds(value);
+    return seconds > 0 ? formatArenaDuration(seconds) : "";
+  }
+
+  function getGuildBossActionState(bossState = guildState.current?.boss_state || {}) {
+    const currentBossIndex = clamp(Math.floor(Number(bossState.current_boss_index || 0)), 0, REGIONS.length);
+    const allBossesCleared = currentBossIndex >= REGIONS.length;
+    const bossIndex = allBossesCleared ? Math.max(0, REGIONS.length - 1) : clamp(currentBossIndex, 0, REGIONS.length - 1);
+    const cooldownText = guildCooldownRemainingText(bossState.cooldown_until);
+    return {
+      currentBossIndex,
+      allBossesCleared,
+      bossIndex,
+      cooldownText,
+      canStart: Boolean(guildState.current?.guild && !allBossesCleared && !cooldownText && !guildState.actionPending),
+      label: allBossesCleared ? "Bosses Concluidos" : cooldownText ? `Cooldown ${cooldownText}` : "Desafiar Boss"
+    };
+  }
+
+  function updateHomeGuildBossButton(guild = getCurrentGuild()) {
+    const button = $("#home-guild-boss-button");
+    if (!button) return;
+    if (!guild || !guildState.current?.guild) {
+      button.dataset.startGuildBoss = "0";
+      button.textContent = "Desafiar Boss";
+      button.disabled = true;
+      button.title = "Entre em uma Irmandade para desafiar o Boss.";
+      button.classList.remove("primary", "cooldown");
+      return;
+    }
+    const action = getGuildBossActionState(guildState.current.boss_state || {});
+    button.dataset.startGuildBoss = String(action.bossIndex);
+    button.textContent = action.label;
+    button.disabled = !action.canStart;
+    button.title = action.allBossesCleared
+      ? "Todos os Bosses da Irmandade ja foram derrotados hoje."
+      : action.cooldownText
+        ? `Disponivel em ${action.cooldownText}.`
+        : "Desafiar o Boss atual da Irmandade.";
+    button.classList.toggle("primary", action.canStart);
+    button.classList.toggle("cooldown", Boolean(action.cooldownText));
+  }
+
+  function updateGuildCooldownLabels() {
+    const guild = getCurrentGuild();
+    updateHomeGuildBossButton(guild);
+    if (!guild || !guildState.current?.guild) return;
+    const action = getGuildBossActionState(guildState.current.boss_state || {});
+    $$("[data-guild-boss-cooldown]").forEach(node => {
+      node.textContent = action.cooldownText || "Livre";
+    });
+    const actionButton = $("[data-guild-boss-action]");
+    if (!actionButton) return;
+    const selectedIndex = clamp(Math.floor(Number(actionButton.dataset.startGuildBoss || guildBossSelectedIndex) || 0), 0, REGIONS.length - 1);
+    const selectedIsCurrent = !action.allBossesCleared && selectedIndex === action.currentBossIndex;
+    const canStart = selectedIsCurrent && action.canStart;
+    actionButton.textContent = action.allBossesCleared ? "Concluido" : action.cooldownText ? `Cooldown ${action.cooldownText}` : "Enfrentar";
+    actionButton.disabled = !canStart;
+    actionButton.title = action.cooldownText ? `Disponivel em ${action.cooldownText}.` : "";
+    actionButton.classList.toggle("primary", canStart);
+    actionButton.classList.toggle("cooldown", Boolean(action.cooldownText));
   }
 
   function renderHomeGuildCard() {
@@ -10222,6 +10324,7 @@
         ["Poder", formatNumber(guild.total_power)]
       ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
       renderHomeGuildPreview(guild);
+      updateHomeGuildBossButton(guild);
       syncHomePanelExpansion();
       return;
     }
@@ -10234,6 +10337,7 @@
         ["Custo", `${formatNumber(GUILD_CREATE_GOLD_COST)} Ouro`]
       ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
       renderHomeGuildPreview(null);
+      updateHomeGuildBossButton(null);
       syncHomePanelExpansion();
       return;
     }
@@ -10245,6 +10349,7 @@
       ["Poder", "--"]
     ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
     renderHomeGuildPreview(null);
+    updateHomeGuildBossButton(null);
     syncHomePanelExpansion();
   }
 
@@ -10289,14 +10394,17 @@
   function guildJoinRowHtml(guild) {
     const label = guild.entry_mode === "open" ? "Entrar" : "Solicitar";
     const full = isGuildFull(guild);
-    const disabled = guildState.actionPending || !isValidPirateName() || full;
-    const actionLabel = full ? "Cheia" : label;
+    const missingName = !isValidPirateName();
+    const disabled = guildState.actionPending || missingName || full;
+    const actionLabel = full ? "Cheia" : missingName ? "Escolha nome" : label;
+    const entryText = full ? "Lotada" : missingName ? "Escolha um Nome de Pirata antes de solicitar" : guildEntryLabel(guild.entry_mode);
+    const title = missingName ? "Escolha um Nome de Pirata na tela de Capitao antes de solicitar entrada." : "";
     return `<article class="guild-row ${guild.entry_mode === "open" ? "available" : ""}">
       <div class="guild-row-main">
         <strong>${escapeHtml(guild.name)}</strong>
-        <small>Nivel ${formatNumber(guild.level)} &bull; ${formatNumber(guild.member_count)}/${GUILD_MAX_MEMBERS} membros &bull; Poder ${formatNumber(guild.total_power)} &bull; ${full ? "Lotada" : guildEntryLabel(guild.entry_mode)}</small>
+        <small>Nivel ${formatNumber(guild.level)} &bull; ${formatNumber(guild.member_count)}/${GUILD_MAX_MEMBERS} membros &bull; Poder ${formatNumber(guild.total_power)} &bull; ${entryText}</small>
       </div>
-      <button class="button ${guild.entry_mode === "open" && !full ? "primary" : ""}" type="button" data-join-guild="${escapeHtml(guild.id)}" ${disabled ? "disabled" : ""}>${actionLabel}</button>
+      <button class="button ${guild.entry_mode === "open" && !full && !missingName ? "primary" : ""}" type="button" data-join-guild="${escapeHtml(guild.id)}" title="${escapeHtml(title)}" ${disabled ? "disabled" : ""}>${actionLabel}</button>
     </article>`;
   }
 
@@ -10349,14 +10457,17 @@
     const rows = guildState.guilds.length ? guildState.guilds.map(guild => {
       const label = guild.entry_mode === "open" ? "Entrar" : "Solicitar";
       const full = isGuildFull(guild);
-      const disabled = guildState.actionPending || !isValidPirateName() || full;
-      const actionLabel = full ? "Cheia" : label;
+      const missingName = !isValidPirateName();
+      const disabled = guildState.actionPending || missingName || full;
+      const actionLabel = full ? "Cheia" : missingName ? "Escolha nome" : label;
+      const entryText = full ? "Lotada" : missingName ? "Escolha um Nome de Pirata antes de solicitar" : guildEntryLabel(guild.entry_mode);
+      const title = missingName ? "Escolha um Nome de Pirata acima antes de solicitar entrada." : "";
       return `<article class="guild-row ${guild.entry_mode === "open" ? "available" : ""}">
         <div class="guild-row-main">
           <strong>${escapeHtml(guild.name)}</strong>
           <small>Nivel ${formatNumber(guild.level)} • ${formatNumber(guild.member_count)}/${GUILD_MAX_MEMBERS} membros • Poder ${formatNumber(guild.total_power)} • ${full ? "Lotada" : guildEntryLabel(guild.entry_mode)}</small>
         </div>
-        <button class="button ${guild.entry_mode === "open" && !full ? "primary" : ""}" type="button" data-join-guild="${escapeHtml(guild.id)}" ${disabled ? "disabled" : ""}>${actionLabel}</button>
+        <button class="button ${guild.entry_mode === "open" && !full && !missingName ? "primary" : ""}" type="button" data-join-guild="${escapeHtml(guild.id)}" title="${escapeHtml(title)}" ${disabled ? "disabled" : ""}>${actionLabel}</button>
       </article>`;
     }).join("") : guildEmptyStateHtml("Nenhuma Irmandade criada ainda. Seja o primeiro Rei Pirata.");
     return `<div class="guild-panel">
@@ -10416,8 +10527,9 @@
 
   function guildBossTabHtml() {
     const bossState = guildState.current.boss_state || {};
-    const currentBossIndex = clamp(Math.floor(Number(bossState.current_boss_index || 0)), 0, REGIONS.length);
-    const allBossesCleared = currentBossIndex >= REGIONS.length;
+    const actionState = getGuildBossActionState(bossState);
+    const currentBossIndex = actionState.currentBossIndex;
+    const allBossesCleared = actionState.allBossesCleared;
     guildBossSelectedIndex = clamp(guildBossSelectedIndex, 0, REGIONS.length - 1);
     if (!allBossesCleared && guildBossSelectedIndex > currentBossIndex) guildBossSelectedIndex = currentBossIndex;
     const selectedRegion = REGIONS[guildBossSelectedIndex];
@@ -10425,14 +10537,14 @@
     const selectedDefeated = allBossesCleared || guildBossSelectedIndex < currentBossIndex;
     const selectedMaxHp = selectedIsCurrent ? Math.max(1, bossState.boss_max_hp || getGuildBossMaxHp(guildBossSelectedIndex)) : getGuildBossMaxHp(guildBossSelectedIndex);
     const selectedHp = selectedIsCurrent ? Math.max(0, bossState.boss_hp || selectedMaxHp) : selectedDefeated ? 0 : selectedMaxHp;
-    const cooldownText = guildCooldownRemainingText(bossState.cooldown_until);
-    const canStart = selectedIsCurrent && !cooldownText && !guildState.actionPending;
+    const cooldownText = actionState.cooldownText;
+    const canStart = selectedIsCurrent && actionState.canStart;
     const bossProgress = allBossesCleared ? `${REGIONS.length}/${REGIONS.length}` : `${currentBossIndex + 1}/ ${REGIONS.length}`;
     const selectedTitle = allBossesCleared ? "Ciclo concluido" : selectedRegion.boss;
     const selectedSubtitle = allBossesCleared
       ? "Todos os bosses foram derrotados hoje. Reset ao meio-dia."
       : `${escapeHtml(selectedRegion.name)} &bull; HP ${formatNumber(selectedHp)} / ${formatNumber(selectedMaxHp)}`;
-    const actionLabel = allBossesCleared ? "Concluido" : cooldownText ? "Em cooldown" : "Enfrentar";
+    const actionLabel = allBossesCleared ? "Concluido" : cooldownText ? `Cooldown ${cooldownText}` : "Enfrentar";
     const rows = REGIONS.map((region, index) => {
       const defeated = allBossesCleared || index < currentBossIndex;
       const current = !allBossesCleared && index === currentBossIndex;
@@ -10452,27 +10564,30 @@
         <div><span>Boss atual</span><strong>${bossProgress}</strong></div>
         <div><span>Selecionado</span><strong>${guildBossSelectedIndex + 1}</strong></div>
         <div><span>HP atual</span><strong>${formatNumber(selectedHp)}</strong></div>
-        <div><span>Cooldown</span><strong>${cooldownText || "Livre"}</strong></div>
+        <div><span>Cooldown</span><strong data-guild-boss-cooldown>${cooldownText || "Livre"}</strong></div>
       </div>
-      <div class="section-heading compact"><div><span class="eyebrow">BOSS DA IRMANDADE</span><h2>${escapeHtml(selectedTitle)}</h2><p>${selectedSubtitle}</p></div><button class="button primary" type="button" data-start-guild-boss="${guildBossSelectedIndex}" ${canStart ? "" : "disabled"}>${actionLabel}</button></div>
+      <div class="section-heading compact"><div><span class="eyebrow">BOSS DA IRMANDADE</span><h2>${escapeHtml(selectedTitle)}</h2><p>${selectedSubtitle}</p></div><button class="button guild-boss-action-button ${canStart ? "primary" : ""} ${cooldownText ? "cooldown" : ""}" type="button" data-guild-boss-action data-start-guild-boss="${guildBossSelectedIndex}" ${canStart ? "" : "disabled"}>${actionLabel}</button></div>
       <div class="guild-boss-list">${rows}</div>
     </div>`;
   }
 
   function guildUpgradesTabHtml() {
     const guild = getCurrentGuild();
+    const canManageUpgrades = hasGuildManagerAccess();
     const rows = Object.entries(GUILD_UPGRADE_META).map(([key, meta]) => {
       const level = getGuildUpgradeLevel(key);
       const cost = getGuildUpgradeCost(key);
-      const canUpgrade = cost !== null && guild.experience >= cost && !guildState.actionPending;
+      const canUpgrade = canManageUpgrades && cost !== null && guild.experience >= cost && !guildState.actionPending;
+      const actionLabel = cost === null ? "Maximo" : canManageUpgrades ? canUpgrade ? "Melhorar" : "Faltam EXP" : "Somente lideranca";
       return `<article class="guild-upgrade-row ${canUpgrade ? "available" : ""}">
         <div class="guild-upgrade-icon" aria-hidden="true">${meta.icon}</div>
         <div class="guild-upgrade-main"><strong>${meta.label}</strong><small>${meta.description} Bonus atual ${guildBonusText(key, level)}${cost ? ` • custo ${cost} EXP` : " • nivel maximo"}</small></div>
         <div class="guild-upgrade-level"><span>Nivel</span><strong>${level}/${GUILD_UPGRADE_MAX_LEVEL}</strong></div>
-        <button class="button ${canUpgrade ? "primary" : ""}" type="button" data-upgrade-guild-bonus="${key}" ${canUpgrade ? "" : "disabled"}>${cost ? "Melhorar" : "Maximo"}</button>
+        <button class="button ${canUpgrade ? "primary" : ""}" type="button" data-upgrade-guild-bonus="${key}" ${canUpgrade ? "" : "disabled"}>${actionLabel}</button>
       </article>`;
     }).join("");
     return `<div class="guild-panel">
+      ${canManageUpgrades ? "" : guildEmptyStateHtml("Apenas Rei Pirata e Intendente podem distribuir EXP da Irmandade. Todos os membros recebem os bonus ativos.")}
       <div class="guild-member-summary">
         <div><span>EXP disponivel</span><strong>${formatNumber(guild.experience)}</strong></div>
         <div><span>Dano</span><strong>${guildBonusText("damage")}</strong></div>
@@ -10618,9 +10733,10 @@
     const content = $("#captain-content");
     const current = getCurrentCaptain();
     if (!current) {
+      const missingName = !isValidPirateName();
       content.innerHTML = `${captainIdentityHtml()}<div class="captain-choice-grid">${Object.entries(CAPTAIN_GENDERS).map(([gender, meta]) => {
         const level = getCaptainLevelData(1);
-        return `<article class="captain-choice"><div class="captain-choice-image">${captainSpriteCanvasHtml(1, gender, "choice")}</div><div><span class="eyebrow">VISUAL INICIAL</span><h2>${meta.choice}</h2><p>${getCaptainName(1, gender)}</p><div class="captain-choice-bonuses">${captainLevelBonusText(level)}</div></div><button class="button primary" data-select-captain-gender="${gender}">Escolher</button></article>`;
+        return `<article class="captain-choice"><div class="captain-choice-image">${captainSpriteCanvasHtml(1, gender, "choice")}</div><div><span class="eyebrow">VISUAL INICIAL</span><h2>${meta.choice}</h2><p>${getCaptainName(1, gender)}</p><div class="captain-choice-bonuses">${captainLevelBonusText(level)}</div></div><button class="button primary" data-select-captain-gender="${gender}" ${missingName ? "disabled" : ""} title="${missingName ? "Escolha um Nome de Pirata antes de escolher o sexo." : ""}">Escolher</button></article>`;
       }).join("")}</div>${renderCaptainGuildSection()}${renderCaptainPetsSection()}${renderCaptainManualSkillSection(true)}${renderCaptainEquipmentSection(true)}`;
       finalizeCaptainRender(content);
       return;
@@ -11786,12 +11902,13 @@
     if (bossIndex !== currentBossIndex) return toast("A Irmandade precisa derrotar os bosses em sequencia.", "danger-toast");
     const cooldownUntil = Date.parse(bossState.cooldown_until || "");
     if (cooldownUntil && cooldownUntil > Date.now()) {
-      toast(`Boss da Irmandade recarrega em ${formatDuration((cooldownUntil - Date.now()) / 1000)}.`, "danger-toast");
+      toast(`Boss da Irmandade recarrega em ${guildCooldownRemainingText(bossState.cooldown_until) || formatArenaDuration((cooldownUntil - Date.now()) / 1000)}.`, "danger-toast");
       return;
     }
     const config = getOnlineConfig();
     if (!isLeaderboardConfigured(config)) return toast("Irmandade online indisponivel no momento.", "danger-toast");
     guildState.actionPending = true;
+    updateGuildCooldownLabels();
     renderGuildIfVisible();
     try {
       const maxHp = getGuildBossMaxHp(bossIndex);
@@ -11847,6 +11964,7 @@
       await refreshGuild({ force: true });
     } finally {
       guildState.actionPending = false;
+      updateGuildCooldownLabels();
       renderGuildIfVisible();
     }
   }
@@ -12366,6 +12484,7 @@
     const guild = getCurrentGuild();
     const cost = getGuildUpgradeCost(key);
     if (!guild || !GUILD_UPGRADE_META[key] || cost === null) return;
+    if (!hasGuildManagerAccess()) return toast("Apenas Rei Pirata e Intendente podem distribuir EXP da Irmandade.", "danger-toast");
     if (guild.experience < cost) return toast(`Faltam ${cost - guild.experience} EXP da Irmandade para melhorar.`, "danger-toast");
     runGuildAction(async config => {
       await callOnlineRpc(config, config.guildUpgradeRpcName, {
@@ -12638,13 +12757,14 @@
     toast(`${pet.name} equipado como companheiro.`); commitGame(true);
   }
 
-  function savePirateNameFromInput() {
-    persistPirateNameFromInput({ feedback: true, render: true });
+  function savePirateNameFromInput(input = null) {
+    persistPirateNameFromInput({ feedback: true, render: true, input });
   }
 
   function selectCaptainGender(gender) {
     const cleanGender = normalizeCaptainGender(gender);
     if (!cleanGender || isCaptainSelected()) return;
+    if (!persistPirateNameFromInput({ feedback: true })) return;
     state.captainSelectedGender = cleanGender;
     state.captainLevel = 1;
     syncCaptainState(state);
@@ -13091,14 +13211,14 @@
   }
 
   function preventInvalidTradeInput(event) {
-    if (isTextEditingTarget(event.target) && !event.target.matches("[data-trade-input], #pirate-name-input, #account-email-input")) return;
+    if (isTextEditingTarget(event.target) && !event.target.matches("[data-trade-input], .pirate-name-input, #account-email-input")) return;
     if (event.target.matches("[data-trade-input]")) {
       const allowedControlKey = event.ctrlKey || event.metaKey || ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "Tab", "Enter"].includes(event.key);
       if (!allowedControlKey && event.key.length === 1 && !/^\d$/.test(event.key)) event.preventDefault();
     }
-    if (event.target.matches("#pirate-name-input") && event.key === "Enter") {
+    if (event.target.matches(".pirate-name-input") && event.key === "Enter") {
       event.preventDefault();
-      savePirateNameFromInput();
+      savePirateNameFromInput(event.target);
     }
     if (event.target.matches("#account-email-input") && event.key === "Enter") {
       event.preventDefault();
