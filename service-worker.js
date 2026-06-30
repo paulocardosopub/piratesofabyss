@@ -1,10 +1,10 @@
-const CACHE = "pirates-abyss-v241-combat-action-icons";
+const CACHE = "pirates-abyss-v246-boss-cost-labels";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=133",
+  "styles.css?v=138",
   "auth.js?v=7",
-  "game.js?v=242",
+  "game.js?v=244",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

@@ -6648,7 +6648,7 @@ body.mobile-combat-fullscreen .combat-next-map-button {
 .combat-quick-cost {
   position: absolute;
   z-index: 4;
-  top: -19px;
+  top: -24px;
   left: 50%;
   min-width: max-content;
   padding: 2px 5px;
@@ -7048,7 +7048,7 @@ body.mobile-combat-fullscreen .manual-skill-dock {
   }
 
   body.mobile-combat-fullscreen .combat-quick-cost {
-    top: -15px;
+    top: -20px;
     padding: 1px 4px;
     font-size: 6.8px;
   }
@@ -7241,6 +7241,259 @@ body.mobile-combat-fullscreen .combat-quest-alert:not(.hidden) {
   display: grid !important;
 }
 
+.combat-collapse-toggle {
+  display: none !important;
+}
+
+.combat-guild-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(247, 189, 74, .42);
+  border-radius: 9px;
+  color: #ffe6a6;
+  background: rgba(42, 25, 8, .78);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, .24), 0 0 14px rgba(247, 189, 74, .14);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  touch-action: manipulation;
+}
+
+.combat-guild-toggle span {
+  display: block;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.combat-guild-toggle:hover,
+.combat-guild-toggle:focus-visible,
+.combat-guild-toggle.active {
+  border-color: rgba(255, 241, 148, .95);
+  color: #fff3ba;
+  background: rgba(70, 45, 9, .9);
+  box-shadow: 0 0 0 2px rgba(247, 189, 74, .18), 0 10px 20px rgba(0, 0, 0, .28), 0 0 18px rgba(247, 189, 74, .22);
+}
+
+.combat-guild-toggle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.battle-stage .combat-quest-alert,
+body.is-combat-fullscreen .battle-stage .combat-quest-alert,
+body.mobile-combat-fullscreen .battle-stage .combat-quest-alert {
+  top: 50px !important;
+  right: 10px !important;
+}
+
+.combat-boss-progress {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  z-index: 8;
+  width: min(380px, calc(100% - 132px));
+  display: grid;
+  gap: 4px;
+  transform: translateX(-50%);
+  color: #dff7f1;
+  font-size: 9px;
+  font-weight: 950;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .82);
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.combat-boss-progress span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-boss-progress-bar {
+  height: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(110, 239, 226, .22);
+  border-radius: 999px;
+  background: rgba(3, 13, 20, .78);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .52);
+}
+
+.combat-boss-progress-bar i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #31c7c1, #f7bd4a);
+  box-shadow: 0 0 10px rgba(110, 239, 226, .22);
+  transition: width .22s ease-out;
+}
+
+.combat-boss-progress.ready {
+  color: #ffe9a8;
+}
+
+.combat-boss-progress.ready .combat-boss-progress-bar {
+  border-color: rgba(247, 189, 74, .58);
+}
+
+.combat-boss-progress.ready .combat-boss-progress-bar i,
+.combat-boss-progress.defeated .combat-boss-progress-bar i {
+  background: linear-gradient(90deg, #f7bd4a, #fff0a6);
+}
+
+.combat-boss-progress.defeated {
+  color: #a8f7c4;
+}
+
+.guild-page {
+  display: grid;
+  gap: 12px;
+}
+
+.guild-page-heading {
+  margin-bottom: 0;
+}
+
+.guild-page-skull {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(247, 189, 74, .32);
+  border-radius: 10px;
+  color: #ffe2a2;
+  background: rgba(42, 25, 8, .48);
+  font-size: 28px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04), 0 10px 24px rgba(0, 0, 0, .22);
+}
+
+.guild-page-section {
+  padding: 12px;
+}
+
+.battle-stage {
+  --combat-action-size: 67px;
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .battle-stage {
+    --combat-action-size: 62px;
+  }
+
+  .combat-guild-toggle {
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+  }
+
+  .battle-stage .combat-quest-alert,
+  body.is-combat-fullscreen .battle-stage .combat-quest-alert,
+  body.mobile-combat-fullscreen .battle-stage .combat-quest-alert {
+    top: max(48px, calc(env(safe-area-inset-top) + 48px)) !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+  }
+
+  .combat-boss-progress {
+    top: 29px;
+    width: min(320px, calc(100% - 96px));
+    gap: 3px;
+    font-size: 7.5px;
+  }
+
+  .combat-boss-progress-bar {
+    height: 5px;
+  }
+
+  .toast-region {
+    z-index: 190;
+  }
+
+  .toast-region .toast.mission-reward-toast {
+    display: block;
+    max-width: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .battle-stage {
+    --combat-action-size: 58px;
+  }
+
+  .combat-quick-actions,
+  body.mobile-combat-fullscreen .combat-quick-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, var(--combat-action-size));
+    grid-template-areas:
+      ". upgrades upgrades"
+      "boss prev next";
+    align-items: end;
+    justify-items: end;
+  }
+
+  .combat-quick-upgrades,
+  body.mobile-combat-fullscreen .combat-quick-upgrades {
+    grid-area: upgrades;
+    display: grid !important;
+    grid-template-columns: repeat(2, var(--combat-action-size));
+    align-items: center;
+    justify-self: end;
+  }
+
+  #combat-quick-boss {
+    grid-area: boss;
+  }
+
+  #combat-quick-prev-map {
+    grid-area: prev;
+  }
+
+  #combat-quick-next-map {
+    grid-area: next;
+  }
+
+  .combat-auto-actions,
+  body.mobile-combat-fullscreen .combat-auto-actions {
+    bottom: calc(var(--combat-action-bottom) + (var(--combat-action-size) * 2) + var(--combat-action-gap) + 7px) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  body.mobile-combat-fullscreen .battle-stage {
+    --combat-action-size: 58px;
+  }
+
+  .combat-boss-progress {
+    width: min(292px, calc(100% - 88px));
+    font-size: 7px;
+  }
+}
+
+@media (max-width: 380px) {
+  .battle-stage,
+  body.mobile-combat-fullscreen .battle-stage {
+    --combat-action-size: 48px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) and (max-width: 980px) {
+  body.mobile-combat-fullscreen .battle-stage {
+    --combat-action-size: 53px;
+  }
+
+  body.mobile-combat-fullscreen .combat-boss-progress {
+    top: 28px;
+    width: min(330px, calc(100% - 112px));
+  }
+}
+
 .combat-fullscreen-toggle,
 .combat-fullscreen-exit {
   display: none !important;
@@ -7274,6 +7527,47 @@ body.mobile-combat-fullscreen .combat-quest-alert:not(.hidden) {
 .stats-panel-bar {
   gap: 5px;
   padding: 4px;
+}
+
+.manual-attack-tutorial {
+  position: absolute;
+  top: 50% !important;
+  left: 50% !important;
+  z-index: 6;
+  width: min(220px, calc(100% - 32px)) !important;
+  min-height: 0 !important;
+  display: block;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: rgba(220, 228, 226, .62) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  font-size: 13px !important;
+  font-weight: 850;
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .72);
+  text-transform: none;
+  transform: translate(-50%, -50%) !important;
+  animation: none !important;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
+}
+
+.manual-attack-tutorial::after,
+.manual-attack-tutorial-icon,
+.manual-attack-tutorial-copy {
+  display: none !important;
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .manual-attack-tutorial {
+    width: min(190px, calc(100% - 28px)) !important;
+    font-size: 12px !important;
+  }
 }
 
 .stats-panel-toggle,

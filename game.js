@@ -2974,7 +2974,7 @@
   }
 
   function shouldShowManualAttackTutorial(now = Date.now()) {
-    return !shouldShowInitialCaptainGate() && !isArenaSceneActive() && state.combat.running && Boolean(state.combat.enemy && !state.combat.enemy.defeated) && state.pirateLevel < 2 && !manualAttackTutorialDismissed && now - manualAttackTutorialStartedAt <= MANUAL_ATTACK_TUTORIAL_DURATION_MS;
+    return !shouldShowInitialCaptainGate() && state.pirateLevel < 2;
   }
 
   function completeManualAttackTutorial() {
@@ -3698,6 +3698,15 @@
     renderHomeGuildCard();
     renderTopbar();
     renderCombatHud();
+    if (currentScreen === "guild") {
+      const guildScreen = $("#screen-guild");
+      if (isActiveTextEditingInside(guildScreen)) {
+        markRenderDeferredForTextEditing();
+        return;
+      }
+      renderGuild();
+      return;
+    }
     if (currentScreen === "captain") {
       const captainScreen = $("#screen-captain");
       if (isActiveTextEditingInside(captainScreen)) {
@@ -4343,7 +4352,8 @@
   }
 
   function loadCombatMinimizedPreference() {
-    try { return localStorage.getItem(COMBAT_MINIMIZED_KEY) === "1"; } catch (error) { return false; }
+    try { localStorage.removeItem(COMBAT_MINIMIZED_KEY); } catch (error) {}
+    return false;
   }
 
   function setCombatMinimized(minimized, persist = true) {
@@ -4459,7 +4469,6 @@
     const app = $("#app");
     const shell = $(".persistent-combat");
     const stage = $("#battle-stage");
-    const collapseButton = $("#combat-collapse-toggle");
     const fullscreenButton = $("#combat-fullscreen-toggle");
     const exitButton = $("#combat-fullscreen-exit");
     document.documentElement.classList.toggle("is-combat-fullscreen", combatFullscreen);
@@ -4476,7 +4485,6 @@
     app?.classList.toggle("is-mobile-landscape-combat", mobileCombatFullscreen);
     shell?.classList.toggle("combat-fullscreen-mode", combatFullscreen);
     stage?.classList.toggle("combat-fullscreen-stage", combatFullscreen);
-    collapseButton?.classList.toggle("hidden", combatFullscreen);
     fullscreenButton?.classList.toggle("hidden", combatFullscreen || mobileDevice);
     exitButton?.classList.toggle("hidden", !combatFullscreen || mobileCombatFullscreen);
     if (fullscreenButton) fullscreenButton.setAttribute("aria-pressed", String(combatFullscreen));
@@ -4921,7 +4929,7 @@
     if (kind !== "mission") return;
     const item = missionDefinitions.find(entry => entry.id === id);
     if (!grantMissionReward(item)) return;
-    toast(`Missão recompensada: ${item.name}`, "gold-toast");
+    toast(`Missão recompensada: ${item.name}`, "gold-toast mission-reward-toast", { mobileAllowed: true });
     addLog(`Recompensa coletada: ${item.name} — ${rewardText(item.reward)}.`, "loot");
     checkProgressionUnlocks();
     commitGame(true);
@@ -4942,10 +4950,10 @@
     }
     if (!claimed.length) {
       if (currentScreen === "stats" && mobileCombatPanelOpen) renderMissions();
-      return toast("Nenhuma recompensa disponível no momento.");
+      return toast("Nenhuma recompensa disponível no momento.", "mission-reward-toast", { mobileAllowed: true });
     }
     const suffix = claimed.length === 1 ? "" : "s";
-    toast(options.shortcut ? "Quests concluidas resgatadas!" : `${claimed.length} recompensa${suffix} coletada${suffix}!`, "gold-toast");
+    toast(options.shortcut ? "Quests concluidas resgatadas!" : `${claimed.length} recompensa${suffix} coletada${suffix}!`, "gold-toast mission-reward-toast", { mobileAllowed: true });
     addLog(`Coletar tudo: ${claimed.length} recompensa${suffix} de missão coletada${suffix}.`, "loot");
     commitGame(true);
   }
@@ -9738,15 +9746,6 @@
     if (!node || !bounds) return;
     const visible = shouldShowManualAttackTutorial();
     node.classList.toggle("hidden", !visible);
-    if (!visible) return;
-    const nodeWidth = node.offsetWidth || 130;
-    const nodeHeight = node.offsetHeight || 30;
-    const edge = bounds.compactStage ? 8 : 14;
-    const playerHealthBottom = Number.parseFloat($("#player-floating-health")?.style.top || "") || bounds.player.y;
-    const targetX = bounds.player.x;
-    const targetY = Math.max(bounds.player.y + (bounds.compactStage ? 34 : 48), playerHealthBottom + nodeHeight + (bounds.compactStage ? 8 : 14));
-    node.style.left = `${clamp(targetX, nodeWidth / 2 + edge, bounds.width - nodeWidth / 2 - edge)}px`;
-    node.style.top = `${clamp(targetY, nodeHeight + 8, bounds.height - (bounds.compactStage ? 50 : 86))}px`;
   }
 
   function updateFloatingCombatHudPositions() {
@@ -9921,6 +9920,29 @@
     renderCombatQuickRecommendations();
   }
 
+  function updateCombatBossProgressBar() {
+    const shell = $("#combat-boss-progress");
+    const label = $("#combat-boss-progress-label");
+    const fill = $("#combat-boss-progress-fill");
+    if (!shell || !label || !fill) return;
+    const required = SHIP_UNLOCK_KILL_REQUIREMENT;
+    const kills = clamp(Math.floor(Number(state.regionKills[state.regionIndex]) || 0), 0, required);
+    const defeated = Boolean(state.bossesDefeated[state.regionIndex]);
+    const ready = kills >= required && !defeated;
+    const progress = defeated ? 1 : clamp(kills / Math.max(1, required), 0, 1);
+    const bossName = REGIONS[state.regionIndex]?.boss || "Boss";
+    const text = defeated
+      ? `Boss derrotado: ${bossName} - Próximo mapa disponível!`
+      : ready
+        ? `Boss liberado: ${bossName}`
+        : `Monstros ${formatNumber(kills)} / ${formatNumber(required)} para liberar o boss`;
+    shell.classList.toggle("ready", ready);
+    shell.classList.toggle("defeated", defeated);
+    label.textContent = text;
+    fill.style.width = `${progress * 100}%`;
+    shell.setAttribute("aria-label", text);
+  }
+
   function renderCombatHud() {
     const stats = getStats();
     const ship = SHIPS[state.shipId];
@@ -9930,6 +9952,7 @@
     const visualRegionIndex = enemy?.isGuildBoss ? enemy.regionIndex : state.regionIndex;
     $("#battle-stage")?.classList.toggle("fixed-background", isArenaSceneActive() || regionUsesFixedBackground(visualRegionIndex));
     $("#scene-region").textContent = getCombatHudRegionLabel();
+    updateCombatBossProgressBar();
     state.combat.playerHp = clamp(state.combat.playerHp, 0, maxHp);
     $("#player-health-fill").style.width = `${state.combat.playerHp / Math.max(1, maxHp) * 100}%`;
     $("#player-health-text").textContent = `${formatNumber(state.combat.playerHp)} / ${formatNumber(maxHp)}`;
@@ -11103,6 +11126,23 @@
     </section>`;
   }
 
+  function renderGuild() {
+    const content = $("#guild-content");
+    if (!content) return;
+    if (guildState.status === "idle") setTimeout(() => refreshGuild({ force: true }), 0);
+    const guild = getCurrentGuild();
+    const summary = guild
+      ? `${guild.name} - ${guildRoleLabel(guildState.current?.role)} - Nivel ${formatNumber(guild.level)}`
+      : guildState.status === "loading" ? "Carregando dados online..." : "Crie, entre ou solicite uma Irmandade online";
+    const body = guildState.status === "loading"
+      ? guildEmptyStateHtml("Carregando Irmandade online...")
+      : guildState.status === "unavailable"
+        ? `<div class="guild-panel">${guildEmptyStateHtml(guildState.error || "Irmandade online indisponivel.", true)}<button class="button" type="button" data-refresh-guild>Atualizar</button></div>`
+        : guild ? guildCurrentPanelHtml() : guildDiscoveryHtml();
+    content.innerHTML = `<div class="page-heading guild-page-heading"><div><span class="eyebrow">IRMANDADE PIRATA</span><h1 id="guild-title">Irmandade Pirata</h1><p>${escapeHtml(summary)}</p></div><div class="guild-page-skull" aria-hidden="true">&#x2620;</div></div><section class="captain-equipment-section captain-guild-section guild-page-section">${body}</section>`;
+    suppressNativeBrowserTooltips(content);
+  }
+
   function renderCaptainPetsSection() {
     const current = getEquippedPet();
     const summary = current
@@ -11179,7 +11219,7 @@
       content.innerHTML = `${captainIdentityHtml()}<div class="captain-choice-grid">${Object.entries(CAPTAIN_GENDERS).map(([gender, meta]) => {
         const level = getCaptainLevelData(1);
         return `<article class="captain-choice"><div class="captain-choice-image">${captainSpriteCanvasHtml(1, gender, "choice")}</div><div><span class="eyebrow">VISUAL INICIAL</span><h2>${meta.choice}</h2><p>${getCaptainName(1, gender)}</p><div class="captain-choice-bonuses">${captainLevelBonusText(level)}</div></div><button class="button primary" data-select-captain-gender="${gender}" ${missingName ? "disabled" : ""} title="${missingName ? "Escolha um Nome de Pirata antes de escolher o sexo." : ""}">Escolher</button></article>`;
-      }).join("")}</div>${renderCaptainGuildSection()}${renderCaptainPetsSection()}${renderCaptainManualSkillSection(true)}${renderCaptainEquipmentSection(true)}`;
+      }).join("")}</div>${renderCaptainPetsSection()}${renderCaptainManualSkillSection(true)}${renderCaptainEquipmentSection(true)}`;
       finalizeCaptainRender(content);
       return;
     }
@@ -11189,7 +11229,7 @@
     const nextPreview = next
       ? `<div class="captain-next"><div class="captain-next-image">${captainSpriteCanvasHtml(next.level, next.gender, "next")}</div><div><span class="eyebrow">PRÓXIMO NÍVEL</span><h3>${next.name}</h3><p>${captainLevelBonusText(next)}</p><strong>☠ ${formatNumber(cost)} Moedas Pirata</strong></div></div>`
       : `<div class="captain-next max"><div><span class="eyebrow">NÍVEL MÁXIMO</span><h3>Pirata lendário completo</h3><p>Todos os bônus permanentes do Capitão estão ativos.</p></div></div>`;
-    content.innerHTML = `${captainIdentityHtml()}${renderCaptainOverviewSection(current, next, cost, canUpgrade, nextPreview)}${renderCaptainGuildSection()}${renderCaptainPetsSection()}${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
+    content.innerHTML = `${captainIdentityHtml()}${renderCaptainOverviewSection(current, next, cost, canUpgrade, nextPreview)}${renderCaptainPetsSection()}${renderCaptainManualSkillSection()}${renderCaptainEquipmentSection()}`;
     finalizeCaptainRender(content);
   }
 
@@ -12946,13 +12986,12 @@
 
   function selectGuildBoss(index) {
     guildBossSelectedIndex = clamp(Math.floor(Number(index) || 0), 0, REGIONS.length - 1);
-    if (currentScreen === "captain") renderCaptain();
+    if (currentScreen === "guild") renderGuild();
   }
 
   function openGuildFromHome() {
-    setCaptainPanelExpansion("guild", true);
     guildActiveTab = "summary";
-    navigate("captain");
+    navigate("guild");
     refreshGuild({ force: true });
   }
 
@@ -13119,6 +13158,7 @@
     upgrades: renderUpgrades,
     maps: renderMaps,
     captain: renderCaptain,
+    guild: renderGuild,
     prestige: renderPrestige,
     stats: renderStats
   };
@@ -13639,7 +13679,7 @@
     }
     if (target.dataset.guildTab) {
       guildActiveTab = target.dataset.guildTab;
-      renderCaptain();
+      if (currentScreen === "guild") renderGuild();
       return;
     }
     if (target.dataset.refreshGuild !== undefined) {
@@ -14049,7 +14089,6 @@
   $("#start-button").addEventListener("click", toggleAutoCombat);
   $("#auto-boss-button")?.addEventListener("click", toggleAutoChallengeBoss);
   $("#boss-button").addEventListener("click", challengeBoss);
-  $("#combat-collapse-toggle")?.addEventListener("click", toggleCombatMinimized);
   $("#combat-fullscreen-toggle")?.addEventListener("click", enterCombatFullscreen);
   $("#combat-fullscreen-exit")?.addEventListener("click", () => exitCombatFullscreen());
   $("#offline-close").addEventListener("click", closeOfflineModal);

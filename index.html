@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=133">
+  <link rel="stylesheet" href="styles.css?v=138">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -73,10 +73,14 @@
         <div class="battle-stage" id="battle-stage">
           <canvas id="sea-canvas" aria-label="Duelo naval automático."></canvas>
           <div class="scene-vignette"></div>
-          <button class="combat-collapse-toggle" id="combat-collapse-toggle" type="button" aria-label="Minimizar combate" aria-pressed="false" title="Minimizar combate"><span aria-hidden="true">-</span></button>
+          <button class="combat-guild-toggle" id="combat-guild-toggle" type="button" data-screen-target="guild" aria-label="Abrir Irmandade Pirata" data-help-tooltip="Abre a pagina da Irmandade Pirata."><span aria-hidden="true">&#x2620;</span></button>
           <button class="combat-quest-alert hidden" id="combat-quest-alert" type="button" aria-label="Recompensas de missões disponíveis" title="Coletar recompensas de missões" data-mission-reward-shortcut><span aria-hidden="true">!</span></button>
 
           <div class="combat-map-title" id="scene-region" aria-live="polite">1 - Lagoa dos Primeiros Remadores</div>
+          <div class="combat-boss-progress" id="combat-boss-progress" aria-live="polite">
+            <span id="combat-boss-progress-label">Monstros 0 / 100 para liberar o boss</span>
+            <b class="combat-boss-progress-bar" aria-hidden="true"><i id="combat-boss-progress-fill"></i></b>
+          </div>
           <div class="boss-defeated-banner hidden" id="boss-defeated-banner" aria-live="assertive">Boss Derrotado</div>
 
           <div class="floating-health enemy-floating-health" id="enemy-floating-health" aria-label="Vida do inimigo">
@@ -95,13 +99,7 @@
             <div class="health-numbers" id="player-health-text">140 / 140</div>
           </div>
 
-          <button class="manual-attack-tutorial hidden" id="manual-attack-tutorial" type="button" data-manual-basic-attack-tutorial>
-            <span class="manual-attack-tutorial-icon" aria-hidden="true">☝</span>
-            <span class="manual-attack-tutorial-copy">
-              <strong>Pressione para atacar</strong>
-              <small>Toque na batalha para atacar</small>
-            </span>
-          </button>
+          <div class="manual-attack-tutorial hidden" id="manual-attack-tutorial" aria-hidden="true">Toque para atacar</div>
           <div class="combat-status-actions combat-auto-actions" id="combat-auto-actions" aria-label="Automacao de combate">
             <button class="combat-toggle-pill" id="start-button" type="button" aria-pressed="false">Auto Off</button>
             <button class="combat-toggle-pill auto-boss-button" id="auto-boss-button" type="button" aria-pressed="false">Auto Boss Off</button>
@@ -280,6 +278,10 @@
         <h1 class="sr-only" id="captain-title">Capitão</h1>
         <strong class="sr-only" id="captain-coins">0</strong>
         <div class="captain-page" id="captain-content"></div>
+      </section>
+
+      <section class="screen" id="screen-guild" aria-labelledby="guild-title">
+        <div class="guild-page" id="guild-content"></div>
       </section>
 
       <section class="screen" id="screen-prestige" aria-labelledby="prestige-title">
@@ -516,6 +518,6 @@
 
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=7"></script>
-  <script src="game.js?v=242"></script>
+  <script src="game.js?v=244"></script>
 </body>
 </html>
