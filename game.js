@@ -1251,6 +1251,7 @@
   }
 
   function addCaptainRuntimeXp(amount) {
+    const autoAttackWasUnlocked = isAutoAttackUnlocked();
     syncCaptainRuntimeState(state);
     state.captainCurrentXp += Math.max(0, Number(amount) || 0);
     let gainedPoints = 0;
@@ -1261,7 +1262,12 @@
       gainedPoints += 1;
     }
     syncCaptainRuntimeState(state);
-    if (gainedPoints) toast(`Capitão subiu ${gainedPoints} nível${gainedPoints > 1 ? "s" : ""}: +${gainedPoints} Ponto${gainedPoints > 1 ? "s" : ""} de Nível.`, "gold-toast");
+    const autoAttackUnlockedNow = !autoAttackWasUnlocked && isAutoAttackUnlocked();
+    if (autoAttackUnlockedNow) startCombatLoop({ resetSpawnDelay: false });
+    if (gainedPoints) {
+      const autoText = autoAttackUnlockedNow ? " Auto ataque desbloqueado." : "";
+      toast(`Capitão subiu ${gainedPoints} nível${gainedPoints > 1 ? "s" : ""}: +${gainedPoints} Ponto${gainedPoints > 1 ? "s" : ""} de Nível.${autoText}`, "gold-toast");
+    }
   }
 
   function normalizeCaptainGender(value) {
@@ -2517,7 +2523,14 @@
   let combatFullscreenSource = "";
   let combatFullscreenHistoryActive = false;
   let mobileCombatFullscreen = false;
+  let mobileCombatPanelOpen = false;
   let mobileCombatPreviousMinimized = false;
+  let lastCombatQuickActionButton = null;
+  let combatQuickFeedbackTimer = 0;
+  let helpTooltipNode = null;
+  let helpTooltipTimer = 0;
+  let helpTooltipTarget = null;
+  let nativeTooltipObserver = null;
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
   let lastGuildCooldownUiRefresh = 0;
@@ -2961,7 +2974,7 @@
   }
 
   function shouldShowManualAttackTutorial(now = Date.now()) {
-    return !shouldShowInitialCaptainGate() && !isArenaSceneActive() && state.pirateLevel < 2 && !manualAttackTutorialDismissed && now - manualAttackTutorialStartedAt <= MANUAL_ATTACK_TUTORIAL_DURATION_MS;
+    return !shouldShowInitialCaptainGate() && !isArenaSceneActive() && state.combat.running && Boolean(state.combat.enemy && !state.combat.enemy.defeated) && state.pirateLevel < 2 && !manualAttackTutorialDismissed && now - manualAttackTutorialStartedAt <= MANUAL_ATTACK_TUTORIAL_DURATION_MS;
   }
 
   function completeManualAttackTutorial() {
@@ -3184,6 +3197,175 @@
   function commitGame(expensive = true) {
     renderAll(expensive);
     saveGame();
+  }
+
+  function rememberCombatQuickActionButton(target) {
+    lastCombatQuickActionButton = target?.closest?.("#combat-quick-upgrades .combat-quick-button") || null;
+  }
+
+  function combatQuickGainAmount(oldStats, newStats, key) {
+    return Math.max(0, Math.round((Number(newStats?.[key]) || 0) - (Number(oldStats?.[key]) || 0)));
+  }
+
+  function combatQuickPrimaryGainText(oldStats, newStats, preferred = []) {
+    const labels = {
+      damage: "dano",
+      maxHp: "HP",
+      dps: "DPS",
+      armor: "defesa",
+      speed: "vel."
+    };
+    const order = [...preferred, "damage", "maxHp", "dps", "armor", "speed"].filter((key, index, list) => labels[key] && list.indexOf(key) === index);
+    const stat = order.find(key => combatQuickGainAmount(oldStats, newStats, key) > 0);
+    if (!stat) return "";
+    return `+${formatNumber(combatQuickGainAmount(oldStats, newStats, stat))} ${labels[stat]}`;
+  }
+
+  function combatQuickPowerGainText(oldStats, newStats) {
+    const powerGain = Math.max(0, Math.round((Number(newStats?.power) || 0) - (Number(oldStats?.power) || 0)));
+    return powerGain > 0 ? `+${formatNumber(powerGain)} poder` : "Bonus ativo";
+  }
+
+  function combatQuickShipUpgradeFeedback(type, oldStats, newStats) {
+    const meta = {
+      cannons: { title: "Canhao evoluido", stats: ["damage", "dps"] },
+      sails: { title: "Velas evoluidas", stats: ["speed", "dps"] },
+      hull: { title: "Casco evoluido", stats: ["maxHp", "armor"] },
+      shields: { title: "Escudo evoluido", stats: ["armor"] },
+      ship: { title: "Navio evoluido", stats: ["damage", "maxHp", "dps"] }
+    }[type];
+    const title = meta?.title || `${getShipUpgradeDefinition(type)?.name || "Melhoria"} evoluida`;
+    const gainText = combatQuickPrimaryGainText(oldStats, newStats, meta?.stats || []) || combatQuickPowerGainText(oldStats, newStats);
+    return `${title}! ${gainText}`;
+  }
+
+  function combatQuickNamedUpgradeFeedback(name, oldStats, newStats, verb = "evoluido") {
+    const gainText = combatQuickPrimaryGainText(oldStats, newStats) || combatQuickPowerGainText(oldStats, newStats);
+    return `${name || "Melhoria"} ${verb}! ${gainText}`;
+  }
+
+  function showCombatQuickUpgradeFeedback(message) {
+    if (!message) return;
+    const stage = $("#battle-stage");
+    const button = lastCombatQuickActionButton;
+    lastCombatQuickActionButton = null;
+    if (!stage || !button?.isConnected || !stage.contains(button)) return;
+    const previous = $(".combat-quick-feedback-float", stage);
+    if (previous) previous.remove();
+    if (combatQuickFeedbackTimer) window.clearTimeout(combatQuickFeedbackTimer);
+    const stageRect = stage.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    const node = document.createElement("div");
+    node.className = "combat-quick-feedback-float";
+    node.textContent = message;
+    node.style.left = `${clamp(buttonRect.left - stageRect.left + buttonRect.width / 2, 42, Math.max(42, stageRect.width - 42))}px`;
+    node.style.top = `${Math.max(22, buttonRect.top - stageRect.top - 5)}px`;
+    stage.appendChild(node);
+    combatQuickFeedbackTimer = window.setTimeout(() => {
+      node.remove();
+      combatQuickFeedbackTimer = 0;
+    }, 1600);
+  }
+
+  function getHelpTooltipTarget(target) {
+    return target?.closest?.("[data-help-tooltip], [data-native-title]");
+  }
+
+  function hideHelpTooltip() {
+    if (helpTooltipTimer) {
+      window.clearTimeout(helpTooltipTimer);
+      helpTooltipTimer = 0;
+    }
+    helpTooltipTarget = null;
+    helpTooltipNode?.remove();
+    helpTooltipNode = null;
+  }
+
+  function showHelpTooltip(target) {
+    const nodeTarget = getHelpTooltipTarget(target);
+    const text = nodeTarget?.dataset?.helpTooltip || nodeTarget?.dataset?.nativeTitle;
+    if (!nodeTarget || !text) return;
+    if (helpTooltipTarget === nodeTarget && helpTooltipNode) return;
+    hideHelpTooltip();
+    helpTooltipTarget = nodeTarget;
+    helpTooltipNode = document.createElement("div");
+    helpTooltipNode.className = "help-tooltip";
+    helpTooltipNode.textContent = text;
+    document.body.appendChild(helpTooltipNode);
+    const targetRect = nodeTarget.getBoundingClientRect();
+    const tipRect = helpTooltipNode.getBoundingClientRect();
+    const gap = 8;
+    const topCandidate = targetRect.top - tipRect.height - gap;
+    const below = targetRect.bottom + gap;
+    const top = topCandidate >= 8 ? topCandidate : Math.min(window.innerHeight - tipRect.height - 8, below);
+    const center = targetRect.left + targetRect.width / 2;
+    const left = clamp(center - tipRect.width / 2, 8, Math.max(8, window.innerWidth - tipRect.width - 8));
+    helpTooltipNode.style.left = `${left}px`;
+    helpTooltipNode.style.top = `${Math.max(8, top)}px`;
+  }
+
+  function handleHelpTooltipPointerEnter(event) {
+    if (window.matchMedia?.("(pointer: coarse)")?.matches) return;
+    showHelpTooltip(event.target);
+  }
+
+  function handleHelpTooltipPointerDown(event) {
+    const target = getHelpTooltipTarget(event.target);
+    if (!target) return;
+    if (helpTooltipTimer) window.clearTimeout(helpTooltipTimer);
+    helpTooltipTimer = window.setTimeout(() => showHelpTooltip(target), 520);
+  }
+
+  function syncHomeHelpTooltips(root = document) {
+    const tooltipMap = [
+      ["#boss-button", "Desafia o boss do mapa quando as 100 vitorias estiverem completas."],
+      ["#boss-prev-map", "Volta para o mapa anterior desbloqueado."],
+      ["#boss-next-map", "Avanca para o proximo mapa desbloqueado."],
+      ['[data-toggle-home-panel="guild"]', "Mostra ou recolhe os atalhos da Irmandade."],
+      ["[data-open-guild]", "Abre a Irmandade para entrar, gerenciar e ver bonus."],
+      ["#home-guild-boss-button", "Inicia o boss diario da Irmandade quando estiver disponivel."],
+      ["[data-refresh-guild]", "Atualiza os dados online da sua Irmandade."],
+      ['[data-toggle-home-panel="leaderboard"]', "Mostra ou recolhe Ranking e Arena."],
+      ["#leaderboard-refresh", "Atualiza o ranking online dos piratas."],
+      ['[data-leaderboard-tab="ranking"]', "Mostra a classificacao por Poder Naval registrado."],
+      ['[data-leaderboard-tab="arena"]', "Mostra adversarios salvos para desafiar no PvP."]
+    ];
+    tooltipMap.forEach(([selector, text]) => {
+      $$(selector, root).forEach(node => {
+        if (!node.dataset.helpTooltip) node.dataset.helpTooltip = text;
+      });
+    });
+  }
+
+  function suppressNativeBrowserTooltips(root = document) {
+    const nodes = [];
+    if (root?.nodeType === 1 && root.hasAttribute?.("title")) nodes.push(root);
+    root?.querySelectorAll?.("[title]").forEach(node => nodes.push(node));
+    nodes.forEach(node => {
+      const title = String(node.getAttribute("title") || "").trim();
+      if (title && !node.dataset.nativeTitle) node.dataset.nativeTitle = title;
+      node.removeAttribute("title");
+    });
+  }
+
+  function setupNativeTooltipSuppression() {
+    suppressNativeBrowserTooltips();
+    if (nativeTooltipObserver) return;
+    nativeTooltipObserver = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        if (mutation.type === "attributes") {
+          suppressNativeBrowserTooltips(mutation.target);
+          return;
+        }
+        mutation.addedNodes.forEach(node => suppressNativeBrowserTooltips(node));
+      });
+    });
+    nativeTooltipObserver.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["title"]
+    });
   }
 
   function getPirateRankTitle(source = state) {
@@ -4247,7 +4429,29 @@
   }
 
   function shouldUseMobileCombatFullscreen() {
-    return isMobileCombatDevice() && isCombatLandscapeOrientation();
+    const { width, height } = getCombatViewportSize();
+    const minSide = Math.min(width, height);
+    const maxSide = Math.max(width, height);
+    return isMobileCombatDevice() && (minSide <= 768 || maxSide <= 980);
+  }
+
+  function syncMobilePanelState() {
+    const panelOpen = Boolean(mobileCombatPanelOpen);
+    const mobilePanelOpen = Boolean(mobileCombatFullscreen && panelOpen);
+    const app = $("#app");
+    const closeButton = $("#mobile-panel-close");
+    const linkedResources = $("#screen-resources");
+    if (linkedResources && currentScreen === "upgrades") linkedResources.classList.toggle("active", panelOpen || !mobileCombatFullscreen);
+    document.documentElement.classList.toggle("combat-panel-open", panelOpen);
+    document.body.classList.toggle("combat-panel-open", panelOpen);
+    app?.classList.toggle("combat-panel-open", panelOpen);
+    document.documentElement.classList.toggle("mobile-panel-open", mobilePanelOpen);
+    document.body.classList.toggle("mobile-panel-open", mobilePanelOpen);
+    app?.classList.toggle("mobile-panel-open", mobilePanelOpen);
+    if (closeButton) {
+      closeButton.classList.toggle("hidden", !panelOpen);
+      closeButton.title = panelOpen ? "Voltar ao combate" : "";
+    }
   }
 
   function syncCombatFullscreenVisualState() {
@@ -4276,6 +4480,7 @@
     fullscreenButton?.classList.toggle("hidden", combatFullscreen || mobileDevice);
     exitButton?.classList.toggle("hidden", !combatFullscreen || mobileCombatFullscreen);
     if (fullscreenButton) fullscreenButton.setAttribute("aria-pressed", String(combatFullscreen));
+    syncMobilePanelState();
     resizeCombatViewport();
   }
 
@@ -4360,12 +4565,14 @@
       mobileCombatPreviousMinimized = combatMinimized;
       if (combatMinimized) setCombatMinimized(false, false);
       mobileCombatFullscreen = true;
+      mobileCombatPanelOpen = false;
       combatFullscreen = true;
       combatFullscreenSource = "mobile";
       syncCombatFullscreenVisualState();
       return;
     }
     mobileCombatFullscreen = false;
+    mobileCombatPanelOpen = false;
     if (combatFullscreenSource === "mobile") {
       combatFullscreen = false;
       combatFullscreenSource = "";
@@ -4720,7 +4927,7 @@
     commitGame(true);
   }
 
-  function claimAllMissionRewards() {
+  function claimAllMissionRewards(options = {}) {
     resetPeriodicProgressIfNeeded();
     checkProgressionUnlocks(false);
     const claimed = [];
@@ -4734,24 +4941,17 @@
       checkProgressionUnlocks(false);
     }
     if (!claimed.length) {
-      renderMissions();
+      if (currentScreen === "stats" && mobileCombatPanelOpen) renderMissions();
       return toast("Nenhuma recompensa disponível no momento.");
     }
     const suffix = claimed.length === 1 ? "" : "s";
-    toast(`${claimed.length} recompensa${suffix} coletada${suffix}!`, "gold-toast");
+    toast(options.shortcut ? "Quests concluidas resgatadas!" : `${claimed.length} recompensa${suffix} coletada${suffix}!`, "gold-toast");
     addLog(`Coletar tudo: ${claimed.length} recompensa${suffix} de missão coletada${suffix}.`, "loot");
     commitGame(true);
   }
 
   function openMissionRewardShortcut() {
-    statsPanelsExpanded.quests = false;
-    navigate("stats");
-    requestAnimationFrame(() => {
-      syncStatsPanelExpansion($("#screen-stats"));
-      const claimButton = $(".stats-quick-claim-button");
-      claimButton?.scrollIntoView?.({ behavior: "smooth", block: "center" });
-      claimButton?.focus?.({ preventScroll: true });
-    });
+    claimAllMissionRewards({ shortcut: true });
   }
 
   function normalizeText(value = "") {
@@ -6586,30 +6786,6 @@
       return openTreasureChest(chest);
     }
 
-    getPlayerManualAttackHitbox(pointerType = "mouse") {
-      const compactStage = this.width < 620 || this.height < 240;
-      const playerX = this.width * .29;
-      const playerY = this.height * (compactStage ? .73 : .69);
-      const playerScale = Math.min(1.15, this.width / 950, this.height / 300);
-      const touchBoost = pointerType === "touch" ? 1.28 : 1;
-      const width = clamp(250 * playerScale * touchBoost, 108, this.width * .58);
-      const height = clamp(154 * playerScale * touchBoost, 88, this.height * .72);
-      return {
-        x: clamp(playerX - width * .52, 0, this.width - width),
-        y: clamp(playerY - height * .62, 0, this.height - height),
-        width,
-        height
-      };
-    }
-
-    handleManualShipPointer(pointer, x, y) {
-      const box = this.getPlayerManualAttackHitbox(pointer.pointerType);
-      if (x < box.x || x > box.x + box.width || y < box.y || y > box.y + box.height) return false;
-      if (!manualShipAttack()) return false;
-      if (pointer.cancelable) pointer.preventDefault();
-      return true;
-    }
-
     floatChestReward(chest, rewards = []) {
       const x = (chest?.xRatio ?? .52) * this.width;
       const y = (chest?.yRatio ?? .66) * this.height - 8;
@@ -6635,7 +6811,6 @@
         this.collectEnvironmentEvent(event);
         return;
       }
-      this.handleManualShipPointer(pointer, x, y);
     }
 
     collectEnvironmentEvent(event, options = {}) {
@@ -8645,14 +8820,20 @@
       return false;
     }
     if (state.combat.repairing || state.combat.playerHp <= 0) return false;
+    if (isArenaBattleWaiting()) {
+      toast(`Arena comeca em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
+      return false;
+    }
     if (!state.combat.running) {
       state.combat.running = true;
       state.hasStarted = true;
       trackAction("firstCombat");
+      beginCombatAssetPreload();
     }
-    if (!state.combat.enemy) {
-      if (isArenaSceneActive()) return false;
+    if (!state.combat.enemy || state.combat.enemy.defeated) {
+      if (isArenaSceneActive() || pendingBossChallengeTimer || pendingBossMapAdvanceTimer || combatMapTransitionTimer || combatMapTransitionSwapTimer) return false;
       if (!ensureCriticalCombatAssetsReady()) {
+        state.combat.spawnTimer = 0;
         renderCombatHud();
         return false;
       }
@@ -8661,11 +8842,7 @@
     }
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated || isBossIntroActive(enemy)) return false;
-    if (enemy.isArena || isArenaBattleActive()) return false;
-    if (isArenaBattleWaiting()) {
-      toast(`Arena começa em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
-      return false;
-    }
+    if (enemy.isArena && !isArenaBattleActive()) return false;
     basicAttack({ manual: true, allowDoubleStrike: false });
     completeManualAttackTutorial();
     renderCombatHud();
@@ -9562,14 +9739,12 @@
     const visible = shouldShowManualAttackTutorial();
     node.classList.toggle("hidden", !visible);
     if (!visible) return;
-    const hitbox = scene.getPlayerManualAttackHitbox?.("mouse");
-    if (!hitbox) return;
     const nodeWidth = node.offsetWidth || 130;
     const nodeHeight = node.offsetHeight || 30;
     const edge = bounds.compactStage ? 8 : 14;
     const playerHealthBottom = Number.parseFloat($("#player-floating-health")?.style.top || "") || bounds.player.y;
-    const targetX = hitbox.x + hitbox.width * .54;
-    const targetY = Math.max(hitbox.y + hitbox.height * .62, playerHealthBottom + nodeHeight + (bounds.compactStage ? 8 : 14));
+    const targetX = bounds.player.x;
+    const targetY = Math.max(bounds.player.y + (bounds.compactStage ? 34 : 48), playerHealthBottom + nodeHeight + (bounds.compactStage ? 8 : 14));
     node.style.left = `${clamp(targetX, nodeWidth / 2 + edge, bounds.width - nodeWidth / 2 - edge)}px`;
     node.style.top = `${clamp(targetY, nodeHeight + 8, bounds.height - (bounds.compactStage ? 50 : 86))}px`;
   }
@@ -9592,11 +9767,158 @@
       button.title = enemy?.isArena ? "Sair do duelo PvP sem aplicar vitoria." : enemy?.isGuildBoss ? "Sair da tentativa contra o Boss da Irmandade." : "Sair da batalha contra o boss.";
     }
     if (nextMapButton) {
-      const nextVisible = !visible && !isArenaSceneActive() && state.regionIndex + 1 < state.unlockedRegions;
-      nextMapButton.classList.toggle("hidden", !nextVisible);
-      nextMapButton.disabled = !nextVisible;
-      nextMapButton.title = nextVisible ? `Avançar para ${REGIONS[state.regionIndex + 1]?.name || "próximo mapa"}` : "Nenhum próximo mapa liberado.";
+      nextMapButton.classList.add("hidden");
+      nextMapButton.disabled = true;
+      nextMapButton.title = "Use o botao de avancar mapa na barra de acoes.";
     }
+  }
+
+  const COMBAT_ACTION_ICON_PATHS = {
+    sabotage: "assets/ui/combat/icon_ataque_especial.png?v=5",
+    repair: "assets/ui/combat/icon_reparos_emergencia.png?v=5",
+    fleetRecommendation: "assets/ui/combat/icon_upgrade_melhoria_recomendada.png?v=5",
+    captainEquipmentRecommendation: "assets/ui/combat/icon_upgrade_equipamento_recomendado.png?v=5"
+  };
+
+  const COMBAT_QUICK_UPGRADE_LABELS = {
+    ship: "Navio",
+    cannons: "Canhao",
+    sails: "Velas",
+    hull: "Casco",
+    shields: "Escudo"
+  };
+
+  function escapeRegExpFragment(value = "") {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function getMarkupAttributeValue(markup = "", attr = "") {
+    const match = String(markup || "").match(new RegExp(`${escapeRegExpFragment(attr)}="([^"]*)"`, "i"));
+    return match ? match[1] : "";
+  }
+
+  function getCombatQuickRecommendationActionId(candidate, directAttr) {
+    return getMarkupAttributeValue(candidate?.actionAttrs, directAttr)
+      || getMarkupAttributeValue(candidate?.actionAttrs, "data-smart-upgrade-id");
+  }
+
+  function combatQuickRecommendationMeta(candidate) {
+    if (!candidate) return { iconSrc: COMBAT_ACTION_ICON_PATHS.fleetRecommendation, label: "Melhorar" };
+    if (candidate.kind === "captainEquipment") {
+      return { iconSrc: COMBAT_ACTION_ICON_PATHS.captainEquipmentRecommendation, label: "Capitao" };
+    }
+    if (candidate.kind === "fleetShip") {
+      return { iconSrc: COMBAT_ACTION_ICON_PATHS.fleetRecommendation, label: "Novo navio" };
+    }
+    if (candidate.kind === "fleetUpgrade") {
+      const key = getCombatQuickRecommendationActionId(candidate, "data-upgrade");
+      return { iconSrc: COMBAT_ACTION_ICON_PATHS.fleetRecommendation, label: COMBAT_QUICK_UPGRADE_LABELS[key] || "Navio" };
+    }
+    if (candidate.kind === "fleetEquipment") {
+      return { iconSrc: COMBAT_ACTION_ICON_PATHS.fleetRecommendation, label: "Equip." };
+    }
+    if (candidate.kind === "fleetSkill") {
+      return { iconSrc: COMBAT_ACTION_ICON_PATHS.fleetRecommendation, label: "Skill" };
+    }
+    return { iconSrc: COMBAT_ACTION_ICON_PATHS.fleetRecommendation, label: "Melhorar" };
+  }
+
+  function combatQuickRecommendationStateText(candidate) {
+    if (candidate?.canBuy) return "Pronto";
+    if (String(candidate?.actionLabel || "").toLowerCase().includes("comprar")) return "Comprar";
+    return "Falta";
+  }
+
+  function combatQuickRecommendationCostBadge(candidate) {
+    if (!candidate) return null;
+    if (candidate.kind === "captainEquipment") {
+      const cost = Math.max(0, Math.floor(Number(candidate.costPoints || 0)));
+      if (!cost) return null;
+      const available = getAvailableLevelPoints();
+      const missing = Math.max(0, cost - available);
+      return {
+        text: missing ? `-${formatNumber(missing)} pts` : `${formatNumber(cost)} pts`,
+        state: missing ? "missing" : "ready"
+      };
+    }
+    const requiredGold = Math.max(0, Math.round(goldOnlyBundle(candidate.cost || {}).ouro || 0));
+    if (!requiredGold) return null;
+    const missingGold = Math.max(0, requiredGold - (state.resources.ouro || 0));
+    return {
+      text: missingGold ? `-${formatNumber(missingGold)} Gold` : `${formatNumber(requiredGold)} Gold`,
+      state: missingGold ? "missing" : "ready"
+    };
+  }
+
+  function combatQuickRecommendationButtonHtml(candidate, index) {
+    const meta = combatQuickRecommendationMeta(candidate);
+    const costBadge = combatQuickRecommendationCostBadge(candidate);
+    const costText = candidate?.costText || resourceCostText(candidate?.cost || {});
+    const titleParts = [candidate?.title, candidate?.note, costText ? `Custo: ${costText}` : "", candidate?.actionLabel].filter(Boolean);
+    const title = titleParts.join(". ");
+    const label = meta.label;
+    const stateText = combatQuickRecommendationStateText(candidate);
+    const stateClass = candidate?.canBuy ? "ready" : "locked";
+    const ariaLabel = `${label}: ${candidate?.title || "melhoria recomendada"}. ${candidate?.actionLabel || stateText}`;
+    const helpText = `${candidate?.title || "Melhoria recomendada"}. ${candidate?.note || "Aumenta seu poder."} Ganho: +${formatNumber(candidate?.powerGain || 0)} poder.${costText ? ` Custo: ${costText}.` : ""}`;
+    return `<button class="combat-quick-button combat-quick-recommendation ${stateClass}" type="button" ${candidate?.actionAttrs || ""} ${candidate?.disabled ? "disabled" : ""} aria-label="${escapeHtml(ariaLabel)}" title="${escapeHtml(title || ariaLabel)}" data-help-tooltip="${escapeHtml(helpText)}" data-combat-recommendation-index="${index}">
+      ${costBadge ? `<span class="combat-quick-cost ${costBadge.state}">${escapeHtml(costBadge.text)}</span>` : ""}
+      <img class="combat-action-icon" src="${escapeHtml(meta.iconSrc)}" alt="" draggable="false">
+      <span class="sr-only">${escapeHtml(label)} ${escapeHtml(stateText)}</span>
+    </button>`;
+  }
+
+  function renderCombatQuickRecommendations() {
+    const container = $("#combat-quick-upgrades");
+    if (!container) return;
+    const fleetRecommendation = buildProgressRecommendationCandidates().find(candidate => candidate && !candidate.blocked);
+    const captainEquipmentRecommendation = buildCaptainRecommendationCandidates().find(candidate => candidate?.kind === "captainEquipment" && !candidate.blocked);
+    const recommendations = [fleetRecommendation, captainEquipmentRecommendation].filter(Boolean);
+    container.classList.toggle("hidden", recommendations.length === 0);
+    const signature = recommendations
+      .map(candidate => [candidate.kind, candidate.key, candidate.title, candidate.actionAttrs, candidate.disabled, candidate.canBuy, candidate.actionLabel, combatQuickRecommendationCostBadge(candidate)?.text].join("|"))
+      .join("||");
+    if (container.dataset.combatQuickSignature === signature) return;
+    container.dataset.combatQuickSignature = signature;
+    container.innerHTML = recommendations.map(combatQuickRecommendationButtonHtml).join("");
+  }
+
+  function syncCombatQuickActions() {
+    const bossButton = $("#combat-quick-boss");
+    if (bossButton) {
+      const defeated = state.bossesDefeated[state.regionIndex];
+      const kills = Math.max(0, Number(state.regionKills[state.regionIndex]) || 0);
+      const available = kills >= 100 && !defeated;
+      const bossPending = Boolean(pendingBossChallengeTimer && pendingBossChallengeRegionIndex === state.regionIndex);
+      const inBoss = Boolean(state.combat.enemy?.isBoss);
+      bossButton.disabled = !available || bossPending || inBoss || isArenaSceneActive();
+      bossButton.classList.toggle("ready", available && !bossPending && !inBoss && !isArenaSceneActive());
+      bossButton.classList.toggle("locked", bossButton.disabled);
+      bossButton.title = defeated ? "Boss derrotado neste mapa" : bossPending ? "Boss sendo preparado" : inBoss ? "Boss em combate" : available ? "Desafiar Boss" : `Faltam ${Math.max(0, 100 - kills)} vitorias`;
+    }
+
+    const prevMapButton = $("#combat-quick-prev-map");
+    if (prevMapButton) {
+      const prevIndex = state.regionIndex - 1;
+      const canReturn = prevIndex >= 0 && !isArenaSceneActive() && !combatMapTransitionTimer && !combatMapTransitionSwapTimer;
+      prevMapButton.disabled = !canReturn;
+      prevMapButton.classList.toggle("ready", canReturn);
+      prevMapButton.classList.toggle("locked", !canReturn);
+      prevMapButton.title = prevIndex >= 0 ? `Voltar para ${REGIONS[prevIndex].name}` : "Primeiro mapa";
+    }
+
+    const nextMapButton = $("#combat-quick-next-map");
+    if (nextMapButton) {
+      const nextIndex = state.regionIndex + 1;
+      const inSpecialCombat = Boolean(state.combat.enemy?.isBoss || (state.combat.enemy?.isArena && (isArenaBattleWaiting() || isArenaBattleActive())));
+      const canAdvance = nextIndex < state.unlockedRegions && !inSpecialCombat && !isArenaSceneActive() && !combatMapTransitionTimer && !combatMapTransitionSwapTimer;
+      nextMapButton.disabled = !canAdvance;
+      nextMapButton.classList.toggle("ready", canAdvance);
+      nextMapButton.classList.toggle("locked", !canAdvance);
+      nextMapButton.title = canAdvance ? `Avancar para ${REGIONS[nextIndex]?.name || "proximo mapa"}` : nextIndex >= REGIONS.length ? "Ultimo mapa" : "Proximo mapa ainda bloqueado";
+    }
+
+    renderCombatQuickRecommendations();
   }
 
   function renderCombatHud() {
@@ -9646,6 +9968,7 @@
       $("#enemy-health-text").textContent = "";
     }
     updateSpecialCombatExitButton();
+    syncCombatQuickActions();
     updateFloatingCombatHudPositions();
   }
 
@@ -9822,7 +10145,7 @@
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const canBuy = available >= next.pointCost;
       const progressScore = captainEquipmentProgressScore(key, current, next, currentStats, nextStats);
-      candidates.push({ kind: "captainEquipment", key, category: "Equipamento do Capitão", title: next.name, powerGain, canBuy, blocked: false, actionLabel: canBuy ? "Melhorar" : "Faltam pts", actionAttrs: `data-upgrade-captain-equipment="${key}"`, disabled: !canBuy, note: captainEquipmentRecommendationImpactText(key, current, next, currentStats, nextStats), costText: `${next.pointCost} Ponto${next.pointCost === 1 ? "" : "s"}`, score: progressScore * (canBuy ? 100 : 1) });
+      candidates.push({ kind: "captainEquipment", key, category: "Equipamento do Capitão", title: next.name, powerGain, costPoints: next.pointCost, canBuy, blocked: false, actionLabel: canBuy ? "Melhorar" : "Faltam pts", actionAttrs: `data-upgrade-captain-equipment="${key}"`, disabled: !canBuy, note: captainEquipmentRecommendationImpactText(key, current, next, currentStats, nextStats), costText: `${next.pointCost} Ponto${next.pointCost === 1 ? "" : "s"}`, score: progressScore * (canBuy ? 100 : 1) });
     });
     Object.entries(CAPTAIN_MANUAL_SKILL_META).forEach(([key, meta]) => {
       const level = getCaptainManualSkillLevel(key);
@@ -9851,11 +10174,12 @@
     if (!candidate) return `<div class="home-recommendation-row empty"><div class="recommendation-main"><span>${fallbackTitle}</span><strong>Nenhuma recomendação disponível</strong><small>Continue progredindo para liberar novas opções.</small></div><button class="button" disabled>Aguardar</button></div>`;
     const label = candidate.canBuy ? "Recomendado" : "Próxima recomendada";
     const costText = candidate.costText || resourceCostText(candidate.cost || {});
+    const helpText = `${candidate.title}. ${candidate.note || "Melhoria recomendada para aumentar seu poder."} Ganho: +${formatNumber(candidate.powerGain)} poder. Custo: ${costText || "sem custo"}.`;
     return `<div class="home-recommendation-row ${candidate.canBuy ? "available" : "locked"}">
       <div class="recommendation-main"><span>${label} • ${candidate.category}</span><strong>${candidate.title}</strong><small>${candidate.note || ""}</small></div>
       <div class="recommendation-meta"><span>Ganho</span><strong>+${formatNumber(candidate.powerGain)}</strong></div>
       <div class="recommendation-meta"><span>Custo</span><strong>${costText || "Sem custo"}</strong></div>
-      <button class="button ${candidate.canBuy ? "primary" : ""}" ${candidate.actionAttrs || ""} ${candidate.disabled ? "disabled" : ""}>${candidate.actionLabel || "Abrir"}</button>
+      <button class="button ${candidate.canBuy ? "primary" : ""}" ${candidate.actionAttrs || ""} ${candidate.disabled ? "disabled" : ""} data-help-tooltip="${escapeHtml(helpText)}">${candidate.actionLabel || "Abrir"}</button>
     </div>`;
   }
 
@@ -9924,6 +10248,7 @@
     if (powerMetric) powerMetric.textContent = formatNumber(stats.power);
     renderHomeRecommendations();
     renderHomeGuildCard();
+    syncHomeHelpTooltips($("#screen-home") || document);
     $("#kill-progress-text").textContent = `${Math.min(100, kills)} / 100`;
     $("#boss-progress-fill").style.width = `${Math.min(100, kills)}%`;
     $("#boss-name").textContent = region.boss;
@@ -9952,15 +10277,14 @@
     }
     const autoAttackUnlocked = isAutoAttackUnlocked();
     const startButton = $("#start-button");
-    startButton.textContent = autoAttackUnlocked
-      ? `Auto ${state.combat.running ? "ON" : "OFF"}`
-      : state.combat.running ? "Auto bloqueado" : "Atacar";
-    startButton.classList.toggle("on", Boolean(state.combat.running));
-    startButton.setAttribute("aria-pressed", state.combat.running ? "true" : "false");
-    startButton.title = autoAttackUnlocked ? "Liga ou desliga o combate automático." : "Auto ataque libera no nível 2 do Capitão. Até lá, clique no barco para atacar.";
+    startButton.textContent = autoAttackUnlocked ? `Auto ${state.combat.running ? "On" : "Off"}` : "Auto desbloqueia nivel 2";
+    startButton.classList.toggle("on", Boolean(autoAttackUnlocked && state.combat.running));
+    startButton.classList.toggle("locked", !autoAttackUnlocked);
+    startButton.setAttribute("aria-pressed", autoAttackUnlocked && state.combat.running ? "true" : "false");
+    startButton.title = autoAttackUnlocked ? "Liga ou desliga o combate automatico." : "Auto ataque libera no nivel 2 do Capitao. Ate la, toque na batalha para atacar manualmente.";
     const autoBossButton = $("#auto-boss-button");
     if (autoBossButton) {
-      autoBossButton.textContent = `Boss ${state.autoChallengeBoss ? "ON" : "OFF"}`;
+      autoBossButton.textContent = `Auto Boss ${state.autoChallengeBoss ? "On" : "Off"}`;
       autoBossButton.classList.toggle("on", Boolean(state.autoChallengeBoss));
       autoBossButton.setAttribute("aria-pressed", state.autoChallengeBoss ? "true" : "false");
       autoBossButton.title = state.autoChallengeBoss ? "Desafio automático de boss ligado." : "Desafia automaticamente o boss quando atingir 100 vitórias.";
@@ -10871,7 +11195,8 @@
 
   function captainManualSkillDockButtonHtml([key, meta]) {
     const repairClass = key === CAPTAIN_REPAIR_SKILL_KEY ? " repair-skill-orb" : "";
-    return `<button class="skill-orb manual-skill-orb${repairClass}" data-manual-skill="${key}" title="${meta.name}" aria-label="${meta.name}"><span class="cooldown"></span><span class="icon">${key === CAPTAIN_MANUAL_SKILL_KEY ? "✦" : meta.icon}</span><small></small></button>`;
+    const iconSrc = key === CAPTAIN_REPAIR_SKILL_KEY ? COMBAT_ACTION_ICON_PATHS.repair : COMBAT_ACTION_ICON_PATHS.sabotage;
+    return `<button class="skill-orb manual-skill-orb${repairClass}" data-manual-skill="${key}" title="${meta.name}" aria-label="${meta.name}"><span class="cooldown"></span><img class="combat-action-icon" src="${iconSrc}" alt="" draggable="false"><small></small></button>`;
   }
 
   function captainManualSkillDockHtml() {
@@ -12807,8 +13132,12 @@
   }
 
   function setActiveScreen(screen) {
-    $$(".screen").forEach(node => node.classList.toggle("active", node.id === `screen-${screen}` || (screen === "upgrades" && node.id === "screen-resources")));
+    $$(".screen").forEach(node => {
+      const linkedResources = screen === "upgrades" && node.id === "screen-resources" && (!mobileCombatFullscreen || mobileCombatPanelOpen);
+      node.classList.toggle("active", node.id === `screen-${screen}` || linkedResources);
+    });
     $$("[data-screen-target]").forEach(node => node.classList.toggle("active", node.dataset.screenTarget === screen));
+    syncMobilePanelState();
   }
 
   function shouldRenderInactiveScreens() {
@@ -12859,8 +13188,10 @@
     addLog(`${getShipUpgradeDefinition(type)?.name || "Melhoria"} melhorado para o nível ${state.levels[type]}.`, "loot");
     scene.celebrateCaptain(type === "ship" ? 2.4 : 1.55);
     const powerGain = Math.max(0, newStats.power - oldStats.power);
+    showCombatQuickUpgradeFeedback(combatQuickShipUpgradeFeedback(type, oldStats, newStats));
     toast(`Melhoria concluída! Poder Naval: ${formatNumber(oldStats.power)} → ${formatNumber(newStats.power)} (+${formatNumber(powerGain)}).`);
     commitGame(true);
+    return true;
   }
 
   function buyShip(id) {
@@ -12878,10 +13209,13 @@
     if (state.prestiges < prestigeReq) return toast(`Tier ${ship.tier} requer ${prestigeReq} Prestígio${prestigeReq === 1 ? "" : "s"}.`, "danger-toast");
     if (state.pirateLevel < ship.levelReq) return toast(`Requer nível ${ship.levelReq} para comprar ${ship.name}.`, "danger-toast");
     if (!canAfford(ship.costs)) return toast("Ainda falta Gold para construir este navio.", "danger-toast");
+    const oldStats = getStats();
     spend(ship.costs); state.ownedShips.push(id); state.shipEnemyKills[id] = getShipEnemyKills(id); setActiveShip(id);
     trackAction("shipSwitch");
     scene.celebrateCaptain(2.5);
+    showCombatQuickUpgradeFeedback(combatQuickNamedUpgradeFeedback(ship.name, oldStats, getStats(), "construido"));
     toast(`${ship.name} foi construído e equipado!`, "gold-toast"); addLog(`${ship.name} agora lidera sua frota.`, "loot"); commitGame(true);
+    return true;
   }
 
   function equipShip(id) {
@@ -13023,6 +13357,7 @@
     const cost = getCaptainManualSkillCost(key, level);
     const available = getAvailableLevelPoints();
     if (available < cost) return toast(`Faltam ${cost - available} Ponto${cost - available === 1 ? "" : "s"} de Nível para promover ${meta.name}.`, "danger-toast");
+    const oldStats = getStats();
     state.spentLevelPoints += cost;
     getCaptainManualSkillState(key).level = level + 1;
     syncCaptainManualSkillState(state);
@@ -13036,9 +13371,11 @@
         if (currentScreen === "captain") renderCaptain();
       }
     }, 900);
+    showCombatQuickUpgradeFeedback(combatQuickNamedUpgradeFeedback(meta.name, oldStats, getStats(), "promovida"));
     toast(`${meta.name} promovida para o nível ${level + 1}.`, "gold-toast");
     addLog(key === CAPTAIN_REPAIR_SKILL_KEY ? `${meta.name} agora repara ${Math.round(getCaptainRepairPercent(level + 1) * 100)}% da vida máxima.` : `${meta.name} agora causa ${formatCaptainManualMultiplier(getCaptainManualSkillMultiplier(key))} do dano atual do navio.`, "loot");
     commitGame(true);
+    return true;
   }
 
   function selectCaptainEquipment(key) {
@@ -13081,26 +13418,35 @@
     }, 900);
     const powerGain = Math.max(0, newStats.power - oldStats.power);
     const gainText = powerGain > 0 ? `Poder Naval +${formatNumber(powerGain)}.` : key === "lightHands" ? "Ouro e XP ganhos aumentados." : "Bônus recalculados.";
+    showCombatQuickUpgradeFeedback(combatQuickNamedUpgradeFeedback(next.name, oldStats, newStats));
     toast(`${next.name} comprado! ${gainText}`, "gold-toast");
     addLog(`${meta.category}: ${next.name} evoluiu para o nível ${next.level}.`, "loot");
     commitGame(true);
+    return true;
   }
 
   function craftEquipment(key) {
     const item = EQUIPMENT_META[key];
     if (!item || state.equipment[key] || !canAfford(item.costs)) return;
+    const oldStats = getStats();
     spend(item.costs); state.equipment[key] = true; state.combat.playerHp = Math.min(getStats().maxHp, state.combat.playerHp);
+    showCombatQuickUpgradeFeedback(combatQuickNamedUpgradeFeedback(item.name, oldStats, getStats(), "equipado"));
     toast(`${item.name} forjado e equipado!`, "gold-toast"); addLog(`${item.name} agora fortalece o navio.`, "loot"); commitGame(true);
+    return true;
   }
 
   function upgradeSkill(key) {
     if (!isSkillUnlocked(key)) return;
     const cost = getSkillCost(key); if (!canAfford(cost)) return;
-    const oldPower = getStats().power;
+    const oldStats = getStats();
+    const oldPower = oldStats.power;
     spend(cost); state.skills[key].level += 1;
     trackAction("upgrade", { type: "skill" });
-    const newPower = getStats().power;
+    const newStats = getStats();
+    const newPower = newStats.power;
+    showCombatQuickUpgradeFeedback(combatQuickNamedUpgradeFeedback(SKILL_META[key].name, oldStats, newStats, "evoluida"));
     toast(`${SKILL_META[key].name} nível ${state.skills[key].level}. Poder Naval +${formatNumber(newPower - oldPower)}.`); commitGame(true);
+    return true;
   }
 
   function toggleSkill(key) {
@@ -13113,6 +13459,7 @@
   function navigate(screen) {
     screen = normalizeScreen(screen);
     if (screen !== "maps") activeMapInfoIndex = null;
+    mobileCombatPanelOpen = true;
     currentScreen = screen;
     setActiveScreen(screen);
     renderScreen(screen);
@@ -13128,6 +13475,23 @@
     }
     window.scrollTo?.({ top: 0, behavior: "auto" });
     document.scrollingElement?.scrollTo?.({ top: 0, behavior: "auto" });
+  }
+
+  function closeMobileCombatPanel() {
+    mobileCombatPanelOpen = false;
+    syncMobilePanelState();
+    resizeCombatViewport();
+  }
+
+  function handleScreenTargetNavigation(target) {
+    if (!target?.dataset?.screenTarget) return false;
+    const screen = normalizeScreen(target.dataset.screenTarget);
+    if (mobileCombatPanelOpen && screen === currentScreen) {
+      closeMobileCombatPanel();
+      return true;
+    }
+    navigate(screen);
+    return true;
   }
 
   function handleTradeQuantityButton(target) {
@@ -13208,6 +13572,21 @@
     });
   }
 
+  function isCombatUiPointerTarget(target) {
+    return Boolean(target?.closest?.("button, a, input, textarea, select, label, [role='button'], [data-combat-ui]"));
+  }
+
+  function handleCombatStagePointerDown(event) {
+    const stage = $("#battle-stage");
+    if (!stage || !stage.contains(event.target)) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (event.defaultPrevented || isCombatUiPointerTarget(event.target)) return;
+    const handled = manualShipAttack();
+    if (!handled) return;
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  }
+
   function handleGlobalButtonClick(event) {
     const mapCloseTarget = event.target.closest("[data-close-map-info]");
     if (mapCloseTarget && !event.target.closest(".prologue-map-modal-card")) {
@@ -13221,6 +13600,15 @@
     }
     const target = event.target.closest("button");
     if (!target) return;
+    rememberCombatQuickActionButton(target);
+    if (target.dataset.mobilePanelClose !== undefined) {
+      closeMobileCombatPanel();
+      return;
+    }
+    if (target.dataset.combatBossChallenge !== undefined) {
+      challengeBoss();
+      return;
+    }
     if (target.dataset.showAccountPassword !== undefined) {
       showAccountPasswordNotice(target);
       return;
@@ -13292,7 +13680,7 @@
     }
     if (target.dataset.manualBasicAttackTutorial !== undefined) {
       const handled = manualShipAttack();
-      if (!handled && !isArenaSceneActive()) toast("Toque no barco quando houver alvo vivo.", "danger-toast");
+      if (!handled && !isArenaSceneActive()) toast("Toque na area de combate quando houver alvo vivo.", "danger-toast");
       else if (handled) commitGame(false);
       return;
     }
@@ -13354,14 +13742,35 @@
       toggleStatsPanel(target.dataset.toggleStatsPanel);
       return;
     }
-    if (target.dataset.screenTarget) navigate(target.dataset.screenTarget);
-    if (target.dataset.smartUpgrade) executeSmartUpgrade(target.dataset.smartUpgrade, target.dataset.smartUpgradeId);
-    if (target.dataset.upgrade) upgrade(target.dataset.upgrade);
-    if (target.dataset.buyShip) buyShip(Number(target.dataset.buyShip));
-    if (target.dataset.equipShip) equipShip(Number(target.dataset.equipShip));
-    if (target.dataset.buyPet) buyPet(Number(target.dataset.buyPet));
-    if (target.dataset.upgradePet) upgradePet(Number(target.dataset.upgradePet));
-    if (target.dataset.equipPet) equipPet(Number(target.dataset.equipPet));
+    if (handleScreenTargetNavigation(target)) return;
+    if (target.dataset.smartUpgrade) {
+      executeSmartUpgrade(target.dataset.smartUpgrade, target.dataset.smartUpgradeId);
+      return;
+    }
+    if (target.dataset.upgrade) {
+      upgrade(target.dataset.upgrade);
+      return;
+    }
+    if (target.dataset.buyShip) {
+      buyShip(Number(target.dataset.buyShip));
+      return;
+    }
+    if (target.dataset.equipShip) {
+      equipShip(Number(target.dataset.equipShip));
+      return;
+    }
+    if (target.dataset.buyPet) {
+      buyPet(Number(target.dataset.buyPet));
+      return;
+    }
+    if (target.dataset.upgradePet) {
+      upgradePet(Number(target.dataset.upgradePet));
+      return;
+    }
+    if (target.dataset.equipPet) {
+      equipPet(Number(target.dataset.equipPet));
+      return;
+    }
     if (target.dataset.savePirateName !== undefined) {
       savePirateNameFromInput();
       return;
@@ -13370,9 +13779,18 @@
       selectCaptainGender(target.dataset.selectCaptainGender);
       return;
     }
-    if (target.dataset.upgradeCaptain !== undefined) upgradeCaptain();
-    if (target.dataset.openCaptainMutiny !== undefined) openCaptainMutinyConfirmation();
-    if (target.dataset.upgradeCaptainManualSkill) upgradeCaptainManualSkill(target.dataset.upgradeCaptainManualSkill);
+    if (target.dataset.upgradeCaptain !== undefined) {
+      upgradeCaptain();
+      return;
+    }
+    if (target.dataset.openCaptainMutiny !== undefined) {
+      openCaptainMutinyConfirmation();
+      return;
+    }
+    if (target.dataset.upgradeCaptainManualSkill) {
+      upgradeCaptainManualSkill(target.dataset.upgradeCaptainManualSkill);
+      return;
+    }
     if (target.dataset.selectCaptainEquipment) {
       selectCaptainEquipment(target.dataset.selectCaptainEquipment);
       return;
@@ -13381,13 +13799,34 @@
       selectShipUpgradeCategory(target.dataset.shipUpgradeCategory);
       return;
     }
-    if (target.dataset.upgradeCaptainEquipment) upgradeCaptainEquipment(target.dataset.upgradeCaptainEquipment);
-    if (target.dataset.craftEquipment) craftEquipment(target.dataset.craftEquipment);
-    if (target.dataset.upgradeSkill) upgradeSkill(target.dataset.upgradeSkill);
-    if (target.dataset.buyMissing) openMissingPurchaseConfirmation(target.dataset.buyMissing, target.dataset.buyMissingId, target.dataset.buyMissingThen === "1");
-    if (target.dataset.toggleSkill) toggleSkill(target.dataset.toggleSkill);
-    if (target.dataset.skillDock) toggleSkill(target.dataset.skillDock);
-    if (target.dataset.manualSkill) castCaptainManualSkill(target.dataset.manualSkill);
+    if (target.dataset.upgradeCaptainEquipment) {
+      upgradeCaptainEquipment(target.dataset.upgradeCaptainEquipment);
+      return;
+    }
+    if (target.dataset.craftEquipment) {
+      craftEquipment(target.dataset.craftEquipment);
+      return;
+    }
+    if (target.dataset.upgradeSkill) {
+      upgradeSkill(target.dataset.upgradeSkill);
+      return;
+    }
+    if (target.dataset.buyMissing) {
+      openMissingPurchaseConfirmation(target.dataset.buyMissing, target.dataset.buyMissingId, target.dataset.buyMissingThen === "1");
+      return;
+    }
+    if (target.dataset.toggleSkill) {
+      toggleSkill(target.dataset.toggleSkill);
+      return;
+    }
+    if (target.dataset.skillDock) {
+      toggleSkill(target.dataset.skillDock);
+      return;
+    }
+    if (target.dataset.manualSkill) {
+      castCaptainManualSkill(target.dataset.manualSkill);
+      return;
+    }
     handleTradeQuantityButton(target);
     if (target.dataset.tradeAction && target.dataset.tradeResource) openTradeConfirmation(target.dataset.tradeResource, target.dataset.tradeAction);
     if (target.dataset.tradeStep && target.dataset.tradeResource) stepTradeQuantity(target.dataset.tradeResource, Number(target.dataset.tradeStep));
@@ -13458,7 +13897,22 @@
     }
     const result = buyMissingResources(context.cost);
     if (!result.ok) return toast(result.message, "danger-toast");
-    context.execute();
+    return context.execute();
+  }
+
+  function startCombatLoop(options = {}) {
+    if (shouldShowInitialCaptainGate()) {
+      toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
+      return false;
+    }
+    state.combat.running = true;
+    state.hasStarted = true;
+    trackAction("firstCombat");
+    if (state.combat.playerHp <= 0) finishRepair(true);
+    if (!state.combat.enemy && options.resetSpawnDelay !== false) state.combat.spawnTimer = getSpawnDelay();
+    beginCombatAssetPreload();
+    maybeAutoChallengeBoss();
+    return true;
   }
 
   function toggleAutoCombat() {
@@ -13466,15 +13920,15 @@
       toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
       return;
     }
+    if (!isAutoAttackUnlocked()) {
+      const started = startCombatLoop();
+      toast(started ? "Auto desbloqueia nivel 2. Toque na batalha para atacar manualmente." : "Auto desbloqueia nivel 2.", "gold-toast");
+      commitGame(false);
+      return;
+    }
     state.combat.running = !state.combat.running;
     if (state.combat.running) {
-      state.hasStarted = true;
-      trackAction("firstCombat");
-      if (state.combat.playerHp <= 0) finishRepair(true);
-      if (!state.combat.enemy) state.combat.spawnTimer = getSpawnDelay();
-      beginCombatAssetPreload();
-      if (!isAutoAttackUnlocked()) toast("Auto ataque libera no nível 2 do Capitão. Clique no barco para atacar.", "gold-toast");
-      maybeAutoChallengeBoss();
+      startCombatLoop();
     }
     commitGame(false);
   }
@@ -13582,9 +14036,16 @@
   document.addEventListener("change", handleTextDraftInput);
   document.addEventListener("change", normalizeTradeInputOnCommit);
   document.addEventListener("focusout", () => window.setTimeout(flushDeferredTextEditRender, 0), true);
+  document.addEventListener("pointerenter", handleHelpTooltipPointerEnter, true);
+  document.addEventListener("pointerleave", hideHelpTooltip, true);
+  document.addEventListener("focusin", event => showHelpTooltip(event.target));
+  document.addEventListener("focusout", hideHelpTooltip);
+  document.addEventListener("pointerdown", handleHelpTooltipPointerDown);
+  ["pointerup", "pointercancel", "scroll"].forEach(type => document.addEventListener(type, hideHelpTooltip, true));
   document.addEventListener("pointerdown", startTradeHold);
   ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
 
+  $("#battle-stage")?.addEventListener("pointerdown", handleCombatStagePointerDown);
   $("#start-button").addEventListener("click", toggleAutoCombat);
   $("#auto-boss-button")?.addEventListener("click", toggleAutoChallengeBoss);
   $("#boss-button").addEventListener("click", challengeBoss);
@@ -13621,12 +14082,14 @@
 
   AUTH_MANAGER?.initLoginScreen?.();
   if (!isGameAuthenticated()) return;
+  setupNativeTooltipSuppression();
   setCombatMinimized(combatMinimized, false);
   const offlineSeconds = (Date.now() - Number(state.lastSeen || Date.now())) / 1000;
   if (!VISUAL_AUDIT_CONFIG && offlineSeconds >= 30) applyOfflineProgress(offlineSeconds, true);
   state.combat.playerHp = clamp(state.combat.playerHp || getStats().maxHp, 1, getStats().maxHp);
   if (!state.logs.length) addLog(`${SHIPS[state.shipId].name} está pronto para sua primeira patrulha.`);
   renderAll(true);
+  suppressNativeBrowserTooltips();
   updateMobileCombatFullscreen();
   refreshLeaderboard({ force: true });
   refreshGuild({ force: true });

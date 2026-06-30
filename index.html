@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=119">
+  <link rel="stylesheet" href="styles.css?v=133">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -75,8 +75,6 @@
           <div class="scene-vignette"></div>
           <button class="combat-collapse-toggle" id="combat-collapse-toggle" type="button" aria-label="Minimizar combate" aria-pressed="false" title="Minimizar combate"><span aria-hidden="true">-</span></button>
           <button class="combat-quest-alert hidden" id="combat-quest-alert" type="button" aria-label="Recompensas de missões disponíveis" title="Coletar recompensas de missões" data-mission-reward-shortcut><span aria-hidden="true">!</span></button>
-          <button class="combat-fullscreen-toggle" id="combat-fullscreen-toggle" type="button" aria-label="Maximizar combate" aria-pressed="false" title="Maximizar combate"><span aria-hidden="true">&#x26F6;</span></button>
-          <button class="combat-fullscreen-exit hidden" id="combat-fullscreen-exit" type="button" aria-label="Sair da tela cheia" title="Sair da tela cheia"><span aria-hidden="true">&times;</span></button>
 
           <div class="combat-map-title" id="scene-region" aria-live="polite">1 - Lagoa dos Primeiros Remadores</div>
           <div class="boss-defeated-banner hidden" id="boss-defeated-banner" aria-live="assertive">Boss Derrotado</div>
@@ -101,10 +99,26 @@
             <span class="manual-attack-tutorial-icon" aria-hidden="true">☝</span>
             <span class="manual-attack-tutorial-copy">
               <strong>Pressione para atacar</strong>
-              <small>Toque para iniciar o combate</small>
+              <small>Toque na batalha para atacar</small>
             </span>
           </button>
+          <div class="combat-status-actions combat-auto-actions" id="combat-auto-actions" aria-label="Automacao de combate">
+            <button class="combat-toggle-pill" id="start-button" type="button" aria-pressed="false">Auto Off</button>
+            <button class="combat-toggle-pill auto-boss-button" id="auto-boss-button" type="button" aria-pressed="false">Auto Boss Off</button>
+          </div>
           <div class="manual-skill-dock" id="manual-skill-dock" aria-label="Ataque manual"></div>
+          <div class="combat-quick-actions" id="combat-quick-actions" aria-label="Acoes rapidas do combate">
+            <button class="combat-quick-button combat-quick-boss" id="combat-quick-boss" type="button" data-combat-boss-challenge aria-label="Desafiar Boss">
+              <img class="combat-action-icon" src="assets/ui/combat/icon_boss.png?v=5" alt="" draggable="false"><span class="sr-only">Boss</span>
+            </button>
+            <button class="combat-quick-button combat-quick-map" id="combat-quick-prev-map" type="button" data-map-step="-1" aria-label="Retroceder mapa">
+              <img class="combat-action-icon" src="assets/ui/combat/icon_retroceder_mapa.png?v=5" alt="" draggable="false"><span class="sr-only">Retroceder mapa</span>
+            </button>
+            <button class="combat-quick-button combat-quick-map" id="combat-quick-next-map" type="button" data-map-step="1" aria-label="Avancar mapa">
+              <img class="combat-action-icon" src="assets/ui/combat/icon_avancar_mapa.png?v=5" alt="" draggable="false"><span class="sr-only">Avancar mapa</span>
+            </button>
+            <div class="combat-quick-upgrades" id="combat-quick-upgrades" aria-label="Melhorias recomendadas do navio"></div>
+          </div>
           <button class="combat-exit-button hidden" id="combat-exit-button" type="button" data-exit-special-combat>Sair do combate</button>
           <button class="combat-exit-button combat-next-map-button hidden" id="combat-next-map-button" type="button" data-map-step="1">Próximo mapa</button>
           <div class="skill-dock" id="skill-dock" aria-label="Habilidades de combate"></div>
@@ -117,10 +131,6 @@
             <span class="combat-status-item health"><b aria-hidden="true">❤</b><strong id="metric-hp">0 / 0</strong></span>
             <span class="combat-status-item"><b aria-hidden="true">⚔</b><strong id="metric-damage">0</strong></span>
             <span class="combat-status-item"><b>DPS</b><strong id="metric-dps">0</strong></span>
-          </div>
-          <div class="combat-status-actions">
-            <button class="combat-toggle-pill" id="start-button" type="button" aria-pressed="false">Auto OFF</button>
-            <button class="combat-toggle-pill auto-boss-button" id="auto-boss-button" type="button" aria-pressed="false">Boss OFF</button>
           </div>
         </div>
 
@@ -163,6 +173,8 @@
           </button>
         </nav>
       </section>
+
+      <button class="mobile-panel-close hidden" id="mobile-panel-close" type="button" data-mobile-panel-close aria-label="Voltar ao combate">Voltar ao combate</button>
 
       <section class="screen active" id="screen-home" aria-labelledby="home-title">
         <h1 class="sr-only" id="home-title">Combate naval</h1>
@@ -504,6 +516,6 @@
 
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=7"></script>
-  <script src="game.js?v=228"></script>
+  <script src="game.js?v=242"></script>
 </body>
 </html>

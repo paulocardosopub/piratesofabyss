@@ -1,10 +1,10 @@
-const CACHE = "pirates-abyss-v220-guest-account";
+const CACHE = "pirates-abyss-v241-combat-action-icons";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=119",
+  "styles.css?v=133",
   "auth.js?v=7",
-  "game.js?v=228",
+  "game.js?v=242",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",
@@ -15,6 +15,13 @@ const APP_SHELL = [
   "assets/ui/tabs/mobile/icon_capitao_square.png",
   "assets/ui/tabs/mobile/icon_prestigio_square.png",
   "assets/ui/tabs/mobile/icon_status_square.png",
+  "assets/ui/combat/icon_ataque_especial.png?v=5",
+  "assets/ui/combat/icon_reparos_emergencia.png?v=5",
+  "assets/ui/combat/icon_boss.png?v=5",
+  "assets/ui/combat/icon_retroceder_mapa.png?v=5",
+  "assets/ui/combat/icon_avancar_mapa.png?v=5",
+  "assets/ui/combat/icon_upgrade_melhoria_recomendada.png?v=5",
+  "assets/ui/combat/icon_upgrade_equipamento_recomendado.png?v=5",
   "assets/maps/mapa_idle_mobile.jpg",
   "assets/newbackgrounds/login.png"
 ];
