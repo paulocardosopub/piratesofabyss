@@ -86,6 +86,13 @@
   const AUTO_ATTACK_CAPTAIN_LEVEL_REQUIRED = 2;
   const MANUAL_ATTACK_TUTORIAL_DURATION_MS = 30000;
   const CAPTAIN_REQUIRED_MESSAGE = "Escolha seu capitão primeiro!";
+  const CLIENT_SAVE_LIMITS = {
+    gold: 1e15,
+    pirateCoins: 1e9,
+    pirateLevel: 500,
+    prestiges: 10000,
+    playSeconds: 10 * 365 * 24 * 60 * 60
+  };
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -2230,6 +2237,39 @@
     return changed;
   }
 
+  function safeInteger(value, fallback = 0, min = 0, max = Number.MAX_SAFE_INTEGER) {
+    const numeric = Math.floor(Number(value));
+    if (!Number.isFinite(numeric)) return fallback;
+    return clamp(numeric, min, max);
+  }
+
+  function clampProgressArray(values, length, maxValue = Number.MAX_SAFE_INTEGER) {
+    const source = Array.isArray(values) ? values : [];
+    return Array.from({ length }, (_, index) => safeInteger(source[index], 0, 0, maxValue));
+  }
+
+  function hardenLoadedSaveState(target, saved = {}, defaults = createDefaultState()) {
+    target.resources = { ouro: safeInteger(target.resources?.ouro, defaults.resources.ouro, 0, CLIENT_SAVE_LIMITS.gold) };
+    target.pirateLevel = safeInteger(target.pirateLevel, defaults.pirateLevel, 1, CLIENT_SAVE_LIMITS.pirateLevel);
+    target.xp = safeInteger(target.xp, 0, 0, Math.max(0, xpNeeded(target.pirateLevel) - 1));
+    target.pirateCoins = safeInteger(target.pirateCoins, 0, 0, CLIENT_SAVE_LIMITS.pirateCoins);
+    target.prestiges = safeInteger(target.prestiges, 0, 0, CLIENT_SAVE_LIMITS.prestiges);
+    target.unlockedRegions = safeInteger(target.unlockedRegions, 1, 1, REGIONS.length);
+    target.regionIndex = safeInteger(target.regionIndex, 0, 0, Math.max(0, target.unlockedRegions - 1));
+    target.maxRegionReached = safeInteger(Math.max(Number(target.maxRegionReached || 0), target.regionIndex), 0, 0, REGIONS.length - 1);
+    target.regionKills = clampProgressArray(target.regionKills, REGIONS.length, 1000000000);
+    target.bossesDefeated = defaults.bossesDefeated.map((_, index) => Boolean(target.bossesDefeated?.[index]));
+    target.totalActivePlaySeconds = safeInteger(target.totalActivePlaySeconds, 0, 0, CLIENT_SAVE_LIMITS.playSeconds);
+    target.lifetime.playSeconds = safeInteger(target.lifetime?.playSeconds, 0, 0, CLIENT_SAVE_LIMITS.playSeconds);
+    target.combat.playerHp = clamp(Number(target.combat?.playerHp || defaults.combat.playerHp) || defaults.combat.playerHp, 0, CLIENT_SAVE_LIMITS.gold);
+    target.combat.attackTimer = safeInteger(target.combat.attackTimer, 0, 0, 60000);
+    target.combat.enemyAttackTimer = safeInteger(target.combat.enemyAttackTimer, 0, 0, 60000);
+    target.combat.petAttackTimer = safeInteger(target.combat.petAttackTimer, 0, 0, 60000);
+    if (saved && typeof saved === "object" && saved._authUserId) target._authUserId = String(saved._authUserId).slice(0, 80);
+    if (saved && typeof saved === "object" && saved._authUsername) target._authUsername = String(saved._authUsername).slice(0, 80);
+    return target;
+  }
+
   function loadState() {
     const defaults = createDefaultState();
     try {
@@ -2298,6 +2338,7 @@
       merged.prestigeHistory = Array.isArray(saved.prestigeHistory) ? saved.prestigeHistory.slice(0, 20) : [];
       const prestigeActiveSeconds = merged.prestigeHistory.reduce((sum, item) => sum + Math.max(0, Number(item.activeDuration || 0)), 0);
       merged.totalActivePlaySeconds = Math.max(0, Number(saved.totalActivePlaySeconds || 0), Number(merged.lifetime.playSeconds || 0) + prestigeActiveSeconds);
+      hardenLoadedSaveState(merged, saved, defaults);
       syncCaptainState(merged);
       syncCaptainManualSkillState(merged);
       syncCaptainRuntimeState(merged, saved);
@@ -2354,6 +2395,16 @@
   const VISUAL_AUDIT_CONFIG = getCaptainVisualAuditConfig();
   const AUTH_MANAGER = typeof window !== "undefined" ? window.PiratesAuth : null;
   const AUTH_BOOTSTRAP = AUTH_MANAGER?.prepareInitialSave?.({ bypass: Boolean(VISUAL_AUDIT_CONFIG) }) || { authenticated: true, bypassed: true };
+  let authServerSyncReady = !AUTH_BOOTSTRAP?.serverSyncPending;
+  if (AUTH_BOOTSTRAP?.serverSync) {
+    AUTH_BOOTSTRAP.serverSync.then(result => {
+      authServerSyncReady = true;
+      if (!VISUAL_AUDIT_CONFIG && result?.changed) window.setTimeout(() => window.location.reload(), 80);
+    }).catch(error => {
+      authServerSyncReady = true;
+      console.warn("Nao foi possivel conferir o save do servidor.", error);
+    });
+  }
   const captainEditorDrafts = VISUAL_AUDIT_CONFIG?.editCaptain ? loadCaptainEditorDrafts() : {};
   if (VISUAL_AUDIT_CONFIG?.editCaptain && typeof window !== "undefined") window.__captainEditorDrafts = captainEditorDrafts;
 
@@ -3029,6 +3080,7 @@
   function saveGame() {
     if (VISUAL_AUDIT_CONFIG) return;
     if (!isGameAuthenticated()) return;
+    if (!authServerSyncReady) return;
     const lastSeen = Date.now();
     state.lastSeen = lastSeen;
     const saveState = isArenaSceneActive() && arenaState.previousCombat?.combat

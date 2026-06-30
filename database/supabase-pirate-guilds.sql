@@ -79,17 +79,33 @@ create table if not exists public.pirate_guild_boss_cooldowns (
   primary key (guild_id, player_id)
 );
 
+create table if not exists public.pirate_guild_security_events (
+  id bigserial primary key,
+  guild_id uuid references public.pirate_guilds(id) on delete set null,
+  player_id text,
+  action text not null,
+  reason text not null,
+  suspicion_level text not null default 'warning' check (suspicion_level in ('warning', 'limited', 'review', 'blocked')),
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists pirate_guild_security_events_player_idx
+  on public.pirate_guild_security_events (player_id, action, created_at desc);
+
 alter table public.pirate_guilds enable row level security;
 alter table public.pirate_guild_members enable row level security;
 alter table public.pirate_guild_applications enable row level security;
 alter table public.pirate_guild_boss_state enable row level security;
 alter table public.pirate_guild_boss_cooldowns enable row level security;
+alter table public.pirate_guild_security_events enable row level security;
 
 revoke all on public.pirate_guilds from anon, authenticated;
 revoke all on public.pirate_guild_members from anon, authenticated;
 revoke all on public.pirate_guild_applications from anon, authenticated;
 revoke all on public.pirate_guild_boss_state from anon, authenticated;
 revoke all on public.pirate_guild_boss_cooldowns from anon, authenticated;
+revoke all on public.pirate_guild_security_events from anon, authenticated;
 
 create or replace function public.pirate_guild_day_key(p_now timestamptz default now())
 returns text
@@ -109,6 +125,86 @@ as $$
       then (p_snapshot ->> p_key)::numeric
     else 0
   end;
+$$;
+
+create or replace function public.pirate_guild_log_security_event(
+  p_guild_id uuid,
+  p_player_id text,
+  p_action text,
+  p_reason text,
+  p_payload jsonb default '{}'::jsonb,
+  p_suspicion_level text default 'warning'
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.pirate_guild_security_events (guild_id, player_id, action, reason, suspicion_level, payload)
+  values (
+    p_guild_id,
+    left(trim(coalesce(p_player_id, '')), 80),
+    left(coalesce(p_action, 'unknown'), 80),
+    left(coalesce(p_reason, 'unknown'), 160),
+    case when p_suspicion_level in ('warning', 'limited', 'review', 'blocked') then p_suspicion_level else 'warning' end,
+    coalesce(p_payload, '{}'::jsonb)
+  );
+exception
+  when others then
+    null;
+end;
+$$;
+
+create or replace function public.pirate_guild_validate_player_id(p_player_id text)
+returns text
+language sql
+immutable
+as $$
+  select case
+    when char_length(trim(coalesce(p_player_id, ''))) between 8 and 80
+      and trim(coalesce(p_player_id, '')) ~ '^[A-Za-z0-9:_-]+$'
+    then null
+    else 'player_id_invalido'
+  end;
+$$;
+
+create or replace function public.pirate_guild_normalize_snapshot(p_snapshot jsonb)
+returns jsonb
+language plpgsql
+stable
+as $$
+declare
+  v_snapshot jsonb := case when jsonb_typeof(p_snapshot) = 'object' then p_snapshot else '{}'::jsonb end;
+  v_gold numeric := public.pirate_guild_number_from_snapshot(v_snapshot, 'gold');
+  v_level numeric := public.pirate_guild_number_from_snapshot(v_snapshot, 'level');
+  v_power numeric := public.pirate_guild_number_from_snapshot(v_snapshot, 'naval_power');
+  v_prestiges numeric := public.pirate_guild_number_from_snapshot(v_snapshot, 'prestige_count');
+  v_hp numeric := public.pirate_guild_number_from_snapshot(v_snapshot, 'max_hp');
+  v_damage numeric := public.pirate_guild_number_from_snapshot(v_snapshot, 'damage');
+  v_dps numeric := public.pirate_guild_number_from_snapshot(v_snapshot, 'dps');
+  v_map numeric := public.pirate_guild_number_from_snapshot(v_snapshot, 'highest_map_unlocked');
+begin
+  return jsonb_build_object(
+    'player_id', left(coalesce(v_snapshot ->> 'player_id', ''), 80),
+    'pirate_name', left(coalesce(v_snapshot ->> 'pirate_name', 'Pirata sem nome'), 32),
+    'gold', least(1000000000000000::numeric, greatest(0, floor(v_gold))),
+    'level', least(500, greatest(1, floor(v_level))),
+    'captain_runtime_level', least(500, greatest(1, floor(public.pirate_guild_number_from_snapshot(v_snapshot, 'captain_runtime_level')))),
+    'captain_name', left(coalesce(v_snapshot ->> 'captain_name', ''), 80),
+    'ship_id', least(256, greatest(0, floor(public.pirate_guild_number_from_snapshot(v_snapshot, 'ship_id')))),
+    'ship_name', left(coalesce(v_snapshot ->> 'ship_name', 'Navio'), 80),
+    'ship_level', least(100, greatest(0, floor(public.pirate_guild_number_from_snapshot(v_snapshot, 'ship_level')))),
+    'naval_power', least(1000000000000000::numeric, greatest(0, floor(v_power))),
+    'prestige_count', least(10000, greatest(0, floor(v_prestiges))),
+    'max_hp', least(1000000000000000::numeric, greatest(0, floor(v_hp))),
+    'damage', least(1000000000000000::numeric, greatest(0, floor(v_damage))),
+    'dps', least(1000000000000000::numeric, greatest(0, floor(v_dps))),
+    'highest_map_unlocked', least(64, greatest(1, floor(v_map))),
+    'highest_map_name', left(coalesce(v_snapshot ->> 'highest_map_name', ''), 80),
+    'updated_at', left(coalesce(v_snapshot ->> 'updated_at', ''), 40)
+  );
+end;
 $$;
 
 create or replace function public.get_pirate_guild_home(p_player_id text)
@@ -263,12 +359,21 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_player_id text := trim(coalesce(p_player_id, ''));
+  v_player_id_error text := public.pirate_guild_validate_player_id(p_player_id);
+  v_snapshot jsonb := public.pirate_guild_normalize_snapshot(p_player_snapshot);
 begin
+  if v_player_id_error is not null then
+    perform public.pirate_guild_log_security_event(null, v_player_id, 'profile_sync', v_player_id_error, '{}'::jsonb, 'blocked');
+    raise exception 'player_id invalido';
+  end if;
+
   update public.pirate_guild_members
   set pirate_name = trim(coalesce(p_pirate_name, pirate_name)),
-      player_snapshot = coalesce(p_player_snapshot, '{}'::jsonb),
+      player_snapshot = v_snapshot,
       updated_at = now()
-  where player_id = trim(coalesce(p_player_id, ''));
+  where player_id = v_player_id;
 
   return jsonb_build_object('ok', found);
 end;
@@ -291,10 +396,16 @@ declare
   v_player_id text := trim(coalesce(p_player_id, ''));
   v_name text := trim(coalesce(p_name, ''));
   v_guild_id uuid;
+  v_player_id_error text := public.pirate_guild_validate_player_id(p_player_id);
+  v_snapshot jsonb := public.pirate_guild_normalize_snapshot(p_player_snapshot);
 begin
-  if length(v_player_id) < 8 then raise exception 'player_id invalido'; end if;
+  if v_player_id_error is not null then
+    perform public.pirate_guild_log_security_event(null, v_player_id, 'create_guild', v_player_id_error, '{}'::jsonb, 'blocked');
+    raise exception 'player_id invalido';
+  end if;
   if char_length(v_name) < 3 or char_length(v_name) > 32 then raise exception 'nome invalido'; end if;
-  if public.pirate_guild_number_from_snapshot(coalesce(p_player_snapshot, '{}'::jsonb), 'gold') < 10000 then
+  if public.pirate_guild_number_from_snapshot(v_snapshot, 'gold') < 10000 then
+    perform public.pirate_guild_log_security_event(null, v_player_id, 'create_guild', 'gold_insuficiente', jsonb_build_object('gold', public.pirate_guild_number_from_snapshot(v_snapshot, 'gold')), 'warning');
     raise exception 'Ouro insuficiente para criar a Irmandade.';
   end if;
   if exists (select 1 from public.pirate_guild_members where player_id = v_player_id) then
@@ -306,7 +417,7 @@ begin
   returning id into v_guild_id;
 
   insert into public.pirate_guild_members (guild_id, player_id, pirate_name, role, player_snapshot)
-  values (v_guild_id, v_player_id, trim(coalesce(p_pirate_name, 'Pirata sem nome')), 'king', coalesce(p_player_snapshot, '{}'::jsonb));
+  values (v_guild_id, v_player_id, trim(coalesce(p_pirate_name, 'Pirata sem nome')), 'king', v_snapshot);
 
   return jsonb_build_object('ok', true, 'guild_id', v_guild_id);
 end;
@@ -327,7 +438,14 @@ declare
   v_player_id text := trim(coalesce(p_player_id, ''));
   v_guild public.pirate_guilds%rowtype;
   v_member_count integer;
+  v_player_id_error text := public.pirate_guild_validate_player_id(p_player_id);
+  v_snapshot jsonb := public.pirate_guild_normalize_snapshot(p_player_snapshot);
 begin
+  if v_player_id_error is not null then
+    perform public.pirate_guild_log_security_event(p_guild_id, v_player_id, 'join_guild', v_player_id_error, '{}'::jsonb, 'blocked');
+    raise exception 'player_id invalido';
+  end if;
+
   if exists (select 1 from public.pirate_guild_members where player_id = v_player_id) then
     raise exception 'jogador ja esta em uma irmandade';
   end if;
@@ -345,13 +463,13 @@ begin
 
   if v_guild.entry_mode = 'open' then
     insert into public.pirate_guild_members (guild_id, player_id, pirate_name, role, player_snapshot)
-    values (p_guild_id, v_player_id, trim(coalesce(p_pirate_name, 'Pirata sem nome')), 'member', coalesce(p_player_snapshot, '{}'::jsonb));
+    values (p_guild_id, v_player_id, trim(coalesce(p_pirate_name, 'Pirata sem nome')), 'member', v_snapshot);
     delete from public.pirate_guild_applications where player_id = v_player_id;
     return jsonb_build_object('ok', true, 'status', 'joined');
   end if;
 
   insert into public.pirate_guild_applications (guild_id, player_id, pirate_name, player_snapshot)
-  values (p_guild_id, v_player_id, trim(coalesce(p_pirate_name, 'Pirata sem nome')), coalesce(p_player_snapshot, '{}'::jsonb))
+  values (p_guild_id, v_player_id, trim(coalesce(p_pirate_name, 'Pirata sem nome')), v_snapshot)
   on conflict (player_id) do update
   set guild_id = excluded.guild_id,
       pirate_name = excluded.pirate_name,
@@ -553,9 +671,19 @@ declare
   v_state public.pirate_guild_boss_state%rowtype;
   v_day_key text := public.pirate_guild_day_key();
   v_cooldown timestamptz;
+  v_player_id_error text := public.pirate_guild_validate_player_id(p_player_id);
+  v_snapshot jsonb := public.pirate_guild_normalize_snapshot(p_player_snapshot);
 begin
+  if v_player_id_error is not null then
+    perform public.pirate_guild_log_security_event(p_guild_id, v_player_id, 'start_guild_boss', v_player_id_error, '{}'::jsonb, 'blocked');
+    raise exception 'player_id invalido';
+  end if;
   if p_boss_index < 0 or p_boss_index > 20 then raise exception 'boss invalido'; end if;
   if p_boss_max_hp <= 0 then raise exception 'hp invalido'; end if;
+  if p_boss_max_hp > 1000000000000000 then
+    perform public.pirate_guild_log_security_event(p_guild_id, v_player_id, 'start_guild_boss', 'boss_hp_absurdo', jsonb_build_object('boss_max_hp', p_boss_max_hp), 'blocked');
+    raise exception 'hp invalido';
+  end if;
 
   select * into v_member
   from public.pirate_guild_members
@@ -609,7 +737,7 @@ begin
   set last_attempt_at = excluded.last_attempt_at;
 
   update public.pirate_guild_members
-  set player_snapshot = coalesce(p_player_snapshot, player_snapshot),
+  set player_snapshot = v_snapshot,
       updated_at = now()
   where guild_id = p_guild_id and player_id = v_player_id;
 
@@ -649,9 +777,20 @@ declare
   v_new_hp numeric;
   v_defeated boolean := false;
   v_player_total numeric;
+  v_player_id_error text := public.pirate_guild_validate_player_id(p_player_id);
+  v_snapshot jsonb := public.pirate_guild_normalize_snapshot(p_player_snapshot);
 begin
+  if v_player_id_error is not null then
+    perform public.pirate_guild_log_security_event(p_guild_id, v_player_id, 'finish_guild_boss', v_player_id_error, '{}'::jsonb, 'blocked');
+    raise exception 'player_id invalido';
+  end if;
   if v_damage <= 0 then raise exception 'dano invalido'; end if;
   if p_boss_index < 0 or p_boss_index > 20 then raise exception 'boss invalido'; end if;
+  if p_boss_max_hp <= 0 or p_boss_max_hp > 1000000000000000 then raise exception 'hp invalido'; end if;
+  if v_damage > greatest(p_boss_max_hp * 2, public.pirate_guild_number_from_snapshot(v_snapshot, 'dps') * 900, 1000000) then
+    perform public.pirate_guild_log_security_event(p_guild_id, v_player_id, 'finish_guild_boss', 'dano_absurdo', jsonb_build_object('damage', v_damage, 'boss_max_hp', p_boss_max_hp), 'blocked');
+    raise exception 'dano invalido';
+  end if;
 
   select * into v_member
   from public.pirate_guild_members
@@ -686,7 +825,7 @@ begin
   set contribution = contribution + floor(v_damage),
       boss_damage = boss_damage + floor(v_damage),
       boss_participation_count = boss_participation_count + 1,
-      player_snapshot = coalesce(p_player_snapshot, player_snapshot),
+      player_snapshot = v_snapshot,
       updated_at = now()
   where guild_id = p_guild_id and player_id = v_player_id;
 
@@ -731,6 +870,10 @@ $$;
 
 revoke all on function public.get_pirate_guild_home(text) from public;
 revoke all on function public.pirate_guild_full_message() from public;
+revoke all on function public.pirate_guild_number_from_snapshot(jsonb, text) from public;
+revoke all on function public.pirate_guild_log_security_event(uuid, text, text, text, jsonb, text) from public;
+revoke all on function public.pirate_guild_validate_player_id(text) from public;
+revoke all on function public.pirate_guild_normalize_snapshot(jsonb) from public;
 revoke all on function public.upsert_pirate_guild_profile(text, text, jsonb) from public;
 revoke all on function public.create_pirate_guild(text, text, jsonb, text, text, text) from public;
 revoke all on function public.join_pirate_guild(text, text, jsonb, uuid) from public;
