@@ -941,7 +941,6 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   backdrop-filter: blur(18px);
 }
 .bottom-nav button { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 0 6px; border: 0; border-radius: 11px; color: var(--muted); background: transparent; cursor: pointer; }
-.bottom-nav button[data-screen-target="resources"] { display: none; }
 .bottom-nav button > span { font-size: 17px; }
 .bottom-nav button strong { min-width: 0; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .bottom-nav button.active { color: var(--cyan-2); background: rgba(53,212,207,.1); }
@@ -1429,6 +1428,11 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   border-color: rgba(247,189,74,.34);
   background: rgba(247,189,74,.055);
 }
+.guild-boss-row {
+  grid-template-columns: minmax(0, 1fr) minmax(112px, .32fr);
+  gap: 8px;
+  padding: 8px 10px;
+}
 .guild-boss-row.defeated {
   border-color: rgba(89,211,157,.22);
   background: rgba(89,211,157,.045);
@@ -1475,7 +1479,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .guild-member-stat span { color: var(--muted); font-size: 7px; font-weight: 900; text-transform: uppercase; }
 .guild-member-stat strong { color: #dfecea; font-size: 11px; font-variant-numeric: tabular-nums; }
 .guild-boss-hp {
-  min-width: 130px;
+  min-width: 112px;
   display: grid;
   gap: 4px;
 }
@@ -6566,6 +6570,72 @@ body.mobile-combat-fullscreen .combat-next-map-button {
   pointer-events: auto;
 }
 
+.desktop-download-notice {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 7px);
+  width: max-content;
+  max-width: min(260px, calc(100vw - 32px));
+}
+
+.desktop-download-button {
+  min-height: 28px;
+  padding: 6px 10px;
+  border: 1px solid rgba(247, 189, 74, .52);
+  border-radius: 8px;
+  color: #2a1704;
+  background: linear-gradient(180deg, #ffe5a8, #f2b748);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .3), 0 0 0 1px rgba(255, 236, 180, .18);
+  font: 900 10px/1 Georgia, serif;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.desktop-download-button:hover,
+.desktop-download-button:focus-visible {
+  border-color: rgba(255, 236, 180, .82);
+  filter: brightness(1.04);
+}
+
+.desktop-download-popover {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: 250px;
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid rgba(247, 189, 74, .42);
+  border-radius: 8px;
+  color: #f8efe1;
+  background: rgba(5, 20, 30, .96);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .42);
+  backdrop-filter: blur(10px);
+}
+
+.desktop-download-popover strong {
+  color: #ffe0a0;
+  font: 900 13px/1.1 Georgia, serif;
+}
+
+.desktop-download-popover span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.desktop-download-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.desktop-download-actions .button {
+  min-height: 30px;
+  padding: 6px 7px;
+  font-size: 9px;
+}
+
 .combat-auto-actions .combat-toggle-pill {
   min-width: 94px;
   border-radius: 8px;
@@ -6905,10 +6975,6 @@ body.mobile-combat-fullscreen.mobile-panel-open .screen.active {
   -webkit-overflow-scrolling: touch;
 }
 
-body.mobile-combat-fullscreen.mobile-panel-open #screen-resources.active {
-  display: block !important;
-}
-
 .mobile-panel-close {
   position: fixed;
   z-index: 126;
@@ -6952,6 +7018,16 @@ body.mobile-combat-fullscreen .combat-status-actions {
 
 body.mobile-combat-fullscreen .combat-auto-actions {
   display: flex;
+}
+
+body.mobile-combat-fullscreen .desktop-download-notice {
+  display: none !important;
+}
+
+@media (max-width: 899px) {
+  .desktop-download-notice {
+    display: none !important;
+  }
 }
 
 body.mobile-combat-fullscreen .skill-dock {
@@ -7212,10 +7288,6 @@ body.combat-panel-open .screen.active {
     max(18px, env(safe-area-inset-left));
   background: linear-gradient(180deg, rgba(5, 18, 29, .98), rgba(2, 10, 17, .99));
   -webkit-overflow-scrolling: touch;
-}
-
-body.combat-panel-open #screen-resources.active {
-  display: block !important;
 }
 
 body.combat-panel-open .mobile-panel-close {

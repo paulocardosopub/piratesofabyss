@@ -3,6 +3,9 @@
 
   const SAVE_KEY = "pirates-of-the-abyss-save-v1";
   const COMBAT_MINIMIZED_KEY = "pirates-of-the-abyss-combat-minimized";
+  const DESKTOP_DOWNLOAD_DISMISS_KEY = "pirates-of-the-abyss-desktop-download-hidden-until";
+  const DESKTOP_DOWNLOAD_DISMISS_MS = 24 * 60 * 60 * 1000;
+  const DESKTOP_DOWNLOAD_URL = "https://drive.usercontent.google.com/download?id=16DRNmFmgj6QOEmpXLZlxl5e7SmtaiCQ8&export=download&authuser=0";
   const LEADERBOARD_LIMIT = 50;
   const ARENA_OPPONENT_LIMIT = 10;
   const ARENA_MIN_OPPONENTS = 5;
@@ -159,15 +162,6 @@
 
   installMobileGestureGuards();
 
-  let lastSourceProtectionNoticeAt = 0;
-
-  function showSourceProtectionNotice() {
-    const now = Date.now();
-    if (now - lastSourceProtectionNoticeAt < 1800) return;
-    lastSourceProtectionNoticeAt = now;
-    if (typeof toast === "function") toast("Inspecao e codigo-fonte bloqueados nesta versao.", "danger-toast", { mobileAllowed: true });
-  }
-
   function isProtectedSourceShortcut(event) {
     const key = String(event.key || "").toLowerCase();
     const ctrlOrMeta = Boolean(event.ctrlKey || event.metaKey);
@@ -186,7 +180,6 @@
     if (!shouldBlock) return;
     event.preventDefault();
     event.stopPropagation();
-    showSourceProtectionNotice();
   }
 
   function installSourceProtectionGuards() {
@@ -2530,6 +2523,9 @@
   let helpTooltipNode = null;
   let helpTooltipTimer = 0;
   let helpTooltipTarget = null;
+  let helpTooltipLongPressTarget = null;
+  let helpTooltipSuppressClickUntil = 0;
+  let desktopDownloadPopoverOpen = false;
   let nativeTooltipObserver = null;
   let lastFrame = performance.now();
   let lastUiRefresh = 0;
@@ -3313,7 +3309,28 @@
     const target = getHelpTooltipTarget(event.target);
     if (!target) return;
     if (helpTooltipTimer) window.clearTimeout(helpTooltipTimer);
-    helpTooltipTimer = window.setTimeout(() => showHelpTooltip(target), 520);
+    helpTooltipLongPressTarget = null;
+    helpTooltipSuppressClickUntil = 0;
+    helpTooltipTimer = window.setTimeout(() => {
+      showHelpTooltip(target);
+      helpTooltipLongPressTarget = target;
+      helpTooltipSuppressClickUntil = Date.now() + 1200;
+    }, 520);
+  }
+
+  function suppressHelpTooltipLongPressClick(event) {
+    if (!helpTooltipLongPressTarget) return;
+    if (Date.now() > helpTooltipSuppressClickUntil) {
+      helpTooltipLongPressTarget = null;
+      helpTooltipSuppressClickUntil = 0;
+      return;
+    }
+    const target = getHelpTooltipTarget(event.target);
+    if (target !== helpTooltipLongPressTarget) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    helpTooltipLongPressTarget = null;
+    helpTooltipSuppressClickUntil = 0;
   }
 
   function syncHomeHelpTooltips(root = document) {
@@ -4430,6 +4447,56 @@
     return Boolean(touchDevice || coarsePointer || mobileUa || compactMobileViewport);
   }
 
+  function isDesktopExecutable() {
+    return Boolean(window.PiratesDesktop?.isDesktop || location.protocol === "pirates:");
+  }
+
+  function getDesktopDownloadHiddenUntil() {
+    try { return Math.max(0, Number(localStorage.getItem(DESKTOP_DOWNLOAD_DISMISS_KEY)) || 0); } catch (error) {}
+    return 0;
+  }
+
+  function shouldShowDesktopDownloadNotice() {
+    if (isDesktopExecutable()) return false;
+    const { width, height } = getCombatViewportSize();
+    const minSide = Math.min(width, height);
+    const maxSide = Math.max(width, height);
+    const mobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || "");
+    if (mobileUa || (minSide <= 768 && maxSide <= 1024) || width < 900) return false;
+    return Date.now() >= getDesktopDownloadHiddenUntil();
+  }
+
+  function syncDesktopDownloadNotice() {
+    const notice = $("#desktop-download-notice");
+    const button = $("#desktop-download-button");
+    const popover = $("#desktop-download-popover");
+    if (!notice || !button || !popover) return;
+    const visible = shouldShowDesktopDownloadNotice();
+    if (!visible) desktopDownloadPopoverOpen = false;
+    notice.classList.toggle("hidden", !visible);
+    popover.classList.toggle("hidden", !visible || !desktopDownloadPopoverOpen);
+    button.setAttribute("aria-expanded", visible && desktopDownloadPopoverOpen ? "true" : "false");
+  }
+
+  function toggleDesktopDownloadNotice() {
+    if (!shouldShowDesktopDownloadNotice()) return;
+    desktopDownloadPopoverOpen = !desktopDownloadPopoverOpen;
+    syncDesktopDownloadNotice();
+  }
+
+  function confirmDesktopDownloadNotice() {
+    desktopDownloadPopoverOpen = false;
+    syncDesktopDownloadNotice();
+    window.open(DESKTOP_DOWNLOAD_URL, "_blank", "noopener,noreferrer");
+  }
+
+  function dismissDesktopDownloadNotice() {
+    try { localStorage.setItem(DESKTOP_DOWNLOAD_DISMISS_KEY, String(Date.now() + DESKTOP_DOWNLOAD_DISMISS_MS)); } catch (error) {}
+    desktopDownloadPopoverOpen = false;
+    syncDesktopDownloadNotice();
+    toast("Aviso da versao desktop oculto por 24 horas.", "gold-toast");
+  }
+
   function isCombatLandscapeOrientation() {
     const { width, height } = getCombatViewportSize();
     const mediaLandscape = Boolean(window.matchMedia?.("(orientation: landscape)")?.matches);
@@ -4450,8 +4517,6 @@
     const mobilePanelOpen = Boolean(mobileCombatFullscreen && panelOpen);
     const app = $("#app");
     const closeButton = $("#mobile-panel-close");
-    const linkedResources = $("#screen-resources");
-    if (linkedResources && currentScreen === "upgrades") linkedResources.classList.toggle("active", panelOpen || !mobileCombatFullscreen);
     document.documentElement.classList.toggle("combat-panel-open", panelOpen);
     document.body.classList.toggle("combat-panel-open", panelOpen);
     app?.classList.toggle("combat-panel-open", panelOpen);
@@ -4489,6 +4554,7 @@
     exitButton?.classList.toggle("hidden", !combatFullscreen || mobileCombatFullscreen);
     if (fullscreenButton) fullscreenButton.setAttribute("aria-pressed", String(combatFullscreen));
     syncMobilePanelState();
+    syncDesktopDownloadNotice();
     resizeCombatViewport();
   }
 
@@ -9588,7 +9654,7 @@
     const blockedLines = info.blocked.filter(item => item.key !== "ouro").map(item => `<small>${RESOURCE_META[item.key].name} deve ser conquistado jogando.</small>`).join("");
     const goldWarning = info.total > 0 && state.resources.ouro < info.total ? `<small class="danger">Ouro insuficiente: precisa de ${formatNumber(info.total)} Ouro, possui ${formatNumber(state.resources.ouro)}. Faltam ${formatNumber(info.total - state.resources.ouro)} Ouro.</small>` : "";
     const afterBuyWarning = info.canBuyMissing && !info.canBuyAndExecute && (cost.ouro || 0) > state.resources.ouro - info.total ? `<small class="danger">Depois da compra ainda faltara Ouro para concluir esta melhoria.</small>` : "";
-    return `<div class="missing-purchase-panel"><strong>Voce nao possui recursos suficientes.</strong><div class="missing-lines">${missingLines}</div><div class="missing-buy-lines">${purchasableLines}</div>${blockedLines}${goldWarning}${afterBuyWarning}<div class="missing-actions"><button class="button primary" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" ${info.canBuyMissing ? "" : "disabled"}>Comprar recursos faltantes${info.total ? ` (${formatNumber(info.total)} Ouro)` : ""}</button><button class="button" data-screen-target="resources">Ir para Recursos</button><button class="button prestige-button" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" data-buy-missing-then="1" ${info.canBuyAndExecute ? "" : "disabled"}>Comprar e melhorar agora</button></div></div>`;
+    return `<div class="missing-purchase-panel"><strong>Voce nao possui recursos suficientes.</strong><div class="missing-lines">${missingLines}</div><div class="missing-buy-lines">${purchasableLines}</div>${blockedLines}${goldWarning}${afterBuyWarning}<div class="missing-actions"><button class="button primary" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" ${info.canBuyMissing ? "" : "disabled"}>Comprar recursos faltantes${info.total ? ` (${formatNumber(info.total)} Ouro)` : ""}</button><button class="button prestige-button" data-buy-missing="${context.kind}" data-buy-missing-id="${context.id}" data-buy-missing-then="1" ${info.canBuyAndExecute ? "" : "disabled"}>Comprar e melhorar agora</button></div></div>`;
   }
 
   function insertMissingPurchasePanel(button, cost, context, allowed = true) {
@@ -9992,6 +10058,7 @@
     }
     updateSpecialCombatExitButton();
     syncCombatQuickActions();
+    syncDesktopDownloadNotice();
     updateFloatingCombatHudPositions();
   }
 
@@ -10996,7 +11063,7 @@
     const currentBossIndex = actionState.currentBossIndex;
     const allBossesCleared = actionState.allBossesCleared;
     guildBossSelectedIndex = clamp(guildBossSelectedIndex, 0, REGIONS.length - 1);
-    if (!allBossesCleared && guildBossSelectedIndex > currentBossIndex) guildBossSelectedIndex = currentBossIndex;
+    if (!allBossesCleared) guildBossSelectedIndex = currentBossIndex;
     const selectedRegion = REGIONS[guildBossSelectedIndex];
     const selectedIsCurrent = !allBossesCleared && guildBossSelectedIndex === currentBossIndex;
     const selectedDefeated = allBossesCleared || guildBossSelectedIndex < currentBossIndex;
@@ -11021,7 +11088,6 @@
       return `<article class="guild-boss-row ${defeated ? "defeated" : current ? "current" : "locked"}">
         <div class="guild-boss-main"><strong>${index + 1}. ${escapeHtml(region.boss)}</strong><small>${escapeHtml(region.name)} &bull; ${status} &bull; HP x${GUILD_BOSS_HP_MULTIPLIER}</small></div>
         <div class="guild-boss-hp"><div class="guild-boss-hp-bar"><i style="width:${ratio}%"></i></div><small>${formatNumber(hp)} / ${formatNumber(maxHp)}</small></div>
-        <button class="button ${guildBossSelectedIndex === index ? "primary" : ""}" type="button" data-select-guild-boss="${index}" ${locked ? "disabled" : ""}>Ver</button>
       </article>`;
     }).join("");
     return `<div class="guild-panel">
@@ -11760,7 +11826,7 @@
       const stats = getStats(id);
       return `<button class="fleet-ship-option ${current ? "current" : ""}" data-equip-ship="${id}" aria-label="${current ? `${ship.name} equipado` : `Selecionar ${ship.name}`}" ${current ? "disabled" : ""}><span>${ship.name}</span><small>Tier ${ship.tier} • Poder ${formatNumber(stats.power)}</small><strong>${current ? "Atual" : "Selecionar"}</strong></button>`;
     }).join("");
-    return `<article class="upgrade-row fleet-select-row completed"><div class="upgrade-row-icon">⛵</div><div class="upgrade-row-main"><span class="level-label">NAVIOS CONSTRUÍDOS</span><h3>Selecionar barco da frota</h3><p>Troque para qualquer barco já comprado sem gastar recursos.</p><div class="fleet-ship-selector">${buttons}</div></div><div class="upgrade-row-action"><span class="upgrade-row-status">Atual: ${SHIPS[state.shipId].name}</span><small>${ownedIds.length}/${SHIPS.length} construídos</small></div></article>`;
+    return `<article class="upgrade-row fleet-select-row completed"><div class="upgrade-row-icon">⛵</div><div class="upgrade-row-main"><span class="level-label">NAVIOS CONSTRUÍDOS</span><h3>Selecionar barco da frota</h3><p>Troque para qualquer barco já comprado sem custo.</p><div class="fleet-ship-selector">${buttons}</div></div><div class="upgrade-row-action"><span class="upgrade-row-status">Atual: ${SHIPS[state.shipId].name}</span><small>${ownedIds.length}/${SHIPS.length} construídos</small></div></article>`;
   }
 
   function fleetLineHtml() {
@@ -11919,20 +11985,13 @@
     const stats = getStats();
     $("#naval-power").textContent = formatNumber(stats.power);
     const improvements = SHIP_UPGRADE_DEFINITIONS.map(upgradeLineHtml);
-    const categories = {
-      improvements: renderUpgradeSection("Melhorias", improvements),
-      equipment: renderUpgradeSection("Equipamentos", Object.entries(EQUIPMENT_META).map(equipmentLineHtml)),
-      skills: renderUpgradeSection("Skills", Object.entries(SKILL_META).map(skillLineHtml))
-    };
-    if (!categories[activeShipUpgradeCategory]) activeShipUpgradeCategory = "improvements";
     $("#upgrade-feed").innerHTML = [
-      renderUpgradeSection("Frota", [fleetLineCompactHtml()]),
-      shipUpgradeCategoryTabsHtml(),
-      `<div class="ship-upgrade-category-panel">${categories[activeShipUpgradeCategory]}</div>`
+      renderUpgradeSection("Frota", [fleetSelectionLineHtml(), fleetLineCompactHtml()]),
+      renderUpgradeSection("Melhorias", improvements),
+      renderUpgradeSection("Equipamentos", Object.entries(EQUIPMENT_META).map(equipmentLineHtml)),
+      renderUpgradeSection("Skills", Object.entries(SKILL_META).map(skillLineHtml))
     ].join("");
     $$("[data-next-ship-preview]", $("#upgrade-feed")).forEach(canvas => renderShipPreview(canvas, SHIPS[Number(canvas.dataset.nextShipPreview)], true));
-    if (isActiveTextEditingInside($("#screen-resources"))) markRenderDeferredForTextEditing();
-    else renderResources();
   }
 
   function getShipRequirements(ship) {
@@ -12057,6 +12116,7 @@
   }
 
   function renderResources() {
+    if (!$("#cargo-total") || !$("#resources-grid")) return;
     $("#cargo-total").textContent = formatNumber(Object.entries(state.resources).filter(([key]) => key !== "ouro").reduce((sum, [, value]) => sum + value, 0));
     $("#resources-grid").innerHTML = Object.entries(RESOURCE_META).map(([key, meta]) => `<article class="resource-card" style="--rarity-color:${RARITY_COLORS[meta.rarityKey]}"><div class="resource-header"><div class="resource-big-icon">${meta.icon}</div><div><h3>${meta.name}</h3><strong class="resource-amount">${formatNumber(state.resources[key])}</strong></div></div><span class="resource-rarity">${meta.rarity}</span><p class="resource-detail"><strong>Onde:</strong> ${meta.regions}</p><p class="resource-detail"><strong>Chance:</strong> ${meta.chance}</p><p class="resource-detail"><strong>Uso:</strong> ${meta.uses}</p></article>`).join("");
     renderTrade();
@@ -12440,7 +12500,9 @@
       state.hasStarted = true;
       scene.resetPlayerShipAnimation();
       scene.triggerBossWarningAlert(BOSS_WARNING_DURATION_MS);
+      setCombatMinimized(false, false);
       navigate("home");
+      closeMobileCombatPanel();
       addLog(`Boss da Irmandade iniciado: ${region.boss}. HP online ${formatNumber(freshBossState.boss_hp || maxHp)} / ${formatNumber(freshBossState.boss_max_hp || maxHp)}.`, "danger-text");
       renderAll(false);
       saveGame();
@@ -13153,7 +13215,7 @@
     renderArenaPanel();
   }
 
-  const SCREEN_ALIASES = { trade: "upgrades", resources: "upgrades", missions: "stats", pets: "captain" };
+  const SCREEN_ALIASES = { missions: "stats", pets: "captain" };
   const SCREEN_RENDERERS = {
     upgrades: renderUpgrades,
     maps: renderMaps,
@@ -13173,8 +13235,7 @@
 
   function setActiveScreen(screen) {
     $$(".screen").forEach(node => {
-      const linkedResources = screen === "upgrades" && node.id === "screen-resources" && (!mobileCombatFullscreen || mobileCombatPanelOpen);
-      node.classList.toggle("active", node.id === `screen-${screen}` || linkedResources);
+      node.classList.toggle("active", node.id === `screen-${screen}`);
     });
     $$("[data-screen-target]").forEach(node => node.classList.toggle("active", node.dataset.screenTarget === screen));
     syncMobilePanelState();
@@ -13197,8 +13258,7 @@
     if (expensive && shouldRenderInactiveScreens()) {
       Object.entries(SCREEN_RENDERERS).forEach(([screen, render]) => {
         const screenNode = $(`#screen-${screen}`);
-        const linkedResourcesNode = screen === "upgrades" ? $("#screen-resources") : null;
-        if (activeField && (screenNode?.contains(activeField) || linkedResourcesNode?.contains(activeField))) {
+        if (activeField && screenNode?.contains(activeField)) {
           markRenderDeferredForTextEditing();
           return;
         }
@@ -13206,8 +13266,7 @@
       });
     } else {
       const screenNode = $(`#screen-${currentScreen}`);
-      const linkedResourcesNode = currentScreen === "upgrades" ? $("#screen-resources") : null;
-      if (activeField && (screenNode?.contains(activeField) || linkedResourcesNode?.contains(activeField))) markRenderDeferredForTextEditing();
+      if (activeField && screenNode?.contains(activeField)) markRenderDeferredForTextEditing();
       else renderScreen();
     }
     setActiveScreen(currentScreen);
@@ -13645,6 +13704,18 @@
       closeMobileCombatPanel();
       return;
     }
+    if (target.dataset.desktopDownloadToggle !== undefined) {
+      toggleDesktopDownloadNotice();
+      return;
+    }
+    if (target.dataset.desktopDownloadConfirm !== undefined) {
+      confirmDesktopDownloadNotice();
+      return;
+    }
+    if (target.dataset.desktopDownloadDismiss !== undefined) {
+      dismissDesktopDownloadNotice();
+      return;
+    }
     if (target.dataset.combatBossChallenge !== undefined) {
       challengeBoss();
       return;
@@ -14069,6 +14140,7 @@
     }
   }
 
+  document.addEventListener("click", suppressHelpTooltipLongPressClick, true);
   document.addEventListener("click", handleGlobalButtonClick);
   document.addEventListener("keydown", preventInvalidTradeInput);
   document.addEventListener("input", handleTradeInput);

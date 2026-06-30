@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=138">
+  <link rel="stylesheet" href="styles.css?v=139">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -101,6 +101,17 @@
 
           <div class="manual-attack-tutorial hidden" id="manual-attack-tutorial" aria-hidden="true">Toque para atacar</div>
           <div class="combat-status-actions combat-auto-actions" id="combat-auto-actions" aria-label="Automacao de combate">
+            <div class="desktop-download-notice hidden" id="desktop-download-notice">
+              <button class="desktop-download-button" id="desktop-download-button" type="button" data-desktop-download-toggle aria-expanded="false">Versão Desktop Disponível!</button>
+              <div class="desktop-download-popover hidden" id="desktop-download-popover" role="dialog" aria-labelledby="desktop-download-title">
+                <strong id="desktop-download-title">Comprar versão desktop?</strong>
+                <span>Abra o download do executável para jogar no computador.</span>
+                <div class="desktop-download-actions">
+                  <button class="button primary" type="button" data-desktop-download-confirm>Comprar</button>
+                  <button class="button" type="button" data-desktop-download-dismiss>Remover por 24h</button>
+                </div>
+              </div>
+            </div>
             <button class="combat-toggle-pill" id="start-button" type="button" aria-pressed="false">Auto Off</button>
             <button class="combat-toggle-pill auto-boss-button" id="auto-boss-button" type="button" aria-pressed="false">Auto Boss Off</button>
           </div>
@@ -311,30 +322,6 @@
         <div class="maps-list" id="maps-grid"></div>
       </section>
 
-      <section class="screen" id="screen-resources" aria-labelledby="resources-title">
-        <div class="page-heading">
-          <div><span class="eyebrow">PORÃO DO NAVIO</span><h1 id="resources-title">Recursos</h1><p>Cada material tem uma função real na evolução da sua frota.</p></div>
-          <div class="cargo-total"><span>CARGA TOTAL</span><strong id="cargo-total">0</strong></div>
-        </div>
-        <div class="resources-page-layout">
-          <section class="resource-block" aria-labelledby="my-resources-title">
-            <div class="section-heading">
-              <div><span class="eyebrow">MEUS RECURSOS</span><h2 id="my-resources-title">Meus Recursos</h2></div>
-            </div>
-            <div class="rarity-legend"><span class="common">Comum</span><span class="uncommon">Incomum</span><span class="rare">Raro</span><span class="epic">Épico</span><span class="legendary">Lendário</span></div>
-            <div class="resources-grid" id="resources-grid"></div>
-          </section>
-          <section class="resource-block trade-block" aria-labelledby="resource-trade-title">
-            <div class="section-heading compact">
-              <div><span class="eyebrow">COMÉRCIO</span><h2 id="resource-trade-title">Comércio</h2></div>
-              <div class="trade-wallet"><span>SALDO DISPONÍVEL</span><strong id="trade-gold">0 Ouro</strong></div>
-            </div>
-            <div class="trade-notice"><span>⚖</span><p><strong>Mercado equilibrado</strong> • O preço de venda é sempre menor que o de compra. Use o comércio para emergências e continue explorando mapas para obter o melhor rendimento.</p></div>
-            <div class="trade-grid" id="trade-grid"></div>
-          </section>
-        </div>
-      </section>
-
       <section class="screen" id="screen-stats" aria-labelledby="stats-title">
         <div class="page-heading">
           <div><span class="eyebrow">LIVRO DO CAPITÃO</span><h1 id="stats-title">Estatísticas</h1><p>O retrato completo da sua jornada pelos mares.</p></div>
@@ -518,6 +505,6 @@
 
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=7"></script>
-  <script src="game.js?v=244"></script>
+  <script src="game.js?v=245"></script>
 </body>
 </html>
