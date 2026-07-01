@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=143">
+  <link rel="stylesheet" href="styles.css?v=146">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -176,9 +176,6 @@
               <img src="assets/ui/tabs/web/tab_mapa.png" alt="" draggable="false">
             </picture>
           </button>
-          <button class="tab-item tab-item-arena" data-screen-target="ranking" data-ranking-tab="arena" aria-label="Ranking e Arena">
-            <span class="tab-symbol tab-symbol-arena" aria-hidden="true">&#9876;</span>
-          </button>
           <button class="tab-item" data-screen-target="captain" aria-label="Capitão">
             <picture>
               <source media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" srcset="assets/ui/tabs/mobile/icon_capitao_square.png">
@@ -253,14 +250,6 @@
                 <button class="button home-guild-boss-button" id="home-guild-boss-button" type="button" data-start-guild-boss="0" disabled>Desafiar Boss</button>
                 <button class="button" type="button" data-refresh-guild>Atualizar</button>
               </div>
-            </div>
-          </article>
-
-          <article class="card leaderboard-card home-leaderboard-card">
-            <div class="home-section-divider">Ranking</div>
-            <div class="leaderboard-heading">
-              <div><span class="eyebrow">RANKING ONLINE</span><h2>Ranking dos Piratas</h2><p>Acesse o ranking completo e a Arena PvP.</p></div>
-              <button class="button primary" type="button" data-screen-target="ranking">Abrir Ranking/Arena</button>
             </div>
           </article>
 
@@ -546,6 +535,6 @@
   <script src="version.js?v=5"></script>
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=7"></script>
-  <script src="game.js?v=250"></script>
+  <script src="game.js?v=252"></script>
 </body>
 </html>

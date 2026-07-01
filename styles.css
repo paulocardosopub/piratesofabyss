@@ -5846,7 +5846,7 @@ body {
 .mobile-tabs,
 .desktop-tabs {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   align-items: center;
   gap: 4px;
   width: 100%;
@@ -6640,7 +6640,6 @@ body.mobile-combat-fullscreen .persistent-combat .combat-status-strip {
 
 body.mobile-combat-fullscreen .combat-collapse-toggle,
 body.mobile-combat-fullscreen .combat-fullscreen-toggle,
-body.mobile-combat-fullscreen .combat-arena-toggle,
 body.mobile-combat-fullscreen .combat-quest-alert,
 body.mobile-combat-fullscreen .combat-fullscreen-exit {
   display: none !important;
@@ -7056,7 +7055,7 @@ body.mobile-combat-fullscreen .persistent-combat .bottom-nav.main-tabs {
   height: var(--bottom-nav-height);
   min-height: var(--bottom-nav-height);
   display: grid !important;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 2px;
   padding: 4px max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));
   border: 1px solid rgba(247, 189, 74, .24);
@@ -7684,7 +7683,7 @@ body.mobile-combat-fullscreen .battle-stage .combat-quest-alert {
 
   .combat-auto-actions,
   body.mobile-combat-fullscreen .combat-auto-actions {
-    bottom: calc(var(--combat-action-bottom) + (var(--combat-action-size) * 2) + var(--combat-action-gap) + 7px) !important;
+    bottom: calc(var(--combat-action-bottom) + (var(--combat-action-size) * 2) + var(--combat-action-gap) + 2px) !important;
   }
 }
 

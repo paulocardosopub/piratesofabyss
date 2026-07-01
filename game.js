@@ -7030,16 +7030,19 @@
       const mini = isDesktopMiniOverlayMode();
       if (mini) return this.getMiniOverlayCombatSceneLayout(w, h);
       const compactStage = w < 620 || h < 240;
+      const mobileVerticalStage = mobileCombatFullscreen && w < h && w <= 620;
+      const playerScale = Math.min(1.15, w / 950, h / 300) * (mobileVerticalStage ? 1.5 : 1);
+      const enemyScale = Math.min(1.02, w / 1050, h / 300) * (mobileVerticalStage ? 1.5 : 1);
       return {
         mini,
         compactStage,
         horizon: h * .42,
         playerX: w * .29,
         enemyX: w * .71,
-        playerY: h * (compactStage ? .73 : .69),
-        enemyY: h * (compactStage ? .64 : .60),
-        playerScale: Math.min(1.15, w / 950, h / 300),
-        enemyScale: Math.min(1.02, w / 1050, h / 300),
+        playerY: h * (mobileVerticalStage ? .65 : compactStage ? .73 : .69),
+        enemyY: h * (mobileVerticalStage ? .56 : compactStage ? .64 : .60),
+        playerScale,
+        enemyScale,
         petX: w * .43
       };
     }
@@ -13094,9 +13097,7 @@
       state.hasStarted = true;
       scene.resetPlayerShipAnimation();
       scene.triggerBossWarningAlert(BOSS_WARNING_DURATION_MS);
-      setCombatMinimized(false, false);
-      navigate("home");
-      closeMobileCombatPanel();
+      focusCombatView();
       addLog(`Boss da Irmandade iniciado: ${region.boss}. HP online ${formatNumber(freshBossState.boss_hp || maxHp)} / ${formatNumber(freshBossState.boss_max_hp || maxHp)}.`, "danger-text");
       renderAll(false);
       saveGame();
@@ -13324,7 +13325,7 @@
     state.combat.spawnTimer = 0;
     state.hasStarted = true;
     scene.resetPlayerShipAnimation();
-    navigate("home");
+    focusCombatView();
     addLog(`Arena preparada contra ${opponent.pirate_name}. Combate começa em ${formatSeconds(ARENA_START_DELAY_MS / 1000)}.`, "danger-text");
     toast(`Arena começa em ${formatSeconds(ARENA_START_DELAY_MS / 1000)}: ${opponent.pirate_name}.`, "gold-toast");
     renderAll(false);
@@ -14240,6 +14241,26 @@
     mobileCombatPanelOpen = false;
     syncMobilePanelState();
     resizeCombatViewport();
+  }
+
+  function focusCombatView() {
+    currentScreen = "home";
+    mobileCombatPanelOpen = false;
+    setCombatMinimized(false, false);
+    setActiveScreen(currentScreen);
+    resizeCombatViewport();
+    const appShell = $("#app") || $(".app-shell");
+    const mainContent = $(".main-content");
+    if (appShell) {
+      appShell.scrollTop = 0;
+      appShell.scrollTo?.({ top: 0, behavior: "auto" });
+    }
+    if (mainContent) {
+      mainContent.scrollTop = 0;
+      mainContent.scrollTo?.({ top: 0, behavior: "auto" });
+    }
+    window.scrollTo?.({ top: 0, behavior: "auto" });
+    document.scrollingElement?.scrollTo?.({ top: 0, behavior: "auto" });
   }
 
   function handleScreenTargetNavigation(target) {
