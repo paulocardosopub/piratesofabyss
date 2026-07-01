@@ -32,14 +32,26 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ github.ref_name }}
-          make_latest: true
-          overwrite_files: true
-          fail_on_unmatched_files: true
-          files: |
-            release/latest.yml
-            release/Pirates-of-the-Abyss-Setup-*.exe
-            release/Pirates-of-the-Abyss-Setup-*.exe.blockmap
-            release/Pirates-of-the-Abyss-*-portable.exe
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tag = $env:GITHUB_REF_NAME
+          $repo = $env:GITHUB_REPOSITORY
+          $files = @("release/latest.yml")
+          $files += Get-ChildItem release -File -Filter "Pirates-of-the-Abyss-Setup-*.exe" | Where-Object { $_.Name -notlike "*.__uninstaller.exe" } | ForEach-Object { $_.FullName }
+          $files += Get-ChildItem release -File -Filter "Pirates-of-the-Abyss-Setup-*.exe.blockmap" | ForEach-Object { $_.FullName }
+          $files += Get-ChildItem release -File -Filter "Pirates-of-the-Abyss-*-portable.exe" | ForEach-Object { $_.FullName }
+
+          if ($files.Count -lt 4) {
+            Write-Error "Arquivos de release incompletos: $($files -join ', ')"
+          }
+
+          gh release view $tag --repo $repo *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo $repo --title $tag --latest
+          }
+
+          gh release upload $tag @files --repo $repo --clobber
+          gh release edit $tag --repo $repo --title $tag --latest
