@@ -15,9 +15,14 @@
   const ARENA_ATTACK_INTERVAL_DEFAULT_MS = 1400;
   const ARENA_ATTACK_INTERVAL_MIN_MS = 900;
   const ARENA_ATTACK_INTERVAL_MAX_MS = 2200;
+  const ARENA_ATTACK_SPEED_REFERENCE_MIN = 100;
+  const ARENA_ATTACK_SPEED_REFERENCE_MAX = 1000000;
   const ARENA_BALANCED_ATTACK_INTERVAL_MS = ARENA_ATTACK_INTERVAL_DEFAULT_MS;
-  const ARENA_HP_MULTIPLIER = 10;
   const ARENA_START_DELAY_MS = 3000;
+  const ARENA_SNAPSHOT_SYNC_INTERVAL_MS = 10000;
+  const PVP_ROOM_POLL_INTERVAL_MS = 2400;
+  const PVP_ROOM_LIST_CACHE_MS = 12000;
+  const PVP_ROOM_START_DELAY_MS = 3000;
   const GUILD_CREATE_GOLD_COST = 10000;
   const GUILD_MAX_MEMBERS = 20;
   const GUILD_BOSS_REWARD_GOLD = 10000;
@@ -725,7 +730,12 @@
     { name: "Encouraçado Imperial", type: "Marinha", tier: 5, levelReq: 50, hp: 29500, damage: 2400, speed: 218, armor: 145, costs: { ouro: 500000, madeira: 4000, ferro: 2500, polvora: 1200, pedra: 400, cristal: 100 } },
     { name: "Fragata Fantasma", type: "Espectral", tier: 5, levelReq: 65, hp: 44000, damage: 3600, speed: 245, armor: 170, costs: { ouro: 550000, madeira: 4500, ferro: 2500, ambar: 150, perola: 150, gema: 50 } },
     { name: "Kraken Hunter", type: "Caçador", tier: 5, levelReq: 72, hp: 57000, damage: 4700, speed: 238, armor: 205, costs: { ouro: 750000, madeira: 4800, ferro: 2800, polvora: 1600, cristal: 180, gema: 75, fragmentos: 15 } },
-    { name: "Black Abyss", type: "Espectral", tier: 5, prestigeReq: 6, levelReq: 80, hp: 156000, damage: 13000, speed: 520, armor: 500, costs: { ouro: 1000000, madeira: 5000, ferro: 3000, polvora: 2000, cristal: 250, gema: 100, fragmentos: 25 } }
+    { name: "Black Abyss", type: "Espectral", tier: 5, prestigeReq: 6, levelReq: 80, hp: 156000, damage: 13000, speed: 520, armor: 500, costs: { ouro: 1000000, madeira: 5000, ferro: 3000, polvora: 2000, cristal: 250, gema: 100, fragmentos: 25 } },
+    { name: "Imperial Abyss", type: "Abissal Imperial", tier: 6, prestigeReq: 7, levelReq: 80, hp: 234000, damage: 19500, speed: 780, armor: 750, costs: { ouro: 2707500 } },
+    { name: "Skull Abyss", type: "Abissal Caveira", tier: 7, prestigeReq: 9, levelReq: 80, hp: 351000, damage: 29250, speed: 1170, armor: 1125, costs: { ouro: 4061250 } },
+    { name: "Cursed Abyss", type: "Abissal Amaldiçoado", tier: 8, prestigeReq: 12, levelReq: 80, hp: 526500, damage: 43875, speed: 1755, armor: 1687.5, costs: { ouro: 6091875 } },
+    { name: "Frost Abyss", type: "Abissal Glacial", tier: 9, prestigeReq: 16, levelReq: 80, hp: 789750, damage: 65812.5, speed: 2632.5, armor: 2531.25, costs: { ouro: 9137813 } },
+    { name: "Flaming Abyss", type: "Abissal Flamejante", tier: 10, prestigeReq: 21, levelReq: 80, hp: 1184625, damage: 98718.75, speed: 3948.75, armor: 3796.875, costs: { ouro: 13706720 } }
   ];
   const SHIPS = [...PRIMITIVE_SHIPS, ...MAIN_SHIPS].map((ship, id) => ({ id, bossReq: 0, ...ship }));
   const SHIP_UNLOCK_BY_MAP = Object.freeze({
@@ -743,7 +753,7 @@
     12: 19,
     13: 21,
     14: 23,
-    15: 26
+    15: 31
   });
 
   const ARENA_BOT_DEFINITIONS = [
@@ -1334,7 +1344,7 @@
     boat_04: { scale: .4, offsetX: -.034, offsetY: -20.861, deckY: .84, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01, legCut: 0, layer: "front" },
     boat_05: { scale: .43, offsetX: -.002, offsetY: -14.566, deckY: .81, anchor: "deck", maxHeight: 114, embed: .08, railOverlap: .01, legCut: .15, layer: "front" },
     boat_06: { scale: .35, offsetX: .238, offsetY: -41.316, deckY: .78, anchor: "deck", maxHeight: 114, embed: .08, railOverlap: .01, legCut: 0, layer: "behind" },
-    boat_07: { scale: .35, offsetX: -.037, offsetY: -19.067, deckY: .74, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01, legCut: 0, layer: "front" },
+    boat_07: { scale: .35, offsetX: -.047, offsetY: -22.545, deckY: .74, anchor: "deck", maxHeight: 112, embed: .08, railOverlap: .01, legCut: 0, layer: "front" },
     boat_08: { scale: .35, offsetX: .164, offsetY: .685, deckY: .76, anchor: "deck", maxHeight: 116, embed: .08, railOverlap: .01, legCut: .2, layer: "behind" },
     boat_09: { scale: .35, offsetX: .189, offsetY: -7.244, deckY: .78, anchor: "deck", maxHeight: 118, embed: .08, railOverlap: .01, legCut: 0, layer: "behind" },
     boat_10: { scale: .35, offsetX: -.233, offsetY: -40.087, deckY: .8, anchor: "deck", maxHeight: 118, embed: .08, railOverlap: .01, legCut: 0, layer: "behind" },
@@ -1343,7 +1353,7 @@
     boat_13: { scale: .398, offsetX: .035, offsetY: 9.695, deckY: .8, anchor: "deck", maxHeight: 122, embed: .08, railOverlap: .01, legCut: .25, layer: "front" },
     boat_14: { scale: .33, offsetX: .245, offsetY: -60.281, deckY: .77, anchor: "deck", maxHeight: 122, embed: .08, railOverlap: .01, legCut: .25, layer: "behind" },
     boat_15: { scale: .35, offsetX: .01, offsetY: -.074, deckY: .77, anchor: "deck", maxHeight: 124, embed: .08, railOverlap: .01, legCut: .25, layer: "front" },
-    boat_16: { scale: .35, offsetX: .011, offsetY: 3.592, deckY: .78, anchor: "deck", maxHeight: 126, embed: .08, railOverlap: .01, legCut: .12, layer: "front" },
+    boat_16: { scale: .35, offsetX: -.003, offsetY: -63.365, deckY: .78, anchor: "deck", maxHeight: 126, embed: .08, railOverlap: .01, legCut: .12, layer: "front" },
     boat_17: { scale: .25, offsetX: .23, offsetY: -56.05, deckY: .77, anchor: "deck", maxHeight: 128, embed: .4, railOverlap: .066, legCut: 0, layer: "behind" },
     boat_18: { scale: .25, offsetX: -.011, offsetY: 5.917, deckY: .8, anchor: "deck", maxHeight: 128, embed: .35, railOverlap: .07, legCut: .25, layer: "front" },
     boat_19: { scale: .25, offsetX: .218, offsetY: -30.694, deckY: .8, anchor: "deck", maxHeight: 128, embed: .43, railOverlap: .07, legCut: 0, layer: "behind" },
@@ -1353,10 +1363,16 @@
     boat_23: { scale: .25, offsetX: -.064, offsetY: -36.93, deckY: .81, anchor: "deck", maxHeight: 136, embed: .2, railOverlap: .076, legCut: .1, layer: "front" },
     boat_24: { scale: .25, offsetX: -.059, offsetY: 5.592, deckY: .81, anchor: "deck", maxHeight: 136, embed: .5, railOverlap: .08, legCut: .12, layer: "front" },
     boat_25: { scale: .25, offsetX: -.031, offsetY: -12.825, deckY: .82, anchor: "deck", maxHeight: 138, embed: .35, railOverlap: .08, legCut: .12, layer: "front" },
-    boat_26: { scale: .25, offsetX: -.027, offsetY: -7.312, deckY: .82, anchor: "deck", maxHeight: 140, embed: .08, railOverlap: .01, legCut: .1, layer: "front" }
+    boat_26: { scale: .25, offsetX: -.027, offsetY: -7.312, deckY: .82, anchor: "deck", maxHeight: 140, embed: .08, railOverlap: .01, legCut: .1, layer: "front" },
+    boat_27: { scale: .22, offsetX: .251, offsetY: -182.609, deckY: .82, anchor: "deck", maxHeight: 142, embed: .08, railOverlap: .01, legCut: .1, layer: "behind" },
+    boat_28: { scale: .22, offsetX: .283, offsetY: -180.435, deckY: .83, anchor: "deck", maxHeight: 144, embed: .08, railOverlap: .01, legCut: .1, layer: "behind" },
+    boat_29: { scale: .235, offsetX: -.014, offsetY: -139.826, deckY: .83, anchor: "deck", maxHeight: 146, embed: .08, railOverlap: .01, legCut: .1, layer: "front" },
+    boat_30: { scale: .235, offsetX: -.031, offsetY: -152, deckY: .83, anchor: "deck", maxHeight: 148, embed: .08, railOverlap: .01, legCut: .1, layer: "front" },
+    boat_31: { scale: .23, offsetX: .045, offsetY: -161.174, deckY: .82, anchor: "deck", maxHeight: 150, embed: .08, railOverlap: .01, legCut: .1, layer: "front" }
   };
 
   const CAPTAIN_EDITOR_STORAGE_KEY = "piratesCaptainPositionDrafts";
+  const CAPTAIN_EDITOR_OLD_DRAFTS_CLEANUP_KEY = "piratesCaptainPositionDrafts.oldBoatsCleaned";
 
   function isCaptainEditorEnabled() {
     return Boolean(VISUAL_AUDIT_CONFIG?.editCaptain);
@@ -1371,6 +1387,14 @@
     if (typeof localStorage === "undefined") return {};
     try {
       const saved = JSON.parse(localStorage.getItem(CAPTAIN_EDITOR_STORAGE_KEY) || "{}");
+      if (saved && typeof saved === "object" && !Array.isArray(saved) && !localStorage.getItem(CAPTAIN_EDITOR_OLD_DRAFTS_CLEANUP_KEY)) {
+        Object.keys(saved).forEach(key => {
+          const match = /^boat_(\d+)$/.exec(key);
+          if (match && Number(match[1]) <= 26) delete saved[key];
+        });
+        localStorage.setItem(CAPTAIN_EDITOR_STORAGE_KEY, JSON.stringify(saved));
+        localStorage.setItem(CAPTAIN_EDITOR_OLD_DRAFTS_CLEANUP_KEY, "1");
+      }
       return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
     } catch (error) {
       return {};
@@ -1390,7 +1414,7 @@
     return {
       scale: clamp(Number(config.scale ?? .4), .22, .7),
       offsetX: clamp(Number(config.offsetX ?? 0), -.5, .5),
-      offsetY: clamp(Number(config.offsetY ?? 0), -80, 80),
+      offsetY: clamp(Number(config.offsetY ?? 0), -220, 160),
       deckY: clamp(Number(config.deckY ?? .78), .52, .96),
       anchor: "deck",
       maxHeight: clamp(Number(config.maxHeight ?? 120), 64, 180),
@@ -2520,6 +2544,7 @@
 
   let state = applyCaptainVisualAuditState(loadState());
   let currentScreen = VISUAL_AUDIT_CONFIG?.screen || "home";
+  let manualCloudSavePending = false;
   let combatMinimized = loadCombatMinimizedPreference();
   let combatFullscreen = false;
   let combatFullscreenSource = "";
@@ -2552,6 +2577,7 @@
   let prestigeConfirmationStage = 0;
   const leaderboardState = { status: "idle", entries: [], error: "", loadingPromise: null, lastLoadedAt: 0 };
   const arenaState = { expanded: false, status: "idle", opponents: [], error: "", loadingPromise: null, lastLoadedAt: 0, battle: null, previousCombat: null, result: null };
+  const pvpRoomState = { status: "idle", rooms: [], currentRoom: null, error: "", loadingPromise: null, actionPending: false, lastLoadedAt: 0, pollTimer: 0, lastPollAt: 0 };
   const guildState = { status: "idle", guilds: [], current: null, error: "", loadingPromise: null, lastLoadedAt: 0, actionPending: false };
   const guildCreateDraft = { name: "", description: "", entryMode: "open" };
   const guildConfigDraft = { guildId: "", name: "", description: "", entryMode: "open", dirty: false };
@@ -2921,6 +2947,7 @@
     ({ damage, speed, maxHp, armor, attackSpeedBonus } = applyActivePetBonuses({ damage, speed, maxHp, armor, attackSpeedBonus }, pet));
     const armorReduction = Math.min(.75, (1 - 100 / (100 + armor * 4)) + captainEquipmentBonuses.shipArmorBonus);
     const attackInterval = Math.max(190, 100000 / speed / (1 + attackSpeedBonus));
+    const pvpAttackInterval = calculateArenaAttackIntervalFromSpeed(speed, attackSpeedBonus);
     const basicDps = damage / (attackInterval / 1000) * precision * (1 + crit) * (1 + doubleAttackChance);
     let skillDps = 0;
     Object.entries(SKILL_META).forEach(([key, meta]) => {
@@ -2953,7 +2980,7 @@
     const power = powerBreakdown.total;
     return {
       damage: Math.round(damage), speed: Math.round(speed), maxHp: Math.round(maxHp), armor: Math.round(armor),
-      precision, crit, evasion, blockChance, armorReduction, attackSpeedBonus, doubleAttackChance, attackInterval,
+      precision, crit, evasion, blockChance, armorReduction, attackSpeedBonus, doubleAttackChance, attackInterval, pvpAttackInterval, pvpAttackIntervalMs: pvpAttackInterval,
       shipDps: Math.round(shipDps), skillDps: Math.round(boostedSkillDps), petDps: Math.round(petDps),
       dps: totalDps, power, powerBreakdown
     };
@@ -3177,18 +3204,24 @@
     }
   }
 
+  function getCurrentSaveState(lastSeen = Date.now()) {
+    state.lastSeen = lastSeen;
+    return isArenaSceneActive() && arenaState.previousCombat?.combat
+      ? { ...state, combat: JSON.parse(JSON.stringify(arenaState.previousCombat.combat)), lastSeen }
+      : state;
+  }
+
   function saveGame() {
-    if (VISUAL_AUDIT_CONFIG) return;
+    if (VISUAL_AUDIT_CONFIG) return null;
     if (!isGameAuthenticated()) return;
     if (!authServerSyncReady) return;
     const lastSeen = Date.now();
-    state.lastSeen = lastSeen;
-    const saveState = isArenaSceneActive() && arenaState.previousCombat?.combat
-      ? { ...state, combat: JSON.parse(JSON.stringify(arenaState.previousCombat.combat)), lastSeen }
-      : state;
+    const saveState = getCurrentSaveState(lastSeen);
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(saveState)); } catch (error) { console.warn("Não foi possível salvar.", error); }
     AUTH_MANAGER?.saveCurrentGame?.(saveState);
     if (guildState.current?.guild) syncGuildPlayerProfile();
+    syncCurrentArenaSnapshot(getOnlineConfig());
+    return saveState;
   }
 
   function closeOfflineModal() {
@@ -3208,6 +3241,48 @@
   function commitGame(expensive = true) {
     renderAll(expensive);
     saveGame();
+  }
+
+  async function forceManualCloudSave(button = $("#manual-save-button")) {
+    if (manualCloudSavePending) return;
+    manualCloudSavePending = true;
+    const originalTitle = button?.getAttribute("title") || "";
+    if (button) {
+      button.disabled = true;
+      button.classList.remove("saved");
+      button.classList.add("saving");
+      button.setAttribute("aria-busy", "true");
+      button.title = "Salvando...";
+    }
+    try {
+      const saveState = saveGame();
+      if (!saveState) {
+        toast("Aguarde carregar o save da conta.", "danger-toast", { mobileAllowed: true });
+        return;
+      }
+      const hasCloudSession = Boolean(AUTH_MANAGER?.getServerAuthContext?.());
+      const synced = hasCloudSession && AUTH_MANAGER?.flushCurrentGameSave
+        ? await AUTH_MANAGER.flushCurrentGameSave(saveState)
+        : false;
+      if (hasCloudSession && !synced) {
+        toast("Nao foi possivel salvar na nuvem.", "danger-toast", { mobileAllowed: true });
+        return;
+      }
+      if (button) button.classList.add("saved");
+      toast("Jogo Salvo", "gold-toast", { mobileAllowed: true });
+    } catch (error) {
+      console.warn("Nao foi possivel forcar o salvamento.", error);
+      toast("Nao foi possivel salvar na nuvem.", "danger-toast", { mobileAllowed: true });
+    } finally {
+      manualCloudSavePending = false;
+      if (button) {
+        button.disabled = false;
+        button.classList.remove("saving");
+        button.removeAttribute("aria-busy");
+        button.title = originalTitle || "Forçar salvamento na nuvem";
+        window.setTimeout(() => button.classList.remove("saved"), 1400);
+      }
+    }
   }
 
   function rememberCombatQuickActionButton(target) {
@@ -3458,6 +3533,13 @@
       guildUpgradeRpcName: String(raw.guildUpgradeRpcName || "upgrade_pirate_guild_bonus").trim() || "upgrade_pirate_guild_bonus",
       guildBossStartRpcName: String(raw.guildBossStartRpcName || "start_pirate_guild_boss_attempt").trim() || "start_pirate_guild_boss_attempt",
       guildBossFinishRpcName: String(raw.guildBossFinishRpcName || "finish_pirate_guild_boss_attempt").trim() || "finish_pirate_guild_boss_attempt",
+      pvpRoomsRpcName: String(raw.pvpRoomsRpcName || "get_pirate_pvp_rooms").trim() || "get_pirate_pvp_rooms",
+      pvpRoomCreateRpcName: String(raw.pvpRoomCreateRpcName || "create_pirate_pvp_room").trim() || "create_pirate_pvp_room",
+      pvpRoomJoinRpcName: String(raw.pvpRoomJoinRpcName || "join_pirate_pvp_room").trim() || "join_pirate_pvp_room",
+      pvpRoomReadyRpcName: String(raw.pvpRoomReadyRpcName || "set_pirate_pvp_room_ready").trim() || "set_pirate_pvp_room_ready",
+      pvpRoomGetRpcName: String(raw.pvpRoomGetRpcName || "get_pirate_pvp_room").trim() || "get_pirate_pvp_room",
+      pvpRoomAttackRpcName: String(raw.pvpRoomAttackRpcName || "attack_pirate_pvp_room").trim() || "attack_pirate_pvp_room",
+      pvpRoomLeaveRpcName: String(raw.pvpRoomLeaveRpcName || "leave_pirate_pvp_room").trim() || "leave_pirate_pvp_room",
       limit: clamp(Math.floor(Number(raw.limit || LEADERBOARD_LIMIT)), 1, 100)
     };
   }
@@ -3642,6 +3724,9 @@
       boss_hp: Math.max(0, Math.floor(Number(stateRow.boss_hp ?? stateRow.bossHp ?? 0))),
       boss_max_hp: Math.max(0, Math.floor(Number(stateRow.boss_max_hp ?? stateRow.bossMaxHp ?? 0))),
       cooldown_until: stateRow.cooldown_until || stateRow.cooldownUntil || "",
+      active_player_id: String(stateRow.active_player_id || stateRow.activePlayerId || ""),
+      active_pirate_name: sanitizeArenaDisplayName(stateRow.active_pirate_name || stateRow.activePirateName || "", ""),
+      active_until: stateRow.active_until || stateRow.activeUntil || "",
       damage_by_player: stateRow.damage_by_player || stateRow.damageByPlayer || {}
     };
   }
@@ -3887,6 +3972,7 @@
     if (leaderboardActiveTab === "arena") {
       arenaState.expanded = true;
       refreshArenaOpponents({ force: arenaState.status === "idle" || Date.now() - arenaState.lastLoadedAt > 30000 });
+      refreshPvpRooms({ force: pvpRoomState.status === "idle" || Date.now() - pvpRoomState.lastLoadedAt > PVP_ROOM_LIST_CACHE_MS });
     } else {
       refreshLeaderboard({ force: leaderboardState.status === "idle" || Date.now() - leaderboardState.lastLoadedAt > 30000 });
     }
@@ -4014,17 +4100,92 @@
     return findShipByName(fallbackName)?.id ?? null;
   }
 
+  function calculateArenaAttackIntervalFromSpeed(speed = 0, attackSpeedBonus = 0) {
+    const effectiveSpeed = Math.max(0, Number(speed) || 0) * Math.max(.1, 1 + (Number(attackSpeedBonus) || 0));
+    if (effectiveSpeed <= 0) return ARENA_ATTACK_INTERVAL_DEFAULT_MS;
+    const minLog = Math.log(ARENA_ATTACK_SPEED_REFERENCE_MIN);
+    const maxLog = Math.log(ARENA_ATTACK_SPEED_REFERENCE_MAX);
+    const speedRatio = clamp((Math.log(Math.max(ARENA_ATTACK_SPEED_REFERENCE_MIN, effectiveSpeed)) - minLog) / Math.max(.0001, maxLog - minLog), 0, 1);
+    return Math.round(ARENA_ATTACK_INTERVAL_MAX_MS - (ARENA_ATTACK_INTERVAL_MAX_MS - ARENA_ATTACK_INTERVAL_MIN_MS) * speedRatio);
+  }
+
+  function getArenaAttackIntervalFromStats(stats = getStats()) {
+    const pvpInterval = Number(stats.pvpAttackIntervalMs ?? stats.pvp_attack_interval_ms);
+    if (Number.isFinite(pvpInterval) && pvpInterval > 0) return clamp(Math.round(pvpInterval), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+    const speed = Number(stats.speed);
+    if (Number.isFinite(speed) && speed > 0) return calculateArenaAttackIntervalFromSpeed(speed, stats.attackSpeedBonus);
+    const raw = Math.round(Number(stats.attackInterval ?? stats.attackIntervalMs ?? stats.attack_interval_ms) || ARENA_ATTACK_INTERVAL_DEFAULT_MS);
+    return clamp(raw, ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+  }
+
   function normalizeArenaAttackIntervalMs(source = {}) {
     const combat = source.combat || {};
     const ship = source.ship || {};
-    const explicit = Number(source.attack_interval_ms ?? combat.attack_interval_ms ?? ship.attack_interval_ms);
-    if (Number.isFinite(explicit) && explicit > 0) return clamp(Math.round(explicit), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
-    const speed = Number(source.attack_speed ?? combat.attack_speed ?? ship.attack_speed);
+    const pvpInterval = Number(source.pvp_attack_interval_ms ?? source.pvpAttackIntervalMs ?? combat.pvp_attack_interval_ms ?? combat.pvpAttackIntervalMs ?? ship.pvp_attack_interval_ms ?? ship.pvpAttackIntervalMs);
+    if (Number.isFinite(pvpInterval) && pvpInterval > 0) return clamp(Math.round(pvpInterval), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+    const speed = Number(source.speed ?? combat.speed ?? ship.speed);
     if (Number.isFinite(speed) && speed > 0) {
-      const interval = speed <= 20 ? speed * 1000 : ARENA_ATTACK_INTERVAL_DEFAULT_MS / speed;
-      return clamp(Math.round(interval), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+      const attackSpeedBonus = Number(source.attack_speed_bonus ?? source.attackSpeedBonus ?? combat.attack_speed_bonus ?? combat.attackSpeedBonus ?? ship.attack_speed_bonus ?? ship.attackSpeedBonus) || 0;
+      return calculateArenaAttackIntervalFromSpeed(speed, attackSpeedBonus);
     }
+    const explicit = Number(source.attack_interval_ms ?? combat.attack_interval_ms ?? ship.attack_interval_ms);
+    if (Number.isFinite(explicit) && explicit >= ARENA_ATTACK_INTERVAL_MIN_MS) return clamp(Math.round(explicit), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
+    const attackSpeed = Number(source.attack_speed ?? combat.attack_speed ?? ship.attack_speed);
+    if (Number.isFinite(attackSpeed) && attackSpeed > 0) return clamp(Math.round(attackSpeed <= 20 ? attackSpeed * 1000 : ARENA_ATTACK_INTERVAL_DEFAULT_MS / attackSpeed), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS);
     return ARENA_ATTACK_INTERVAL_DEFAULT_MS;
+  }
+
+  function parseCaptainVisualFromId(value = "") {
+    const match = String(value || "").match(/^captain_(male|female)_(\d+)$/i);
+    if (!match) return {};
+    return {
+      gender: normalizeCaptainGender(match[1]) || "male",
+      level: clamp(Math.floor(Number(match[2]) || 1), 1, CAPTAIN_MAX_LEVEL)
+    };
+  }
+
+  function normalizeArenaCaptainVisual(captain = {}, row = {}) {
+    const parsed = parseCaptainVisualFromId(captain.selected_pirate_id || row.selected_pirate_id || "");
+    const gender = normalizeCaptainGender(captain.gender || captain.captain_gender || parsed.gender) || "male";
+    const level = clamp(Math.floor(Number(captain.level ?? captain.captain_level ?? captain.visual_level ?? parsed.level ?? 1) || 1), 1, CAPTAIN_MAX_LEVEL);
+    const pirateLevel = Math.max(1, Math.floor(Number(captain.pirate_level ?? row.pirate_level ?? 1) || 1));
+    return { gender, level, pirateLevel };
+  }
+
+  function normalizeArenaGuildName(snapshot = {}, row = {}) {
+    const guild = snapshot.guild || row.guild || {};
+    return sanitizeArenaDisplayName(guild.name || guild.guild_name || snapshot.guild_name || row.guild_name || "", "");
+  }
+
+  function parsePetId(value) {
+    if (Number.isFinite(Number(value))) return clamp(Math.floor(Number(value)), 0, PETS.length - 1);
+    const match = String(value || "").match(/(\d+)/);
+    return match ? clamp(Math.floor(Number(match[1])), 0, PETS.length - 1) : null;
+  }
+
+  function normalizeArenaPet(pet = {}) {
+    if (!pet || typeof pet !== "object") return null;
+    const parsedId = parsePetId(pet.pet_id ?? pet.id ?? pet.petId);
+    const basePet = parsedId !== null ? PETS[parsedId] : PETS.find(item => normalizeText(item.name) === normalizeText(pet.pet_name || pet.name || ""));
+    const level = clamp(Math.floor(Number(pet.pet_level ?? pet.level ?? 1) || 1), 1, PET_MAX_LEVEL);
+    const fallbackPet = basePet ? getPetWithLevel(basePet, level) : null;
+    const damage = Math.max(0, Math.round(Number(pet.damage ?? fallbackPet?.damage ?? 0) || 0));
+    const interval = Math.max(.25, Number(pet.interval ?? pet.attack_interval ?? pet.attackInterval ?? fallbackPet?.interval ?? 2) || 2);
+    const dps = Math.max(0, Math.round(Number(pet.dps ?? (damage ? damage / interval : fallbackPet?.dps) ?? 0) || 0));
+    if (!damage && !dps && !fallbackPet) return null;
+    return {
+      id: parsedId ?? fallbackPet?.id ?? null,
+      pet_id: parsedId !== null ? `pet_${parsedId}` : pet.pet_id || null,
+      name: sanitizeArenaDisplayName(pet.pet_name || pet.name || fallbackPet?.name || "Pet", "Pet"),
+      level,
+      damage: damage || Math.max(1, Math.round(dps * interval)),
+      interval,
+      dps: dps || Math.max(1, Math.round(damage / interval)),
+      power: Math.max(0, Math.round(Number(pet.power ?? fallbackPet?.power ?? 0) || 0)),
+      color: String(pet.color || fallbackPet?.color || "#bff7ff"),
+      visual: String(pet.visual || fallbackPet?.visual || "fish"),
+      rarityKey: String(pet.rarityKey || pet.rarity_key || fallbackPet?.rarityKey || "common")
+    };
   }
 
   function arenaBandForPower(power = 0) {
@@ -4044,17 +4205,6 @@
       minDamage: first.damage[0],
       maxDamage: last.damage[1]
     };
-  }
-
-  function arenaNormalizedStat(value, [preferred, max], fallback) {
-    const numeric = Math.round(Number(value) || 0);
-    const safeFallback = Math.max(1, Math.round(Number(fallback) || preferred || 1));
-    if (numeric <= 0) return clamp(safeFallback, preferred, max);
-    return clamp(numeric, preferred, max);
-  }
-
-  function getArenaHp(value) {
-    return Math.max(1, Math.round((Number(value) || 1) * ARENA_HP_MULTIPLIER));
   }
 
   function createArenaBotSnapshot([playerId, pirateName, botType, shipName, prestigeCount, shipLevel, maxHp, damage, referenceDps, attackIntervalMs]) {
@@ -4135,18 +4285,22 @@
     const pirateName = sanitizeArenaDisplayName(snapshot.pirate_name || row.pirate_name || "Pirata da Arena");
     const captain = snapshot.captain || {};
     const captainName = sanitizeArenaDisplayName(captain.selected_pirate_name || row.selected_pirate_name || pirateName, "");
-    const captainLevel = Math.max(1, Math.floor(Number(captain.pirate_level ?? captain.level ?? snapshot.pirate_level ?? 1) || 1));
+    const captainVisual = normalizeArenaCaptainVisual(captain, row);
+    const guildName = normalizeArenaGuildName(snapshot, row);
+    const pet = normalizeArenaPet(snapshot.pet || {});
     const shipName = String(ship.ship_name || snapshot.ship_name || row.ship_name || "Navio Pirata").trim() || "Navio Pirata";
     const shipId = ship.ship_id || snapshot.ship_id || row.ship_id || null;
     const parsedShipId = parseShipId(shipId, shipName);
     const matchedShip = parsedShipId !== null ? SHIPS[parsedShipId] : findShipByName(shipName);
     const attackIntervalMs = normalizeArenaAttackIntervalMs(snapshot);
     const rawMaxHp = Math.round(Number(combat.max_hp ?? ship.max_hp ?? snapshot.max_hp) || 0);
+    const rawCurrentHp = Math.round(Number(combat.current_hp ?? ship.current_hp ?? snapshot.current_hp ?? rawMaxHp) || 0);
     const rawDamage = Math.round(Number(combat.damage ?? ship.damage ?? snapshot.damage) || 0);
-    const dps = Math.max(1, Math.round(Number(combat.dps ?? ship.dps ?? snapshot.dps ?? rawDamage / (attackIntervalMs / 1000)) || rawDamage || 1));
-    const fallbackPower = Math.round(Number(combat.naval_power ?? combat.combat_power ?? ship.naval_power ?? ship.combat_power ?? snapshot.naval_power ?? snapshot.combat_power ?? row.best_prestige_power) || 0);
+    const rawDps = Math.round(Number(combat.dps ?? ship.dps ?? snapshot.dps) || 0);
+    const snapshotPower = Math.round(Number(combat.naval_power ?? combat.combat_power ?? ship.naval_power ?? ship.combat_power ?? snapshot.naval_power ?? snapshot.combat_power) || 0);
+    const leaderboardPower = Math.round(Number(row.best_prestige_power) || 0);
     const recalculatedPower = calculateNavalPowerV2({
-      dps,
+      dps: Math.max(1, rawDps || Math.round(rawDamage * 1000 / attackIntervalMs + (pet?.dps || 0)) || rawDamage || 1),
       damage: rawDamage,
       maxHp: rawMaxHp,
       attackIntervalMs,
@@ -4159,21 +4313,14 @@
       skillPower: bonuses.skill_power,
       prestigePower: bonuses.prestige_power
     });
-    const hasPowerStats = rawMaxHp > 0 || rawDamage > 0 || dps > 1;
-    const combatPower = Math.max(1, hasPowerStats ? recalculatedPower : fallbackPower || recalculatedPower);
+    const combatPower = Math.max(1, snapshotPower || leaderboardPower || recalculatedPower);
     const arenaRange = arenaBandForPower(combatPower);
-    const playerStats = getStats();
-    const playerArenaHp = getArenaPlayerMaxHp(playerStats);
-    const sourceMaxHp = rawMaxHp > 0 ? rawMaxHp : arenaRange.preferredHp;
-    const sourceDamage = rawDamage > 0 ? rawDamage : arenaRange.preferredDamage;
-    const minArenaHp = Math.max(getArenaHp(arenaRange.minHp), Math.round(playerArenaHp * .35));
-    const maxArenaHp = Math.max(minArenaHp + 1, Math.max(getArenaHp(arenaRange.maxHp), Math.round(playerArenaHp * 2.8)));
-    const maxHp = clamp(getArenaHp(sourceMaxHp), minArenaHp, maxArenaHp);
-    const playerDamage = Math.max(1, Math.round(Number(playerStats.damage) || 1));
-    const minDamage = Math.max(1, Math.min(arenaRange.preferredDamage, Math.round(playerDamage * .18)));
-    const maxDamage = Math.max(minDamage + 1, Math.max(arenaRange.maxDamage, Math.round(playerDamage * 1.8)));
-    const damage = clamp(sourceDamage, minDamage, maxDamage);
-    const arenaDps = Math.max(1, Math.round(damage * 1000 / attackIntervalMs));
+    const sourceMaxHp = rawMaxHp > 0 ? rawMaxHp : Math.max(1, Math.round(Number(matchedShip?.hp || 0) || arenaRange.preferredHp));
+    const sourceDamage = rawDamage > 0 ? rawDamage : Math.max(1, Math.round(Number(matchedShip?.damage || 0) || arenaRange.preferredDamage));
+    const maxHp = Math.max(1, Math.round(sourceMaxHp));
+    const currentHp = rawCurrentHp > 0 ? clamp(Math.round(rawCurrentHp), 1, maxHp) : maxHp;
+    const damage = Math.max(1, Math.round(sourceDamage));
+    const dps = Math.max(1, rawDps || Math.round(damage * 1000 / attackIntervalMs + (pet?.dps || 0)) || damage);
     const armor = Math.max(0, Math.round(Number(combat.defense ?? combat.armor ?? ship.armor ?? 0) || 0));
     const evasion = clamp(Number(combat.dodge_chance ?? combat.dodgeChance ?? combat.evasion ?? ship.evasion ?? 0) || 0, 0, .35);
     const skillResist = clamp(Number(combat.skill_resist ?? combat.skillResist ?? ship.skill_resist ?? 0) || 0, 0, .65);
@@ -4186,14 +4333,20 @@
       selected_pirate_id: snapshot.captain?.selected_pirate_id || row.selected_pirate_id || null,
       selected_pirate_name: snapshot.captain?.selected_pirate_name || row.selected_pirate_name || null,
       captain_name: captainName,
-      captain_level: captainLevel,
+      captain_level: captainVisual.level,
+      captain_gender: captainVisual.gender,
+      pirate_level: captainVisual.pirateLevel,
+      guild_name: guildName,
       ship_id: shipId || (matchedShip ? `ship_${matchedShip.id}` : null),
       ship_name: shipName,
       ship_level: Math.max(1, Math.floor(Number(ship.ship_level ?? snapshot.ship_level ?? 1) || 1)),
       ship_tier: Math.max(0, Math.floor(Number(ship.tier ?? matchedShip?.tier ?? 1) || 1)),
       max_hp: maxHp,
+      current_hp: currentHp,
       damage,
-      dps: arenaDps,
+      dps,
+      pet,
+      pet_dps: pet?.dps || 0,
       source_max_hp: rawMaxHp,
       source_damage: rawDamage,
       source_dps: dps,
@@ -4273,7 +4426,7 @@
     renderArenaPanel();
     arenaState.loadingPromise = (async () => {
       try {
-        if (isLeaderboardConfigured(config)) await syncCurrentArenaSnapshot(config);
+        if (isLeaderboardConfigured(config)) await syncCurrentArenaSnapshot(config, { force: Boolean(options.force) });
         const rows = isLeaderboardConfigured(config) ? await requestArenaRows(config) : [];
         arenaState.opponents = buildArenaOpponentList(rows);
         arenaState.status = "ready";
@@ -4293,6 +4446,468 @@
     return arenaState.loadingPromise;
   }
 
+  function parseOnlineJsonObject(value, fallback = {}) {
+    if (value && typeof value === "object") return value;
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" ? parsed : fallback;
+      } catch (error) {
+        return fallback;
+      }
+    }
+    return fallback;
+  }
+
+  function buildCurrentPvpSnapshot(nowIso = new Date().toISOString()) {
+    return buildPvpSnapshot({
+      nowIso,
+      nextPrestigeCount: Math.max(0, Math.floor(Number(state.prestiges || 0))),
+      prestigePower: Math.max(1, Math.round(Number(getStats().power) || 0))
+    });
+  }
+
+  function pvpRoomActionPayload(extra = {}) {
+    const nowIso = new Date().toISOString();
+    return {
+      p_player_id: state.playerId,
+      p_pirate_name: getGuildPirateName("Pirata sem nome"),
+      p_player_snapshot: buildCurrentPvpSnapshot(nowIso),
+      ...extra
+    };
+  }
+
+  function canUseOnlinePvpRoom(showFeedback = false) {
+    const config = getOnlineConfig();
+    if (!isLeaderboardConfigured(config)) {
+      if (showFeedback) toast("Arena PvP online indisponivel no momento.", "danger-toast");
+      return false;
+    }
+    if (!isValidPirateName()) {
+      if (showFeedback) toast("Defina seu Nome de Pirata antes de criar ou entrar em uma sala.", "danger-toast");
+      return false;
+    }
+    if (!isCaptainSelected()) {
+      if (showFeedback) toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
+      return false;
+    }
+    return true;
+  }
+
+  function normalizePvpRoom(raw = {}) {
+    const room = raw?.room || raw?.current_room || raw;
+    if (!room || typeof room !== "object") return null;
+    const id = String(room.id || room.room_id || "");
+    if (!id) return null;
+    const status = ["waiting", "ready", "fighting", "finished", "expired"].includes(room.status) ? room.status : "waiting";
+    return {
+      id,
+      status,
+      host_player_id: String(room.host_player_id || ""),
+      host_pirate_name: sanitizeArenaDisplayName(room.host_pirate_name || room.host_name || "Pirata"),
+      host_snapshot: parseOnlineJsonObject(room.host_snapshot, {}),
+      host_ready: Boolean(room.host_ready),
+      guest_player_id: room.guest_player_id ? String(room.guest_player_id) : "",
+      guest_pirate_name: sanitizeArenaDisplayName(room.guest_pirate_name || room.guest_name || ""),
+      guest_snapshot: parseOnlineJsonObject(room.guest_snapshot, {}),
+      guest_ready: Boolean(room.guest_ready),
+      starts_at: room.starts_at || room.startsAt || "",
+      battle_state: parseOnlineJsonObject(room.battle_state || room.battleState, {}),
+      winner_player_id: room.winner_player_id ? String(room.winner_player_id) : "",
+      created_at: room.created_at || room.createdAt || "",
+      updated_at: room.updated_at || room.updatedAt || ""
+    };
+  }
+
+  function normalizePvpRoomsResponse(data = {}) {
+    const payload = data && typeof data === "object" ? data : {};
+    const rooms = (Array.isArray(payload.rooms) ? payload.rooms : Array.isArray(payload) ? payload : [])
+      .map(normalizePvpRoom)
+      .filter(Boolean);
+    const currentRoom = normalizePvpRoom(payload.current_room || payload.currentRoom || payload.room || null);
+    return { rooms, currentRoom };
+  }
+
+  function getPvpRoomPlayerSide(room, playerId = state.playerId) {
+    if (!room) return "";
+    if (room.host_player_id === playerId) return "host";
+    if (room.guest_player_id === playerId) return "guest";
+    return "";
+  }
+
+  function getPvpRoomOpponentSide(side) {
+    return side === "host" ? "guest" : side === "guest" ? "host" : "";
+  }
+
+  function getPvpRoomSnapshot(room, side) {
+    return side === "host" ? room?.host_snapshot || {} : side === "guest" ? room?.guest_snapshot || {} : {};
+  }
+
+  function getPvpRoomPlayerId(room, side) {
+    return side === "host" ? room?.host_player_id || "" : side === "guest" ? room?.guest_player_id || "" : "";
+  }
+
+  function getPvpRoomPlayerName(room, side) {
+    return side === "host" ? room?.host_pirate_name || "Pirata" : side === "guest" ? room?.guest_pirate_name || "Pirata" : "Pirata";
+  }
+
+  function getPvpRoomBattleNumber(room, key, fallback = 0) {
+    const value = Number(room?.battle_state?.[key]);
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  function getPvpRoomMaxHp(room, side, fallback = 1) {
+    return Math.max(1, Math.round(getPvpRoomBattleNumber(room, `${side}_max_hp`, fallback)));
+  }
+
+  function getPvpRoomHp(room, side, fallback = 1) {
+    return Math.max(0, Math.round(getPvpRoomBattleNumber(room, `${side}_hp`, fallback)));
+  }
+
+  function pvpRoomPlayerAsArenaOpponent(room, side) {
+    const snapshot = getPvpRoomSnapshot(room, side);
+    const fallbackName = getPvpRoomPlayerName(room, side);
+    const opponent = normalizeArenaOpponent({
+      player_id: getPvpRoomPlayerId(room, side),
+      pirate_name: fallbackName,
+      selected_pirate_id: snapshot?.captain?.selected_pirate_id,
+      selected_pirate_name: snapshot?.captain?.selected_pirate_name,
+      pvp_snapshot: snapshot
+    }, 0);
+    const maxHp = getPvpRoomMaxHp(room, side, opponent.max_hp);
+    opponent.max_hp = maxHp;
+    opponent.source_max_hp = Math.max(1, Math.round(Number(snapshot?.combat?.max_hp || snapshot?.ship?.max_hp || opponent.source_max_hp || maxHp) || maxHp));
+    return opponent;
+  }
+
+  function getPvpRoomStartsAt(room) {
+    const parsed = Date.parse(room?.starts_at || "");
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : Date.now() + PVP_ROOM_START_DELAY_MS;
+  }
+
+  function syncOnlinePvpBattle(room) {
+    const battle = arenaState.battle;
+    if (!battle || battle.mode !== "online" || battle.roomId !== room?.id) return;
+    const side = battle.selfSide || getPvpRoomPlayerSide(room);
+    const opponentSide = getPvpRoomOpponentSide(side);
+    if (!side || !opponentSide) return;
+    const playerMaxHp = getPvpRoomMaxHp(room, side, battle.playerMaxHp);
+    const enemyMaxHp = getPvpRoomMaxHp(room, opponentSide, state.combat.enemy?.maxHp || 1);
+    const playerHp = getPvpRoomHp(room, side, playerMaxHp);
+    const enemyHp = getPvpRoomHp(room, opponentSide, enemyMaxHp);
+    battle.playerMaxHp = playerMaxHp;
+    if (state.combat.enemy?.isArena) {
+      state.combat.enemy.maxHp = enemyMaxHp;
+      state.combat.enemy.hp = enemyHp;
+    }
+    state.combat.playerHp = clamp(playerHp, 0, playerMaxHp);
+    battle.damageDealt = getPvpRoomBattleNumber(room, `${side}_damage_done`, battle.damageDealt || 0);
+    battle.damageReceived = getPvpRoomBattleNumber(room, `${opponentSide}_damage_done`, battle.damageReceived || 0);
+    const finished = room.status === "finished" || playerHp <= 0 || enemyHp <= 0;
+    if (!finished || battle.finished) return;
+    const victory = room.winner_player_id
+      ? room.winner_player_id === state.playerId
+      : enemyHp <= 0 && playerHp > 0;
+    if (victory && state.combat.enemy && !state.combat.enemy.defeated) {
+      state.combat.enemy.defeated = true;
+      scene.queueEnemyDeath(state.combat.enemy);
+      scene.celebrateCaptain(1.8);
+    }
+    finishArenaBattle(victory);
+  }
+
+  function startOnlinePvpBattle(room) {
+    const side = getPvpRoomPlayerSide(room);
+    const opponentSide = getPvpRoomOpponentSide(side);
+    if (!side || !opponentSide) return;
+    if (arenaState.battle?.mode === "online" && arenaState.battle.roomId === room.id) {
+      syncOnlinePvpBattle(room);
+      return;
+    }
+    if (isArenaSceneActive()) return;
+    const opponent = pvpRoomPlayerAsArenaOpponent(room, opponentSide);
+    const startsAt = getPvpRoomStartsAt(room);
+    const playerMaxHp = getPvpRoomMaxHp(room, side, getArenaPlayerMaxHp());
+    arenaState.previousCombat = {
+      screen: currentScreen,
+      hasStarted: state.hasStarted,
+      combat: JSON.parse(JSON.stringify(state.combat))
+    };
+    arenaState.battle = {
+      mode: "online",
+      active: true,
+      finished: false,
+      roomId: room.id,
+      selfSide: side,
+      opponent,
+      startsAt,
+      startedAt: startsAt,
+      playerMaxHp,
+      damageDealt: 0,
+      damageReceived: 0,
+      actionSeq: 0,
+      nextManualAttackAt: 0,
+      onlineActionPending: false,
+      onlinePetAttackTimer: 0
+    };
+    state.combat.running = true;
+    state.combat.repairing = false;
+    state.combat.repairStarted = 0;
+    state.combat.playerHp = getPvpRoomHp(room, side, playerMaxHp);
+    state.combat.enemy = createArenaEnemy(opponent);
+    state.combat.enemy.maxHp = getPvpRoomMaxHp(room, opponentSide, opponent.max_hp);
+    state.combat.enemy.hp = getPvpRoomHp(room, opponentSide, state.combat.enemy.maxHp);
+    state.combat.attackTimer = 0;
+    state.combat.petAttackTimer = 0;
+    state.combat.enemyAttackTimer = 0;
+    state.combat.spawnTimer = 0;
+    state.hasStarted = true;
+    scene.resetPlayerShipAnimation();
+    focusCombatView();
+    addLog(`Arena online sincronizada contra ${arenaOpponentDisplayName(opponent)}.`, "danger-text");
+    toast(`Arena online contra ${arenaOpponentDisplayName(opponent)}.`, "gold-toast");
+    syncOnlinePvpBattle(room);
+    renderAll(false);
+  }
+
+  function handlePvpRoomUpdate(room) {
+    if (!room) return null;
+    pvpRoomState.currentRoom = room.status === "finished" || room.status === "expired" ? null : room;
+    if (room.status === "fighting") startOnlinePvpBattle(room);
+    if (room.status === "finished") syncOnlinePvpBattle(room);
+    renderPvpRoomsPanel();
+    schedulePvpRoomPolling();
+    return room;
+  }
+
+  async function requestPvpRooms(config) {
+    return callOnlineRpc(config, config.pvpRoomsRpcName, { p_player_id: state.playerId });
+  }
+
+  async function refreshPvpRooms(options = {}) {
+    if (!canUseOnlinePvpRoom(false)) {
+      pvpRoomState.status = "unavailable";
+      pvpRoomState.rooms = [];
+      pvpRoomState.error = "Arena PvP online indisponivel.";
+      renderPvpRoomsPanel();
+      return [];
+    }
+    if (pvpRoomState.loadingPromise) return pvpRoomState.loadingPromise;
+    if (!options.force && pvpRoomState.status === "ready" && Date.now() - pvpRoomState.lastLoadedAt < PVP_ROOM_LIST_CACHE_MS) {
+      renderPvpRoomsPanel();
+      return pvpRoomState.rooms;
+    }
+    const config = getOnlineConfig();
+    pvpRoomState.status = "loading";
+    pvpRoomState.error = "";
+    renderPvpRoomsPanel();
+    pvpRoomState.loadingPromise = (async () => {
+      try {
+        const response = normalizePvpRoomsResponse(await requestPvpRooms(config));
+        pvpRoomState.rooms = response.rooms;
+        if (response.currentRoom) handlePvpRoomUpdate(response.currentRoom);
+        pvpRoomState.status = "ready";
+        pvpRoomState.lastLoadedAt = Date.now();
+      } catch (error) {
+        console.warn("Salas PvP indisponiveis.", error);
+        pvpRoomState.rooms = [];
+        pvpRoomState.status = "unavailable";
+        pvpRoomState.error = "Salas online indisponiveis. Rode a migracao de PvP no Supabase.";
+      } finally {
+        pvpRoomState.loadingPromise = null;
+        renderPvpRoomsPanel();
+      }
+      return pvpRoomState.rooms;
+    })();
+    return pvpRoomState.loadingPromise;
+  }
+
+  async function createPvpRoom() {
+    if (pvpRoomState.actionPending || !canUseOnlinePvpRoom(true)) return;
+    const config = getOnlineConfig();
+    pvpRoomState.actionPending = true;
+    renderPvpRoomsPanel();
+    try {
+      const room = normalizePvpRoom(await callOnlineRpc(config, config.pvpRoomCreateRpcName, pvpRoomActionPayload()));
+      handlePvpRoomUpdate(room);
+      await refreshPvpRooms({ force: true });
+      toast("Sala PvP criada. Aguarde outro jogador entrar.", "gold-toast");
+    } catch (error) {
+      console.warn("Nao foi possivel criar sala PvP.", error);
+      toast("Nao foi possivel criar sala PvP online.", "danger-toast");
+    } finally {
+      pvpRoomState.actionPending = false;
+      renderPvpRoomsPanel();
+    }
+  }
+
+  async function joinPvpRoom(roomId) {
+    if (pvpRoomState.actionPending || !canUseOnlinePvpRoom(true)) return;
+    const config = getOnlineConfig();
+    pvpRoomState.actionPending = true;
+    renderPvpRoomsPanel();
+    try {
+      const room = normalizePvpRoom(await callOnlineRpc(config, config.pvpRoomJoinRpcName, pvpRoomActionPayload({ p_room_id: roomId })));
+      handlePvpRoomUpdate(room);
+      toast("Voce entrou na sala PvP. Quando ambos aceitarem, a batalha abre.", "gold-toast");
+    } catch (error) {
+      console.warn("Nao foi possivel entrar na sala PvP.", error);
+      toast("Nao foi possivel entrar nessa sala.", "danger-toast");
+      await refreshPvpRooms({ force: true });
+    } finally {
+      pvpRoomState.actionPending = false;
+      renderPvpRoomsPanel();
+    }
+  }
+
+  async function setPvpRoomReady(ready = true) {
+    const room = pvpRoomState.currentRoom;
+    if (!room || pvpRoomState.actionPending || !canUseOnlinePvpRoom(true)) return;
+    const config = getOnlineConfig();
+    pvpRoomState.actionPending = true;
+    renderPvpRoomsPanel();
+    try {
+      const updated = normalizePvpRoom(await callOnlineRpc(config, config.pvpRoomReadyRpcName, pvpRoomActionPayload({ p_room_id: room.id, p_ready: Boolean(ready) })));
+      handlePvpRoomUpdate(updated);
+      if (updated?.status === "fighting") toast("Ambos aceitaram. Abrindo duelo sincronizado.", "gold-toast");
+    } catch (error) {
+      console.warn("Nao foi possivel atualizar pronto PvP.", error);
+      toast("Nao foi possivel aceitar a batalha.", "danger-toast");
+    } finally {
+      pvpRoomState.actionPending = false;
+      renderPvpRoomsPanel();
+    }
+  }
+
+  async function leavePvpRoom(options = {}) {
+    const room = pvpRoomState.currentRoom || (arenaState.battle?.mode === "online" ? { id: arenaState.battle.roomId } : null);
+    if (!room?.id || !isLeaderboardConfigured()) return;
+    const config = getOnlineConfig();
+    try {
+      const updated = normalizePvpRoom(await callOnlineRpc(config, config.pvpRoomLeaveRpcName, {
+        p_room_id: room.id,
+        p_player_id: state.playerId,
+        p_surrender: Boolean(options.surrender)
+      }));
+      if (updated) handlePvpRoomUpdate(updated);
+    } catch (error) {
+      console.warn("Nao foi possivel sair da sala PvP.", error);
+    } finally {
+      pvpRoomState.currentRoom = null;
+      schedulePvpRoomPolling();
+      renderPvpRoomsPanel();
+    }
+  }
+
+  async function pollActivePvpRoom(options = {}) {
+    const roomId = pvpRoomState.currentRoom?.id || (arenaState.battle?.mode === "online" ? arenaState.battle.roomId : "");
+    if (!roomId || !isLeaderboardConfigured()) return null;
+    const now = Date.now();
+    if (!options.force && now - pvpRoomState.lastPollAt < PVP_ROOM_POLL_INTERVAL_MS) return pvpRoomState.currentRoom;
+    pvpRoomState.lastPollAt = now;
+    const config = getOnlineConfig();
+    try {
+      const room = normalizePvpRoom(await callOnlineRpc(config, config.pvpRoomGetRpcName, { p_room_id: roomId, p_player_id: state.playerId }));
+      return handlePvpRoomUpdate(room);
+    } catch (error) {
+      console.warn("Falha ao sincronizar sala PvP.", error);
+      return null;
+    }
+  }
+
+  function schedulePvpRoomPolling() {
+    const shouldPoll = Boolean(pvpRoomState.currentRoom || arenaState.battle?.mode === "online");
+    if (!shouldPoll) {
+      if (pvpRoomState.pollTimer) window.clearInterval(pvpRoomState.pollTimer);
+      pvpRoomState.pollTimer = 0;
+      return;
+    }
+    if (pvpRoomState.pollTimer) return;
+    pvpRoomState.pollTimer = window.setInterval(() => pollActivePvpRoom(), PVP_ROOM_POLL_INTERVAL_MS);
+  }
+
+  function getOnlinePvpManualAttackInterval() {
+    return getArenaAttackIntervalFromStats();
+  }
+
+  function sendOnlinePvpDamage(rawDamage, options = {}) {
+    const battle = arenaState.battle;
+    if (!battle || battle.mode !== "online" || battle.finished || battle.onlineActionPending) return false;
+    battle.actionSeq = Math.max(0, Number(battle.actionSeq || 0)) + 1;
+    battle.onlineActionPending = true;
+    if (options.manual) battle.nextManualAttackAt = Date.now() + getOnlinePvpManualAttackInterval();
+    const pet = options.pet || null;
+    if (pet) {
+      scene.petStrike(pet);
+      state.lifetime.petAttacks += 1;
+    } else {
+      scene.markPlayerShipAttack();
+      scene.manualAttackFeedback(options.critical ? "#fff19a" : "#9ff4e9");
+      scene.fire(true, options.critical ? "#ffe268" : "#9ff4e9");
+    }
+    const config = getOnlineConfig();
+    callOnlineRpc(config, config.pvpRoomAttackRpcName, {
+      p_room_id: battle.roomId,
+      p_player_id: state.playerId,
+      p_action_seq: battle.actionSeq,
+      p_damage: Math.max(1, Math.round(rawDamage)),
+      p_player_snapshot: buildCurrentPvpSnapshot()
+    }).then(result => {
+      battle.onlineActionPending = false;
+      if (options.critical) scene.floatDamage("Critico!", true, "#fff19a");
+      const room = normalizePvpRoom(result);
+      if (room) handlePvpRoomUpdate(room);
+    }).catch(error => {
+      battle.onlineActionPending = false;
+      console.warn("Ataque PvP online falhou.", error);
+      if (!pet) toast("Nao foi possivel sincronizar o ataque.", "danger-toast");
+      pollActivePvpRoom({ force: true });
+    });
+    return true;
+  }
+
+  function onlinePvpPetAttack() {
+    const battle = arenaState.battle;
+    const pet = getEquippedPet();
+    if (!battle || battle.mode !== "online" || battle.finished || !pet) return false;
+    if (battle.onlineActionPending) return false;
+    const rawDamage = Math.max(1, Math.round(pet.damage * randomBetween(.94, 1.06)));
+    return sendOnlinePvpDamage(rawDamage, { pet, color: pet.color });
+  }
+
+  function tickOnlinePvpPet(dt) {
+    const battle = arenaState.battle;
+    const pet = getEquippedPet();
+    if (!battle || battle.mode !== "online" || battle.finished || !pet) return;
+    if (isArenaBattleWaiting()) {
+      battle.onlinePetAttackTimer = 0;
+      return;
+    }
+    battle.onlinePetAttackTimer = Math.max(0, Number(battle.onlinePetAttackTimer || 0)) + dt * 1000;
+    const interval = Math.max(.25, Number(pet.interval || 2)) * 1000;
+    if (battle.onlinePetAttackTimer < interval) return;
+    if (onlinePvpPetAttack()) battle.onlinePetAttackTimer -= interval;
+  }
+
+  function manualOnlinePvpAttack() {
+    const battle = arenaState.battle;
+    if (!battle || battle.mode !== "online" || battle.finished) return false;
+    const now = Date.now();
+    if (Number(battle.startsAt || 0) > now) {
+      toast(`Arena comeca em ${formatSeconds(getArenaStartRemainingSeconds())}.`, "gold-toast");
+      return false;
+    }
+    if (battle.onlineActionPending) return false;
+    if (Number(battle.nextManualAttackAt || 0) > now) {
+      toast(`Canhoes recarregando: ${formatSeconds((battle.nextManualAttackAt - now) / 1000)}.`, "gold-toast");
+      return false;
+    }
+    const stats = getStats();
+    const critical = Math.random() < stats.crit;
+    const rawDamage = Math.max(1, Math.round(stats.damage * randomBetween(.91, 1.09) * (critical ? 2 : 1)));
+    return sendOnlinePvpDamage(rawDamage, { manual: true, critical });
+  }
+
   function buildCaptainEquipmentSnapshot() {
     return Object.fromEntries(Object.entries(CAPTAIN_EQUIPMENT_META).map(([key, meta]) => [
       `${key}_level`,
@@ -4307,9 +4922,12 @@
     const stats = getStats();
     const ship = SHIPS[state.shipId];
     const captain = getCurrentCaptain();
+    const guild = getCurrentGuild();
     const pet = getEquippedPet();
     const manualLevel = getCaptainManualSkillLevel(CAPTAIN_MANUAL_SKILL_KEY);
     const highestMap = getJourneyMaxUnlockedMap();
+    const currentHp = clamp(Math.round(Number(state.combat.playerHp || stats.maxHp)), 0, stats.maxHp);
+    const pvpAttackInterval = getArenaAttackIntervalFromStats(stats);
     return {
       snapshot_version: PVP_SNAPSHOT_VERSION,
       power_formula_version: POWER_FORMULA_VERSION,
@@ -4323,15 +4941,23 @@
       captain: {
         selected_pirate_id: captain ? `captain_${captain.gender}_${captain.level}` : null,
         selected_pirate_name: captain?.name || null,
+        gender: captain?.gender || state.captainSelectedGender || null,
+        level: captain?.level || state.captainLevel || 0,
         pirate_level: state.pirateLevel,
         captain_runtime_level: state.captainRuntimeLevel,
         captain_title: getCaptainPublicTitle(state)
       },
+      guild: guild ? {
+        guild_id: guild.id || null,
+        name: guild.name || "",
+        role: guildState.current?.role || "member"
+      } : null,
       ship: {
         ship_id: `ship_${ship.id}`,
         ship_name: ship.name,
         ship_level: getShipUpgradeLevel("ship"),
         tier: ship.tier,
+        current_hp: currentHp,
         max_hp: stats.maxHp,
         damage: stats.damage,
         dps: stats.dps,
@@ -4342,10 +4968,13 @@
         combat_power: stats.power,
         attack_speed: Math.round(stats.attackInterval) / 1000,
         attack_interval_ms: Math.round(stats.attackInterval),
+        attack_speed_bonus: stats.attackSpeedBonus,
+        pvp_attack_interval_ms: pvpAttackInterval,
         speed: stats.speed,
         armor: stats.armor
       },
       combat: {
+        current_hp: currentHp,
         max_hp: stats.maxHp,
         damage: stats.damage,
         dps: stats.dps,
@@ -4353,6 +4982,9 @@
         combat_power: stats.power,
         attack_speed: Math.round(stats.attackInterval) / 1000,
         attack_interval_ms: Math.round(stats.attackInterval),
+        attack_speed_bonus: stats.attackSpeedBonus,
+        pvp_attack_interval_ms: pvpAttackInterval,
+        speed: stats.speed,
         defense: stats.armor,
         damage_reduction: stats.armorReduction,
         dodge_chance: stats.evasion,
@@ -4380,8 +5012,14 @@
         pet_id: `pet_${pet.id}`,
         pet_name: pet.name,
         pet_level: pet.level,
+        damage: Math.round(pet.damage || 0),
+        interval: Number(pet.interval || 2),
         dps: Math.round(pet.dps || 0),
-        power: Math.round(pet.power || 0)
+        power: Math.round(pet.power || 0),
+        color: pet.color || "#bff7ff",
+        visual: pet.visual || "fish",
+        rarity_key: pet.rarityKey || "common",
+        bonuses: pet.bonuses || getPetBonuses(pet.id, pet.level)
       } : null,
       bonuses: {
         pet_power: Math.round(pet?.power || 0),
@@ -4428,7 +5066,7 @@
 
   async function syncCurrentArenaSnapshot(config = getOnlineConfig(), options = {}) {
     if (!isLeaderboardConfigured(config) || !isValidPirateName() || state.prestiges < 1) return false;
-    if (!options.force && Date.now() - lastArenaSnapshotSyncAt < 45000) return false;
+    if (!options.force && Date.now() - lastArenaSnapshotSyncAt < ARENA_SNAPSHOT_SYNC_INTERVAL_MS) return false;
     lastArenaSnapshotSyncAt = Date.now();
     try {
       await sendLeaderboardRow(config, buildCurrentArenaLeaderboardRecord());
@@ -5418,6 +6056,7 @@
   }
 
   const PLAYER_SHIP_SPRITESHEET_PATH = "assets/spritesships/";
+  const PLAYER_SHIP_SPRITESHEET_VERSION = 2;
   const REPAIR_EFFECT_SPRITE = {
     key: "repairShip",
     image: createLazyImage(),
@@ -5445,7 +6084,7 @@
     "PLAYER-01_04_Jangada_Reforçada_Primitiva_sprite_9frames.png",
     "PLAYER-01_05_Canoa_do_Titã_sprite_9frames.png",
     "PLAYER-01_06_Bote_Armado_sprite_9frames.png",
-    "PLAYER-01_07_Jangada_Reforçada_sprite_9frames.png",
+    "PLAYER-01_07_Jangada_Reforçada_sprite_2frames.png",
     "PLAYER-01_08_Barco_de_Pesca_Adaptado_sprite_9frames.png",
     "PLAYER-01_09_Escuna_Leve_sprite_9frames.png",
     "PLAYER-02_01_Escuna_Mercante_sprite_9frames.png",
@@ -5454,7 +6093,7 @@
     "PLAYER-02_04_Corveta_Simples_sprite_9frames.png",
     "PLAYER-02_05_Brigantina_Pirata_sprite_9frames.png",
     "PLAYER-02_06_Corveta_Armada_sprite_9frames.png",
-    "PLAYER-02_07_Galeota_sprite_9frames.png",
+    "PLAYER-02_07_Galeota_sprite_2frames.png",
     "PLAYER-02_08_Navio_Mercante_Armado_sprite_9frames.png",
     "PLAYER-03_01_Galeao_Mercante_sprite_9frames.png",
     "PLAYER-03_02_Galeao_Pirata_sprite_9frames.png",
@@ -5464,7 +6103,12 @@
     "PLAYER-03_06_Encouracado_Imperial_sprite_9frames.png",
     "PLAYER-03_07_Fragata_Fantasma_sprite_9frames.png",
     "PLAYER-03_08_Kraken_Hunter_sprite_9frames.png",
-    "PLAYER-03_09_Black_Abyss_sprite_9frames.png"
+    "PLAYER-03_09_Black_Abyss_sprite_9frames.png",
+    "PLAYER-04_01_Imperial_Abyss_sprite_3frames.png",
+    "PLAYER-04_02_Skull_Abyss_sprite_3frames.png",
+    "PLAYER-04_03_Cursed_Abyss_sprite_3frames.png",
+    "PLAYER-04_04_Frostl_Abyss_sprite_3frames.png",
+    "PLAYER-04_05_Flaming_Abyss_sprite_3frames.png"
   ];
   const PLAYER_SHIP_ATTACK_ANIMATION_SECONDS = .42;
   const PLAYER_SHIP_ATTACK_FRAMES = [3, 4, 5, 4];
@@ -5482,6 +6126,35 @@
     hit: { frames: [6], fps: 7, loop: false, blend: false },
     death: { frames: [8], fps: 1, loop: false, blend: false }
   };
+  const PLAYER_SHIP_JANGADA_REFORCADA_ANIMATIONS = {
+    idle: { frames: [1], fps: 1, loop: true, blend: false },
+    moving: { frames: [1], fps: 1, loop: true, blend: false },
+    attack: { frames: [0], fps: 1, loop: false, blend: false },
+    hit: { frames: [1], fps: 1, loop: false, blend: false },
+    death: { frames: [1], fps: 1, loop: false, blend: false }
+  };
+  const PLAYER_SHIP_TWO_FRAME_ATTACK_ANIMATIONS = {
+    idle: { frames: [0], fps: 1, loop: true, blend: false },
+    moving: { frames: [0], fps: 1, loop: true, blend: false },
+    attack: { frames: [1], fps: 1, loop: false, blend: false },
+    hit: { frames: [0], fps: 1, loop: false, blend: false },
+    death: { frames: [0], fps: 1, loop: false, blend: false }
+  };
+  const PLAYER_SHIP_ABYSS_3_FRAME_ANIMATIONS = {
+    idle: { frames: [2], fps: 1, loop: true, blend: false },
+    moving: { frames: [2], fps: 1, loop: true, blend: false },
+    attack: { frames: [1], fps: 1, loop: false, blend: false },
+    hit: { frames: [2], fps: 1, loop: false, blend: false },
+    death: { frames: [2], fps: 1, loop: false, blend: false }
+  };
+  const PLAYER_SHIP_ABYSS_3_FRAME_OPTIONS = {
+    frames: 3,
+    columns: 3,
+    rows: 1,
+    explicitGrid: true,
+    animations: PLAYER_SHIP_ABYSS_3_FRAME_ANIMATIONS,
+    stateFrames: { normal: 2, damaged: 2, defeated: 2 }
+  };
   const PLAYER_SHIP_SPRITESHEET_OPTIONS = {
     Bote_de_Tronco: { width: 230, anchorY: .63 },
     Jangada_de_Cipó: { width: 245, anchorY: .66 },
@@ -5489,7 +6162,7 @@
     Jangada_Reforçada_Primitiva: { width: 255, anchorY: .64, animations: PLAYER_SHIP_TALL_ANIMATIONS },
     Canoa_do_Titã: { width: 265, anchorY: .63 },
     Bote_Armado: { width: 260, anchorY: .66, animations: PLAYER_SHIP_TALL_ANIMATIONS },
-    Jangada_Reforçada: { width: 270, anchorY: .66, animations: PLAYER_SHIP_TALL_ANIMATIONS },
+    Jangada_Reforçada: { width: 270, anchorY: .66, frames: 2, columns: 2, rows: 1, explicitGrid: true, animations: PLAYER_SHIP_JANGADA_REFORCADA_ANIMATIONS, stateFrames: { normal: 1, damaged: 1, defeated: 1 } },
     Barco_de_Pesca_Adaptado: { width: 275, anchorY: .64 },
     Escuna_Leve: { width: 285, anchorY: .66 },
     Escuna_Mercante: { width: 295, anchorY: .66, animations: PLAYER_SHIP_TALL_ANIMATIONS },
@@ -5498,7 +6171,7 @@
     Corveta_Simples: { width: 310, anchorY: .66 },
     Brigantina_Pirata: { width: 320, anchorY: .64, animations: PLAYER_SHIP_TALL_ANIMATIONS },
     Corveta_Armada: { width: 320, anchorY: .64 },
-    Galeota: { width: 310, anchorY: .61 },
+    Galeota: { width: 310, anchorY: .61, frames: 2, columns: 2, rows: 1, explicitGrid: true, animations: PLAYER_SHIP_TWO_FRAME_ATTACK_ANIMATIONS, stateFrames: { normal: 0, damaged: 0, defeated: 0 } },
     Navio_Mercante_Armado: { width: 330, anchorY: .64, animations: PLAYER_SHIP_TALL_ANIMATIONS },
     Galeao_Mercante: { width: 335, anchorY: .64, captainAnchorX: .47, captainAnchorY: .68 },
     Galeao_Pirata: { width: 335, anchorY: .63, captainAnchorX: .46, captainAnchorY: .67 },
@@ -5508,7 +6181,12 @@
     Encouracado_Imperial: { width: 355, anchorY: .63, captainAnchorX: .49, captainAnchorY: .66 },
     Fragata_Fantasma: { width: 355, anchorY: .63, captainAnchorX: .48, captainAnchorY: .66 },
     Kraken_Hunter: { width: 365, anchorY: .64, captainAnchorX: .49, captainAnchorY: .66 },
-    Black_Abyss: { width: 370, anchorY: .64, captainAnchorX: .49, captainAnchorY: .66 }
+    Black_Abyss: { width: 370, anchorY: .64, captainAnchorX: .49, captainAnchorY: .66 },
+    Imperial_Abyss: { ...PLAYER_SHIP_ABYSS_3_FRAME_OPTIONS, width: 382, anchorY: .64, captainAnchorX: .49, captainAnchorY: .66 },
+    Skull_Abyss: { ...PLAYER_SHIP_ABYSS_3_FRAME_OPTIONS, width: 392, anchorY: .66, captainAnchorX: .49, captainAnchorY: .67 },
+    Cursed_Abyss: { ...PLAYER_SHIP_ABYSS_3_FRAME_OPTIONS, width: 402, anchorY: .67, captainAnchorX: .49, captainAnchorY: .68 },
+    Frostl_Abyss: { ...PLAYER_SHIP_ABYSS_3_FRAME_OPTIONS, width: 410, anchorY: .66, captainAnchorX: .48, captainAnchorY: .67 },
+    Flaming_Abyss: { ...PLAYER_SHIP_ABYSS_3_FRAME_OPTIONS, width: 418, anchorY: .64, captainAnchorX: .5, captainAnchorY: .66 }
   };
 
   function getPlayerShipSpritesheetNameFromFile(file) {
@@ -5543,6 +6221,8 @@
       columns: options.columns || 3,
       rows: usesNineFrameLayout ? 3 : options.rows || 3,
       animations,
+      explicitGrid: Boolean(options.explicitGrid),
+      customStateFrames: options.stateFrames || null,
       width: options.width || 280,
       anchorX: options.anchorX ?? .5,
       anchorY: options.anchorY ?? .64,
@@ -5560,6 +6240,9 @@
     return sprites;
   }, {});
   const PLAYER_SHIP_SPRITESHEET_KEYS = Object.keys(PLAYER_SHIP_SPRITESHEETS);
+  const PLAYER_SHIP_SPRITESHEET_ALIASES = {
+    [normalizeSpriteKey("Frost Abyss")]: normalizeSpriteKey("Frostl Abyss")
+  };
   const PLAYER_SHIP_MISSING_SPRITESHEET_WARNINGS = new Set();
 
   function getPlayerShipSpritesheetMatchScore(key, candidate) {
@@ -5590,7 +6273,8 @@
 
   function getPlayerShipSpritesheet(name) {
     const key = normalizeSpriteKey(name);
-    const sprite = PLAYER_SHIP_SPRITESHEETS[key] || findClosestPlayerShipSpritesheet(key);
+    const lookupKey = PLAYER_SHIP_SPRITESHEET_ALIASES[key] || key;
+    const sprite = PLAYER_SHIP_SPRITESHEETS[lookupKey] || findClosestPlayerShipSpritesheet(lookupKey);
     if (sprite) return sprite;
     if (key && !PLAYER_SHIP_MISSING_SPRITESHEET_WARNINGS.has(key)) {
       PLAYER_SHIP_MISSING_SPRITESHEET_WARNINGS.add(key);
@@ -5600,7 +6284,7 @@
   }
 
   function requestPlayerShipSpritesheet(sprite) {
-    return requestSpriteImage(sprite, `${PLAYER_SHIP_SPRITESHEET_PATH}${sprite.file}`, prepareEnemySpritesheet);
+    return requestSpriteImage(sprite, `${PLAYER_SHIP_SPRITESHEET_PATH}${sprite.file}?v=${PLAYER_SHIP_SPRITESHEET_VERSION}`, prepareEnemySpritesheet);
   }
 
   function requestRepairEffectSprite() {
@@ -6125,14 +6809,36 @@
     return stableFrames.length === frames.length ? frames : [fallback];
   }
 
-  function getAnimationFrameAtTime(sprite, key, elapsed, fallbackFrame, referenceFrame = fallbackFrame, options = {}) {
+  function getAnimationFrameStateAtTime(sprite, key, elapsed, fallbackFrame, referenceFrame = fallbackFrame, options = {}) {
     const animation = getSpritesheetAnimation(sprite, key);
     const frames = getSafeAnimationFrames(sprite, key, fallbackFrame, referenceFrame, options);
-    if (!animation || frames.length <= 1) return frames[0] ?? fallbackFrame;
+    const fallback = frames[0] ?? fallbackFrame;
+    if (!animation || frames.length <= 1) return { frame: fallback, nextFrame: fallback, blend: 0 };
+    const safeFps = Math.max(.01, Number(animation.fps) || 1);
+    const time = Math.max(0, elapsed) * safeFps;
+    const whole = Math.floor(time);
     const frameIndex = animation.loop
-      ? Math.floor(Math.max(0, elapsed) * animation.fps) % frames.length
-      : Math.min(frames.length - 1, Math.floor(Math.max(0, elapsed) * animation.fps));
-    return frames[frameIndex] ?? frames[0] ?? fallbackFrame;
+      ? whole % frames.length
+      : Math.min(frames.length - 1, whole);
+    const frame = frames[frameIndex] ?? fallback;
+    if (!animation.blend || (!animation.loop && frameIndex >= frames.length - 1)) return { frame, nextFrame: frame, blend: 0 };
+    const nextIndex = animation.loop ? (frameIndex + 1) % frames.length : Math.min(frames.length - 1, frameIndex + 1);
+    const nextFrame = frames[nextIndex] ?? frame;
+    if (nextFrame === frame) return { frame, nextFrame, blend: 0 };
+    const fadeWindow = clamp(Number(animation.blendWindow ?? .64) || .64, .08, 1);
+    const hold = (1 - fadeWindow) * .5;
+    const progress = time - whole;
+    const blendProgress = progress <= hold
+      ? 0
+      : progress >= 1 - hold
+        ? 1
+        : (progress - hold) / Math.max(.001, fadeWindow);
+    const blend = blendProgress * blendProgress * (3 - 2 * blendProgress);
+    return { frame, nextFrame, blend };
+  }
+
+  function getAnimationFrameAtTime(sprite, key, elapsed, fallbackFrame, referenceFrame = fallbackFrame, options = {}) {
+    return getAnimationFrameStateAtTime(sprite, key, elapsed, fallbackFrame, referenceFrame, options).frame;
   }
 
   function isAliveDamagedFrame(sprite, frame, normalFrame, defeatedFrame) {
@@ -7196,9 +7902,14 @@
     queueEnemyDeath(enemy, delay = 0) {
       const animation = ensureEnemySpriteAnimation(enemy);
       if (!animation) return;
+      const layout = this.getCombatSceneLayout();
+      const deathLayout = layout
+        ? { x: layout.enemyX, y: layout.enemyY, scale: layout.enemyScale }
+        : null;
       this.enemyDeathAnimations.push({
         age: -delay,
         duration: enemy.isBoss ? BOSS_DEATH_ANIMATION_SECONDS : ENEMY_DEATH_ANIMATION_SECONDS,
+        layout: deathLayout,
         enemy: {
           name: enemy.name,
           kind: enemy.kind,
@@ -7678,7 +8389,8 @@
       if (!isArenaSceneActive()) this.drawChests(ctx);
       this.enemyDeathAnimations.forEach(item => {
         if (item.age < 0) return;
-        this.drawEnemy(ctx, layout.enemyX, enemyY, enemyScale, item.enemy);
+        const deathLayout = item.layout || {};
+        this.drawEnemy(ctx, deathLayout.x ?? layout.enemyX, deathLayout.y ?? enemyY, deathLayout.scale ?? enemyScale, item.enemy);
       });
       const enemy = state.combat.enemy;
       if (enemy) this.drawEnemy(ctx, layout.enemyX, enemyY, enemyScale, enemy);
@@ -8447,23 +9159,31 @@
       let elapsed = animation.deathStartedAt ? Math.max(0, now - animation.deathStartedAt) : now + (animation.frameSeed || 0);
       let actionProgress = 1;
       let frame = stateName === SPRITE_HP_STATES.damaged ? damagedFrame : normalFrame;
+      let nextFrame = frame;
+      let blend = 0;
 
       if (stateName === SPRITE_HP_STATES.defeated) {
         actionName = "death";
         elapsed = animation.deathStartedAt ? Math.max(0, now - animation.deathStartedAt) : 0;
         frame = clamp(defeatedFrame, 0, maxFrame);
+        nextFrame = frame;
       } else if (!options.preview && animation.attackUntil > now) {
         actionName = "attack";
         elapsed = Math.max(0, now - animation.attackStartedAt);
         actionProgress = clamp(elapsed / PLAYER_SHIP_ATTACK_ANIMATION_SECONDS, 0, 1);
         frame = getAnimationFrameAtTime(sprite, "attack", elapsed, normalFrame, normalFrame, { centerShift: .34, bottomShift: .38, topShift: .42, minArea: .26, maxArea: 2.15, minHeight: .38, maxHeight: 1.95, minWidth: .38, maxWidth: 1.95 });
+        nextFrame = frame;
       } else if (stateName === SPRITE_HP_STATES.damaged) {
         actionName = "damaged";
         frame = damagedFrame;
+        nextFrame = frame;
       } else {
         actionName = !options.preview && state.combat.running && !state.combat.enemy ? "moving" : "idle";
         elapsed = now + (animation.frameSeed || 0);
-        frame = getAnimationFrameAtTime(sprite, actionName, elapsed, normalFrame, normalFrame, { centerShift: .16, bottomShift: .16, topShift: .22, minArea: .55, maxArea: 1.42, minHeight: .68, maxHeight: 1.34, minWidth: .66, maxWidth: 1.34 });
+        const animationFrame = getAnimationFrameStateAtTime(sprite, actionName, elapsed, normalFrame, normalFrame, { centerShift: .16, bottomShift: .16, topShift: .22, minArea: .55, maxArea: 1.42, minHeight: .68, maxHeight: 1.34, minWidth: .66, maxWidth: 1.34 });
+        frame = animationFrame.frame;
+        nextFrame = animationFrame.nextFrame;
+        blend = animationFrame.blend;
       }
 
       if (animation.poseName !== actionName) {
@@ -8474,7 +9194,8 @@
       return {
         stateName,
         frame,
-        blend: 0,
+        nextFrame,
+        blend,
         elapsed,
         seed: animation.frameSeed || 0,
         actionName,
@@ -8499,10 +9220,13 @@
     }
 
     drawCaptainCharacter(ctx, ship, shipSprite, targetWidth, targetHeight, scale, options = {}) {
-      if (options.preview) return false;
-      if (!isCaptainSelected()) return false;
+      const captainOverride = options.captain || null;
+      if (options.preview && !captainOverride) return false;
+      if (!captainOverride && !isCaptainSelected()) return false;
       const { config, footX, footY } = this.getCaptainCharacterDeckPlacement(ship, shipSprite, targetWidth, targetHeight, scale);
-      const sprite = getActiveCaptainCharacterSpritesheet();
+      const sprite = captainOverride
+        ? getCaptainCharacterSpritesheet(captainOverride.level || 1, captainOverride.gender || "male")
+        : getActiveCaptainCharacterSpritesheet();
       requestCaptainCharacterSprite(sprite);
       const image = sprite?.image;
       if (!image?.complete || !image.naturalWidth) return false;
@@ -8512,7 +9236,7 @@
       const sourceHeight = source.height || image.naturalHeight;
       const frameWidth = Math.floor(sourceWidth / sprite.columns);
       const frameHeight = sourceHeight;
-      const poseName = this.getPlayerCaptainPose();
+      const poseName = captainOverride ? "idle" : this.getPlayerCaptainPose();
       const frame = CAPTAIN_CHARACTER_POSES[poseName] ?? CAPTAIN_CHARACTER_POSES.idle;
       const fullBounds = sprite.frameBounds?.[frame] || sprite.referenceBounds;
       const bodyBounds = sprite.frameBodyBounds?.[frame] || sprite.referenceBodyBounds || fullBounds;
@@ -8529,7 +9253,7 @@
       const legCut = clamp(Number(config.legCut ?? 0) || 0, 0, .5);
       const clipBottom = footY + Math.max(4 * scale, visualHeight * .05) - visualHeight * legCut;
       const shadowY = footY + Math.max(1, 1.5 * scale);
-      if (isCaptainEditorEnabled()) {
+      if (!captainOverride && isCaptainEditorEnabled()) {
         const matrix = ctx.getTransform();
         const dpr = this.dpr || 1;
         const toScene = (px, py) => ({
@@ -8677,14 +9401,20 @@
         ctx.drawImage(source, frameX, frameY, frameWidth, frameHeight, drawX + anchorOffsetX, drawY + anchorOffsetY, targetWidth, targetHeight);
         ctx.restore();
       };
-      const shouldDrawCaptain = pose.stateName !== SPRITE_HP_STATES.defeated;
+      const shouldDrawCaptain = pose.stateName !== SPRITE_HP_STATES.defeated && (!options.preview || options.captain);
       const captainLayer = shouldDrawCaptain
         ? this.getCaptainCharacterDeckPlacement(ship, sprite, targetWidth, targetHeight, scale).config.layer
         : "front";
       if (shouldDrawCaptain && captainLayer === "behind") {
         this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
       }
-      drawFrame(pose.frame, 1);
+      const frameBlend = pose.nextFrame !== pose.frame ? clamp(Number(pose.blend) || 0, 0, 1) : 0;
+      if (frameBlend > .001) {
+        drawFrame(pose.frame, 1 - frameBlend);
+        drawFrame(pose.nextFrame, frameBlend);
+      } else {
+        drawFrame(pose.frame, 1);
+      }
       if (shouldDrawCaptain && captainLayer !== "behind") {
         this.drawCaptainCharacter(ctx, ship, sprite, targetWidth, targetHeight, scale, options);
       }
@@ -8730,7 +9460,8 @@
         const ship = getArenaEnemyShip(enemy) || { id: 0, name: enemy.ship_name || "Navio Pirata", tier: enemy.visualTier || 3, type: enemy.visualKind || "Pirata" };
         const sprite = getPlayerShipSpritesheet(ship.name);
         const arenaScale = Math.min(1.04, scale * 1.02);
-        if (sprite && this.drawPlayerShipSpritesheet(ctx, x, y, arenaScale, ship, sprite, { preview: true, flipX: true, hp: enemy.hp, maxHp: enemy.maxHp, defeated: enemy.defeated })) return;
+        const captain = { level: enemy.captain_level || 1, gender: enemy.captain_gender || "male" };
+        if (sprite && this.drawPlayerShipSpritesheet(ctx, x, y, arenaScale, ship, sprite, { preview: true, flipX: true, hp: enemy.hp, maxHp: enemy.maxHp, defeated: enemy.defeated, captain })) return;
         this.drawShip(ctx, x, y, arenaScale, true, ship.tier || enemy.visualTier || 3, false, ship.id || 0, ship.type || enemy.visualKind || "Pirata");
         return;
       }
@@ -9085,7 +9816,7 @@
       </div>
       <div class="captain-editor-grid">
         <label>X<input type="number" step="0.001" data-captain-editor-field="offsetX"></label>
-        <label>Y<input type="number" step="0.1" data-captain-editor-field="offsetY"></label>
+        <label>Y<input type="number" min="-220" max="160" step="0.1" data-captain-editor-field="offsetY"></label>
         <label>Conves<input type="number" step="0.001" data-captain-editor-field="deckY"></label>
         <label>Escala<input type="number" step="0.001" data-captain-editor-field="scale"></label>
         <label>Altura<input type="number" step="1" data-captain-editor-field="maxHeight"></label>
@@ -9470,6 +10201,11 @@
     const enemy = state.combat.enemy;
     if (!enemy || enemy.defeated || isBossIntroActive(enemy)) return false;
     if (enemy.isArena && !isArenaBattleActive()) return false;
+    if (enemy.isArena && isSnapshotArenaBattleActive()) {
+      toast("Toque manual desativado neste duelo. A Arena usa a velocidade de ataque dos dois navios.", "gold-toast");
+      return false;
+    }
+    if (enemy.isArena && isOnlinePvpBattleActive()) return manualOnlinePvpAttack();
     basicAttack({ manual: true, allowDoubleStrike: false });
     completeManualAttackTutorial();
     renderCombatHud();
@@ -9537,6 +10273,19 @@
     if (!enemy || enemy.defeated || !pet) return;
     dealToEnemy(pet.damage * randomBetween(.94, 1.06), { pet, color: pet.color });
     state.lifetime.petAttacks += 1;
+  }
+
+  function arenaEnemyPetAttack(enemy = state.combat.enemy) {
+    const pet = enemy?.pet;
+    if (!enemy?.isArena || !pet || enemy.defeated || state.combat.playerHp <= 0) return false;
+    const stats = getStats();
+    const damage = Math.max(1, Math.round(applyShipDamageReduction((Number(pet.damage) || 1) * randomBetween(.94, 1.06), stats)));
+    state.combat.playerHp = Math.max(0, state.combat.playerHp - damage);
+    if (arenaState.battle) arenaState.battle.damageReceived = Math.max(0, Number(arenaState.battle.damageReceived || 0)) + damage;
+    scene.floatDamage(damage, false, pet.color || "#bff7ff");
+    addLog(`${pet.name} de ${enemy.name} causou ${formatNumber(damage)} de dano.`, "danger-text");
+    if (state.combat.playerHp <= 0) finishArenaBattle(false);
+    return true;
   }
 
   function applyShipDamageReduction(rawDamage, stats = getStats()) {
@@ -9683,7 +10432,7 @@
     const defeated = Boolean(options.defeated || enemy.hp <= 0);
     const voluntary = Boolean(options.voluntary);
     restoreAfterGuildBossCombat();
-    if (!guild || damage <= 0) {
+    if (!guild) {
       addLog(voluntary ? `Tentativa contra ${bossName} encerrada sem dano.` : `Tentativa contra ${bossName} encerrada.`, "danger-text");
       toast(damage > 0 ? "Tentativa da Irmandade encerrada." : "Nenhum dano valido aplicado ao Boss da Irmandade.", damage > 0 ? "gold-toast" : "danger-toast");
       renderAll(false);
@@ -9700,7 +10449,7 @@
       p_player_snapshot: buildGuildPlayerSnapshot()
     }).then(async result => {
       const rewardGranted = result?.reward_granted !== false;
-      const bossDefeated = Boolean(result?.boss_defeated || defeated);
+      const bossDefeated = Boolean(result?.boss_defeated || (defeated && damage > 0));
       if (rewardGranted) {
         state.resources.ouro += GUILD_BOSS_REWARD_GOLD;
         state.lifetime.gold += GUILD_BOSS_REWARD_GOLD;
@@ -9708,8 +10457,8 @@
       }
       if (bossDefeated) trackAction("boss");
       if (bossDefeated && !defeated) showBossDefeatedBanner();
-      addLog(`${bossName}: ${formatNumber(damage)} de dano pela Irmandade${bossDefeated ? " e boss derrotado" : ""}.`, bossDefeated ? "loot" : "danger-text");
-      toast(rewardGranted ? `Participacao valida: +${formatNumber(GUILD_BOSS_REWARD_GOLD)} Ouro.` : "Dano sincronizado com a Irmandade.", rewardGranted ? "gold-toast" : "");
+      addLog(damage > 0 ? `${bossName}: ${formatNumber(damage)} de dano pela Irmandade${bossDefeated ? " e boss derrotado" : ""}.` : `Tentativa contra ${bossName} encerrada sem dano.`, bossDefeated ? "loot" : "danger-text");
+      toast(rewardGranted ? `Participacao valida: +${formatNumber(GUILD_BOSS_REWARD_GOLD)} Ouro.` : damage > 0 ? "Dano sincronizado com a Irmandade." : "Tentativa da Irmandade encerrada.", rewardGranted ? "gold-toast" : "");
       await refreshGuild({ force: true });
       renderAll(false);
       saveGame();
@@ -10005,7 +10754,7 @@
   }
 
   function getEnemyAttackInterval(enemy) {
-    if (enemy?.isArena) return clamp(Math.round(Number(enemy.attackIntervalMs) || ARENA_ATTACK_INTERVAL_DEFAULT_MS), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS) * (enemy?.slowed > 0 ? 1.65 : 1);
+    if (enemy?.isArena) return Math.max(1, Math.round(Number(enemy.attackIntervalMs) || ARENA_ATTACK_INTERVAL_DEFAULT_MS)) * (enemy?.slowed > 0 ? 1.65 : 1);
     return (enemy?.isBoss ? 1450 : 1900) * (enemy?.attackSpeed || 1) * (enemy?.slowed > 0 ? 1.65 : 1);
   }
 
@@ -10067,11 +10816,17 @@
     const enemy = state.combat.enemy;
     if (enemy.defeated) return;
     if (isBossIntroActive(enemy)) return;
-    const arenaEnemyActive = Boolean(enemy.isArena && arenaBattleActive);
+    const onlinePvpActive = isOnlinePvpBattleActive();
+    const arenaEnemyActive = Boolean(enemy.isArena && arenaBattleActive && !onlinePvpActive);
     if (isArenaBattleWaiting()) {
       state.combat.attackTimer = 0;
       state.combat.petAttackTimer = 0;
       state.combat.enemyAttackTimer = 0;
+      return;
+    }
+    if (onlinePvpActive) {
+      tickOnlinePvpPet(dt);
+      pollActivePvpRoom();
       return;
     }
     if (enemy.burnTime > 0) {
@@ -10083,7 +10838,7 @@
     }
     if (enemy.slowed > 0) enemy.slowed -= dt;
     const stats = getStats();
-    const playerAttackInterval = arenaEnemyActive ? clamp(Math.round(Number(stats.attackInterval) || ARENA_ATTACK_INTERVAL_DEFAULT_MS), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS) : stats.attackInterval;
+    const playerAttackInterval = arenaEnemyActive ? getArenaAttackIntervalFromStats(stats) : stats.attackInterval;
     if (arenaEnemyActive || isAutoAttackUnlocked()) {
       state.combat.attackTimer += dt * 1000;
       let shots = 0;
@@ -10097,12 +10852,23 @@
     }
     if (!state.combat.enemy) return;
     const pet = getEquippedPet();
-    if (!arenaEnemyActive && pet) {
+    if (pet) {
       state.combat.petAttackTimer += dt * 1000;
       let petStrikes = 0;
       while (state.combat.petAttackTimer >= pet.interval * 1000 && petStrikes < 3 && state.combat.enemy) { state.combat.petAttackTimer -= pet.interval * 1000; petAttack(); petStrikes++; }
     }
     if (!state.combat.enemy) return;
+    if (arenaEnemyActive && enemy.pet) {
+      arenaState.battle.enemyPetAttackTimer = Math.max(0, Number(arenaState.battle.enemyPetAttackTimer || 0)) + dt * 1000;
+      let enemyPetStrikes = 0;
+      const enemyPetInterval = Math.max(.25, Number(enemy.pet.interval || 2)) * 1000;
+      while (arenaState.battle.enemyPetAttackTimer >= enemyPetInterval && enemyPetStrikes < 3 && state.combat.enemy && state.combat.playerHp > 0) {
+        arenaState.battle.enemyPetAttackTimer -= enemyPetInterval;
+        arenaEnemyPetAttack(enemy);
+        enemyPetStrikes++;
+      }
+    }
+    if (!state.combat.enemy || state.combat.playerHp <= 0) return;
     const enemyInterval = getEnemyAttackInterval(enemy);
     state.combat.enemyAttackTimer += dt * 1000;
     if (state.combat.enemyAttackTimer >= enemyInterval) { state.combat.enemyAttackTimer -= enemyInterval; enemyAttack(); }
@@ -10891,7 +11657,7 @@
         <h2 id="initial-captain-title">Escolha seu Capitão</h2>
         <p>Seu capitão liderará sua jornada pirata.</p>
       </div>
-      ${captainIdentityHtml("initial-pirate-name-input")}
+      ${captainIdentityHtml("initial-pirate-name-input", { showSaveButton: false })}
       <div class="initial-captain-options">${Object.entries(CAPTAIN_GENDERS).map(initialCaptainGateCardHtml).join("")}</div>
     </section>`;
     bindCaptainIdentityControls(gate);
@@ -11242,11 +12008,12 @@
     </section>`;
   }
 
-  function captainIdentityHtml(inputId = "pirate-name-input") {
+  function captainIdentityHtml(inputId = "pirate-name-input", options = {}) {
     const cleanName = sanitizePirateName(state.pirateName);
     const missing = !isValidPirateName(cleanName);
     const account = AUTH_MANAGER?.getCurrentUser?.();
     const accountHtml = account ? `<div class="captain-account-row"><span>Conta</span><strong>${escapeHtml(account.username)}</strong><button class="button" type="button" data-logout-account>Sair</button></div>` : "";
+    const showSaveButton = options.showSaveButton !== false;
     return `<section class="captain-identity-panel ${missing ? "missing" : ""}">
       <div>
         <span class="eyebrow">IDENTIDADE ONLINE</span>
@@ -11255,7 +12022,7 @@
       </div>
       <div class="captain-identity-form">
         <label for="${inputId}"><span>Nome de Pirata</span><input class="pirate-name-input" id="${inputId}" maxlength="${PIRATE_NAME_MAX_LENGTH}" value="${escapeHtml(cleanName)}" autocomplete="nickname" placeholder="Ex.: Barba Azul"></label>
-        <button class="button primary" type="button" data-save-pirate-name>Salvar</button>
+        ${showSaveButton ? `<button class="button primary" type="button" data-save-pirate-name>Salvar</button>` : ""}
         ${accountHtml}
         <small>Pode usar espaço entre palavras. Mínimo ${PIRATE_NAME_MIN_LENGTH}, máximo ${PIRATE_NAME_MAX_LENGTH} caracteres.</small>
       </div>
@@ -11286,7 +12053,9 @@
 
   function persistPirateNameFromInput({ feedback = false, render = false, input = null } = {}) {
     const activeInput = document.activeElement?.matches?.(".pirate-name-input") ? document.activeElement : null;
-    input = input || activeInput || $("#pirate-name-input") || $(".pirate-name-input");
+    const initialInput = $("#initial-pirate-name-input");
+    const visibleInitialInput = initialInput && !initialInput.closest(".hidden") ? initialInput : null;
+    input = input || activeInput || visibleInitialInput || $("#pirate-name-input") || $(".pirate-name-input");
     const cleanName = sanitizePirateName(input?.value || "");
     if (!isValidPirateName(cleanName)) {
       if (input) input.value = cleanName;
@@ -11362,14 +12131,29 @@
     const allBossesCleared = currentBossIndex >= REGIONS.length;
     const bossIndex = allBossesCleared ? Math.max(0, REGIONS.length - 1) : clamp(currentBossIndex, 0, REGIONS.length - 1);
     const cooldownText = guildCooldownRemainingText(bossState.cooldown_until);
+    const activeUntilTime = Date.parse(bossState.active_until || "");
+    const activePlayerId = String(bossState.active_player_id || "");
+    const activePirateName = sanitizeArenaDisplayName(bossState.active_pirate_name || "Pirata", "Pirata");
+    const activeBlocked = Boolean(activeUntilTime && activeUntilTime > Date.now() && activePlayerId && activePlayerId !== state.playerId);
+    const activeLabel = `${activePirateName} está desafiando`;
     return {
       currentBossIndex,
       allBossesCleared,
       bossIndex,
       cooldownText,
-      canStart: Boolean(guildState.current?.guild && !allBossesCleared && !cooldownText && !guildState.actionPending),
-      label: allBossesCleared ? "Bosses Concluidos" : cooldownText ? `Cooldown ${cooldownText}` : "Desafiar Boss"
+      activeBlocked,
+      activePirateName,
+      activeLabel,
+      canStart: Boolean(guildState.current?.guild && !allBossesCleared && !cooldownText && !activeBlocked && !guildState.actionPending),
+      label: allBossesCleared ? "Bosses Concluidos" : activeBlocked ? activeLabel : cooldownText ? `Cooldown ${cooldownText}` : "Desafiar Boss"
     };
+  }
+
+  function guildBossActionTitle(action) {
+    if (action.allBossesCleared) return "Todos os Bosses da Irmandade ja foram derrotados hoje.";
+    if (action.activeBlocked) return `${action.activePirateName} está desafiando o Boss da Irmandade agora.`;
+    if (action.cooldownText) return `Disponivel em ${action.cooldownText}.`;
+    return "Desafiar o Boss atual da Irmandade.";
   }
 
   function updateHomeGuildBossButton(guild = getCurrentGuild()) {
@@ -11387,13 +12171,9 @@
     button.dataset.startGuildBoss = String(action.bossIndex);
     button.textContent = action.label;
     button.disabled = !action.canStart;
-    button.title = action.allBossesCleared
-      ? "Todos os Bosses da Irmandade ja foram derrotados hoje."
-      : action.cooldownText
-        ? `Disponivel em ${action.cooldownText}.`
-        : "Desafiar o Boss atual da Irmandade.";
+    button.title = guildBossActionTitle(action);
     button.classList.toggle("primary", action.canStart);
-    button.classList.toggle("cooldown", Boolean(action.cooldownText));
+    button.classList.toggle("cooldown", Boolean(action.cooldownText || action.activeBlocked));
   }
 
   function updateGuildCooldownLabels() {
@@ -11404,16 +12184,24 @@
     $$("[data-guild-boss-cooldown]").forEach(node => {
       node.textContent = action.cooldownText || "Livre";
     });
+    $$("[data-guild-summary-boss-action]").forEach(button => {
+      button.dataset.startGuildBoss = String(action.bossIndex);
+      button.textContent = action.label;
+      button.disabled = !action.canStart;
+      button.title = guildBossActionTitle(action);
+      button.classList.toggle("primary", action.canStart);
+      button.classList.toggle("cooldown", Boolean(action.cooldownText || action.activeBlocked));
+    });
     const actionButton = $("[data-guild-boss-action]");
     if (!actionButton) return;
     const selectedIndex = clamp(Math.floor(Number(actionButton.dataset.startGuildBoss || guildBossSelectedIndex) || 0), 0, REGIONS.length - 1);
     const selectedIsCurrent = !action.allBossesCleared && selectedIndex === action.currentBossIndex;
     const canStart = selectedIsCurrent && action.canStart;
-    actionButton.textContent = action.allBossesCleared ? "Concluido" : action.cooldownText ? `Cooldown ${action.cooldownText}` : "Enfrentar";
+    actionButton.textContent = action.allBossesCleared ? "Concluido" : action.activeBlocked ? action.activeLabel : action.cooldownText ? `Cooldown ${action.cooldownText}` : "Enfrentar";
     actionButton.disabled = !canStart;
-    actionButton.title = action.cooldownText ? `Disponivel em ${action.cooldownText}.` : "";
+    actionButton.title = guildBossActionTitle(action);
     actionButton.classList.toggle("primary", canStart);
-    actionButton.classList.toggle("cooldown", Boolean(action.cooldownText));
+    actionButton.classList.toggle("cooldown", Boolean(action.cooldownText || action.activeBlocked));
   }
 
   function renderHomeGuildCard() {
@@ -11489,6 +12277,16 @@
     if (!shouldExpand) return;
     if (key === "guild") refreshGuild({ force: guildState.status === "idle" || Date.now() - guildState.lastLoadedAt > 30000 });
     if (key === "leaderboard") refreshLeaderboard({ force: leaderboardState.status === "idle" || Date.now() - leaderboardState.lastLoadedAt > 30000 });
+  }
+
+  function closeSpecialCombatSourcePanels() {
+    Object.keys(homePanelsExpanded).forEach(key => { homePanelsExpanded[key] = false; });
+    arenaState.expanded = false;
+    guildPanelExpanded = false;
+    leaderboardActiveTab = "ranking";
+    syncHomePanelExpansion();
+    renderLeaderboardTabs();
+    renderArenaPanel();
   }
 
   function guildEmptyStateHtml(message, danger = false) {
@@ -11599,8 +12397,10 @@
     const guild = getCurrentGuild();
     const members = guildState.current.members || [];
     const description = guild.description ? `<p>${escapeHtml(guild.description)}</p>` : "";
+    const actionState = getGuildBossActionState(guildState.current.boss_state || {});
+    const bossButtonTitle = guildBossActionTitle(actionState);
     return `<div class="guild-panel">
-      <div class="section-heading compact"><div><span class="eyebrow">RESUMO</span><h2>${escapeHtml(guild.name)}</h2>${description}</div><button class="button" type="button" data-refresh-guild>Atualizar</button></div>
+      <div class="section-heading compact"><div><span class="eyebrow">RESUMO</span><h2>${escapeHtml(guild.name)}</h2>${description}</div><div class="guild-summary-actions"><button class="button" type="button" data-refresh-guild>Atualizar</button><button class="button guild-boss-action-button ${actionState.canStart ? "primary" : ""} ${actionState.cooldownText || actionState.activeBlocked ? "cooldown" : ""}" type="button" data-guild-summary-boss-action data-start-guild-boss="${actionState.bossIndex}" title="${escapeHtml(bossButtonTitle)}" ${actionState.canStart ? "" : "disabled"}>${escapeHtml(actionState.label)}</button></div></div>
       <div class="guild-summary-grid">
         ${[
           ["Nivel", guild.level],
@@ -11669,7 +12469,8 @@
     const selectedSubtitle = allBossesCleared
       ? "Todos os bosses foram derrotados hoje. Reset ao meio-dia."
       : `${escapeHtml(selectedRegion.name)} &bull; HP ${formatNumber(selectedHp)} / ${formatNumber(selectedMaxHp)}`;
-    const actionLabel = allBossesCleared ? "Concluido" : cooldownText ? `Cooldown ${cooldownText}` : "Enfrentar";
+    const actionLabel = allBossesCleared ? "Concluido" : actionState.activeBlocked ? actionState.activeLabel : cooldownText ? `Cooldown ${cooldownText}` : "Enfrentar";
+    const actionTitle = guildBossActionTitle(actionState);
     const rows = REGIONS.map((region, index) => {
       const defeated = allBossesCleared || index < currentBossIndex;
       const current = !allBossesCleared && index === currentBossIndex;
@@ -11690,7 +12491,7 @@
         <div><span>HP atual</span><strong>${formatNumber(selectedHp)}</strong></div>
         <div><span>Cooldown</span><strong data-guild-boss-cooldown>${cooldownText || "Livre"}</strong></div>
       </div>
-      <div class="section-heading compact"><div><span class="eyebrow">BOSS DA IRMANDADE</span><h2>${escapeHtml(selectedTitle)}</h2><p>${selectedSubtitle}</p></div><button class="button guild-boss-action-button ${canStart ? "primary" : ""} ${cooldownText ? "cooldown" : ""}" type="button" data-guild-boss-action data-start-guild-boss="${guildBossSelectedIndex}" ${canStart ? "" : "disabled"}>${actionLabel}</button></div>
+      <div class="section-heading compact"><div><span class="eyebrow">BOSS DA IRMANDADE</span><h2>${escapeHtml(selectedTitle)}</h2><p>${selectedSubtitle}</p></div><button class="button guild-boss-action-button ${canStart ? "primary" : ""} ${cooldownText || actionState.activeBlocked ? "cooldown" : ""}" type="button" data-guild-boss-action data-start-guild-boss="${guildBossSelectedIndex}" title="${escapeHtml(actionTitle)}" ${canStart ? "" : "disabled"}>${escapeHtml(actionLabel)}</button></div>
       <div class="guild-boss-list">${rows}</div>
     </div>`;
   }
@@ -13118,16 +13919,23 @@
     return `atualizado ${date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
   }
 
+  function arenaOpponentDisplayName(opponent = {}) {
+    const name = sanitizeArenaDisplayName(opponent.pirate_name || opponent.name || "Pirata da Arena");
+    const guild = sanitizeArenaDisplayName(opponent.guild_name || "", "");
+    return guild ? `${name} [${guild}]` : name;
+  }
+
   function arenaOpponentCardHtml(opponent) {
     const attackSpeed = (opponent.attack_interval_ms / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
     const badge = opponent.is_bot ? `<span class="arena-bot-badge">Bot</span>` : `<span class="arena-real-badge">Real</span>`;
     const captainLine = opponent.captain_name ? `Capitao ${escapeHtml(opponent.captain_name)} Nv. ${formatNumber(opponent.captain_level)}` : "Capitao nao informado";
+    const petLine = opponent.pet ? ` • Pet ${escapeHtml(opponent.pet.name)} Nv. ${formatNumber(opponent.pet.level)} DPS ${formatNumber(opponent.pet.dps)}` : "";
     const updatedLine = opponent.is_bot ? "inimigo de treino" : formatArenaUpdatedAt(opponent.updated_at);
     return `<article class="arena-opponent-card arena-opponent-row ${opponent.is_bot ? "is-bot" : "is-real"}">
       <div class="arena-opponent-icon" aria-hidden="true">${opponent.is_bot ? "☠" : "★"}</div>
       <div class="arena-opponent-main">
-        <div class="arena-opponent-title"><h3>${escapeHtml(opponent.pirate_name)}</h3>${badge}</div>
-        <p>${captainLine} • ${escapeHtml(opponent.ship_name)} Nv. ${formatNumber(opponent.ship_level)} • Prestigio ${formatNumber(opponent.prestige_count)} • ${updatedLine}</p>
+        <div class="arena-opponent-title"><h3>${escapeHtml(arenaOpponentDisplayName(opponent))}</h3>${badge}</div>
+        <p>${captainLine} • ${escapeHtml(opponent.ship_name)} Nv. ${formatNumber(opponent.ship_level)}${petLine} • Prestigio ${formatNumber(opponent.prestige_count)} • ${updatedLine}</p>
         <div class="arena-opponent-stats">
           <div><span>HP</span><strong>${formatNumber(opponent.max_hp)}</strong></div>
           <div><span>Dano/ataque</span><strong>${formatNumber(opponent.damage)}</strong></div>
@@ -13142,11 +13950,102 @@
     </article>`;
   }
 
+  function pvpRoomStatusText(room) {
+    if (!room) return "";
+    if (room.status === "waiting") return room.guest_player_id ? "Aguardando aceite dos jogadores." : "Aguardando adversario.";
+    if (room.status === "ready") return "Sala pronta. Aceite para iniciar.";
+    if (room.status === "fighting") return "Batalha sincronizada em andamento.";
+    if (room.status === "finished") return "Duelo concluido.";
+    return "Sala expirada.";
+  }
+
+  function pvpRoomPlayerSummaryHtml(room, side) {
+    const player = pvpRoomPlayerAsArenaOpponent(room, side);
+    const hp = getPvpRoomMaxHp(room, side, player.max_hp);
+    const ready = side === "host" ? room.host_ready : room.guest_ready;
+    const petText = player.pet ? ` • Pet ${player.pet.name} Nv. ${formatNumber(player.pet.level)}` : "";
+    return `<div class="arena-room-player ${ready ? "ready" : ""}">
+      <strong>${escapeHtml(arenaOpponentDisplayName(player))}</strong>
+      <small>${escapeHtml(player.ship_name)} Nv. ${formatNumber(player.ship_level)} • HP ${formatNumber(hp)} • Dano ${formatNumber(player.damage)}${escapeHtml(petText)}</small>
+      <span>${ready ? "Aceitou" : "Aguardando"}</span>
+    </div>`;
+  }
+
+  function pvpRoomCurrentHtml(room) {
+    const side = getPvpRoomPlayerSide(room);
+    const ready = side === "host" ? room.host_ready : room.guest_ready;
+    const canReady = Boolean(room.guest_player_id && ["waiting", "ready"].includes(room.status));
+    const startsAt = getPvpRoomStartsAt(room);
+    const starting = room.status === "fighting" && startsAt > Date.now();
+    const actionLabel = ready ? "Cancelar aceite" : "Aceitar batalha";
+    return `<article class="arena-room-current">
+      <div class="arena-room-current-head">
+        <div><span class="eyebrow">SALA ATUAL</span><h4>${escapeHtml(pvpRoomStatusText(room))}</h4></div>
+        ${starting ? `<strong>Comeca em ${formatSeconds((startsAt - Date.now()) / 1000)}</strong>` : ""}
+      </div>
+      <div class="arena-room-versus">
+        ${pvpRoomPlayerSummaryHtml(room, "host")}
+        <b>VS</b>
+        ${room.guest_player_id ? pvpRoomPlayerSummaryHtml(room, "guest") : `<div class="arena-room-player empty"><strong>Vaga aberta</strong><small>Atualize a lista em outro dispositivo e entre nesta sala.</small><span>Aguardando</span></div>`}
+      </div>
+      <div class="arena-room-actions">
+        <button class="button primary" type="button" data-pvp-room-ready="${ready ? "0" : "1"}" ${canReady && !pvpRoomState.actionPending ? "" : "disabled"}>${actionLabel}</button>
+        <button class="button" type="button" data-pvp-room-leave ${pvpRoomState.actionPending ? "disabled" : ""}>Sair da sala</button>
+      </div>
+    </article>`;
+  }
+
+  function pvpRoomListCardHtml(room) {
+    const host = pvpRoomPlayerAsArenaOpponent(room, "host");
+    const updatedLine = formatArenaUpdatedAt(room.updated_at || room.created_at);
+    const hp = getPvpRoomMaxHp(room, "host", host.max_hp);
+    const petText = host.pet ? ` • Pet ${host.pet.name} Nv. ${formatNumber(host.pet.level)}` : "";
+    return `<article class="arena-room-card">
+      <div class="arena-room-main">
+        <div class="arena-opponent-title"><h3>${escapeHtml(arenaOpponentDisplayName(host))}</h3><span class="arena-real-badge">Sala</span></div>
+        <p>${escapeHtml(host.ship_name)} Nv. ${formatNumber(host.ship_level)} • HP ${formatNumber(hp)} • Dano ${formatNumber(host.damage)}${escapeHtml(petText)} • ${updatedLine}</p>
+      </div>
+      <button class="button primary" type="button" data-pvp-room-join="${escapeHtml(room.id)}" ${pvpRoomState.actionPending || pvpRoomState.currentRoom ? "disabled" : ""}>Entrar</button>
+    </article>`;
+  }
+
+  function renderPvpRoomsPanel() {
+    const status = $("#arena-online-status");
+    const list = $("#arena-online-list");
+    const current = $("#arena-online-current");
+    const create = $("#arena-online-create");
+    const refresh = $("#arena-online-refresh");
+    if (!status || !list || !current) return;
+    const busy = pvpRoomState.status === "loading" || pvpRoomState.actionPending;
+    if (create) create.disabled = busy || Boolean(pvpRoomState.currentRoom) || !canUseOnlinePvpRoom(false);
+    if (refresh) {
+      refresh.disabled = busy;
+      refresh.textContent = pvpRoomState.status === "loading" ? "Atualizando..." : "Atualizar salas";
+    }
+    current.innerHTML = pvpRoomState.currentRoom ? pvpRoomCurrentHtml(pvpRoomState.currentRoom) : "";
+    if (pvpRoomState.status === "loading") {
+      status.textContent = "Buscando salas PvP online...";
+      list.innerHTML = "";
+      return;
+    }
+    if (pvpRoomState.status === "unavailable") {
+      status.textContent = pvpRoomState.error || "Salas PvP online indisponiveis.";
+      list.innerHTML = "";
+      return;
+    }
+    const openRooms = pvpRoomState.rooms.filter(room => room.status === "waiting" && !room.guest_player_id && room.host_player_id !== state.playerId);
+    status.textContent = pvpRoomState.currentRoom
+      ? "Sala ativa encontrada. Quando ambos aceitarem, a tela de combate abre para os dois."
+      : openRooms.length ? `${openRooms.length} sala${openRooms.length === 1 ? "" : "s"} disponivel${openRooms.length === 1 ? "" : "is"} para duelo 1x1.` : "Nenhuma sala aberta no momento.";
+    list.innerHTML = openRooms.length ? openRooms.map(pvpRoomListCardHtml).join("") : `<div class="arena-room-empty">Crie uma sala ou atualize novamente em instantes.</div>`;
+  }
+
   function renderArenaPanel() {
     const toggle = $("#arena-toggle");
     const refresh = $("#arena-refresh");
     const status = $("#arena-status");
     const list = $("#arena-list");
+    const onlinePanel = $("#arena-online-panel");
     if (!toggle || !status || !list) return;
     toggle.textContent = arenaState.expanded ? "Ocultar Arena" : "Desafiar Jogador";
     toggle.disabled = arenaState.status === "loading";
@@ -13155,20 +14054,24 @@
       refresh.textContent = arenaState.status === "loading" ? "Atualizando..." : "Atualizar";
     }
     list.classList.toggle("hidden", !arenaState.expanded);
+    onlinePanel?.classList.toggle("hidden", !arenaState.expanded);
     if (!arenaState.expanded) {
       status.textContent = "Clique para buscar inimigos da Arena.";
       list.innerHTML = "";
+      renderPvpRoomsPanel();
       return;
     }
     if (arenaState.status === "loading") {
       status.textContent = "Buscando jogadores reais e status atualizados da Arena...";
       list.innerHTML = "";
+      renderPvpRoomsPanel();
       return;
     }
     const opponents = arenaState.opponents.length ? arenaState.opponents : getArenaBotOpponents();
     const realCount = opponents.filter(opponent => !opponent.is_bot).length;
     status.textContent = arenaState.error || (realCount ? `${realCount} jogadores reais atualizados para duelo assíncrono.` : `${opponents.length} inimigos de treino disponiveis enquanto o ranking online nao retorna jogadores.`);
     list.innerHTML = opponents.map(arenaOpponentCardHtml).join("");
+    renderPvpRoomsPanel();
   }
 
   function renderRankingArena() {
@@ -13182,6 +14085,7 @@
     if (leaderboardActiveTab === "arena") {
       arenaState.expanded = true;
       if (arenaState.status === "idle" || Date.now() - arenaState.lastLoadedAt > 30000) refreshArenaOpponents({ force: arenaState.status === "idle" });
+      if (pvpRoomState.status === "idle" || Date.now() - pvpRoomState.lastLoadedAt > PVP_ROOM_LIST_CACHE_MS) refreshPvpRooms({ force: pvpRoomState.status === "idle" });
     }
   }
 
@@ -13189,14 +14093,20 @@
     leaderboardActiveTab = tab === "ranking" ? "ranking" : "arena";
     if (leaderboardActiveTab === "arena") arenaState.expanded = true;
     navigate("ranking");
-    if (leaderboardActiveTab === "arena") refreshArenaOpponents({ force: true });
+    if (leaderboardActiveTab === "arena") {
+      refreshArenaOpponents({ force: true });
+      refreshPvpRooms({ force: true });
+    }
     else refreshLeaderboard({ force: leaderboardState.status === "idle" || Date.now() - leaderboardState.lastLoadedAt > 30000 });
   }
 
   function toggleArenaPanel() {
     arenaState.expanded = !arenaState.expanded;
     renderArenaPanel();
-    if (arenaState.expanded) refreshArenaOpponents({ force: arenaState.status === "idle" });
+    if (arenaState.expanded) {
+      refreshArenaOpponents({ force: arenaState.status === "idle" });
+      refreshPvpRooms({ force: pvpRoomState.status === "idle" });
+    }
   }
 
   function isArenaSceneActive() {
@@ -13205,6 +14115,14 @@
 
   function isArenaBattleActive() {
     return Boolean(arenaState.battle?.active && !arenaState.battle.finished);
+  }
+
+  function isOnlinePvpBattleActive() {
+    return Boolean(isArenaBattleActive() && arenaState.battle?.mode === "online");
+  }
+
+  function isSnapshotArenaBattleActive() {
+    return Boolean(isArenaBattleActive() && arenaState.battle?.mode !== "online");
   }
 
   function isArenaBattleWaiting(now = Date.now()) {
@@ -13242,7 +14160,7 @@
   }
 
   function getArenaPlayerMaxHp(stats = getStats()) {
-    return getArenaHp(stats.maxHp);
+    return Math.max(1, Math.round(Number(stats.maxHp) || 1));
   }
 
   function getActivePlayerMaxHp(stats = getStats()) {
@@ -13255,6 +14173,39 @@
     return opponents.find(opponent => opponent.player_id === id) || null;
   }
 
+  async function refreshArenaOpponentForChallenge(playerId) {
+    const current = getArenaOpponentById(playerId);
+    if (current?.is_bot) return current;
+    const config = getOnlineConfig();
+    if (!isLeaderboardConfigured(config)) return current;
+    try {
+      await syncCurrentArenaSnapshot(config, { force: true });
+      const rows = await requestArenaRows(config);
+      const directRow = (Array.isArray(rows) ? rows : rows?.entries || []).find(row => {
+        const snapshot = row?.pvp_snapshot || row?.snapshot || {};
+        return String(snapshot.player_id || row?.player_id || "") === String(playerId);
+      });
+      arenaState.opponents = buildArenaOpponentList(rows);
+      arenaState.status = "ready";
+      arenaState.error = "";
+      arenaState.lastLoadedAt = Date.now();
+      if (directRow) {
+        const fresh = normalizeArenaOpponent(directRow, 0);
+        const index = arenaState.opponents.findIndex(opponent => opponent.player_id === fresh.player_id);
+        if (index >= 0) arenaState.opponents[index] = fresh;
+        else arenaState.opponents.unshift(fresh);
+        renderArenaPanel();
+        return fresh;
+      }
+      renderArenaPanel();
+      return getArenaOpponentById(playerId) || current;
+    } catch (error) {
+      console.warn("Nao foi possivel atualizar o adversario da Arena.", error);
+      toast("Nao foi possivel buscar status em tempo real. Usando ultimo status carregado.", "danger-toast");
+      return current;
+    }
+  }
+
   function getArenaEnemyShip(opponentOrEnemy = {}) {
     const shipName = opponentOrEnemy.ship_name || opponentOrEnemy.shipName || opponentOrEnemy.name || "";
     const parsedShipId = parseShipId(opponentOrEnemy.ship_id || opponentOrEnemy.shipId, shipName);
@@ -13265,7 +14216,7 @@
     const ship = getArenaEnemyShip(opponent);
     return {
       id: `arena_${opponent.player_id}`,
-      name: opponent.pirate_name,
+      name: arenaOpponentDisplayName(opponent),
       category: "ARENA",
       kind: "ARENA",
       hp: opponent.max_hp,
@@ -13275,12 +14226,18 @@
       evasion: clamp(Number(opponent.evasion) || 0, 0, .35),
       skillResist: clamp(Number(opponent.skill_resist) || 0, 0, .65),
       attackSpeed: 1,
-      attackIntervalMs: clamp(Math.round(Number(opponent.attack_interval_ms) || ARENA_ATTACK_INTERVAL_DEFAULT_MS), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS),
+      attackIntervalMs: Math.max(1, Math.round(Number(opponent.attack_interval_ms) || ARENA_ATTACK_INTERVAL_DEFAULT_MS)),
       visualTier: opponent.ship_tier || ship?.tier || 3,
       visualKind: ship?.type || "Pirata",
       ship_id: opponent.ship_id,
       ship_name: opponent.ship_name,
       ship_level: opponent.ship_level,
+      captain_name: opponent.captain_name,
+      captain_level: clamp(Math.floor(Number(opponent.captain_level) || 1), 1, CAPTAIN_MAX_LEVEL),
+      captain_gender: normalizeCaptainGender(opponent.captain_gender) || "male",
+      guild_name: opponent.guild_name || "",
+      pet: opponent.pet || null,
+      petDps: Math.max(0, Math.round(Number(opponent.pet_dps || opponent.pet?.dps || 0) || 0)),
       combat_power: opponent.combat_power,
       prestige_count: opponent.prestige_count,
       isArena: true,
@@ -13292,11 +14249,17 @@
     };
   }
 
-  function startArenaChallenge(playerId) {
+  async function startArenaChallenge(playerId) {
     if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || pendingBossChallengeTimer) return toast("Aguarde o evento atual terminar antes de entrar na Arena.", "danger-toast");
     if (isArenaSceneActive()) return toast("Um duelo da Arena já está em andamento.", "danger-toast");
-    const opponent = getArenaOpponentById(playerId);
+    let opponent = getArenaOpponentById(playerId);
     if (!opponent) return toast("Esse inimigo da Arena não está mais disponível.", "danger-toast");
+    if (!opponent.is_bot) {
+      toast("Atualizando status real do adversario...", "gold-toast");
+      opponent = await refreshArenaOpponentForChallenge(playerId);
+      if (!opponent) return toast("Esse jogador nao esta mais disponivel na Arena.", "danger-toast");
+      if (isArenaSceneActive()) return;
+    }
     const startsAt = Date.now() + ARENA_START_DELAY_MS;
     const arenaPlayerMaxHp = getArenaPlayerMaxHp();
     arenaState.previousCombat = {
@@ -13305,6 +14268,7 @@
       combat: JSON.parse(JSON.stringify(state.combat))
     };
     arenaState.battle = {
+      mode: "snapshot",
       active: true,
       finished: false,
       opponent,
@@ -13312,7 +14276,8 @@
       startedAt: startsAt,
       playerMaxHp: arenaPlayerMaxHp,
       damageDealt: 0,
-      damageReceived: 0
+      damageReceived: 0,
+      enemyPetAttackTimer: 0
     };
     state.combat.running = true;
     state.combat.repairing = false;
@@ -13336,7 +14301,7 @@
     if (!result) return;
     $("#arena-result-icon").textContent = result.victory ? "⚑" : "☠";
     $("#arena-result-title").textContent = result.victory ? "Vitória na Arena!" : "Derrota na Arena!";
-    $("#arena-result-message").textContent = `${result.enemyName} ${result.victory ? "foi derrotado em duelo assíncrono." : "venceu este duelo da Arena."}`;
+    $("#arena-result-message").textContent = `${result.enemyName} ${result.victory ? `foi derrotado em ${result.online ? "duelo online sincronizado" : "duelo assíncrono"}.` : `venceu este ${result.online ? "duelo online sincronizado" : "duelo da Arena"}.`}`;
     $("#arena-result-summary").innerHTML = [
       ["Inimigo", escapeHtml(result.enemyName)],
       ["Dano causado", formatNumber(result.damageDealt)],
@@ -13356,6 +14321,7 @@
     arenaState.result = {
       victory,
       enemyName,
+      online: battle.mode === "online",
       damageDealt: Math.round(battle.damageDealt || 0),
       damageReceived: Math.round(battle.damageReceived || 0),
       durationSeconds
@@ -13373,6 +14339,7 @@
     const battle = arenaState.battle;
     if (!battle) return false;
     const enemyName = battle.opponent?.pirate_name || state.combat.enemy?.name || "Inimigo da Arena";
+    if (battle.mode === "online") leavePvpRoom({ surrender: true });
     addLog(`Voce saiu da Arena contra ${enemyName}.`, "danger-text");
     toast("Voce saiu da Arena.", "danger-toast");
     if (arenaState.previousCombat?.combat) {
@@ -13387,6 +14354,8 @@
     arenaState.battle = null;
     arenaState.previousCombat = null;
     arenaState.result = null;
+    pvpRoomState.currentRoom = null;
+    schedulePvpRoomPolling();
     scene.resetPlayerShipAnimation();
     navigate(returnScreen === "stats" ? "home" : returnScreen);
     renderAll(false);
@@ -13415,6 +14384,8 @@
     arenaState.battle = null;
     arenaState.previousCombat = null;
     arenaState.result = null;
+    pvpRoomState.currentRoom = null;
+    schedulePvpRoomPolling();
     scene.resetPlayerShipAnimation();
     navigate(returnScreen === "stats" ? "home" : returnScreen);
     renderAll(false);
@@ -14244,6 +15215,7 @@
   }
 
   function focusCombatView() {
+    closeSpecialCombatSourcePanels();
     currentScreen = "home";
     mobileCombatPanelOpen = false;
     setCombatMinimized(false, false);
@@ -14266,10 +15238,7 @@
   function handleScreenTargetNavigation(target) {
     if (!target?.dataset?.screenTarget) return false;
     const screen = normalizeScreen(target.dataset.screenTarget);
-    if (screen === "ranking" && target.dataset.rankingTab === "arena") {
-      openRankingArenaScreen("arena");
-      return true;
-    }
+    if (screen === "ranking") return true;
     if (mobileCombatPanelOpen && screen === currentScreen) {
       closeMobileCombatPanel();
       return true;
@@ -14386,6 +15355,10 @@
     const target = event.target.closest("button");
     if (!target) return;
     rememberCombatQuickActionButton(target);
+    if (target.dataset.forceCloudSave !== undefined) {
+      forceManualCloudSave(target);
+      return;
+    }
     if (target.dataset.desktopWindowAction) {
       handleDesktopWindowAction(target.dataset.desktopWindowAction);
       return;
@@ -14525,10 +15498,31 @@
       arenaState.expanded = true;
       renderArenaPanel();
       refreshArenaOpponents({ force: true });
+      refreshPvpRooms({ force: true });
       return;
     }
     if (target.dataset.arenaChallenge) {
       startArenaChallenge(target.dataset.arenaChallenge);
+      return;
+    }
+    if (target.id === "arena-online-create") {
+      createPvpRoom();
+      return;
+    }
+    if (target.id === "arena-online-refresh") {
+      refreshPvpRooms({ force: true });
+      return;
+    }
+    if (target.dataset.pvpRoomJoin) {
+      joinPvpRoom(target.dataset.pvpRoomJoin);
+      return;
+    }
+    if (target.dataset.pvpRoomReady !== undefined) {
+      setPvpRoomReady(target.dataset.pvpRoomReady === "1");
+      return;
+    }
+    if (target.dataset.pvpRoomLeave !== undefined) {
+      leavePvpRoom();
       return;
     }
     if (target.dataset.exitSpecialCombat !== undefined) {

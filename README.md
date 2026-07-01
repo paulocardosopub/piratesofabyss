@@ -117,7 +117,7 @@ Arquivos temporarios, builds e caches locais ficam fora do pacote por `.gitignor
 O ranking global usa Supabase por configuração pública no arquivo `online-config.js`.
 
 1. Crie um projeto no Supabase.
-2. Abra o SQL Editor do Supabase e rode `database/supabase-pirate-leaderboard.sql`, `database/supabase-pirate-guilds.sql` e `database/supabase-pirate-accounts.sql`.
+2. Abra o SQL Editor do Supabase e rode `database/supabase-pirate-leaderboard.sql`, `database/supabase-pirate-guilds.sql`, `database/supabase-pirate-pvp-rooms.sql` e `database/supabase-pirate-accounts.sql`.
 3. Em `online-config.js`, preencha:
 
 ```js

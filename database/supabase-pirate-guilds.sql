@@ -65,6 +65,11 @@ create table if not exists public.pirate_guild_boss_state (
 );
 
 alter table public.pirate_guild_boss_state
+  add column if not exists active_player_id text,
+  add column if not exists active_pirate_name text,
+  add column if not exists active_until timestamptz;
+
+alter table public.pirate_guild_boss_state
   drop constraint if exists pirate_guild_boss_state_current_boss_index_check;
 alter table public.pirate_guild_boss_state
   drop constraint if exists pirate_guild_boss_state_current_boss_index_range;
@@ -327,6 +332,9 @@ begin
               'boss_hp', case when bs.day_key = v_day_key then bs.boss_hp else 0 end,
               'boss_max_hp', case when bs.day_key = v_day_key then bs.boss_max_hp else 0 end,
               'damage_by_player', case when bs.day_key = v_day_key then bs.damage_by_player else '{}'::jsonb end,
+              'active_player_id', case when bs.day_key = v_day_key and bs.active_until > now() then bs.active_player_id else null end,
+              'active_pirate_name', case when bs.day_key = v_day_key and bs.active_until > now() then bs.active_pirate_name else null end,
+              'active_until', case when bs.day_key = v_day_key and bs.active_until > now() then bs.active_until else null end,
               'cooldown_until', v_cooldown_until
             )
             from public.pirate_guild_boss_state bs
@@ -337,6 +345,9 @@ begin
             'boss_hp', 0,
             'boss_max_hp', 0,
             'damage_by_player', '{}'::jsonb,
+            'active_player_id', null,
+            'active_pirate_name', null,
+            'active_until', null,
             'cooldown_until', v_cooldown_until
           ))
         )
@@ -715,6 +726,9 @@ begin
         boss_hp = case when p_boss_index = 0 then p_boss_max_hp else 0 end,
         boss_max_hp = case when p_boss_index = 0 then p_boss_max_hp else 0 end,
         damage_by_player = '{}'::jsonb,
+        active_player_id = null,
+        active_pirate_name = null,
+        active_until = null,
         updated_at = now()
     where guild_id = p_guild_id
     returning * into v_state;
@@ -731,6 +745,12 @@ begin
     returning * into v_state;
   end if;
 
+  if v_state.active_until is not null
+    and v_state.active_until > now()
+    and coalesce(v_state.active_player_id, '') <> v_player_id then
+    raise exception '% esta desafiando', coalesce(nullif(v_state.active_pirate_name, ''), 'Outro jogador');
+  end if;
+
   insert into public.pirate_guild_boss_cooldowns (guild_id, player_id, last_attempt_at)
   values (p_guild_id, v_player_id, now())
   on conflict (guild_id, player_id) do update
@@ -741,6 +761,14 @@ begin
       updated_at = now()
   where guild_id = p_guild_id and player_id = v_player_id;
 
+  update public.pirate_guild_boss_state
+  set active_player_id = v_player_id,
+      active_pirate_name = left(coalesce(nullif(v_snapshot ->> 'pirate_name', ''), v_member.pirate_name, 'Pirata'), 32),
+      active_until = now() + interval '15 minutes',
+      updated_at = now()
+  where guild_id = p_guild_id
+  returning * into v_state;
+
   return jsonb_build_object(
     'ok', true,
     'boss_state', jsonb_build_object(
@@ -749,6 +777,9 @@ begin
       'boss_hp', v_state.boss_hp,
       'boss_max_hp', v_state.boss_max_hp,
       'damage_by_player', v_state.damage_by_player,
+      'active_player_id', v_state.active_player_id,
+      'active_pirate_name', v_state.active_pirate_name,
+      'active_until', v_state.active_until,
       'cooldown_until', now() + interval '10 minutes'
     )
   );
@@ -784,7 +815,6 @@ begin
     perform public.pirate_guild_log_security_event(p_guild_id, v_player_id, 'finish_guild_boss', v_player_id_error, '{}'::jsonb, 'blocked');
     raise exception 'player_id invalido';
   end if;
-  if v_damage <= 0 then raise exception 'dano invalido'; end if;
   if p_boss_index < 0 or p_boss_index > 20 then raise exception 'boss invalido'; end if;
   if p_boss_max_hp <= 0 or p_boss_max_hp > 1000000000000000 then raise exception 'hp invalido'; end if;
   if v_damage > greatest(p_boss_max_hp * 2, public.pirate_guild_number_from_snapshot(v_snapshot, 'dps') * 900, 1000000) then
@@ -810,12 +840,47 @@ begin
         boss_hp = case when p_boss_index = 0 then greatest(p_boss_max_hp, 0) else 0 end,
         boss_max_hp = case when p_boss_index = 0 then greatest(p_boss_max_hp, 0) else 0 end,
         damage_by_player = '{}'::jsonb,
+        active_player_id = null,
+        active_pirate_name = null,
+        active_until = null,
         updated_at = now()
     where guild_id = p_guild_id
     returning * into v_state;
   end if;
 
   if v_state.current_boss_index <> p_boss_index then raise exception 'boss desatualizado'; end if;
+
+  if v_state.active_until is not null
+    and v_state.active_until > now()
+    and coalesce(v_state.active_player_id, '') <> v_player_id then
+    raise exception 'outro jogador esta desafiando';
+  end if;
+
+  if v_damage <= 0 then
+    update public.pirate_guild_boss_state
+    set active_player_id = null,
+        active_pirate_name = null,
+        active_until = null,
+        updated_at = now()
+    where guild_id = p_guild_id
+    returning * into v_state;
+
+    return jsonb_build_object(
+      'ok', true,
+      'reward_granted', false,
+      'boss_defeated', false,
+      'boss_state', jsonb_build_object(
+        'day_key', v_state.day_key,
+        'current_boss_index', v_state.current_boss_index,
+        'boss_hp', v_state.boss_hp,
+        'boss_max_hp', v_state.boss_max_hp,
+        'damage_by_player', v_state.damage_by_player,
+        'active_player_id', v_state.active_player_id,
+        'active_pirate_name', v_state.active_pirate_name,
+        'active_until', v_state.active_until
+      )
+    );
+  end if;
 
   v_new_hp := greatest(0, v_state.boss_hp - v_damage);
   v_defeated := v_new_hp <= 0;
@@ -835,6 +900,9 @@ begin
         boss_hp = 0,
         boss_max_hp = 0,
         damage_by_player = jsonb_set(damage_by_player, array[v_player_id], to_jsonb(v_player_total), true),
+        active_player_id = null,
+        active_pirate_name = null,
+        active_until = null,
         updated_at = now()
     where guild_id = p_guild_id
     returning * into v_state;
@@ -848,6 +916,9 @@ begin
     update public.pirate_guild_boss_state
     set boss_hp = v_new_hp,
         damage_by_player = jsonb_set(damage_by_player, array[v_player_id], to_jsonb(v_player_total), true),
+        active_player_id = null,
+        active_pirate_name = null,
+        active_until = null,
         updated_at = now()
     where guild_id = p_guild_id
     returning * into v_state;
@@ -862,7 +933,10 @@ begin
       'current_boss_index', v_state.current_boss_index,
       'boss_hp', v_state.boss_hp,
       'boss_max_hp', v_state.boss_max_hp,
-      'damage_by_player', v_state.damage_by_player
+      'damage_by_player', v_state.damage_by_player,
+      'active_player_id', v_state.active_player_id,
+      'active_pirate_name', v_state.active_pirate_name,
+      'active_until', v_state.active_until
     )
   );
 end;

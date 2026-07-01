@@ -1,11 +1,11 @@
-const CACHE = "pirates-abyss-v255-top-nav-spacing";
+const CACHE = "pirates-abyss-v268-mini-guild-boss";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=146",
+  "styles.css?v=149",
   "version.js?v=5",
-  "auth.js?v=7",
-  "game.js?v=252",
+  "auth.js?v=8",
+  "game.js?v=265",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

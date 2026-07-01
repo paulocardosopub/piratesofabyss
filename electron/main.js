@@ -175,7 +175,7 @@ function getMiniOverlayBounds(win) {
   };
 }
 
-function clampToWorkArea(value, min, max) {
+function clampToDisplay(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -185,13 +185,20 @@ function clampMiniOverlayPosition(win, x, y) {
     x: Math.round(x + bounds.width / 2),
     y: Math.round(y + bounds.height / 2)
   });
-  const workArea = display?.workArea || screen.getPrimaryDisplay().workArea;
-  const maxX = workArea.x + Math.max(0, workArea.width - bounds.width);
-  const maxY = workArea.y + Math.max(0, workArea.height - bounds.height);
+  const displayBounds = display?.bounds || screen.getPrimaryDisplay().bounds;
+  const maxX = displayBounds.x + Math.max(0, displayBounds.width - bounds.width);
+  const maxY = displayBounds.y + Math.max(0, displayBounds.height - bounds.height);
   return {
-    x: clampToWorkArea(Math.round(x), workArea.x, maxX),
-    y: clampToWorkArea(Math.round(y), workArea.y, maxY)
+    x: clampToDisplay(Math.round(x), displayBounds.x, maxX),
+    y: clampToDisplay(Math.round(y), displayBounds.y, maxY)
   };
+}
+
+function keepMiniOverlayOnTop(win) {
+  win.setAlwaysOnTop(true, "screen-saver");
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setSkipTaskbar(true);
+  if (typeof win.moveTop === "function") win.moveTop();
 }
 
 function captureNormalWindowState(win) {
@@ -211,14 +218,12 @@ async function enterMiniOverlay(win) {
   win.setMovable(true);
   win.setResizable(false);
   win.setMinimumSize(280, 70);
-  win.setAlwaysOnTop(true, "screen-saver");
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.setSkipTaskbar(false);
+  keepMiniOverlayOnTop(win);
   win.setHasShadow(false);
   win.setBackgroundColor("#00000000");
   win.setBounds(getMiniOverlayBounds(win), true);
   win.show();
-  if (typeof win.moveTop === "function") win.moveTop();
+  keepMiniOverlayOnTop(win);
   win.focus();
   return { ok: true };
 }
@@ -248,10 +253,9 @@ function moveMiniOverlay(win, delta = {}) {
   if (!dx && !dy) return { ok: true };
   const [x, y] = win.getPosition();
   const next = clampMiniOverlayPosition(win, x + dx, y + dy);
-  win.setAlwaysOnTop(true, "screen-saver");
-  win.setSkipTaskbar(false);
+  keepMiniOverlayOnTop(win);
   win.setPosition(next.x, next.y, false);
-  if (typeof win.moveTop === "function") win.moveTop();
+  keepMiniOverlayOnTop(win);
   return { ok: true };
 }
 

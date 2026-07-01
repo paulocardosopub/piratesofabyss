@@ -458,7 +458,13 @@
     if (serverSavePromise) await serverSavePromise.catch(() => {});
     const save = saveState || pendingServerSave || readLocalSave(SAVE_KEY);
     pendingServerSave = null;
-    if (save) await saveGameToServer(save, { force: true }).catch(error => console.warn("Nao foi possivel sincronizar progresso no servidor.", error));
+    if (!save) return false;
+    try {
+      return await saveGameToServer(save, { force: true });
+    } catch (error) {
+      console.warn("Nao foi possivel sincronizar progresso no servidor.", error);
+      return false;
+    }
   }
 
   async function refreshCurrentServerSave(user = currentUser) {

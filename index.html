@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=146">
+  <link rel="stylesheet" href="styles.css?v=149">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -84,6 +84,7 @@
           <canvas id="sea-canvas" aria-label="Duelo naval automático."></canvas>
           <div class="scene-vignette"></div>
           <button class="combat-desktop-mini-toggle hidden" id="desktop-mini-toggle" type="button" data-desktop-mini-enter aria-label="Abrir miniatura desktop" data-help-tooltip="Mostra somente o combate em uma faixa pequena por cima do desktop."><span aria-hidden="true">&#x25AD;</span></button>
+          <button class="combat-save-toggle" id="manual-save-button" type="button" data-force-cloud-save aria-label="Forçar salvamento na nuvem" title="Forçar salvamento na nuvem" data-help-tooltip="Força o salvamento atual na nuvem antes de fechar o jogo."><span aria-hidden="true">&#128190;</span></button>
           <button class="combat-guild-toggle" id="combat-guild-toggle" type="button" data-screen-target="guild" aria-label="Abrir Irmandade Pirata" data-help-tooltip="Abre a pagina da Irmandade Pirata."><span aria-hidden="true">&#x2620;</span></button>
           <button class="combat-arena-toggle" id="combat-arena-toggle" type="button" data-combat-arena-open aria-label="Abrir Ranking e Arena" data-help-tooltip="Abre a pagina de Ranking dos Piratas e Arena PvP."><span aria-hidden="true">&#9876;</span></button>
           <div class="desktop-mini-drag-strip" data-combat-ui aria-hidden="true"></div>
@@ -307,6 +308,18 @@
             </div>
             <div class="arena-status" id="arena-status">Clique para buscar inimigos da Arena.</div>
             <div class="arena-list hidden" id="arena-list"></div>
+            <div class="arena-online-panel hidden" id="arena-online-panel">
+              <div class="arena-online-heading">
+                <div><span class="eyebrow">ARENA PVP ONLINE</span><h3>Salas 1x1 sincronizadas</h3><p>Crie uma sala, atualize a lista ou entre em um duelo aberto.</p></div>
+                <div class="arena-actions">
+                  <button class="button primary" id="arena-online-create" type="button">Criar sala</button>
+                  <button class="button" id="arena-online-refresh" type="button">Atualizar salas</button>
+                </div>
+              </div>
+              <div class="arena-status" id="arena-online-status">Atualize para buscar salas online.</div>
+              <div class="arena-online-current" id="arena-online-current"></div>
+              <div class="arena-online-list" id="arena-online-list"></div>
+            </div>
           </div>
         </article>
       </section>
@@ -534,7 +547,7 @@
 
   <script src="version.js?v=5"></script>
   <script src="online-config.js?v=1"></script>
-  <script src="auth.js?v=7"></script>
-  <script src="game.js?v=252"></script>
+  <script src="auth.js?v=8"></script>
+  <script src="game.js?v=265"></script>
 </body>
 </html>
