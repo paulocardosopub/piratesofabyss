@@ -6,7 +6,7 @@
   const DESKTOP_DOWNLOAD_DISMISS_KEY = "pirates-of-the-abyss-desktop-download-hidden-until";
   const DESKTOP_DOWNLOAD_DISMISS_MS = 24 * 60 * 60 * 1000;
   const DESKTOP_DOWNLOAD_URL = "https://github.com/paulocardosopub/piratesofabyss/releases/latest/download/Pirates-of-the-Abyss-Setup-latest-x64.exe";
-  const DEFAULT_APP_VERSION = "1.0.10";
+  const DEFAULT_APP_VERSION = "1.0.11";
   const APP_VERSION = String(window.PIRATES_APP_VERSION || window.PiratesDesktop?.version || DEFAULT_APP_VERSION).trim() || DEFAULT_APP_VERSION;
   const APP_VERSION_LABEL = `Versao ${APP_VERSION}`;
   const LEADERBOARD_LIMIT = 50;
@@ -28,6 +28,7 @@
   const GUILD_MAX_MEMBERS = 20;
   const GUILD_BOSS_REWARD_GOLD = 10000;
   const GUILD_BOSS_COOLDOWN_MS = 3 * 60 * 1000;
+  const GUILD_BOSS_LEGACY_COOLDOWN_MS = 15 * 60 * 1000;
   const GUILD_BOSS_BATTLE_DURATION_MS = 30 * 1000;
   const GUILD_BOSS_TICKET_DROP_CHANCE = .30;
   const GUILD_BOSS_TICKET_MAX = 5;
@@ -3878,6 +3879,24 @@
     };
   }
 
+  function getGuildBossEffectiveCooldownTimestamp(value = "") {
+    const timestamp = Date.parse(value || "");
+    const now = Date.now();
+    if (!Number.isFinite(timestamp) || timestamp <= now) return 0;
+    const remaining = timestamp - now;
+    if (remaining <= GUILD_BOSS_COOLDOWN_MS) return timestamp;
+    const legacyOffset = Math.max(0, GUILD_BOSS_LEGACY_COOLDOWN_MS - GUILD_BOSS_COOLDOWN_MS);
+    const legacyAdjusted = timestamp - legacyOffset;
+    if (legacyAdjusted <= now) return 0;
+    if (legacyAdjusted - now <= GUILD_BOSS_COOLDOWN_MS) return legacyAdjusted;
+    return now + GUILD_BOSS_COOLDOWN_MS;
+  }
+
+  function normalizeGuildBossCooldownUntil(value = "") {
+    const timestamp = getGuildBossEffectiveCooldownTimestamp(value);
+    return timestamp > 0 ? new Date(timestamp).toISOString() : "";
+  }
+
   function normalizeGuildBossState(raw = {}) {
     const stateRow = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
     return {
@@ -3885,7 +3904,7 @@
       current_boss_index: clamp(Math.floor(Number(stateRow.current_boss_index ?? stateRow.currentBossIndex ?? 0)), 0, REGIONS.length),
       boss_hp: Math.max(0, Math.floor(Number(stateRow.boss_hp ?? stateRow.bossHp ?? 0))),
       boss_max_hp: Math.max(0, Math.floor(Number(stateRow.boss_max_hp ?? stateRow.bossMaxHp ?? 0))),
-      cooldown_until: stateRow.cooldown_until || stateRow.cooldownUntil || "",
+      cooldown_until: normalizeGuildBossCooldownUntil(stateRow.cooldown_until || stateRow.cooldownUntil || ""),
       active_player_id: String(stateRow.active_player_id || stateRow.activePlayerId || ""),
       active_pirate_name: sanitizeArenaDisplayName(stateRow.active_pirate_name || stateRow.activePirateName || "", ""),
       active_until: stateRow.active_until || stateRow.activeUntil || "",
@@ -4777,8 +4796,7 @@
     scene.fire(false, attackColor);
     if (state.combat.playerHp > 0 && damage > 0) scene.markPlayerShipHit();
     setTimeout(() => {
-      scene.burst(false, attackColor);
-      if (damage > 0) scene.floatDamage(Math.round(damage), false, attackColor);
+      if (damage > 0) scene.floatDamage(Math.round(damage), false, attackColor, { effectType: "basic" });
     }, 340);
   }
 
@@ -6419,6 +6437,14 @@
     requested: false,
     loadFailed: false
   };
+  const DAMAGE_EFFECT_SPRITE = {
+    key: "damageEffect",
+    image: createLazyImage(),
+    file: "damage.png",
+    frames: 4,
+    requested: false,
+    loadFailed: false
+  };
   const CANNON_PROJECTILE_DEFAULT_SCALE = .5;
   const CANNON_LANCE_PROJECTILE_SCALE = 1;
   const CANNON_SABOTAGE_NET_SCALE = 2;
@@ -6437,6 +6463,21 @@
     { x: 47, y: 213, w: 142, h: 55, drawWidth: 48 },
     { x: 302, y: 191, w: 179, h: 98, drawWidth: 70 },
     { x: 570, y: 169, w: 222, h: 124, drawWidth: 92 }
+  ];
+  const DAMAGE_EFFECT_FRAME_INDEX = {
+    ice: 0,
+    fire: 1,
+    critical: 2,
+    sabotage: 2,
+    chain: 3,
+    basic: 3,
+    default: 3
+  };
+  const DAMAGE_EFFECT_FRAME_BOUNDS = [
+    { x: 33, y: 48, w: 225, h: 195 },
+    { x: 393, y: 48, w: 224, h: 195 },
+    { x: 768, y: 48, w: 221, h: 195 },
+    { x: 1147, y: 48, w: 216, h: 195 }
   ];
   const ENEMY_AURA_EFFECT_SPRITE = {
     key: "enemyAura1",
@@ -6672,6 +6713,10 @@
 
   function requestCannonSmokeSprite() {
     return requestSpriteImage(CANNON_SMOKE_SPRITE, `${EFFECT_ASSET_PATH}${CANNON_SMOKE_SPRITE.file}`);
+  }
+
+  function requestDamageEffectSprite() {
+    return requestSpriteImage(DAMAGE_EFFECT_SPRITE, `${EFFECT_ASSET_PATH}${DAMAGE_EFFECT_SPRITE.file}`);
   }
 
   function requestEnemyAuraEffectSprite() {
@@ -7808,9 +7853,11 @@
     requestCannonProjectileSprite();
     requestCannonLanceProjectileSprite();
     requestCannonSmokeSprite();
+    requestDamageEffectSprite();
     addSprite(CANNON_PROJECTILE_SPRITE);
     addSprite(CANNON_LANCE_PROJECTILE_SPRITE);
     addSprite(CANNON_SMOKE_SPRITE);
+    addSprite(DAMAGE_EFFECT_SPRITE);
 
     const enemyNames = new Set((REGION_ENCOUNTERS[index] || []).map(enemy => enemy.name).filter(Boolean));
     if (REGIONS[index]?.boss) enemyNames.add(REGIONS[index].boss);
@@ -8238,6 +8285,59 @@
       this.bursts.push({ x: atEnemy ? layout.enemyX : layout.playerX, y: atEnemy ? layout.enemyY - this.height * .18 : layout.playerY - this.height * .16, age: 0, color });
     }
 
+    normalizeDamageEffectType(type = "") {
+      const key = String(type || "").trim().toLowerCase();
+      return DAMAGE_EFFECT_FRAME_INDEX[key] !== undefined ? key : "default";
+    }
+
+    inferDamageEffectType(color = "") {
+      const clean = String(color || "").toLowerCase();
+      if (clean.includes("ff6") || clean.includes("7048") || clean.includes("5a4e")) return "fire";
+      if (clean.includes("81e8") || clean.includes("8ee8") || clean.includes("7bdf")) return "ice";
+      if (clean.includes("ffe") || clean.includes("fff1") || clean.includes("ffd3") || clean.includes("e3c")) return "critical";
+      return "basic";
+    }
+
+    getDamageTextColor(effectType = "basic") {
+      if (effectType === "ice") return "#fff4b8";
+      if (effectType === "fire") return "#ffd399";
+      if (effectType === "critical" || effectType === "sabotage") return "#fff0a6";
+      return "#ffe7a8";
+    }
+
+    drawDamageEffectBackdrop(ctx, item, x, y, text) {
+      if (!item.effectType) return;
+      const image = requestDamageEffectSprite();
+      if (!image?.complete || !image.naturalWidth) return;
+      const frameCount = Math.max(1, DAMAGE_EFFECT_SPRITE.frames || 4);
+      const frameWidth = image.naturalWidth / frameCount;
+      const frameHeight = image.naturalHeight;
+      const frameIndex = clamp(Math.floor(DAMAGE_EFFECT_FRAME_INDEX[item.effectType] ?? DAMAGE_EFFECT_FRAME_INDEX.default), 0, frameCount - 1);
+      const source = DAMAGE_EFFECT_FRAME_BOUNDS[frameIndex] || { x: frameIndex * frameWidth, y: 0, w: frameWidth, h: frameHeight };
+      const textLength = String(text || "").length;
+      const mini = isDesktopMiniOverlayMode();
+      const effectScale = clamp(Number(item.effectScale || 1) || 1, .5, 2.4);
+      const baseWidth = clamp(88 + textLength * 7, 94, 166) * effectScale * (mini ? .66 : 1);
+      const pulse = Math.sin(clamp(item.age / 1.05, 0, 1) * Math.PI);
+      const drawWidth = baseWidth * (.82 + pulse * .2);
+      const drawHeight = drawWidth * (source.h / Math.max(1, source.w));
+      ctx.save();
+      ctx.globalAlpha *= clamp(.92 - item.age * .45, 0, .92);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(
+        image,
+        source.x,
+        source.y,
+        source.w,
+        source.h,
+        x - drawWidth * .5,
+        y - drawHeight * .5,
+        drawWidth,
+        drawHeight
+      );
+      ctx.restore();
+    }
+
     sabotageEnemy(color = "#b68cff") {
       const layout = this.getCombatSceneLayout();
       this.sabotageEffects.push({ x: layout.enemyX, y: layout.enemyY - this.height * .18, age: 0, color });
@@ -8279,9 +8379,21 @@
       this.aquaticBursts.push({ x: this.width * .69, y: this.height * .54, age: 0, color: pet.color, kind: pet.visual });
     }
 
-    floatDamage(amount, atEnemy = true, color = "#fff0bc") {
+    floatDamage(amount, atEnemy = true, color = "#fff0bc", options = {}) {
       const layout = this.getCombatSceneLayout();
-      this.floaters.push({ text: amount, x: (atEnemy ? layout.enemyX : layout.playerX) + randomBetween(-25, 25), y: atEnemy ? layout.enemyY - this.height * .22 : layout.playerY - this.height * .2, age: 0, color });
+      const numeric = Number.isFinite(Number(amount)) && String(amount).trim() !== "";
+      const effectType = numeric ? this.normalizeDamageEffectType(options.effectType || this.inferDamageEffectType(color)) : "";
+      this.floaters.push({
+        text: amount,
+        numeric,
+        effectType,
+        effectScale: numeric ? (Number(options.effectScale) || (effectType === "chain" ? 1.16 : 1)) : 1,
+        textColor: numeric ? (options.textColor || this.getDamageTextColor(effectType)) : color,
+        x: (atEnemy ? layout.enemyX : layout.playerX) + randomBetween(-25, 25),
+        y: atEnemy ? layout.enemyY - this.height * .22 : layout.playerY - this.height * .2,
+        age: 0,
+        color
+      });
     }
 
     markEnemyHit(enemy) {
@@ -9119,13 +9231,23 @@
       });
 
       this.floaters.forEach(item => {
-        ctx.globalAlpha = 1 - item.age / 1.05;
-        ctx.fillStyle = item.color;
-        ctx.font = `800 ${14 + item.age * 4}px ui-sans-serif`;
+        const alpha = 1 - item.age / 1.05;
+        const text = item.numeric ? `-${formatNumber(item.text)}` : String(item.text || "");
+        const x = item.x;
+        const y = item.y - item.age * 32;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        this.drawDamageEffectBackdrop(ctx, item, x, y, text);
+        ctx.fillStyle = item.textColor || item.color;
+        ctx.font = `${item.numeric ? 950 : 900} ${14 + item.age * 4}px ui-sans-serif`;
         ctx.textAlign = "center";
-        ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 4;
-        ctx.fillText(`-${formatNumber(item.text)}`, item.x, item.y - item.age * 32);
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+        ctx.textBaseline = item.numeric ? "middle" : "alphabetic";
+        ctx.lineWidth = item.numeric ? 3 : 0;
+        ctx.strokeStyle = "rgba(38, 10, 0, .76)";
+        ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = item.numeric ? 7 : 4;
+        if (item.numeric) ctx.strokeText(text, x, y);
+        ctx.fillText(text, x, y);
+        ctx.restore();
       });
 
       this.lootFloaters.forEach(item => {
@@ -10995,15 +11117,21 @@
     const markHit = () => {
       if (state.combat.enemy === hitTarget && hitTarget.hp > 0 && !hitTarget.defeated) scene.markEnemyHit(hitTarget);
     };
+    const damageEffectType = options.sabotage ? "sabotage"
+      : options.critical ? "critical"
+        : options.projectileType === "fire" ? "fire"
+          : options.projectileType === "ice" ? "ice"
+            : options.projectileType === "chain" ? "chain"
+              : "basic";
     if (options.pet) {
       scene.petStrike(options.pet);
-      setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#bff7ff"); }, 180);
+      setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#bff7ff", { effectType: "basic" }); }, 180);
     } else if (options.sabotage) {
       scene.fire(true, options.color || "#b68cff", "sabotage", { smoke: false, duration: .48 });
-      setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#f1c7ff"); }, 120);
+      setTimeout(() => { markHit(); scene.floatDamage(damage, true, "#fff19a", { effectType: damageEffectType }); }, 120);
     } else {
       scene.fire(true, options.color || "#ffd37a", options.projectileType || "basic", { smoke: Boolean(options.manual && !options.skill), manualShot: Boolean(options.manual), duration: options.projectileDuration });
-      setTimeout(() => { markHit(); scene.burst(true, options.color || "#f4a34c"); scene.floatDamage(damage, true, options.color || "#fff0bc"); }, 340);
+      setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#fff0bc", { effectType: damageEffectType }); }, 340);
     }
     if (enemy.hp <= 0) defeatEnemy();
   }
@@ -11021,7 +11149,7 @@
     const critical = Math.random() < stats.crit;
     const raw = stats.damage * randomBetween(.91, 1.09) * (critical ? 2 : 1);
     const attackColor = options.manual ? (critical ? "#fff19a" : "#9ff4e9") : critical ? "#ffe268" : "#ffd37a";
-    dealToEnemy(raw, { color: attackColor, manual: options.manual });
+    dealToEnemy(raw, { color: attackColor, manual: options.manual, critical });
     if (critical) {
       scene.floatDamage("Crítico!", true, attackColor);
       addLog(`Acerto crítico de ${formatNumber(raw)}!`, "loot");
@@ -11143,7 +11271,7 @@
     const damage = Math.max(1, Math.round(applyShipDamageReduction((Number(pet.damage) || 1) * randomBetween(.94, 1.06), stats)));
     state.combat.playerHp = Math.max(0, state.combat.playerHp - damage);
     if (arenaState.battle) arenaState.battle.damageReceived = Math.max(0, Number(arenaState.battle.damageReceived || 0)) + damage;
-    scene.floatDamage(damage, false, pet.color || "#bff7ff");
+    scene.floatDamage(damage, false, pet.color || "#bff7ff", { effectType: "basic" });
     addLog(`${pet.name} de ${enemy.name} causou ${formatNumber(damage)} de dano.`, "danger-text");
     if (state.combat.playerHp <= 0) finishArenaBattle(false);
     return true;
@@ -11183,8 +11311,11 @@
     if (enemy.isArena && arenaState.battle) arenaState.battle.damageReceived += totalDamage;
     if (state.combat.playerHp > 0) scene.markPlayerShipHit();
     const attackColor = enemy.visual?.attack === "ghost" ? "#9ff4e9" : enemy.visual?.attack === "ice" ? "#8ee8ff" : enemy.visual?.attack === "fire" ? "#ff7048" : enemy.visual?.attack === "abyss" ? "#b18cff" : enemy.visual?.attack === "wave" || enemy.visual?.attack === "splash" ? "#7bdfff" : enemy.visual?.attack === "arrow" || enemy.visual?.attack === "harpoon" ? "#e3c06f" : "#ff8c68";
+    const enemyDamageEffectType = enemy.visual?.attack === "fire" || enemy.special?.includes("chamas") ? "fire"
+      : enemy.visual?.attack === "ice" || enemy.special?.includes("glacial") ? "ice"
+        : "basic";
     scene.fire(false, attackColor);
-    setTimeout(() => { scene.burst(false, attackColor); scene.floatDamage(damage, false, attackColor); }, 340);
+    setTimeout(() => { scene.floatDamage(damage, false, attackColor, { effectType: enemyDamageEffectType }); }, 340);
     if (state.combat.playerHp <= 0) {
       if (enemy.isArena) {
         finishArenaBattle(false);
@@ -11294,6 +11425,7 @@
     const voluntary = Boolean(options.voluntary);
     const timedOut = Boolean(options.timeout);
     restoreAfterGuildBossCombat();
+    if (timedOut) showBossDefeatedBanner("Batalha Encerrada");
     if (!guild) {
       addLog(timedOut ? `Tempo contra ${bossName} encerrado.` : voluntary ? `Tentativa contra ${bossName} encerrada sem dano.` : `Tentativa contra ${bossName} encerrada.`, "danger-text");
       toast(timedOut ? "Tempo do Boss da Irmandade esgotado." : damage > 0 ? "Tentativa da Irmandade encerrada." : "Nenhum dano valido aplicado ao Boss da Irmandade.", damage > 0 ? "gold-toast" : "danger-toast");
@@ -12296,6 +12428,27 @@
     shell.setAttribute("aria-label", text);
   }
 
+  function updateGuildBossBattleTimer(enemy = state.combat.enemy) {
+    const timer = $("#guild-boss-battle-timer");
+    const value = $("#guild-boss-battle-time");
+    if (!timer || !value) return;
+    const visible = Boolean(enemy?.isGuildBoss && !enemy.defeated);
+    timer.classList.toggle("hidden", !visible);
+    if (!visible) {
+      value.textContent = "30s";
+      timer.classList.remove("warning", "critical");
+      return;
+    }
+    const remaining = getGuildBossBattleRemainingSeconds(enemy);
+    const urgent = remaining === 10 || (remaining >= 1 && remaining <= 5);
+    const critical = remaining >= 1 && remaining <= 5;
+    const label = timer.querySelector("span");
+    if (label) label.textContent = urgent ? "ENCERRA EM" : "BOSS DA IRMANDADE";
+    value.textContent = `${Math.max(0, remaining)}s`;
+    timer.classList.toggle("warning", urgent);
+    timer.classList.toggle("critical", critical);
+  }
+
   function renderCombatHud() {
     const stats = getStats();
     const ship = SHIPS[state.shipId];
@@ -12344,6 +12497,7 @@
       $("#enemy-health-fill").style.width = "0%";
       $("#enemy-health-text").textContent = "";
     }
+    updateGuildBossBattleTimer(enemy);
     updateSpecialCombatExitButton();
     syncCombatQuickActions();
     syncDesktopDownloadNotice();
@@ -13063,8 +13217,8 @@
   }
 
   function guildCooldownRemainingSeconds(value) {
-    const timestamp = Date.parse(value || "");
-    if (!timestamp || timestamp <= Date.now()) return 0;
+    const timestamp = getGuildBossEffectiveCooldownTimestamp(value);
+    if (!timestamp) return 0;
     return Math.ceil((timestamp - Date.now()) / 1000);
   }
 
@@ -14818,9 +14972,9 @@
     const currentBossIndex = clamp(Math.floor(Number(bossState.current_boss_index || 0)), 0, REGIONS.length);
     if (currentBossIndex >= REGIONS.length) return toast("Todos os Bosses da Irmandade ja foram derrotados hoje.", "gold-toast");
     if (bossIndex !== currentBossIndex) return toast("A Irmandade precisa derrotar os bosses em sequencia.", "danger-toast");
-    const cooldownUntil = Date.parse(bossState.cooldown_until || "");
-    if (cooldownUntil && cooldownUntil > Date.now()) {
-      toast(`Boss da Irmandade recarrega em ${guildCooldownRemainingText(bossState.cooldown_until) || formatArenaDuration((cooldownUntil - Date.now()) / 1000)}.`, "danger-toast");
+    const cooldownRemaining = guildCooldownRemainingSeconds(bossState.cooldown_until);
+    if (cooldownRemaining > 0) {
+      toast(`Boss da Irmandade recarrega em ${formatArenaDuration(cooldownRemaining)}.`, "danger-toast");
       return;
     }
     if (getGuildBossTickets() <= 0) return toast("Talvez aqueles baús sirvam pra alguma coisa...", "danger-toast");

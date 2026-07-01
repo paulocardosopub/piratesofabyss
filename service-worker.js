@@ -1,14 +1,18 @@
-const CACHE = "pirates-abyss-v268-mini-guild-boss";
+const CACHE = "pirates-abyss-v276-damage-guild-boss";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=149",
-  "version.js?v=5",
+  "styles.css?v=151",
+  "version.js?v=6",
   "auth.js?v=8",
-  "game.js?v=265",
+  "game.js?v=276",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",
+  "assets/effects/balaseskills.png",
+  "assets/effects/damage.png",
+  "assets/effects/fumaca.png",
+  "assets/effects/lanca.png",
   "assets/effects/reparo_barco_3sprites.png",
   "assets/ui/tabs/mobile/icon_combate_square.png",
   "assets/ui/tabs/mobile/icon_navio_square.png",

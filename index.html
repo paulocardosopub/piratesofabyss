@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=150">
+  <link rel="stylesheet" href="styles.css?v=151">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -31,7 +31,7 @@
     <article class="desktop-welcome-card">
       <span class="eyebrow">EXECUTAVEL</span>
       <h1 id="desktop-welcome-title">Bem vindo de volta!</h1>
-      <small class="app-version" id="desktop-welcome-version">Versao 1.0.10</small>
+      <small class="app-version" id="desktop-welcome-version">Versao 1.0.11</small>
       <div class="desktop-welcome-status" id="desktop-welcome-status" aria-live="polite">Pronto para jogar.</div>
       <div class="desktop-welcome-actions">
         <button class="button primary" id="desktop-welcome-update-button" type="button" data-desktop-check-update>Verificar atualiza&ccedil;&otilde;es</button>
@@ -45,7 +45,7 @@
       <div class="auth-heading">
         <span>Pirates of the Abyss</span>
         <h1 id="auth-title">Entrar</h1>
-        <small class="app-version" data-app-version>Versao 1.0.10</small>
+        <small class="app-version" data-app-version>Versao 1.0.11</small>
       </div>
       <label class="auth-field">
         <span>Usuario</span>
@@ -113,6 +113,10 @@
           <div class="combat-boss-progress" id="combat-boss-progress" aria-live="polite">
             <span id="combat-boss-progress-label">Monstros 0 / 100 para liberar o boss</span>
             <b class="combat-boss-progress-bar" aria-hidden="true"><i id="combat-boss-progress-fill"></i></b>
+          </div>
+          <div class="guild-boss-battle-timer hidden" id="guild-boss-battle-timer" aria-live="assertive">
+            <span>BOSS DA IRMANDADE</span>
+            <strong id="guild-boss-battle-time">30s</strong>
           </div>
           <div class="boss-defeated-banner hidden" id="boss-defeated-banner" aria-live="assertive">Boss Derrotado</div>
 
@@ -563,9 +567,9 @@
     </div>
   </div>
 
-  <script src="version.js?v=5"></script>
+  <script src="version.js?v=6"></script>
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=9"></script>
-  <script src="game.js?v=274"></script>
+  <script src="game.js?v=276"></script>
 </body>
 </html>

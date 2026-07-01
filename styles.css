@@ -605,6 +605,70 @@ body.cannon-smoke-editor-active #sea-canvas:active { cursor: grabbing; }
 }
 .boss-defeated-banner.hidden { display: none; }
 .persistent-combat.combat-minimized .boss-defeated-banner { display: none; }
+.guild-boss-battle-timer {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  z-index: 13;
+  display: grid;
+  min-width: 132px;
+  transform: translateX(-50%);
+  padding: 7px 14px 8px;
+  border: 1px solid rgba(247, 189, 74, .44);
+  border-radius: 8px;
+  color: #fff0bc;
+  background: rgba(8, 20, 29, .82);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .34), 0 0 18px rgba(247, 189, 74, .12);
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(7px);
+}
+.guild-boss-battle-timer span {
+  color: rgba(229, 241, 235, .76);
+  font-size: 8px;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.guild-boss-battle-timer strong {
+  margin-top: 2px;
+  color: #ffd56d;
+  font: 950 24px/1 ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-shadow: 0 0 10px rgba(247, 189, 74, .44);
+}
+.guild-boss-battle-timer.warning {
+  border-color: rgba(255, 92, 71, .7);
+  background: rgba(58, 9, 13, .86);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .42), 0 0 22px rgba(255, 80, 58, .26);
+}
+.guild-boss-battle-timer.warning strong {
+  color: #ff725d;
+  font-weight: 1000;
+  text-shadow: 0 0 12px rgba(255, 72, 48, .78);
+}
+.guild-boss-battle-timer.critical {
+  animation: guild-boss-timer-pulse .42s ease-in-out infinite alternate;
+}
+.persistent-combat.combat-minimized .guild-boss-battle-timer,
+body.desktop-mini-overlay .guild-boss-battle-timer {
+  top: 6px;
+  min-width: 74px;
+  padding: 4px 8px 5px;
+}
+.persistent-combat.combat-minimized .guild-boss-battle-timer span,
+body.desktop-mini-overlay .guild-boss-battle-timer span {
+  display: none;
+}
+.persistent-combat.combat-minimized .guild-boss-battle-timer strong,
+body.desktop-mini-overlay .guild-boss-battle-timer strong {
+  font-size: 14px;
+}
+@keyframes guild-boss-timer-pulse {
+  from { transform: translateX(-50%) scale(1); }
+  to { transform: translateX(-50%) scale(1.08); }
+}
 .battle-stage.combat-map-transition::after {
   content: "";
   position: absolute;
