@@ -5,12 +5,18 @@ on:
     branches:
       - main
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Release desktop
+    types:
+      - completed
 
 permissions:
   contents: write
 
 jobs:
   cleanup:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:

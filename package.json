@@ -9,12 +9,13 @@
   "scripts": {
     "dev:desktop": "npm run build:web && npm run build:icons && electron .",
     "build:web": "node scripts/build-web.js && node scripts/optimize-assets.js dist-web/assets",
+    "cleanup:release-artifacts": "node scripts/cleanup-release-artifacts.js",
     "optimize:assets": "node scripts/optimize-assets.js assets",
     "build:icons": "node scripts/build-icons.js",
     "build:desktop": "npm run build:web && npm run build:icons && electron-builder --dir",
     "dist": "npm run package:windows",
-    "package:windows": "npm run build:web && npm run build:icons && electron-builder --win nsis portable --publish never",
-    "release:windows": "npm run build:web && npm run build:icons && electron-builder --win nsis portable --publish always"
+    "package:windows": "npm run cleanup:release-artifacts && npm run build:web && npm run build:icons && electron-builder --win nsis portable --publish never && npm run cleanup:release-artifacts",
+    "release:windows": "npm run cleanup:release-artifacts && npm run build:web && npm run build:icons && electron-builder --win nsis portable --publish always && npm run cleanup:release-artifacts"
   },
   "build": {
     "appId": "com.paulocardosopub.piratesofabyss",
