@@ -1,11 +1,11 @@
-const CACHE = "pirates-abyss-v250-ranking-arena";
+const CACHE = "pirates-abyss-v251-mobile-arena";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=142",
-  "version.js?v=4",
+  "styles.css?v=143",
+  "version.js?v=5",
   "auth.js?v=7",
-  "game.js?v=249",
+  "game.js?v=250",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",

@@ -6,7 +6,7 @@
   const DESKTOP_DOWNLOAD_DISMISS_KEY = "pirates-of-the-abyss-desktop-download-hidden-until";
   const DESKTOP_DOWNLOAD_DISMISS_MS = 24 * 60 * 60 * 1000;
   const DESKTOP_DOWNLOAD_URL = "https://github.com/paulocardosopub/piratesofabyss/releases/latest/download/Pirates-of-the-Abyss-Setup-latest-x64.exe";
-  const DEFAULT_APP_VERSION = "1.0.7";
+  const DEFAULT_APP_VERSION = "1.0.8";
   const APP_VERSION = String(window.PIRATES_APP_VERSION || window.PiratesDesktop?.version || DEFAULT_APP_VERSION).trim() || DEFAULT_APP_VERSION;
   const APP_VERSION_LABEL = `Versao ${APP_VERSION}`;
   const LEADERBOARD_LIMIT = 50;
@@ -14245,6 +14245,10 @@
   function handleScreenTargetNavigation(target) {
     if (!target?.dataset?.screenTarget) return false;
     const screen = normalizeScreen(target.dataset.screenTarget);
+    if (screen === "ranking" && target.dataset.rankingTab === "arena") {
+      openRankingArenaScreen("arena");
+      return true;
+    }
     if (mobileCombatPanelOpen && screen === currentScreen) {
       closeMobileCombatPanel();
       return true;

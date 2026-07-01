@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=142">
+  <link rel="stylesheet" href="styles.css?v=143">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -32,7 +32,7 @@
       <div class="auth-heading">
         <span>Pirates of the Abyss</span>
         <h1 id="auth-title">Entrar</h1>
-        <small class="app-version" data-app-version>Versao 1.0.7</small>
+        <small class="app-version" data-app-version>Versao 1.0.8</small>
       </div>
       <label class="auth-field">
         <span>Usuario</span>
@@ -175,6 +175,9 @@
               <source media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" srcset="assets/ui/tabs/mobile/icon_mapa_square.png">
               <img src="assets/ui/tabs/web/tab_mapa.png" alt="" draggable="false">
             </picture>
+          </button>
+          <button class="tab-item tab-item-arena" data-screen-target="ranking" data-ranking-tab="arena" aria-label="Ranking e Arena">
+            <span class="tab-symbol tab-symbol-arena" aria-hidden="true">&#9876;</span>
           </button>
           <button class="tab-item" data-screen-target="captain" aria-label="Capitão">
             <picture>
@@ -540,9 +543,9 @@
     </div>
   </div>
 
-  <script src="version.js?v=4"></script>
+  <script src="version.js?v=5"></script>
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=7"></script>
-  <script src="game.js?v=249"></script>
+  <script src="game.js?v=250"></script>
 </body>
 </html>
