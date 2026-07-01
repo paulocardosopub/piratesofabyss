@@ -1,0 +1,53 @@
+name: Cleanup old release assets
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Delete old Windows installers
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $keepTag = "v$($package.version)"
+          $assetPattern = "^(latest\.yml|Pirates-of-the-Abyss-.*(Setup.*\.(exe|blockmap)|portable\.exe))$"
+
+          Write-Host "Mantendo assets da release $keepTag."
+          $releaseRows = gh api --paginate "repos/$env:REPO/releases" --jq '.[] | [.id, .tag_name] | @tsv'
+          foreach ($row in $releaseRows) {
+            if (-not $row) { continue }
+            $parts = $row -split "`t", 2
+            $releaseId = $parts[0]
+            $tag = $parts[1]
+            if ($tag -eq $keepTag) {
+              Write-Host "Preservando $tag."
+              continue
+            }
+
+            $assetRows = gh api "repos/$env:REPO/releases/$releaseId/assets?per_page=100" --jq '.[] | [.id, .name] | @tsv'
+            foreach ($assetRow in $assetRows) {
+              if (-not $assetRow) { continue }
+              $assetParts = $assetRow -split "`t", 2
+              $assetId = $assetParts[0]
+              $assetName = $assetParts[1]
+              if ($assetName -notmatch $assetPattern) { continue }
+              Write-Host "Apagando $assetName de $tag."
+              gh api -X DELETE "repos/$env:REPO/releases/assets/$assetId"
+            }
+          }
