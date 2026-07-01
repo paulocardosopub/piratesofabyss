@@ -4911,7 +4911,7 @@ body {
 }
 
 .topbar {
-  z-index: 90;
+  z-index: 180;
   display: grid;
   grid-template-columns: 42px repeat(4, minmax(142px, 174px));
   justify-content: center;
@@ -6292,7 +6292,7 @@ body.is-combat-fullscreen .app-shell {
 body.is-combat-fullscreen .topbar {
   position: relative;
   top: auto;
-  z-index: 90;
+  z-index: 180;
   flex: 0 0 auto;
   padding-left: max(12px, env(safe-area-inset-left));
   padding-right: max(12px, env(safe-area-inset-right));
@@ -6459,7 +6459,7 @@ body.mobile-combat-fullscreen .screen {
 body.mobile-combat-fullscreen .topbar {
   position: relative;
   top: 0;
-  z-index: 120;
+  z-index: 180;
   flex: 0 0 calc(54px + env(safe-area-inset-top));
   width: 100%;
   height: calc(54px + env(safe-area-inset-top));

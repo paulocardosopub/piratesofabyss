@@ -39,12 +39,18 @@ jobs:
           $ErrorActionPreference = "Stop"
           $tag = $env:GITHUB_REF_NAME
           $repo = $env:GITHUB_REPOSITORY
-          $files = @("release/latest.yml")
-          $files += Get-ChildItem release -File -Filter "Pirates-of-the-Abyss-Setup-*.exe" | Where-Object { $_.Name -notlike "*.__uninstaller.exe" } | ForEach-Object { $_.FullName }
+          $setup = Get-ChildItem release -File -Filter "Pirates-of-the-Abyss-Setup-*.exe" | Where-Object { $_.Name -notlike "*.__uninstaller.exe" -and $_.Name -notlike "*latest*" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $setup) {
+            Write-Error "Setup de release nao encontrado."
+          }
+          $latestSetup = Join-Path $setup.DirectoryName "Pirates-of-the-Abyss-Setup-latest-x64.exe"
+          Copy-Item -LiteralPath $setup.FullName -Destination $latestSetup -Force
+
+          $files = @("release/latest.yml", $setup.FullName, $latestSetup)
           $files += Get-ChildItem release -File -Filter "Pirates-of-the-Abyss-Setup-*.exe.blockmap" | ForEach-Object { $_.FullName }
           $files += Get-ChildItem release -File -Filter "Pirates-of-the-Abyss-*-portable.exe" | ForEach-Object { $_.FullName }
 
-          if ($files.Count -lt 4) {
+          if ($files.Count -lt 5) {
             Write-Error "Arquivos de release incompletos: $($files -join ', ')"
           }
 

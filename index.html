@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=140">
+  <link rel="stylesheet" href="styles.css?v=141">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -32,7 +32,7 @@
       <div class="auth-heading">
         <span>Pirates of the Abyss</span>
         <h1 id="auth-title">Entrar</h1>
-        <small class="app-version" data-app-version>Versao 1.0.3</small>
+        <small class="app-version" data-app-version>Versao 1.0.6</small>
       </div>
       <label class="auth-field">
         <span>Usuario</span>
@@ -438,12 +438,12 @@
 
           <section class="stats-panel desktop-update-panel hidden" id="desktop-update-panel" data-stats-panel="desktopUpdate">
             <button class="stats-panel-toggle" type="button" data-toggle-stats-panel="desktopUpdate" aria-expanded="false">
-              <span><span class="eyebrow">EXECUTAVEL</span><strong>Atualizacao</strong><small id="desktop-update-summary">Buscar nova versao do jogo</small></span>
+              <span><span class="eyebrow" id="app-update-eyebrow">WEB / MOBILE</span><strong id="app-update-title">Atualizar jogo</strong><small id="desktop-update-summary">Buscar atualizacao no navegador</small></span>
               <i class="stats-panel-indicator" aria-hidden="true">+</i>
             </button>
             <div class="stats-panel-body" data-stats-panel-body="desktopUpdate">
               <div class="desktop-update-zone">
-                <div><strong>Buscar atualizacao</strong><span>Verifica uma nova versao sem fechar o jogo.</span><small id="desktop-update-status" aria-live="polite"></small></div>
+                <div><strong id="app-update-heading">Buscar atualizacao no browser</strong><span id="app-update-description">Verifica se existe uma versao nova publicada e recarrega o jogo.</span><small id="desktop-update-status" aria-live="polite"></small></div>
                 <button class="button primary" type="button" data-desktop-check-update>Buscar atualizacao</button>
               </div>
             </div>
@@ -529,9 +529,9 @@
     </div>
   </div>
 
-  <script src="version.js?v=2"></script>
+  <script src="version.js?v=3"></script>
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=7"></script>
-  <script src="game.js?v=247"></script>
+  <script src="game.js?v=248"></script>
 </body>
 </html>

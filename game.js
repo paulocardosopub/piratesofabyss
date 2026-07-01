@@ -5,8 +5,8 @@
   const COMBAT_MINIMIZED_KEY = "pirates-of-the-abyss-combat-minimized";
   const DESKTOP_DOWNLOAD_DISMISS_KEY = "pirates-of-the-abyss-desktop-download-hidden-until";
   const DESKTOP_DOWNLOAD_DISMISS_MS = 24 * 60 * 60 * 1000;
-  const DESKTOP_DOWNLOAD_URL = "https://drive.google.com/file/d/1wbu4ac3NjrVQQPidXAoB4KN2gnt_3cfM/view?usp=drive_link";
-  const DEFAULT_APP_VERSION = "1.0.3";
+  const DESKTOP_DOWNLOAD_URL = "https://github.com/paulocardosopub/piratesofabyss/releases/latest/download/Pirates-of-the-Abyss-Setup-latest-x64.exe";
+  const DEFAULT_APP_VERSION = "1.0.6";
   const APP_VERSION = String(window.PIRATES_APP_VERSION || window.PiratesDesktop?.version || DEFAULT_APP_VERSION).trim() || DEFAULT_APP_VERSION;
   const APP_VERSION_LABEL = `Versao ${APP_VERSION}`;
   const LEADERBOARD_LIMIT = 50;
@@ -4510,19 +4510,28 @@
 
   function syncDesktopUpdatePanel() {
     const panel = $("#desktop-update-panel");
+    const eyebrow = $("#app-update-eyebrow");
+    const title = $("#app-update-title");
     const summary = $("#desktop-update-summary");
+    const heading = $("#app-update-heading");
+    const description = $("#app-update-description");
     const status = $("#desktop-update-status");
     const button = $("[data-desktop-check-update]");
     const desktop = isDesktopExecutable();
-    panel?.classList.toggle("hidden", !desktop);
-    if (summary) summary.textContent = desktopUpdateState.message || "Buscar nova versao do jogo";
+    const defaultMessage = desktop ? "Buscar nova versao do jogo" : "Buscar atualizacao no navegador";
+    panel?.classList.remove("hidden");
+    if (eyebrow) eyebrow.textContent = desktop ? "EXECUTAVEL" : "WEB / MOBILE";
+    if (title) title.textContent = desktop ? "Atualizacao" : "Atualizar jogo";
+    if (heading) heading.textContent = desktop ? "Buscar atualizacao" : "Buscar atualizacao no browser";
+    if (description) description.textContent = desktop ? "Verifica uma nova versao sem fechar o jogo." : "Verifica se existe uma versao nova publicada e recarrega o jogo.";
+    if (summary) summary.textContent = desktopUpdateState.message || defaultMessage;
     if (status) {
-      status.textContent = desktop ? desktopUpdateState.message || "" : "";
+      status.textContent = desktopUpdateState.message || "";
       status.classList.toggle("danger", desktopUpdateState.status === "error" || desktopUpdateState.status === "unavailable");
     }
     if (button) {
       const busy = desktopUpdateState.status === "checking" || desktopUpdateState.status === "downloading";
-      button.disabled = !desktop || busy;
+      button.disabled = busy;
       button.textContent = busy ? "Verificando..." : "Buscar atualizacao";
     }
   }
@@ -4595,6 +4604,65 @@
       console.warn("Nao foi possivel buscar atualizacoes.", error);
       setDesktopUpdateStatus("error", "Nao foi possivel verificar atualizacoes agora.");
     }
+  }
+
+  function compareVersionLabels(a = "0", b = "0") {
+    const left = String(a).split(".").map(part => Number.parseInt(part, 10) || 0);
+    const right = String(b).split(".").map(part => Number.parseInt(part, 10) || 0);
+    const length = Math.max(left.length, right.length);
+    for (let index = 0; index < length; index += 1) {
+      const diff = (left[index] || 0) - (right[index] || 0);
+      if (diff) return diff;
+    }
+    return 0;
+  }
+
+  async function fetchPublishedBrowserVersion() {
+    const response = await fetch(`version.js?check=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const text = await response.text();
+    const match = text.match(/PIRATES_APP_VERSION\s*=\s*["']([^"']+)["']/);
+    return match?.[1] ? String(match[1]).trim() : "";
+  }
+
+  async function clearBrowserUpdateCaches() {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(key => caches.delete(key)));
+    }
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(registration => registration.update().catch(() => {})));
+    }
+  }
+
+  async function checkBrowserUpdate() {
+    setDesktopUpdateStatus("checking", "Verificando versao publicada...");
+    try {
+      const latestVersion = await fetchPublishedBrowserVersion();
+      if (!latestVersion) throw new Error("Versao publicada nao encontrada.");
+      if (compareVersionLabels(latestVersion, APP_VERSION) <= 0) {
+        setDesktopUpdateStatus("idle", `Jogo atualizado: versao ${APP_VERSION}.`);
+        toast("Voce ja esta na versao mais recente.", "gold-toast");
+        return;
+      }
+      setDesktopUpdateStatus("downloading", `Nova versao ${latestVersion} encontrada. Atualizando...`);
+      saveGame();
+      await clearBrowserUpdateCaches();
+      window.setTimeout(() => window.location.reload(), 250);
+    } catch (error) {
+      console.warn("Nao foi possivel buscar atualizacao web.", error);
+      setDesktopUpdateStatus("error", "Nao foi possivel verificar a versao no navegador.");
+      toast("Nao foi possivel verificar atualizacoes agora.", "danger-toast");
+    }
+  }
+
+  function checkAppUpdate() {
+    if (isDesktopExecutable() && window.PiratesDesktop?.checkForUpdates) {
+      checkDesktopUpdate();
+      return;
+    }
+    checkBrowserUpdate();
   }
 
   function handleDesktopWindowAction(action) {
@@ -14101,7 +14169,7 @@
       return;
     }
     if (target.dataset.desktopCheckUpdate !== undefined) {
-      checkDesktopUpdate();
+      checkAppUpdate();
       return;
     }
     if (target.dataset.mobilePanelClose !== undefined) {
