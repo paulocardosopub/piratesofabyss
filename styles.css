@@ -3028,7 +3028,7 @@ body.desktop-mini-overlay .guild-boss-battle-timer strong {
 .arena-opponent-stats span { color: var(--muted); font-size: 6px; font-weight: 900; line-height: 1; text-transform: uppercase; }
 .arena-opponent-stats strong { margin-top: 1px; color: #f2f6f4; font-size: 8px; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .arena-opponent-action .button { width: 100%; min-height: 30px; padding: 4px 7px; border-radius: 4px; font-size: 10px; }
-.arena-online-panel { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(110,239,226,.14); }
+.arena-online-panel { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(110,239,226,.14); }
 .arena-online-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .arena-online-heading h3 { margin: 2px 0 2px; color: #fff; font: 800 15px/1.05 ui-sans-serif, system-ui, sans-serif; }
 .arena-online-heading p { margin: 0; color: var(--muted); font-size: 11px; }

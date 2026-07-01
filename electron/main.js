@@ -276,6 +276,11 @@ function keepMiniOverlayOnTop(win) {
   applyMiniOverlayTopState(win);
 }
 
+function notifyMiniOverlayState(win, active) {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.send("desktop-mini-overlay-state", { active: Boolean(active) });
+}
+
 function showMiniOverlayContextMenu(win) {
   if (!win || win.isDestroyed()) return { ok: false, message: "Janela indisponivel." };
   const menu = Menu.buildFromTemplate([
@@ -318,6 +323,7 @@ async function enterMiniOverlay(win) {
   win.show();
   keepMiniOverlayOnTop(win);
   win.focus();
+  notifyMiniOverlayState(win, true);
   return { ok: true };
 }
 
@@ -338,6 +344,7 @@ async function exitMiniOverlay(win) {
   if (restore?.fullscreen) win.setFullScreen(true);
   win.show();
   win.focus();
+  notifyMiniOverlayState(win, false);
   return { ok: true };
 }
 
@@ -433,7 +440,7 @@ function registerDesktopIpcHandlers() {
   ipcMain.handle("desktop-window-action", (event, action) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win || win.isDestroyed()) return { ok: false };
-    if (action === "minimize") win.minimize();
+    if (action === "minimize") return enterMiniOverlay(win);
     else if (action === "maximize") win.isMaximized() ? win.unmaximize() : win.maximize();
     else if (action === "close") win.close();
     return { ok: true };
@@ -489,6 +496,14 @@ function createWindow() {
   });
   win.on("focus", () => pulseMiniOverlayTopPriority(win));
   win.on("show", () => pulseMiniOverlayTopPriority(win));
+  win.on("minimize", event => {
+    event.preventDefault();
+    if (isMiniOverlayActive(win)) {
+      pulseMiniOverlayTopPriority(win);
+      return;
+    }
+    enterMiniOverlay(win).catch(error => writeUpdateLog("error", error?.stack || error?.message || error));
+  });
   win.on("closed", stopMiniOverlayTopPulse);
 
   win.loadURL(getInitialAppUrl());

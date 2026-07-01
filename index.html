@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=151">
+  <link rel="stylesheet" href="styles.css?v=152">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -31,7 +31,7 @@
     <article class="desktop-welcome-card">
       <span class="eyebrow">EXECUTAVEL</span>
       <h1 id="desktop-welcome-title">Bem vindo de volta!</h1>
-      <small class="app-version" id="desktop-welcome-version">Versao 1.0.11</small>
+      <small class="app-version" id="desktop-welcome-version">Versao 1.0.12</small>
       <div class="desktop-welcome-status" id="desktop-welcome-status" aria-live="polite">Pronto para jogar.</div>
       <div class="desktop-welcome-actions">
         <button class="button primary" id="desktop-welcome-update-button" type="button" data-desktop-check-update>Verificar atualiza&ccedil;&otilde;es</button>
@@ -45,7 +45,7 @@
       <div class="auth-heading">
         <span>Pirates of the Abyss</span>
         <h1 id="auth-title">Entrar</h1>
-        <small class="app-version" data-app-version>Versao 1.0.11</small>
+        <small class="app-version" data-app-version>Versao 1.0.12</small>
       </div>
       <label class="auth-field">
         <span>Usuario</span>
@@ -96,7 +96,6 @@
         <div class="battle-stage" id="battle-stage">
           <canvas id="sea-canvas" aria-label="Duelo naval automático."></canvas>
           <div class="scene-vignette"></div>
-          <button class="combat-desktop-mini-toggle hidden" id="desktop-mini-toggle" type="button" data-desktop-mini-enter aria-label="Abrir miniatura desktop" data-help-tooltip="Mostra somente o combate em uma faixa pequena por cima do desktop."><span aria-hidden="true">&#x25AD;</span></button>
           <button class="combat-save-toggle" id="manual-save-button" type="button" data-force-cloud-save aria-label="Forçar salvamento na nuvem" title="Forçar salvamento na nuvem" data-help-tooltip="Força o salvamento atual na nuvem antes de fechar o jogo."><span aria-hidden="true">&#128190;</span></button>
           <button class="combat-guild-toggle" id="combat-guild-toggle" type="button" data-screen-target="guild" aria-label="Abrir Irmandade Pirata" data-help-tooltip="Abre a pagina da Irmandade Pirata."><span aria-hidden="true">&#x2620;</span></button>
           <button class="combat-arena-toggle" id="combat-arena-toggle" type="button" data-combat-arena-open aria-label="Abrir Ranking e Arena" data-help-tooltip="Abre a pagina de Ranking dos Piratas e Arena PvP."><span aria-hidden="true">&#9876;</span></button>
@@ -321,15 +320,6 @@
             <div class="leaderboard-list" id="leaderboard-list"></div>
           </div>
           <div class="leaderboard-panel hidden" id="leaderboard-arena-panel">
-            <div class="arena-heading compact">
-              <div><span class="eyebrow">ARENA PVP ASSINCRONA</span><h3>Arena dos Piratas</h3><p>Desafie navios salvos no ranking com capitao, barco e status atuais.</p></div>
-              <div class="arena-actions">
-                <button class="button primary" id="arena-toggle" type="button">Desafiar Jogador</button>
-                <button class="button" id="arena-refresh" type="button">Atualizar</button>
-              </div>
-            </div>
-            <div class="arena-status" id="arena-status">Clique para buscar inimigos da Arena.</div>
-            <div class="arena-list hidden" id="arena-list"></div>
             <div class="arena-online-panel hidden" id="arena-online-panel">
               <div class="arena-online-heading">
                 <div><span class="eyebrow">ARENA PVP ONLINE</span><h3>Salas 1x1 sincronizadas</h3><p>Crie uma sala, atualize a lista ou entre em um duelo aberto.</p></div>
@@ -342,6 +332,15 @@
               <div class="arena-online-current" id="arena-online-current"></div>
               <div class="arena-online-list" id="arena-online-list"></div>
             </div>
+            <div class="arena-heading compact">
+              <div><span class="eyebrow">ARENA PVP ASSINCRONA</span><h3>Arena dos Piratas</h3><p>Desafie navios salvos no ranking com capitao, barco e status atuais.</p></div>
+              <div class="arena-actions">
+                <button class="button primary" id="arena-toggle" type="button">Desafiar Jogador</button>
+                <button class="button" id="arena-refresh" type="button">Atualizar</button>
+              </div>
+            </div>
+            <div class="arena-status" id="arena-status">Clique para buscar inimigos da Arena.</div>
+            <div class="arena-list hidden" id="arena-list"></div>
           </div>
         </article>
       </section>
@@ -567,9 +566,9 @@
     </div>
   </div>
 
-  <script src="version.js?v=6"></script>
+  <script src="version.js?v=7"></script>
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=9"></script>
-  <script src="game.js?v=276"></script>
+  <script src="game.js?v=280"></script>
 </body>
 </html>

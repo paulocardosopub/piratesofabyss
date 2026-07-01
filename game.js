@@ -6,7 +6,7 @@
   const DESKTOP_DOWNLOAD_DISMISS_KEY = "pirates-of-the-abyss-desktop-download-hidden-until";
   const DESKTOP_DOWNLOAD_DISMISS_MS = 24 * 60 * 60 * 1000;
   const DESKTOP_DOWNLOAD_URL = "https://github.com/paulocardosopub/piratesofabyss/releases/latest/download/Pirates-of-the-Abyss-Setup-latest-x64.exe";
-  const DEFAULT_APP_VERSION = "1.0.11";
+  const DEFAULT_APP_VERSION = "1.0.12";
   const APP_VERSION = String(window.PIRATES_APP_VERSION || window.PiratesDesktop?.version || DEFAULT_APP_VERSION).trim() || DEFAULT_APP_VERSION;
   const APP_VERSION_LABEL = `Versao ${APP_VERSION}`;
   const LEADERBOARD_LIMIT = 50;
@@ -18,6 +18,7 @@
   const ARENA_ATTACK_SPEED_REFERENCE_MIN = 100;
   const ARENA_ATTACK_SPEED_REFERENCE_MAX = 1000000;
   const ARENA_BALANCED_ATTACK_INTERVAL_MS = ARENA_ATTACK_INTERVAL_DEFAULT_MS;
+  const ARENA_HP_MULTIPLIER = 10;
   const ARENA_START_DELAY_MS = 3000;
   const ARENA_SNAPSHOT_SYNC_INTERVAL_MS = 10000;
   const PVP_ROOM_POLL_INTERVAL_MS = 2400;
@@ -2688,10 +2689,12 @@
   let desktopUpdateState = { status: "idle", message: "Buscar nova versao do jogo", version: "", canInstall: false };
   let desktopWelcomeShownThisSession = false;
   let removeDesktopUpdateStatusListener = null;
+  let removeDesktopMiniOverlayStateListener = null;
   let lastCombatQuickActionButton = null;
   let combatQuickFeedbackTimer = 0;
   let helpTooltipNode = null;
   let helpTooltipTimer = 0;
+  let helpTooltipAutoHideTimer = 0;
   let helpTooltipTarget = null;
   let helpTooltipLongPressTarget = null;
   let helpTooltipSuppressClickUntil = 0;
@@ -3524,9 +3527,32 @@
       window.clearTimeout(helpTooltipTimer);
       helpTooltipTimer = 0;
     }
+    if (helpTooltipAutoHideTimer) {
+      window.clearTimeout(helpTooltipAutoHideTimer);
+      helpTooltipAutoHideTimer = 0;
+    }
+    helpTooltipLongPressTarget = null;
+    helpTooltipSuppressClickUntil = 0;
     helpTooltipTarget = null;
     helpTooltipNode?.remove();
     helpTooltipNode = null;
+  }
+
+  function isHelpTooltipTargetActive() {
+    if (!helpTooltipTarget?.isConnected) return false;
+    if (helpTooltipTarget.matches?.(":hover")) return true;
+    const active = document.activeElement;
+    return Boolean(active && (active === helpTooltipTarget || helpTooltipTarget.contains?.(active)));
+  }
+
+  function validateHelpTooltipTarget() {
+    if (!helpTooltipNode) return;
+    if (!isHelpTooltipTargetActive()) hideHelpTooltip();
+  }
+
+  function scheduleHelpTooltipAutoHide() {
+    if (helpTooltipAutoHideTimer) window.clearTimeout(helpTooltipAutoHideTimer);
+    helpTooltipAutoHideTimer = window.setTimeout(hideHelpTooltip, 6500);
   }
 
   function showHelpTooltip(target) {
@@ -3536,6 +3562,7 @@
     if (helpTooltipTarget === nodeTarget && helpTooltipNode) {
       helpTooltipNode.textContent = text;
       positionHelpTooltip(nodeTarget);
+      scheduleHelpTooltipAutoHide();
       return;
     }
     hideHelpTooltip();
@@ -3545,6 +3572,7 @@
     helpTooltipNode.textContent = text;
     document.body.appendChild(helpTooltipNode);
     positionHelpTooltip(nodeTarget);
+    scheduleHelpTooltipAutoHide();
   }
 
   function positionHelpTooltip(nodeTarget) {
@@ -4457,6 +4485,16 @@
     };
   }
 
+  function getArenaDuelMaxHp(baseHp = 1) {
+    return Math.max(1, Math.round(Math.max(1, Number(baseHp) || 1) * ARENA_HP_MULTIPLIER));
+  }
+
+  function getArenaDuelCurrentHp(baseCurrentHp = 0, baseMaxHp = 1) {
+    const maxHp = getArenaDuelMaxHp(baseMaxHp);
+    const current = Math.round(Math.max(0, Number(baseCurrentHp) || 0) * ARENA_HP_MULTIPLIER);
+    return current > 0 ? clamp(current, 1, maxHp) : maxHp;
+  }
+
   function normalizeArenaOpponent(row = {}, index = 0) {
     const snapshot = row.pvp_snapshot || row.snapshot || row;
     const ship = snapshot.ship || {};
@@ -4498,8 +4536,8 @@
     const arenaRange = arenaBandForPower(combatPower);
     const sourceMaxHp = rawMaxHp > 0 ? rawMaxHp : Math.max(1, Math.round(Number(matchedShip?.hp || 0) || arenaRange.preferredHp));
     const sourceDamage = rawDamage > 0 ? rawDamage : Math.max(1, Math.round(Number(matchedShip?.damage || 0) || arenaRange.preferredDamage));
-    const maxHp = Math.max(1, Math.round(sourceMaxHp));
-    const currentHp = rawCurrentHp > 0 ? clamp(Math.round(rawCurrentHp), 1, maxHp) : maxHp;
+    const maxHp = getArenaDuelMaxHp(sourceMaxHp);
+    const currentHp = getArenaDuelCurrentHp(rawCurrentHp || sourceMaxHp, sourceMaxHp);
     const damage = Math.max(1, Math.round(sourceDamage));
     const dps = Math.max(1, rawDps || Math.round(damage * 1000 / attackIntervalMs + (pet?.dps || 0)) || damage);
     const armor = Math.max(0, Math.round(Number(combat.defense ?? combat.armor ?? ship.armor ?? 0) || 0));
@@ -4528,7 +4566,7 @@
       dps,
       pet,
       pet_dps: pet?.dps || 0,
-      source_max_hp: rawMaxHp,
+      source_max_hp: sourceMaxHp,
       source_damage: rawDamage,
       source_dps: dps,
       naval_power: combatPower,
@@ -5520,9 +5558,29 @@
     [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("desktop-executable", desktop));
     [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("desktop-mini-overlay", desktopMiniOverlayMode));
     $("#desktop-window-bar")?.classList.toggle("hidden", !desktop || desktopMiniOverlayMode);
-    $("#desktop-mini-toggle")?.classList.toggle("hidden", !canUseDesktopMiniOverlay() || desktopMiniOverlayMode);
     $("#desktop-mini-controls")?.classList.toggle("hidden", !desktopMiniOverlayMode);
     syncDesktopUpdatePanel();
+  }
+
+  function applyDesktopMiniOverlayStateFromHost(active) {
+    const next = Boolean(active);
+    if (next) {
+      if (combatMinimized) setCombatMinimized(false, false);
+      if (mobileCombatFullscreen || combatFullscreenSource === "mobile") setMobileCombatFullscreen(false);
+    } else {
+      clearDesktopMiniDragState();
+    }
+    desktopMiniOverlayMode = next;
+    hideHelpTooltip();
+    syncDesktopExecutableUi();
+    resizeCombatViewport();
+  }
+
+  function installDesktopMiniOverlayStateListener() {
+    if (removeDesktopMiniOverlayStateListener || !window.PiratesDesktop?.onMiniOverlayState) return;
+    removeDesktopMiniOverlayStateListener = window.PiratesDesktop.onMiniOverlayState(payload => {
+      applyDesktopMiniOverlayStateFromHost(payload?.active);
+    });
   }
 
   function installDesktopUpdateStatusListener() {
@@ -5542,6 +5600,7 @@
     }
     if (combatMinimized) setCombatMinimized(false, false);
     desktopMiniOverlayMode = true;
+    hideHelpTooltip();
     if (mobileCombatFullscreen || combatFullscreenSource === "mobile") setMobileCombatFullscreen(false);
     syncDesktopExecutableUi();
     resizeCombatViewport();
@@ -5563,6 +5622,7 @@
     if (!desktopMiniOverlayMode) return;
     clearDesktopMiniDragState();
     desktopMiniOverlayMode = false;
+    hideHelpTooltip();
     syncDesktopExecutableUi();
     resizeCombatViewport();
     try {
@@ -5665,6 +5725,10 @@
 
   function handleDesktopWindowAction(action) {
     if (!isDesktopExecutable() || !window.PiratesDesktop?.windowAction) return;
+    if (action === "minimize" && canUseDesktopMiniOverlay()) {
+      enterDesktopMiniOverlay();
+      return;
+    }
     window.PiratesDesktop.windowAction(action).catch(error => console.warn("Acao da janela desktop falhou.", error));
   }
 
@@ -8948,6 +9012,14 @@
     }
 
     getPlayerProjectileSpriteSpec(item) {
+      const type = this.normalizeProjectileType(item.projectileType);
+      if (type === "sabotage") {
+        return {
+          image: requestCannonProjectileSprite(),
+          frame: CANNON_PROJECTILE_FRAMES.sabotage,
+          scale: CANNON_SABOTAGE_NET_SCALE
+        };
+      }
       if (!canUseAdvancedCannonProjectileSprites(item.shipId ?? state.shipId)) {
         return {
           image: requestCannonLanceProjectileSprite(),
@@ -8955,7 +9027,6 @@
           scale: CANNON_LANCE_PROJECTILE_SCALE
         };
       }
-      const type = this.normalizeProjectileType(item.projectileType);
       return {
         image: requestCannonProjectileSprite(),
         frame: CANNON_PROJECTILE_FRAMES[type] || CANNON_PROJECTILE_FRAMES.basic,
@@ -15292,7 +15363,7 @@
   }
 
   function getArenaPlayerMaxHp(stats = getStats()) {
-    return Math.max(1, Math.round(Number(stats.maxHp) || 1));
+    return getArenaDuelMaxHp(stats.maxHp);
   }
 
   function getActivePlayerMaxHp(stats = getStats()) {
@@ -17009,8 +17080,10 @@
   document.addEventListener("pointerleave", hideHelpTooltip, true);
   document.addEventListener("focusin", event => showHelpTooltip(event.target));
   document.addEventListener("focusout", hideHelpTooltip);
+  document.addEventListener("pointermove", validateHelpTooltipTarget, true);
+  document.addEventListener("pointerdown", hideHelpTooltip, true);
   document.addEventListener("pointerdown", handleHelpTooltipPointerDown);
-  ["pointerup", "pointercancel", "scroll"].forEach(type => document.addEventListener(type, hideHelpTooltip, true));
+  ["pointerup", "pointercancel", "scroll", "wheel"].forEach(type => document.addEventListener(type, hideHelpTooltip, true));
   document.addEventListener("pointerdown", startTradeHold);
   ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
 
@@ -17035,10 +17108,12 @@
   $("#captain-mutiny-confirm").addEventListener("click", confirmCaptainMutiny);
 
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  document.addEventListener("visibilitychange", hideHelpTooltip);
   document.addEventListener("keydown", handleCombatFullscreenKeydown);
   ["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"].forEach(type => document.addEventListener(type, handleCombatFullscreenChange));
   window.addEventListener("popstate", handleCombatFullscreenPopState);
   window.addEventListener("resize", () => {
+    hideHelpTooltip();
     renderCaptainPreviewCanvases();
     renderPetPreviewCanvases();
     updateMobileCombatFullscreen();
@@ -17046,12 +17121,16 @@
     if (combatFullscreen || desktopMiniOverlayMode) resizeCombatViewport();
   });
   window.addEventListener("orientationchange", updateMobileCombatFullscreen);
+  window.addEventListener("blur", hideHelpTooltip);
+  window.addEventListener("pagehide", hideHelpTooltip);
+  window.visualViewport?.addEventListener?.("scroll", hideHelpTooltip);
   window.screen?.orientation?.addEventListener?.("change", updateMobileCombatFullscreen);
   window.visualViewport?.addEventListener?.("resize", updateMobileCombatFullscreen);
   window.addEventListener("beforeunload", saveGame);
 
   AUTH_MANAGER?.initLoginScreen?.();
   syncAppVersionLabels();
+  installDesktopMiniOverlayStateListener();
   installDesktopUpdateStatusListener();
   syncDesktopExecutableUi();
   showDesktopWelcomeScreen();

@@ -14,6 +14,12 @@ contextBridge.exposeInMainWorld("PiratesDesktop", {
   checkForUpdates: () => ipcRenderer.invoke("desktop-check-for-updates"),
   installUpdate: () => ipcRenderer.invoke("desktop-install-update"),
   windowAction: action => ipcRenderer.invoke("desktop-window-action", action),
+  onMiniOverlayState: callback => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("desktop-mini-overlay-state", listener);
+    return () => ipcRenderer.removeListener("desktop-mini-overlay-state", listener);
+  },
   onUpdateStatus: callback => {
     if (typeof callback !== "function") return () => {};
     const listener = (_event, payload) => callback(payload);

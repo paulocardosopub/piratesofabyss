@@ -1,11 +1,11 @@
-const CACHE = "pirates-abyss-v276-damage-guild-boss";
+const CACHE = "pirates-abyss-v280-tooltip-sabotage";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=151",
-  "version.js?v=6",
+  "styles.css?v=152",
+  "version.js?v=7",
   "auth.js?v=8",
-  "game.js?v=276",
+  "game.js?v=280",
   "icon.svg",
   "manifest.webmanifest",
   "assets/effects/aura1.png",
