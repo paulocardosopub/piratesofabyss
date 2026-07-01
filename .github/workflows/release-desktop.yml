@@ -48,10 +48,22 @@ jobs:
             Write-Error "Arquivos de release incompletos: $($files -join ', ')"
           }
 
-          gh release view $tag --repo $repo *> $null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $repo --title $tag --latest
+          function Invoke-Gh {
+            param([string[]] $Arguments)
+            & gh @Arguments
+            if ($LASTEXITCODE -ne 0) {
+              throw "gh $($Arguments -join ' ') falhou com codigo $LASTEXITCODE"
+            }
           }
 
-          gh release upload $tag @files --repo $repo --clobber
-          gh release edit $tag --repo $repo --title $tag --latest
+          gh release delete $tag --repo $repo --yes
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Nenhuma release anterior para remover."
+          }
+
+          Invoke-Gh @("release", "create", $tag, "--repo", $repo, "--title", $tag, "--notes", "Release $tag", "--latest", "--verify-tag")
+          foreach ($file in $files) {
+            Write-Host "Enviando $file"
+            Invoke-Gh @("release", "upload", $tag, $file, "--repo", $repo)
+          }
+          Invoke-Gh @("release", "edit", $tag, "--repo", $repo, "--title", $tag, "--latest")
