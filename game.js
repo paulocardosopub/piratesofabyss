@@ -6,7 +6,7 @@
   const DESKTOP_DOWNLOAD_DISMISS_KEY = "pirates-of-the-abyss-desktop-download-hidden-until";
   const DESKTOP_DOWNLOAD_DISMISS_MS = 24 * 60 * 60 * 1000;
   const DESKTOP_DOWNLOAD_URL = "https://github.com/paulocardosopub/piratesofabyss/releases/latest/download/Pirates-of-the-Abyss-Setup-latest-x64.exe";
-  const DEFAULT_APP_VERSION = "1.0.8";
+  const DEFAULT_APP_VERSION = "1.0.10";
   const APP_VERSION = String(window.PIRATES_APP_VERSION || window.PiratesDesktop?.version || DEFAULT_APP_VERSION).trim() || DEFAULT_APP_VERSION;
   const APP_VERSION_LABEL = `Versao ${APP_VERSION}`;
   const LEADERBOARD_LIMIT = 50;
@@ -22,12 +22,18 @@
   const ARENA_SNAPSHOT_SYNC_INTERVAL_MS = 10000;
   const PVP_ROOM_POLL_INTERVAL_MS = 2400;
   const PVP_ROOM_LIST_CACHE_MS = 12000;
-  const PVP_ROOM_START_DELAY_MS = 3000;
+  const PVP_ROOM_START_DELAY_MS = 10000;
+  const PVP_ROOM_START_DRIFT_GRACE_MS = 5000;
   const GUILD_CREATE_GOLD_COST = 10000;
   const GUILD_MAX_MEMBERS = 20;
   const GUILD_BOSS_REWARD_GOLD = 10000;
-  const GUILD_BOSS_COOLDOWN_MS = 10 * 60 * 1000;
+  const GUILD_BOSS_COOLDOWN_MS = 3 * 60 * 1000;
+  const GUILD_BOSS_BATTLE_DURATION_MS = 30 * 1000;
+  const GUILD_BOSS_TICKET_DROP_CHANCE = .30;
+  const GUILD_BOSS_TICKET_MAX = 5;
   const GUILD_BOSS_HP_MULTIPLIER = 10;
+  const GUILD_BOSS_EARLY_EXTRA_HP_MULTIPLIER = 100;
+  const GUILD_BOSS_LATE_EXTRA_HP_MULTIPLIER = 50;
   const GUILD_UPGRADE_MAX_LEVEL = 10;
   const GUILD_PROFILE_SYNC_INTERVAL_MS = 45000;
   const GUILD_ROLE_LABELS = { king: "Rei Pirata", quartermaster: "Intendente", member: "Membro" };
@@ -185,8 +191,15 @@
     return key === "f12" || devCombo || sourceCombo || macDevCombo;
   }
 
+  function shouldAllowDesktopMiniContextMenu(event) {
+    return event.type === "contextmenu"
+      && Boolean(document.body?.classList?.contains("desktop-mini-overlay"))
+      && Boolean(event.target?.closest?.("#battle-stage"));
+  }
+
   function blockSourceInspectionEvent(event) {
     if (VISUAL_AUDIT_CONFIG) return;
+    if (shouldAllowDesktopMiniContextMenu(event)) return;
     const shouldBlock = event.type === "contextmenu"
       || event.type === "dragstart"
       || event.type === "selectstart"
@@ -1379,8 +1392,22 @@
   }
 
   function getCaptainEditorBoatKey(shipId) {
-    const index = Math.floor(Number(shipId) || 0) + 1;
+    const index = getCaptainEditorBoatNumber(shipId);
     return `boat_${String(index).padStart(2, "0")}`;
+  }
+
+  function getCaptainEditorBoatNumber(shipId) {
+    const match = typeof shipId === "string" ? /^boat_(\d+)$/i.exec(shipId) : null;
+    if (match) return Math.max(1, Math.floor(Number(match[1]) || 1));
+    return Math.floor(Number(shipId) || 0) + 1;
+  }
+
+  function canUseAdvancedCannonProjectileSprites(shipId = state.shipId) {
+    return getCaptainEditorBoatNumber(shipId) >= 9;
+  }
+
+  function canUseCannonSmokeEffects(shipId = state.shipId) {
+    return getCaptainEditorBoatNumber(shipId) >= 9;
   }
 
   function loadCaptainEditorDrafts() {
@@ -1463,6 +1490,103 @@
     const base = PIRATE_CHARACTER_CONFIG[key] || null;
     if (!base || !isCaptainEditorEnabled() || !captainEditorDrafts[key]) return base;
     return sanitizeCaptainEditorConfig({ ...base, ...captainEditorDrafts[key] });
+  }
+
+  const CANNON_SMOKE_EDITOR_STORAGE_KEY = "piratesCannonSmokePositionDrafts";
+  const CANNON_SMOKE_DEFAULT_CONFIG = { offsetX: .145, offsetY: -.34, scale: 1 };
+  const CANNON_SMOKE_CONFIG = {
+    boat_01: { offsetX: .145, offsetY: .17, scale: 1.4 },
+    boat_02: { offsetX: .12, offsetY: .107, scale: 1.4 },
+    boat_03: { offsetX: .138, offsetY: .055, scale: 1.4 },
+    boat_04: { offsetX: .094, offsetY: .117, scale: 1.4 },
+    boat_05: { offsetX: .168, offsetY: .07, scale: 1.4 },
+    boat_06: { offsetX: .342, offsetY: -.544, scale: 1.4 },
+    boat_07: { offsetX: .193, offsetY: -.166, scale: 1.4 },
+    boat_08: { offsetX: .65, offsetY: -.422, scale: 1.4 },
+    boat_09: { offsetX: .417, offsetY: -.044, scale: 1.4 },
+    boat_10: { offsetX: .192, offsetY: -.007, scale: 1.4 },
+    boat_11: { offsetX: .31, offsetY: -.097, scale: 1.4 },
+    boat_12: { offsetX: .239, offsetY: .076, scale: 1 },
+    boat_13: { offsetX: .355, offsetY: -.051, scale: 1 },
+    boat_14: { offsetX: .194, offsetY: -.008, scale: 1 },
+    boat_15: { offsetX: .303, offsetY: -.098, scale: 1 },
+    boat_16: { offsetX: .386, offsetY: -.197, scale: 1 },
+    boat_17: { offsetX: .416, offsetY: -.169, scale: 1 },
+    boat_18: { offsetX: .101, offsetY: .195, scale: 1 },
+    boat_19: { offsetX: .145, offsetY: .148, scale: 1 },
+    boat_20: { offsetX: .142, offsetY: .215, scale: 1 },
+    boat_21: { offsetX: .039, offsetY: .215, scale: 1 },
+    boat_22: { offsetX: .061, offsetY: .142, scale: 1 },
+    boat_23: { offsetX: .326, offsetY: -.039, scale: 1 },
+    boat_24: { offsetX: .074, offsetY: .258, scale: 1 },
+    boat_25: { offsetX: .133, offsetY: .196, scale: 1 },
+    boat_26: { offsetX: .42, offsetY: .003, scale: 1 },
+    boat_27: { offsetX: .188, offsetY: -.034, scale: 1 },
+    boat_28: { offsetX: .196, offsetY: -.034, scale: 1 },
+    boat_29: { offsetX: .097, offsetY: -.016, scale: 1 },
+    boat_30: { offsetX: .113, offsetY: -.022, scale: 1 },
+    boat_31: { offsetX: .16, offsetY: -.036, scale: 1 }
+  };
+
+  function isCannonSmokeEditorEnabled() {
+    return Boolean(VISUAL_AUDIT_CONFIG?.editSmoke);
+  }
+
+  function loadCannonSmokeEditorDrafts() {
+    if (typeof localStorage === "undefined") return {};
+    try {
+      const saved = JSON.parse(localStorage.getItem(CANNON_SMOKE_EDITOR_STORAGE_KEY) || "{}");
+      return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function saveCannonSmokeEditorDrafts() {
+    if (typeof localStorage === "undefined") return;
+    try {
+      localStorage.setItem(CANNON_SMOKE_EDITOR_STORAGE_KEY, JSON.stringify(cannonSmokeEditorDrafts));
+      window.__cannonSmokeEditorDrafts = cannonSmokeEditorDrafts;
+    } catch (error) {}
+  }
+
+  function sanitizeCannonSmokeConfig(config = {}) {
+    return {
+      offsetX: clamp(Number(config.offsetX ?? CANNON_SMOKE_DEFAULT_CONFIG.offsetX), -.55, .65),
+      offsetY: clamp(Number(config.offsetY ?? CANNON_SMOKE_DEFAULT_CONFIG.offsetY), -.95, .35),
+      scale: clamp(Number(config.scale ?? CANNON_SMOKE_DEFAULT_CONFIG.scale), .35, 2.4)
+    };
+  }
+
+  function getCannonSmokeConfig(shipId = 0) {
+    const key = getCaptainEditorBoatKey(shipId);
+    return sanitizeCannonSmokeConfig({
+      ...CANNON_SMOKE_DEFAULT_CONFIG,
+      ...(CANNON_SMOKE_CONFIG[key] || {}),
+      ...(cannonSmokeEditorDrafts?.[key] || {})
+    });
+  }
+
+  function setCannonSmokeEditorDraft(shipId, patch = {}) {
+    const key = getCaptainEditorBoatKey(shipId);
+    const current = getCannonSmokeConfig(shipId);
+    const next = sanitizeCannonSmokeConfig({ ...current, ...patch });
+    cannonSmokeEditorDrafts[key] = next;
+    saveCannonSmokeEditorDrafts();
+    return next;
+  }
+
+  function clearCannonSmokeEditorDraft(shipId) {
+    const key = getCaptainEditorBoatKey(shipId);
+    delete cannonSmokeEditorDrafts[key];
+    saveCannonSmokeEditorDrafts();
+    return sanitizeCannonSmokeConfig({ ...CANNON_SMOKE_DEFAULT_CONFIG, ...(CANNON_SMOKE_CONFIG[key] || {}) });
+  }
+
+  function formatCannonSmokeEditorConfigEntry(shipId, config = null) {
+    const key = getCaptainEditorBoatKey(shipId);
+    const current = sanitizeCannonSmokeConfig(config || getCannonSmokeConfig(shipId));
+    return `${key}: { offsetX: ${formatCaptainEditorNumber(current.offsetX)}, offsetY: ${formatCaptainEditorNumber(current.offsetY)}, scale: ${formatCaptainEditorNumber(current.scale)} }`;
   }
 
   function getCaptainCharacterFile(level, gender) {
@@ -2235,6 +2359,7 @@
       ownedPets: [],
       equippedPetId: null,
       petLevels: {},
+      guildBossTickets: 0,
       levels: { ship: 1, cannons: 1, sails: 1, hull: 1, shields: 1 },
       equipment: { compass: false, spyglass: false, anchor: false, amulet: false },
       skills: {
@@ -2326,6 +2451,7 @@
     target.pirateLevel = safeInteger(target.pirateLevel, defaults.pirateLevel, 1, CLIENT_SAVE_LIMITS.pirateLevel);
     target.xp = safeInteger(target.xp, 0, 0, Math.max(0, xpNeeded(target.pirateLevel) - 1));
     target.pirateCoins = safeInteger(target.pirateCoins, 0, 0, CLIENT_SAVE_LIMITS.pirateCoins);
+    target.guildBossTickets = safeInteger(target.guildBossTickets, 0, 0, GUILD_BOSS_TICKET_MAX);
     target.prestiges = safeInteger(target.prestiges, 0, 0, CLIENT_SAVE_LIMITS.prestiges);
     target.unlockedRegions = safeInteger(target.unlockedRegions, 1, 1, REGIONS.length);
     target.regionIndex = safeInteger(target.regionIndex, 0, 0, Math.max(0, target.unlockedRegions - 1));
@@ -2434,12 +2560,14 @@
     const localHost = ["localhost", "127.0.0.1", ""].includes(location.hostname);
     if (!localHost) return null;
     const params = new URLSearchParams(location.search);
-    if (params.get("visualAudit") !== "captain") return null;
+    const auditMode = String(params.get("visualAudit") || "").toLowerCase();
+    if (!["captain", "smoke"].includes(auditMode)) return null;
     const shipId = clamp(Math.floor(Number(params.get("ship") || 0)), 0, SHIPS.length - 1);
     const level = clamp(Math.floor(Number(params.get("level") || 1)), 1, CAPTAIN_MAX_LEVEL);
     const gender = normalizeCaptainGender(params.get("gender")) || "male";
     const pose = ["idle", "celebrate", "hit"].includes(params.get("pose")) ? params.get("pose") : "idle";
-    const editCaptain = ["1", "true", "yes", "on"].includes(String(params.get("editCaptain") || params.get("captainEdit") || "").toLowerCase());
+    const editCaptain = auditMode === "captain" && ["1", "true", "yes", "on"].includes(String(params.get("editCaptain") || params.get("captainEdit") || "").toLowerCase());
+    const editSmoke = auditMode === "smoke" || ["1", "true", "yes", "on"].includes(String(params.get("editSmoke") || params.get("smokeEdit") || "").toLowerCase());
     const unlockFleet = ["1", "true", "yes", "on"].includes(String(params.get("unlockFleet") || "").toLowerCase());
     const pirateCoinsParam = params.get("pirateCoins");
     const pirateCoins = pirateCoinsParam === null ? null : Math.max(0, Math.floor(Number(pirateCoinsParam) || 0));
@@ -2462,7 +2590,7 @@
     const screenAliases = { map: "maps", resources: "upgrades", missions: "stats", pets: "captain" };
     const normalizedScreen = screenAliases[screenParam] || screenParam;
     const screen = ["home", "upgrades", "maps", "captain", "prestige", "stats"].includes(normalizedScreen) ? normalizedScreen : "home";
-    return { shipId, level, gender, pose, editCaptain, unlockFleet, pirateCoins, regionIndex, unlockMaps, screen };
+    return { mode: auditMode, shipId, level, gender, pose, editCaptain, editSmoke, unlockFleet, pirateCoins, regionIndex, unlockMaps, screen };
   }
 
   const VISUAL_AUDIT_CONFIG = getCaptainVisualAuditConfig();
@@ -2516,6 +2644,8 @@
   }
   const captainEditorDrafts = VISUAL_AUDIT_CONFIG?.editCaptain ? loadCaptainEditorDrafts() : {};
   if (VISUAL_AUDIT_CONFIG?.editCaptain && typeof window !== "undefined") window.__captainEditorDrafts = captainEditorDrafts;
+  const cannonSmokeEditorDrafts = loadCannonSmokeEditorDrafts();
+  if (VISUAL_AUDIT_CONFIG?.editSmoke && typeof window !== "undefined") window.__cannonSmokeEditorDrafts = cannonSmokeEditorDrafts;
 
   function isGameAuthenticated() {
     return Boolean(VISUAL_AUDIT_CONFIG || !AUTH_MANAGER || AUTH_MANAGER.isAuthenticated?.());
@@ -2554,7 +2684,8 @@
   let mobileCombatPreviousMinimized = false;
   let desktopMiniOverlayMode = false;
   let desktopMiniDragState = null;
-  let desktopUpdateState = { status: "idle", message: "Buscar nova versao do jogo" };
+  let desktopUpdateState = { status: "idle", message: "Buscar nova versao do jogo", version: "", canInstall: false };
+  let desktopWelcomeShownThisSession = false;
   let removeDesktopUpdateStatusListener = null;
   let lastCombatQuickActionButton = null;
   let combatQuickFeedbackTimer = 0;
@@ -2587,6 +2718,8 @@
   let guildBossSelectedIndex = 0;
   let guildBossCombatPrevious = null;
   let guildBossFinishPromise = null;
+  let guildBossChallengeStarting = false;
+  let arenaChallengeStarting = false;
   let lastGuildProfileSyncAt = 0;
   let lastArenaSnapshotSyncAt = 0;
   let guildProfileSyncPromise = null;
@@ -2670,6 +2803,28 @@
 
   function xpNeeded(level = state.pirateLevel) { return Math.round(100 * Math.pow(level, 1.42)); }
   function bossesCount() { return state.bossesDefeated.filter(Boolean).length; }
+
+  function getGuildBossTickets() {
+    return clamp(Math.floor(Number(state.guildBossTickets) || 0), 0, GUILD_BOSS_TICKET_MAX);
+  }
+
+  function setGuildBossTickets(value = 0) {
+    state.guildBossTickets = clamp(Math.floor(Number(value) || 0), 0, GUILD_BOSS_TICKET_MAX);
+    return state.guildBossTickets;
+  }
+
+  function addGuildBossTicket(amount = 1) {
+    const before = getGuildBossTickets();
+    const after = setGuildBossTickets(before + Math.max(0, Math.floor(Number(amount) || 0)));
+    return Math.max(0, after - before);
+  }
+
+  function spendGuildBossTicket() {
+    if (getGuildBossTickets() <= 0) return false;
+    setGuildBossTickets(getGuildBossTickets() - 1);
+    return true;
+  }
+
   function isSkillUnlocked(key) { return state.pirateLevel >= SKILL_META[key].unlock; }
   function getShipUpgradeDefinition(key) {
     return SHIP_UPGRADE_DEFINITIONS.find(item => item.key === key) || null;
@@ -3189,6 +3344,12 @@
     region.replaceChildren(node);
     setTimeout(() => node.remove(), 3300);
   }
+
+  window.addEventListener("pirates-auth-session-revoked", event => {
+    const message = event.detail?.message || "Esta conta foi aberta em outro local. Este jogo sera desconectado.";
+    toast(message, "danger-toast", { mobileAllowed: true });
+    window.setTimeout(() => window.location.reload(), 2300);
+  });
 
   function gainXp(amount) {
     const earnedXp = calculateXpReward(amount);
@@ -3710,6 +3871,7 @@
       contribution: Math.max(0, Math.floor(Number(row.contribution || 0))),
       boss_damage: Math.max(0, Math.floor(Number(row.boss_damage || row.bossDamage || 0))),
       boss_participation_count: Math.max(0, Math.floor(Number(row.boss_participation_count || row.bossParticipationCount || 0))),
+      boss_damage_day_key: String(row.boss_damage_day_key || row.bossDamageDayKey || ""),
       joined_at: row.joined_at || row.joinedAt || "",
       updated_at: row.updated_at || row.updatedAt || snapshot.updated_at || "",
       snapshot
@@ -4491,6 +4653,15 @@
       if (showFeedback) toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
       return false;
     }
+    if (arenaChallengeStarting || isArenaSceneActive()) {
+      if (showFeedback) toast("Finalize a Arena atual antes de iniciar outro duelo.", "danger-toast");
+      return false;
+    }
+    const blockMessage = getSpecialCombatStartBlockMessage("arena");
+    if (blockMessage) {
+      if (showFeedback) toast(blockMessage, "danger-toast");
+      return false;
+    }
     return true;
   }
 
@@ -4512,6 +4683,8 @@
       guest_snapshot: parseOnlineJsonObject(room.guest_snapshot, {}),
       guest_ready: Boolean(room.guest_ready),
       starts_at: room.starts_at || room.startsAt || "",
+      server_now: room.server_now || room._server_now || "",
+      _received_at: Date.now(),
       battle_state: parseOnlineJsonObject(room.battle_state || room.battleState, {}),
       winner_player_id: room.winner_player_id ? String(room.winner_player_id) : "",
       created_at: room.created_at || room.createdAt || "",
@@ -4580,9 +4753,33 @@
     return opponent;
   }
 
-  function getPvpRoomStartsAt(room) {
+  function getPvpRoomStartsAt(room, now = Date.now()) {
     const parsed = Date.parse(room?.starts_at || "");
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : Date.now() + PVP_ROOM_START_DELAY_MS;
+    const fallback = now + PVP_ROOM_START_DELAY_MS;
+    if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+    const serverNow = Date.parse(room?.server_now || "");
+    if (Number.isFinite(serverNow) && serverNow > 0) {
+      const receivedAt = Number(room?._received_at) || now;
+      const elapsedSinceReceive = Math.max(0, now - receivedAt);
+      const remaining = parsed - serverNow - elapsedSinceReceive;
+      if (remaining > PVP_ROOM_START_DELAY_MS + PVP_ROOM_START_DRIFT_GRACE_MS) return fallback;
+      return now + Math.max(0, remaining);
+    }
+    if (parsed - now > PVP_ROOM_START_DELAY_MS + PVP_ROOM_START_DRIFT_GRACE_MS) return fallback;
+    return parsed;
+  }
+
+  function playOnlinePvpRemoteAttack(damage = 0) {
+    const enemy = state.combat.enemy;
+    if (!enemy?.isArena || enemy.defeated) return;
+    const attackColor = enemy.pet?.color || "#ff8c68";
+    scene.markEnemyAttack(enemy);
+    scene.fire(false, attackColor);
+    if (state.combat.playerHp > 0 && damage > 0) scene.markPlayerShipHit();
+    setTimeout(() => {
+      scene.burst(false, attackColor);
+      if (damage > 0) scene.floatDamage(Math.round(damage), false, attackColor);
+    }, 340);
   }
 
   function syncOnlinePvpBattle(room) {
@@ -4593,16 +4790,32 @@
     if (!side || !opponentSide) return;
     const playerMaxHp = getPvpRoomMaxHp(room, side, battle.playerMaxHp);
     const enemyMaxHp = getPvpRoomMaxHp(room, opponentSide, state.combat.enemy?.maxHp || 1);
+    const previousPlayerHp = clamp(Number(state.combat.playerHp || 0), 0, playerMaxHp);
+    const previousDamageReceived = Math.max(0, Number(battle.damageReceived || 0));
+    const previousRemoteSeq = Math.max(0, Number(battle.lastRemoteActionSeq || 0));
+    const ownSeq = getPvpRoomBattleNumber(room, `${side}_action_seq`, battle.actionSeq || 0);
+    const remoteSeq = getPvpRoomBattleNumber(room, `${opponentSide}_action_seq`, previousRemoteSeq);
     const playerHp = getPvpRoomHp(room, side, playerMaxHp);
     const enemyHp = getPvpRoomHp(room, opponentSide, enemyMaxHp);
+    const startsAt = getPvpRoomStartsAt(room);
+    if (Number.isFinite(startsAt) && startsAt > 0) {
+      battle.startsAt = startsAt;
+      battle.startedAt = startsAt;
+    }
     battle.playerMaxHp = playerMaxHp;
     if (state.combat.enemy?.isArena) {
       state.combat.enemy.maxHp = enemyMaxHp;
       state.combat.enemy.hp = enemyHp;
     }
     state.combat.playerHp = clamp(playerHp, 0, playerMaxHp);
+    battle.actionSeq = Math.max(Number(battle.actionSeq || 0), ownSeq);
     battle.damageDealt = getPvpRoomBattleNumber(room, `${side}_damage_done`, battle.damageDealt || 0);
     battle.damageReceived = getPvpRoomBattleNumber(room, `${opponentSide}_damage_done`, battle.damageReceived || 0);
+    if (remoteSeq > previousRemoteSeq && !isArenaBattleWaiting()) {
+      const damageDelta = Math.max(0, battle.damageReceived - previousDamageReceived, previousPlayerHp - state.combat.playerHp);
+      playOnlinePvpRemoteAttack(damageDelta);
+    }
+    battle.lastRemoteActionSeq = Math.max(previousRemoteSeq, remoteSeq);
     const finished = room.status === "finished" || playerHp <= 0 || enemyHp <= 0;
     if (!finished || battle.finished) return;
     const victory = room.winner_player_id
@@ -4628,6 +4841,8 @@
     const opponent = pvpRoomPlayerAsArenaOpponent(room, opponentSide);
     const startsAt = getPvpRoomStartsAt(room);
     const playerMaxHp = getPvpRoomMaxHp(room, side, getArenaPlayerMaxHp());
+    const ownActionSeq = getPvpRoomBattleNumber(room, `${side}_action_seq`, 0);
+    const remoteActionSeq = getPvpRoomBattleNumber(room, `${opponentSide}_action_seq`, 0);
     arenaState.previousCombat = {
       screen: currentScreen,
       hasStarted: state.hasStarted,
@@ -4645,7 +4860,8 @@
       playerMaxHp,
       damageDealt: 0,
       damageReceived: 0,
-      actionSeq: 0,
+      actionSeq: ownActionSeq,
+      lastRemoteActionSeq: remoteActionSeq,
       nextManualAttackAt: 0,
       onlineActionPending: false,
       onlinePetAttackTimer: 0
@@ -4842,8 +5058,7 @@
       state.lifetime.petAttacks += 1;
     } else {
       scene.markPlayerShipAttack();
-      scene.manualAttackFeedback(options.critical ? "#fff19a" : "#9ff4e9");
-      scene.fire(true, options.critical ? "#ffe268" : "#9ff4e9");
+      scene.fire(true, options.critical ? "#ffe268" : "#9ff4e9", "basic", { smoke: Boolean(options.manual), manualShot: Boolean(options.manual) });
     }
     const config = getOnlineConfig();
     callOnlineRpc(config, config.pvpRoomAttackRpcName, {
@@ -5195,9 +5410,62 @@
     );
   }
 
-  function setDesktopUpdateStatus(status = "idle", message = "") {
-    desktopUpdateState = { status, message: message || "Buscar nova versao do jogo" };
+  function setDesktopUpdateStatus(status = "idle", message = "", extra = {}) {
+    desktopUpdateState = {
+      status,
+      message: message || "Buscar nova versao do jogo",
+      version: String(extra.version || ""),
+      canInstall: Boolean(extra.canInstall || status === "ready")
+    };
     syncDesktopUpdatePanel();
+  }
+
+  function getAppUpdateButtonLabel(desktop = isDesktopExecutable()) {
+    if (desktop && desktopUpdateState.status === "ready") return "Reiniciar e atualizar";
+    if (desktop && desktopUpdateState.status === "installing") return "Reiniciando...";
+    if (desktopUpdateState.status === "checking") return "Verificando...";
+    if (desktopUpdateState.status === "available" || desktopUpdateState.status === "downloading") return "Baixando...";
+    return desktop ? "Verificar atualiza\u00e7\u00f5es" : "Buscar atualizacao";
+  }
+
+  function isAppUpdateButtonBusy() {
+    return ["checking", "available", "downloading", "installing"].includes(desktopUpdateState.status);
+  }
+
+  function syncDesktopWelcomeUpdateUi() {
+    const screen = $("#desktop-welcome-screen");
+    const status = $("#desktop-welcome-status");
+    const button = $("#desktop-welcome-update-button");
+    const version = $("#desktop-welcome-version");
+    const desktop = isDesktopExecutable();
+    if (!desktop) {
+      screen?.classList.add("hidden");
+      return;
+    }
+    if (version) version.textContent = APP_VERSION_LABEL;
+    if (status) {
+      const idle = desktopUpdateState.status === "idle";
+      status.textContent = idle ? "Pronto para jogar." : desktopUpdateState.message || "Verificando atualizacoes...";
+      status.classList.toggle("danger", desktopUpdateState.status === "error" || desktopUpdateState.status === "unavailable");
+    }
+    if (button) {
+      button.disabled = isAppUpdateButtonBusy();
+      button.textContent = getAppUpdateButtonLabel(true);
+      button.classList.toggle("primary", desktopUpdateState.status !== "ready");
+      button.classList.toggle("prestige-button", desktopUpdateState.status === "ready");
+    }
+  }
+
+  function showDesktopWelcomeScreen(options = {}) {
+    if (!isDesktopExecutable() || desktopMiniOverlayMode) return;
+    if (desktopWelcomeShownThisSession && !options.force) return;
+    desktopWelcomeShownThisSession = true;
+    $("#desktop-welcome-screen")?.classList.remove("hidden");
+    syncDesktopWelcomeUpdateUi();
+  }
+
+  function closeDesktopWelcomeScreen() {
+    $("#desktop-welcome-screen")?.classList.add("hidden");
   }
 
   function syncDesktopUpdatePanel() {
@@ -5222,10 +5490,10 @@
       status.classList.toggle("danger", desktopUpdateState.status === "error" || desktopUpdateState.status === "unavailable");
     }
     if (button) {
-      const busy = desktopUpdateState.status === "checking" || desktopUpdateState.status === "downloading";
-      button.disabled = busy;
-      button.textContent = busy ? "Verificando..." : "Buscar atualizacao";
+      button.disabled = isAppUpdateButtonBusy();
+      button.textContent = getAppUpdateButtonLabel(desktop);
     }
+    syncDesktopWelcomeUpdateUi();
   }
 
   function syncDesktopExecutableUi() {
@@ -5243,7 +5511,8 @@
     if (removeDesktopUpdateStatusListener || !window.PiratesDesktop?.onUpdateStatus) return;
     removeDesktopUpdateStatusListener = window.PiratesDesktop.onUpdateStatus(payload => {
       if (!payload) return;
-      setDesktopUpdateStatus(payload.status || "idle", payload.message || "");
+      setDesktopUpdateStatus(payload.status || "idle", payload.message || "", payload);
+      if (payload.status === "ready") showDesktopWelcomeScreen({ force: true });
     });
   }
 
@@ -5289,13 +5558,31 @@
 
   async function checkDesktopUpdate() {
     if (!isDesktopExecutable() || !window.PiratesDesktop?.checkForUpdates) return;
+    if (desktopUpdateState.status === "ready" && window.PiratesDesktop?.installUpdate) {
+      await installDesktopUpdate();
+      return;
+    }
     setDesktopUpdateStatus("checking", "Verificando atualizacoes...");
     try {
       const result = await window.PiratesDesktop.checkForUpdates();
-      if (result?.message) setDesktopUpdateStatus(result.status || (result.ok ? "checking" : "error"), result.message);
+      if (result?.message) setDesktopUpdateStatus(result.status || (result.ok ? "checking" : "error"), result.message, result);
     } catch (error) {
       console.warn("Nao foi possivel buscar atualizacoes.", error);
       setDesktopUpdateStatus("error", "Nao foi possivel verificar atualizacoes agora.");
+    }
+  }
+
+  async function installDesktopUpdate() {
+    if (!isDesktopExecutable() || !window.PiratesDesktop?.installUpdate) return;
+    setDesktopUpdateStatus("installing", "Reiniciando para aplicar atualizacao...");
+    try {
+      saveGame();
+      await AUTH_MANAGER?.flushCurrentGameSave?.(state);
+      const result = await window.PiratesDesktop.installUpdate();
+      if (result?.message) setDesktopUpdateStatus(result.status || (result.ok ? "installing" : "error"), result.message, result);
+    } catch (error) {
+      console.warn("Nao foi possivel instalar a atualizacao.", error);
+      setDesktopUpdateStatus("error", "Nao foi possivel reiniciar para atualizar.");
     }
   }
 
@@ -5368,9 +5655,33 @@
     [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("desktop-mini-dragging", Boolean(active)));
   }
 
+  function flushDesktopMiniDragMove(drag = desktopMiniDragState) {
+    if (!drag || (!drag.pendingDx && !drag.pendingDy)) return;
+    const dx = Math.round(drag.pendingDx);
+    const dy = Math.round(drag.pendingDy);
+    drag.pendingDx = 0;
+    drag.pendingDy = 0;
+    if (dx || dy) {
+      window.PiratesDesktop?.moveMiniOverlay?.({ dx, dy }).catch(error => console.warn("Nao foi possivel mover a miniatura desktop.", error));
+    }
+  }
+
+  function scheduleDesktopMiniDragMove(drag = desktopMiniDragState) {
+    if (!drag || drag.moveFrame) return;
+    drag.moveFrame = requestAnimationFrame(() => {
+      drag.moveFrame = 0;
+      flushDesktopMiniDragMove(drag);
+    });
+  }
+
   function clearDesktopMiniDragState() {
     if (!desktopMiniDragState) return null;
     const drag = desktopMiniDragState;
+    if (drag.moveFrame) {
+      cancelAnimationFrame(drag.moveFrame);
+      drag.moveFrame = 0;
+    }
+    flushDesktopMiniDragMove(drag);
     window.removeEventListener("pointermove", handleDesktopMiniPointerMove, true);
     window.removeEventListener("pointerup", handleDesktopMiniPointerUp, true);
     window.removeEventListener("pointercancel", handleDesktopMiniPointerCancel, true);
@@ -5394,7 +5705,9 @@
     drag.lastX = event.clientX;
     drag.lastY = event.clientY;
     if (drag.dragged && (dx || dy)) {
-      window.PiratesDesktop?.moveMiniOverlay?.({ dx, dy }).catch(error => console.warn("Nao foi possivel mover a miniatura desktop.", error));
+      drag.pendingDx += dx;
+      drag.pendingDy += dy;
+      scheduleDesktopMiniDragMove(drag);
     }
     if (event.cancelable) event.preventDefault();
     event.stopPropagation();
@@ -5428,6 +5741,9 @@
       startY: event.clientY,
       lastX: event.clientX,
       lastY: event.clientY,
+      pendingDx: 0,
+      pendingDy: 0,
+      moveFrame: 0,
       dragged: false
     };
     if (stage?.setPointerCapture) {
@@ -5439,6 +5755,16 @@
     if (event.cancelable) event.preventDefault();
     event.stopPropagation();
     return true;
+  }
+
+  function handleDesktopMiniContextMenu(event) {
+    if (!isDesktopMiniOverlayMode() || !window.PiratesDesktop?.showMiniOverlayMenu) return;
+    const stage = $("#battle-stage");
+    if (!stage || !stage.contains(event.target)) return;
+    clearDesktopMiniDragState();
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+    window.PiratesDesktop.showMiniOverlayMenu().catch(error => console.warn("Nao foi possivel abrir o menu da miniatura desktop.", error));
   }
 
   function getDesktopDownloadHiddenUntil() {
@@ -5771,6 +6097,9 @@
     const pirateCoins = isBossChest && Math.random() < CHEST_PIRATE_COIN_CHANCE
       ? Math.max(1, Math.round(getBossChestPirateCoins(chest.regionIndex) * rewardMultiplier))
       : 0;
+    const ticketGained = getGuildBossTickets() < GUILD_BOSS_TICKET_MAX && Math.random() < GUILD_BOSS_TICKET_DROP_CHANCE
+      ? addGuildBossTicket(1)
+      : 0;
     state.resources.ouro += gold;
     state.lifetime.gold += gold;
     trackAction("gold", { amount: gold });
@@ -5778,11 +6107,13 @@
     scene?.celebrateCaptain?.(1.15);
     scene?.floatChestReward?.(chest, [
       { text: `+${formatNumber(gold)} Ouro`, color: RARITY_COLORS[definition.rarityKey] || "#ffe268" },
-      ...(pirateCoins > 0 ? [{ text: `+${formatNumber(pirateCoins)} Moedas Pirata`, color: "#ffb349" }] : [])
+      ...(pirateCoins > 0 ? [{ text: `+${formatNumber(pirateCoins)} Moedas Pirata`, color: "#ffb349" }] : []),
+      ...(ticketGained > 0 ? [{ text: "+1 Ticket Irmandade", color: "#9ff4e9" }] : [])
     ]);
-    const logReward = pirateCoins > 0
-      ? `+${formatNumber(gold)} ouro e +${formatNumber(pirateCoins)} moedas pirata`
-      : `+${formatNumber(gold)} ouro`;
+    const rewardParts = [`+${formatNumber(gold)} ouro`];
+    if (pirateCoins > 0) rewardParts.push(`+${formatNumber(pirateCoins)} moedas pirata`);
+    if (ticketGained > 0) rewardParts.push("+1 ticket da Irmandade");
+    const logReward = rewardParts.join(", ");
     addLog(`${isBossChest ? "Baú de Boss" : "Baú"} aberto: ${logReward}.`, "loot");
     toast(`${isBossChest ? "Baú de Boss" : "Baú"} aberto! ${logReward}.`, "gold-toast");
     renderAll(false);
@@ -6067,6 +6398,46 @@
     frameBounds: null,
     referenceBounds: null
   };
+  const CANNON_PROJECTILE_SPRITE = {
+    key: "cannonProjectiles",
+    image: createLazyImage(),
+    file: "balaseskills.png",
+    requested: false,
+    loadFailed: false
+  };
+  const CANNON_LANCE_PROJECTILE_SPRITE = {
+    key: "cannonLanceProjectile",
+    image: createLazyImage(),
+    file: "lanca.png",
+    requested: false,
+    loadFailed: false
+  };
+  const CANNON_SMOKE_SPRITE = {
+    key: "cannonSmoke",
+    image: createLazyImage(),
+    file: "fumaca.png",
+    requested: false,
+    loadFailed: false
+  };
+  const CANNON_PROJECTILE_DEFAULT_SCALE = .5;
+  const CANNON_LANCE_PROJECTILE_SCALE = 1;
+  const CANNON_SABOTAGE_NET_SCALE = 2;
+  const CANNON_LANCE_PROJECTILE_FRAME = { x: 0, y: 0, w: 1086, h: 362, drawWidth: 90 };
+  const CANNON_PROJECTILE_FRAMES = {
+    sabotage: { x: 67, y: 37, w: 143, h: 96, drawWidth: 58 },
+    curse: { x: 315, y: 38, w: 145, h: 87, drawWidth: 46 },
+    ghost: { x: 315, y: 38, w: 145, h: 87, drawWidth: 46 },
+    ice: { x: 657, y: 42, w: 86, h: 82, drawWidth: 38 },
+    fire: { x: 598, y: 189, w: 142, h: 86, drawWidth: 54 },
+    basic: { x: 375, y: 193, w: 85, h: 85, drawWidth: 24 },
+    cannon: { x: 375, y: 193, w: 85, h: 85, drawWidth: 24 },
+    chain: { x: 361, y: 377, w: 109, h: 37, drawWidth: 56 }
+  };
+  const CANNON_SMOKE_FRAMES = [
+    { x: 47, y: 213, w: 142, h: 55, drawWidth: 48 },
+    { x: 302, y: 191, w: 179, h: 98, drawWidth: 70 },
+    { x: 570, y: 169, w: 222, h: 124, drawWidth: 92 }
+  ];
   const ENEMY_AURA_EFFECT_SPRITE = {
     key: "enemyAura1",
     image: createLazyImage(),
@@ -6289,6 +6660,18 @@
 
   function requestRepairEffectSprite() {
     return requestSpriteImage(REPAIR_EFFECT_SPRITE, `${EFFECT_ASSET_PATH}${REPAIR_EFFECT_SPRITE.file}`);
+  }
+
+  function requestCannonProjectileSprite() {
+    return requestSpriteImage(CANNON_PROJECTILE_SPRITE, `${EFFECT_ASSET_PATH}${CANNON_PROJECTILE_SPRITE.file}`);
+  }
+
+  function requestCannonLanceProjectileSprite() {
+    return requestSpriteImage(CANNON_LANCE_PROJECTILE_SPRITE, `${EFFECT_ASSET_PATH}${CANNON_LANCE_PROJECTILE_SPRITE.file}`);
+  }
+
+  function requestCannonSmokeSprite() {
+    return requestSpriteImage(CANNON_SMOKE_SPRITE, `${EFFECT_ASSET_PATH}${CANNON_SMOKE_SPRITE.file}`);
   }
 
   function requestEnemyAuraEffectSprite() {
@@ -7422,6 +7805,12 @@
     }
     requestRepairEffectSprite();
     addSprite(REPAIR_EFFECT_SPRITE);
+    requestCannonProjectileSprite();
+    requestCannonLanceProjectileSprite();
+    requestCannonSmokeSprite();
+    addSprite(CANNON_PROJECTILE_SPRITE);
+    addSprite(CANNON_LANCE_PROJECTILE_SPRITE);
+    addSprite(CANNON_SMOKE_SPRITE);
 
     const enemyNames = new Set((REGION_ENCOUNTERS[index] || []).map(enemy => enemy.name).filter(Boolean));
     if (REGIONS[index]?.boss) enemyNames.add(REGIONS[index].boss);
@@ -7558,6 +7947,7 @@
       this.dpr = 1;
       this.time = 0;
       this.projectiles = [];
+      this.cannonSmokeBursts = [];
       this.bursts = [];
       this.sabotageEffects = [];
       this.aquaticBursts = [];
@@ -7572,18 +7962,27 @@
       this.repairEffect = { startedAt: -999, until: 0 };
       this.captainEditorDrag = null;
       this.captainEditorInfo = null;
+      this.smokeEditorDrag = null;
+      this.smokeEditorInfo = null;
       this.environmentEvents = [];
       this.environmentTimers = { bird: 2.5, fish: 3.5, shark: 19, kraken: 72 };
       this.resize = this.resize.bind(this);
       this.handleEnvironmentPointer = this.handleEnvironmentPointer.bind(this);
       this.handleCaptainEditorPointerMove = this.handleCaptainEditorPointerMove.bind(this);
       this.handleCaptainEditorPointerUp = this.handleCaptainEditorPointerUp.bind(this);
+      this.handleCannonSmokeEditorPointerMove = this.handleCannonSmokeEditorPointerMove.bind(this);
+      this.handleCannonSmokeEditorPointerUp = this.handleCannonSmokeEditorPointerUp.bind(this);
       new ResizeObserver(this.resize).observe(canvas);
       canvas.addEventListener("pointerdown", this.handleEnvironmentPointer);
       if (isCaptainEditorEnabled()) {
         canvas.addEventListener("pointermove", this.handleCaptainEditorPointerMove);
         canvas.addEventListener("pointerup", this.handleCaptainEditorPointerUp);
         canvas.addEventListener("pointercancel", this.handleCaptainEditorPointerUp);
+      }
+      if (isCannonSmokeEditorEnabled()) {
+        canvas.addEventListener("pointermove", this.handleCannonSmokeEditorPointerMove);
+        canvas.addEventListener("pointerup", this.handleCannonSmokeEditorPointerUp);
+        canvas.addEventListener("pointercancel", this.handleCannonSmokeEditorPointerUp);
       }
       this.resize();
     }
@@ -7753,15 +8152,85 @@
       };
     }
 
-    fire(fromPlayer, color = "#ffd37a") {
+    normalizeProjectileType(type = "basic") {
+      const key = String(type || "basic");
+      if (key === "ice" || key === "ghost" || key === "chain" || key === "fire" || key === "sabotage" || key === "curse") return key;
+      if (key === "cannon" || key === "normal") return "basic";
+      return "basic";
+    }
+
+    getCannonSmokeFrameForShip(shipId = state.shipId) {
+      const shipNumber = getCaptainEditorBoatNumber(shipId);
+      return CANNON_SMOKE_FRAMES[shipNumber <= 10 ? 0 : shipNumber <= 20 ? 1 : 2] || CANNON_SMOKE_FRAMES[0];
+    }
+
+    getPlayerShipBob() {
+      return Math.sin(this.time * 1.55) * 3;
+    }
+
+    getPlayerCannonAnchor(layout = this.getCombatSceneLayout()) {
+      const ship = SHIPS[state.shipId] || SHIPS[0];
+      const sprite = getPlayerShipSpritesheet(ship?.name);
+      const scale = Math.max(.1, Number(layout.playerScale) || 1);
+      const { frameWidth, frameHeight } = sprite
+        ? this.getSpriteFrameSize(sprite, 1)
+        : { frameWidth: 240, frameHeight: 160 };
+      const targetWidth = Math.max(1, (sprite?.width || 240) * scale);
+      const targetHeight = targetWidth * (frameHeight / Math.max(1, frameWidth));
+      const baseX = layout.playerX + (sprite?.offsetX || 0) * scale;
+      const baseY = layout.playerY + this.getPlayerShipBob() + (sprite?.offsetY || 0) * scale;
+      const config = getCannonSmokeConfig(ship?.id ?? state.shipId);
+      return {
+        x: baseX + targetWidth * config.offsetX,
+        y: baseY + targetHeight * config.offsetY,
+        targetWidth,
+        targetHeight,
+        renderScale: scale,
+        config
+      };
+    }
+
+    spawnCannonSmoke(anchor = this.getPlayerCannonAnchor()) {
+      if (!canUseCannonSmokeEffects(state.shipId)) return;
+      const frame = this.getCannonSmokeFrameForShip(state.shipId);
+      this.cannonSmokeBursts.push({
+        x: anchor.x,
+        y: anchor.y,
+        age: 0,
+        duration: .68,
+        frame,
+        config: { ...anchor.config },
+        renderScale: anchor.renderScale,
+        targetWidth: anchor.targetWidth,
+        targetHeight: anchor.targetHeight
+      });
+      this.cannonSmokeBursts = this.cannonSmokeBursts.slice(-8);
+    }
+
+    fire(fromPlayer, color = "#ffd37a", projectileType = "basic", options = {}) {
+      if (projectileType && typeof projectileType === "object") {
+        options = projectileType;
+        projectileType = options.projectileType || "basic";
+      }
       const layout = this.getCombatSceneLayout();
+      const playerAnchor = fromPlayer ? this.getPlayerCannonAnchor(layout) : null;
       const start = fromPlayer
-        ? { x: layout.playerX + this.width * .03, y: layout.playerY - this.height * .15 }
+        ? { x: playerAnchor.x, y: playerAnchor.y }
         : { x: layout.enemyX, y: layout.enemyY - this.height * .22 };
       const end = fromPlayer
         ? { x: layout.enemyX - this.width * .03, y: layout.enemyY - this.height * .18 }
         : { x: layout.playerX + this.width * .02, y: layout.playerY - this.height * .14 };
-      this.projectiles.push({ start, end, age: 0, duration: .52, color, fromPlayer });
+      if (fromPlayer && options.smoke && options.manualShot) this.spawnCannonSmoke(playerAnchor);
+      this.projectiles.push({
+        start,
+        end,
+        age: 0,
+        duration: Math.max(.24, Number(options.duration) || .52),
+        color,
+        fromPlayer,
+        shipId: fromPlayer ? state.shipId : null,
+        projectileType: fromPlayer ? this.normalizeProjectileType(projectileType) : "enemy"
+      });
     }
 
     burst(atEnemy = true, color = "#f4a34c") {
@@ -7808,11 +8277,6 @@
     petStrike(pet) {
       this.petLunge = 1;
       this.aquaticBursts.push({ x: this.width * .69, y: this.height * .54, age: 0, color: pet.color, kind: pet.visual });
-    }
-
-    manualAttackFeedback(color = "#9ff4e9") {
-      const layout = this.getCombatSceneLayout();
-      this.bursts.push({ x: layout.playerX, y: layout.playerY - this.height * .16, age: 0, color });
     }
 
     floatDamage(amount, atEnemy = true, color = "#fff0bc") {
@@ -8071,6 +8535,48 @@
       if (pointer.cancelable) pointer.preventDefault();
     }
 
+    handleCannonSmokeEditorPointerDown(pointer, x, y) {
+      if (!isCannonSmokeEditorEnabled() || !this.smokeEditorInfo) return false;
+      const box = this.smokeEditorInfo.dragBox;
+      const margin = pointer.pointerType === "touch" ? 24 : 12;
+      if (!box || x < box.x - margin || x > box.x + box.width + margin || y < box.y - margin || y > box.y + box.height + margin) return false;
+      this.smokeEditorDrag = {
+        pointerId: pointer.pointerId,
+        startX: x,
+        startY: y,
+        startConfig: { ...this.smokeEditorInfo.config },
+        targetWidth: Math.max(1, this.smokeEditorInfo.targetWidth),
+        targetHeight: Math.max(1, this.smokeEditorInfo.targetHeight)
+      };
+      if (this.canvas.setPointerCapture) {
+        try { this.canvas.setPointerCapture(pointer.pointerId); } catch (error) {}
+      }
+      if (pointer.cancelable) pointer.preventDefault();
+      return true;
+    }
+
+    handleCannonSmokeEditorPointerMove(pointer) {
+      if (!isCannonSmokeEditorEnabled() || !this.smokeEditorDrag || pointer.pointerId !== this.smokeEditorDrag.pointerId) return;
+      const point = this.getPointerScenePosition(pointer);
+      const drag = this.smokeEditorDrag;
+      const config = setCannonSmokeEditorDraft(state.shipId, {
+        offsetX: drag.startConfig.offsetX + (point.x - drag.startX) / drag.targetWidth,
+        offsetY: drag.startConfig.offsetY + (point.y - drag.startY) / drag.targetHeight
+      });
+      updateCannonSmokeEditorPanel(this.smokeEditorInfo, config);
+      if (pointer.cancelable) pointer.preventDefault();
+    }
+
+    handleCannonSmokeEditorPointerUp(pointer) {
+      if (!isCannonSmokeEditorEnabled() || !this.smokeEditorDrag || pointer.pointerId !== this.smokeEditorDrag.pointerId) return;
+      if (this.canvas.releasePointerCapture) {
+        try { this.canvas.releasePointerCapture(pointer.pointerId); } catch (error) {}
+      }
+      this.smokeEditorDrag = null;
+      updateCannonSmokeEditorPanel(this.smokeEditorInfo);
+      if (pointer.cancelable) pointer.preventDefault();
+    }
+
     handleChestPointer(pointer, x, y) {
       const chest = [...this.chests].reverse().find(item => {
         if (item.opened) return false;
@@ -8095,6 +8601,7 @@
 
     handleEnvironmentPointer(pointer) {
       const { x, y } = this.getPointerScenePosition(pointer);
+      if (this.handleCannonSmokeEditorPointerDown(pointer, x, y)) return;
       if (this.handleCaptainEditorPointerDown(pointer, x, y)) return;
       if (this.handleChestPointer(pointer, x, y)) return;
       const event = [...this.environmentEvents].reverse().find(item => {
@@ -8160,6 +8667,7 @@
       this.time += dt;
       this.petLunge = Math.max(0, this.petLunge - dt * 1.8);
       this.projectiles.forEach(item => item.age += dt);
+      this.cannonSmokeBursts.forEach(item => item.age += dt);
       this.bursts.forEach(item => item.age += dt);
       this.sabotageEffects.forEach(item => item.age += dt);
       this.aquaticBursts.forEach(item => item.age += dt);
@@ -8175,6 +8683,7 @@
       this.updateRepairEffect();
       this.autoCollectEnvironmentEvents();
       this.projectiles = this.projectiles.filter(item => item.age < item.duration);
+      this.cannonSmokeBursts = this.cannonSmokeBursts.filter(item => item.age < item.duration);
       this.bursts = this.bursts.filter(item => item.age < .75);
       this.sabotageEffects = this.sabotageEffects.filter(item => item.age < .85);
       this.aquaticBursts = this.aquaticBursts.filter(item => item.age < .9);
@@ -8308,6 +8817,154 @@
       this.chests.forEach(chest => this.drawChest(ctx, chest));
     }
 
+    drawGeneratedProjectile(ctx, item, x, y, t) {
+      ctx.strokeStyle = "rgba(255,238,195,.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const prevT = Math.max(0, t - .1);
+      const arcHeight = this.height * .10;
+      ctx.moveTo(item.start.x + (item.end.x - item.start.x) * prevT, item.start.y + (item.end.y - item.start.y) * prevT - Math.sin(prevT * Math.PI) * arcHeight);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.fillStyle = item.color;
+      ctx.shadowColor = item.color;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    getPlayerProjectileSpriteSpec(item) {
+      if (!canUseAdvancedCannonProjectileSprites(item.shipId ?? state.shipId)) {
+        return {
+          image: requestCannonLanceProjectileSprite(),
+          frame: CANNON_LANCE_PROJECTILE_FRAME,
+          scale: CANNON_LANCE_PROJECTILE_SCALE
+        };
+      }
+      const type = this.normalizeProjectileType(item.projectileType);
+      return {
+        image: requestCannonProjectileSprite(),
+        frame: CANNON_PROJECTILE_FRAMES[type] || CANNON_PROJECTILE_FRAMES.basic,
+        scale: type === "sabotage" ? CANNON_SABOTAGE_NET_SCALE : CANNON_PROJECTILE_DEFAULT_SCALE
+      };
+    }
+
+    drawProjectileSprite(ctx, item, x, y, t) {
+      const sprite = item.fromPlayer ? this.getPlayerProjectileSpriteSpec(item) : null;
+      const image = sprite?.image;
+      const frame = sprite?.frame;
+      if (!item.fromPlayer) {
+        this.drawGeneratedProjectile(ctx, item, x, y, t);
+        return;
+      }
+      if (!image?.complete || !image.naturalWidth || !frame) return;
+      const mini = isDesktopMiniOverlayMode();
+      const fade = Math.min(1, t / .12, (1 - t) / .08);
+      const angle = Math.atan2(item.end.y - item.start.y, item.end.x - item.start.x);
+      const drawWidth = Math.max(8, frame.drawWidth * (sprite.scale || 1) * (mini ? .62 : 1));
+      const drawHeight = drawWidth * (frame.h / Math.max(1, frame.w));
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.globalAlpha = clamp(fade, 0, 1);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, -drawWidth * .5, -drawHeight * .5, drawWidth, drawHeight);
+      ctx.restore();
+    }
+
+    drawCannonSmokeBurst(ctx, item) {
+      const image = requestCannonSmokeSprite();
+      const frame = item.frame || this.getCannonSmokeFrameForShip(state.shipId);
+      const t = clamp(item.age / Math.max(.001, item.duration), 0, 1);
+      const mini = isDesktopMiniOverlayMode();
+      const puff = 1 + t * .24;
+      const baseWidth = frame.drawWidth * (mini ? .62 : 1) * (item.config?.scale || 1);
+      const drawWidth = Math.max(16, baseWidth * puff);
+      const drawHeight = drawWidth * (frame.h / Math.max(1, frame.w));
+      ctx.save();
+      ctx.translate(item.x, item.y - t * (mini ? 2 : 6));
+      ctx.globalAlpha = .86 * Math.pow(1 - t, .82);
+      ctx.imageSmoothingEnabled = true;
+      if (image?.complete && image.naturalWidth) {
+        ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, -drawWidth * .18, -drawHeight * .5, drawWidth, drawHeight);
+      } else {
+        ctx.fillStyle = "rgba(218,226,226,.5)";
+        ctx.beginPath();
+        ctx.ellipse(drawWidth * .18, 0, drawWidth * .36, drawHeight * .38, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    drawCannonSmokeEditorOverlay(ctx) {
+      if (!isCannonSmokeEditorEnabled()) return;
+      if (!canUseCannonSmokeEffects(state.shipId)) {
+        this.smokeEditorInfo = {
+          shipId: state.shipId,
+          key: getCaptainEditorBoatKey(state.shipId),
+          config: sanitizeCannonSmokeConfig(getCannonSmokeConfig(state.shipId)),
+          targetWidth: 0,
+          targetHeight: 0,
+          anchor: null,
+          dragBox: null,
+          active: false
+        };
+        updateCannonSmokeEditorPanel(this.smokeEditorInfo);
+        return;
+      }
+      const anchor = this.getPlayerCannonAnchor();
+      const frame = this.getCannonSmokeFrameForShip(state.shipId);
+      const image = requestCannonSmokeSprite();
+      const mini = isDesktopMiniOverlayMode();
+      const drawWidth = Math.max(18, frame.drawWidth * (mini ? .62 : 1) * anchor.config.scale);
+      const drawHeight = drawWidth * (frame.h / Math.max(1, frame.w));
+      const drawX = anchor.x - drawWidth * .18;
+      const drawY = anchor.y - drawHeight * .5;
+      this.smokeEditorInfo = {
+        shipId: state.shipId,
+        key: getCaptainEditorBoatKey(state.shipId),
+        config: sanitizeCannonSmokeConfig(anchor.config),
+        targetWidth: anchor.targetWidth,
+        targetHeight: anchor.targetHeight,
+        anchor: { x: anchor.x, y: anchor.y },
+        dragBox: { x: drawX, y: drawY, width: drawWidth, height: drawHeight },
+        active: true
+      };
+      updateCannonSmokeEditorPanel(this.smokeEditorInfo);
+      ctx.save();
+      ctx.globalAlpha = .78;
+      ctx.imageSmoothingEnabled = true;
+      if (image?.complete && image.naturalWidth) {
+        ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, drawX, drawY, drawWidth, drawHeight);
+      }
+      ctx.setLineDash([6, 5]);
+      ctx.strokeStyle = "rgba(255,216,113,.94)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(drawX, drawY, drawWidth, drawHeight);
+      ctx.setLineDash([]);
+      ctx.strokeStyle = "rgba(111,239,226,.95)";
+      ctx.beginPath();
+      ctx.moveTo(anchor.x - 8, anchor.y);
+      ctx.lineTo(anchor.x + 8, anchor.y);
+      ctx.moveTo(anchor.x, anchor.y - 8);
+      ctx.lineTo(anchor.x, anchor.y + 8);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(5,18,25,.84)";
+      ctx.strokeStyle = "rgba(255,216,113,.38)";
+      ctx.beginPath();
+      ctx.roundRect(Math.max(8, drawX), Math.max(8, drawY - 24), 94, 19, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#fff3c2";
+      ctx.font = "900 10px ui-sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("FUMACA", Math.max(8, drawX) + 47, Math.max(8, drawY - 24) + 9.5);
+      ctx.restore();
+    }
+
     draw() {
       const ctx = this.ctx;
       const w = this.width;
@@ -8318,6 +8975,7 @@
       const miniOverlay = layout.mini;
       const day = this.getDayState(region);
       if (isCaptainEditorEnabled()) this.captainEditorInfo = null;
+      if (isCannonSmokeEditorEnabled()) this.smokeEditorInfo = null;
       ctx.clearRect(0, 0, w, h);
 
       if (miniOverlay) {
@@ -8373,7 +9031,7 @@
         ctx.restore();
       }
 
-      const bobPlayer = Math.sin(this.time * 1.55) * 3;
+      const bobPlayer = this.getPlayerShipBob();
       const { compactStage, playerY, enemyY, playerScale, enemyScale } = layout;
       this.drawPlayerShip(ctx, layout.playerX, playerY + bobPlayer, playerScale, SHIPS[state.shipId]);
       const pet = getEquippedPet();
@@ -8395,18 +9053,13 @@
       const enemy = state.combat.enemy;
       if (enemy) this.drawEnemy(ctx, layout.enemyX, enemyY, enemyScale, enemy);
 
+      this.cannonSmokeBursts.forEach(item => this.drawCannonSmokeBurst(ctx, item));
+
       this.projectiles.forEach(item => {
-        const t = item.age / item.duration;
+        const t = clamp(item.age / item.duration, 0, 1);
         const x = item.start.x + (item.end.x - item.start.x) * t;
         const y = item.start.y + (item.end.y - item.start.y) * t - Math.sin(t * Math.PI) * h * .10;
-        ctx.strokeStyle = "rgba(255,238,195,.35)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        const prevT = Math.max(0, t - .1);
-        ctx.moveTo(item.start.x + (item.end.x - item.start.x) * prevT, item.start.y + (item.end.y - item.start.y) * prevT - Math.sin(prevT * Math.PI) * h * .10);
-        ctx.lineTo(x, y); ctx.stroke();
-        ctx.fillStyle = item.color; ctx.shadowColor = item.color; ctx.shadowBlur = 12;
-        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+        this.drawProjectileSprite(ctx, item, x, y, t);
       });
 
       this.sabotageEffects.forEach(item => {
@@ -8484,6 +9137,7 @@
         ctx.fillText(item.text, item.x, item.y - 18 - item.age * 34);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       });
+      this.drawCannonSmokeEditorOverlay(ctx);
       this.drawCaptainEditorOverlay(ctx);
       this.drawBossSurpriseAlerts(ctx, w, h);
     }
@@ -9893,7 +10547,153 @@
     updateCaptainEditorPanel();
   }
 
+  let cannonSmokeEditorPanel = null;
+  let cannonSmokeEditorPanelSnapshot = "";
+
+  function setCannonSmokeEditorUrlParam(key, value) {
+    const params = new URLSearchParams(location.search);
+    params.set("visualAudit", "smoke");
+    params.set("editSmoke", "1");
+    params.set(key, String(value));
+    if (!params.has("unlockFleet")) params.set("unlockFleet", "1");
+    location.search = params.toString();
+  }
+
+  function getCannonSmokeEditorCurrentConfig() {
+    return getCannonSmokeConfig(state.shipId);
+  }
+
+  function updateCannonSmokeEditorPanel(info = null, configOverride = null) {
+    if (!isCannonSmokeEditorEnabled() || !cannonSmokeEditorPanel) return;
+    const config = sanitizeCannonSmokeConfig(configOverride || getCannonSmokeEditorCurrentConfig());
+    const ship = SHIPS[state.shipId];
+    const entry = formatCannonSmokeEditorConfigEntry(state.shipId, config);
+    const effectsEnabled = canUseCannonSmokeEffects(state.shipId);
+    const snapshot = JSON.stringify({
+      shipId: state.shipId,
+      config,
+      anchor: effectsEnabled && info?.anchor ? [Math.round(info.anchor.x), Math.round(info.anchor.y)] : null,
+      effectsEnabled
+    });
+    if (snapshot === cannonSmokeEditorPanelSnapshot) return;
+    cannonSmokeEditorPanelSnapshot = snapshot;
+    cannonSmokeEditorPanel.querySelector("[data-smoke-editor-boat]").textContent = `${getCaptainEditorBoatKey(state.shipId)} - ${ship?.name || ""}`;
+    cannonSmokeEditorPanel.querySelector("[data-smoke-editor-anchor]").textContent = effectsEnabled && info?.anchor ? `${Math.round(info.anchor.x)}, ${Math.round(info.anchor.y)}` : "-";
+    const status = cannonSmokeEditorPanel.querySelector("[data-smoke-editor-status]");
+    if (status) status.textContent = effectsEnabled ? "Efeito ativo neste barco." : "Efeito comeca no barco 9.";
+    const testButton = cannonSmokeEditorPanel.querySelector("[data-smoke-editor-test]");
+    if (testButton) testButton.disabled = !effectsEnabled;
+    cannonSmokeEditorPanel.querySelector("[data-smoke-editor-code]").value = `${entry},`;
+    setCaptainEditorInputValue(cannonSmokeEditorPanel.querySelector("[data-smoke-editor-ship]"), state.shipId);
+    cannonSmokeEditorPanel.querySelectorAll("[data-smoke-editor-field]").forEach(input => {
+      const field = input.dataset.smokeEditorField;
+      const value = Number(config[field]).toFixed(3);
+      setCaptainEditorInputValue(input, value);
+    });
+  }
+
+  function setupCannonSmokePositionEditor() {
+    if (!isCannonSmokeEditorEnabled()) return;
+    document.body.classList.add("cannon-smoke-editor-active");
+    cannonSmokeEditorPanel = document.createElement("aside");
+    cannonSmokeEditorPanel.className = "captain-editor-panel cannon-smoke-editor-panel";
+    cannonSmokeEditorPanel.innerHTML = `
+      <div class="captain-editor-head">
+        <strong>Editor Fumaca</strong>
+        <span data-smoke-editor-boat></span>
+      </div>
+      <div class="captain-editor-row captain-editor-row-tight">
+        <button type="button" data-smoke-editor-prev>Anterior</button>
+        <button type="button" data-smoke-editor-next>Proximo</button>
+      </div>
+      <label>Barco
+        <select data-smoke-editor-ship>
+          ${SHIPS.map((ship, index) => `<option value="${index}">${getCaptainEditorBoatKey(index)} - ${ship.name}</option>`).join("")}
+        </select>
+      </label>
+      <div class="captain-editor-grid">
+        <label>X<input type="number" step="0.001" data-smoke-editor-field="offsetX"></label>
+        <label>Y<input type="number" step="0.001" data-smoke-editor-field="offsetY"></label>
+        <label>Escala<input type="number" min="0.35" max="2.4" step="0.001" data-smoke-editor-field="scale"></label>
+      </div>
+      <p class="captain-editor-foot">Ancora: <span data-smoke-editor-anchor>-</span></p>
+      <p class="captain-editor-foot" data-smoke-editor-status></p>
+      <textarea data-smoke-editor-code readonly rows="3"></textarea>
+      <div class="captain-editor-row">
+        <button type="button" data-smoke-editor-test>Testar fumaca</button>
+        <button type="button" data-smoke-editor-copy>Copiar config</button>
+      </div>
+      <div class="captain-editor-row">
+        <button type="button" data-smoke-editor-reset>Reset barco</button>
+        <button type="button" data-smoke-editor-copy-all>Copiar todos</button>
+      </div>
+    `;
+    document.body.appendChild(cannonSmokeEditorPanel);
+    cannonSmokeEditorPanel.addEventListener("input", event => {
+      const field = event.target?.dataset?.smokeEditorField;
+      if (!field) return;
+      setCannonSmokeEditorDraft(state.shipId, { [field]: Number(event.target.value) });
+      updateCannonSmokeEditorPanel(scene.smokeEditorInfo);
+    });
+    cannonSmokeEditorPanel.addEventListener("change", event => {
+      const target = event.target;
+      if (target.matches("[data-smoke-editor-ship]")) setCannonSmokeEditorUrlParam("ship", clamp(Math.floor(Number(target.value) || 0), 0, SHIPS.length - 1));
+    });
+    cannonSmokeEditorPanel.addEventListener("click", async event => {
+      const target = event.target;
+      if (target.matches("[data-smoke-editor-prev]")) setCannonSmokeEditorUrlParam("ship", Math.max(0, state.shipId - 1));
+      if (target.matches("[data-smoke-editor-next]")) setCannonSmokeEditorUrlParam("ship", Math.min(SHIPS.length - 1, state.shipId + 1));
+      if (target.matches("[data-smoke-editor-test]")) scene.spawnCannonSmoke(scene.getPlayerCannonAnchor());
+      if (target.matches("[data-smoke-editor-reset]")) {
+        clearCannonSmokeEditorDraft(state.shipId);
+        cannonSmokeEditorPanelSnapshot = "";
+        updateCannonSmokeEditorPanel(scene.smokeEditorInfo);
+      }
+      if (target.matches("[data-smoke-editor-copy]")) {
+        const text = `${formatCannonSmokeEditorConfigEntry(state.shipId, getCannonSmokeEditorCurrentConfig())},`;
+        cannonSmokeEditorPanel.querySelector("[data-smoke-editor-code]").value = text;
+        try { await navigator.clipboard?.writeText(text); } catch (error) {}
+        target.textContent = "Copiado";
+        window.setTimeout(() => { target.textContent = "Copiar config"; }, 900);
+      }
+      if (target.matches("[data-smoke-editor-copy-all]")) {
+        const text = Object.keys(cannonSmokeEditorDrafts).sort().map(key => {
+          const index = Math.max(0, Number(key.replace("boat_", "")) - 1);
+          return `${formatCannonSmokeEditorConfigEntry(index, cannonSmokeEditorDrafts[key])},`;
+        }).join("\n");
+        cannonSmokeEditorPanel.querySelector("[data-smoke-editor-code]").value = text;
+        try { await navigator.clipboard?.writeText(text); } catch (error) {}
+        target.textContent = "Copiados";
+        window.setTimeout(() => { target.textContent = "Copiar todos"; }, 900);
+      }
+    });
+    window.__cannonSmokeEditor = {
+      getCurrent: () => ({
+        shipId: state.shipId,
+        key: getCaptainEditorBoatKey(state.shipId),
+        shipName: SHIPS[state.shipId]?.name || "",
+        config: getCannonSmokeEditorCurrentConfig(),
+        entry: `${formatCannonSmokeEditorConfigEntry(state.shipId, getCannonSmokeEditorCurrentConfig())},`
+      }),
+      getDrafts: () => ({ ...cannonSmokeEditorDrafts }),
+      setCurrent: patch => {
+        const config = setCannonSmokeEditorDraft(state.shipId, patch);
+        cannonSmokeEditorPanelSnapshot = "";
+        updateCannonSmokeEditorPanel(scene.smokeEditorInfo, config);
+        return config;
+      },
+      clearCurrent: () => {
+        const config = clearCannonSmokeEditorDraft(state.shipId);
+        cannonSmokeEditorPanelSnapshot = "";
+        updateCannonSmokeEditorPanel(scene.smokeEditorInfo, config);
+        return config;
+      }
+    };
+    updateCannonSmokeEditorPanel();
+  }
+
   setupCaptainPositionEditor();
+  setupCannonSmokePositionEditor();
 
   function pickEncounter(roster) {
     const totalWeight = roster.reduce((sum, encounter) => sum + (encounter.weight || 1), 0);
@@ -9963,8 +10763,17 @@
     };
   }
 
+  function getGuildBossExtraHpMultiplier(regionIndex = 0) {
+    const bossNumber = Math.floor(Number(regionIndex) || 0) + 1;
+    return bossNumber <= 10 ? GUILD_BOSS_EARLY_EXTRA_HP_MULTIPLIER : GUILD_BOSS_LATE_EXTRA_HP_MULTIPLIER;
+  }
+
+  function getGuildBossHpMultiplier(regionIndex = 0) {
+    return GUILD_BOSS_HP_MULTIPLIER * getGuildBossExtraHpMultiplier(regionIndex);
+  }
+
   function getGuildBossMaxHp(regionIndex = 0) {
-    return getBossOriginalStats(regionIndex).hp * GUILD_BOSS_HP_MULTIPLIER;
+    return getBossOriginalStats(regionIndex).hp * getGuildBossHpMultiplier(regionIndex);
   }
 
   function createGuildBossEnemy(regionIndex, bossState = {}) {
@@ -9975,6 +10784,12 @@
     const maxHp = Math.max(1, Math.floor(Number(bossState.boss_max_hp || bossState.bossMaxHp || getGuildBossMaxHp(index))));
     const hp = clamp(Math.floor(Number(bossState.boss_hp || bossState.bossHp || maxHp)), 0, maxHp);
     const spawnEndsAt = scene.time + BOSS_SPAWN_ANIMATION_SECONDS;
+    const startedAt = Date.now();
+    const serverEndsAt = Date.parse(bossState.active_until || bossState.activeUntil || "");
+    const fallbackEndsAt = startedAt + GUILD_BOSS_BATTLE_DURATION_MS;
+    const guildBossEndsAt = Number.isFinite(serverEndsAt) && serverEndsAt > startedAt
+      ? Math.min(serverEndsAt, fallbackEndsAt)
+      : fallbackEndsAt;
     const enemy = {
       name: region.boss,
       kind: `BOSS ${visual.label}`,
@@ -9987,6 +10802,8 @@
       isBoss: true,
       isGuildBoss: true,
       guildBossIndex: index,
+      guildBossStartedAt: startedAt,
+      guildBossEndsAt,
       guildBossDamageDealt: 0,
       guildBossOnlineHpAtStart: hp,
       spawnEndsAt,
@@ -10074,6 +10891,52 @@
     return Boolean(enemy?.isBoss && !enemy.defeated && Number(enemy.spawnEndsAt || 0) > scene.time);
   }
 
+  function getGuildBossBattleRemainingSeconds(enemy = state.combat.enemy) {
+    if (!enemy?.isGuildBoss) return 0;
+    const endsAt = Number(enemy.guildBossEndsAt || 0);
+    if (!Number.isFinite(endsAt) || endsAt <= 0) return 0;
+    return Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+  }
+
+  function checkGuildBossBattleTimer(enemy = state.combat.enemy) {
+    if (!enemy?.isGuildBoss || enemy.defeated || guildBossFinishPromise) return false;
+    const endsAt = Number(enemy.guildBossEndsAt || 0);
+    if (!Number.isFinite(endsAt) || endsAt <= 0 || Date.now() < endsAt) return false;
+    finishGuildBossCombat({ timeout: true });
+    return true;
+  }
+
+  function getSpecialCombatStartBlockMessage(target = "") {
+    const enemy = state.combat.enemy;
+    const mapBossBusy = Boolean(
+      pendingBossChallengeTimer
+      || pendingSurpriseBossTimer
+      || (enemy?.isBoss && !enemy.isGuildBoss && !enemy.defeated)
+      || isBossIntroActive(enemy)
+    );
+    const arenaBusy = Boolean(arenaChallengeStarting || isArenaSceneActive() || enemy?.isArena);
+    const guildBossBusy = Boolean(guildBossChallengeStarting || enemy?.isGuildBoss);
+    const transitionBusy = Boolean(pendingBossMapAdvanceTimer);
+
+    if (target !== "mapBoss" && mapBossBusy) {
+      return target === "guildBoss"
+        ? "Finalize o boss do mapa antes de enfrentar Boss da Irmandade."
+        : "Finalize o boss do mapa antes de entrar na Arena.";
+    }
+    if (target !== "arena" && arenaBusy) {
+      return target === "mapBoss"
+        ? "Aguarde a Arena começar ou finalize o duelo antes de desafiar boss do mapa."
+        : "Aguarde a Arena começar ou finalize o duelo antes de enfrentar Boss da Irmandade.";
+    }
+    if (target !== "guildBoss" && guildBossBusy) {
+      return target === "mapBoss"
+        ? "Finalize o Boss da Irmandade antes de desafiar boss do mapa."
+        : "Finalize o Boss da Irmandade antes de entrar na Arena.";
+    }
+    if (transitionBusy) return "Aguarde o evento atual terminar antes de iniciar outro combate.";
+    return "";
+  }
+
   function canTriggerSurpriseBoss() {
     const enemy = state.combat.enemy;
     if (state.combat.repairing || state.combat.playerHp <= 0) return false;
@@ -10136,11 +10999,10 @@
       scene.petStrike(options.pet);
       setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#bff7ff"); }, 180);
     } else if (options.sabotage) {
-      scene.sabotageEnemy(options.color || "#b68cff");
+      scene.fire(true, options.color || "#b68cff", "sabotage", { smoke: false, duration: .48 });
       setTimeout(() => { markHit(); scene.floatDamage(damage, true, options.color || "#f1c7ff"); }, 120);
     } else {
-      if (options.manual) scene.manualAttackFeedback(options.color || "#9ff4e9");
-      scene.fire(true, options.color || "#ffd37a");
+      scene.fire(true, options.color || "#ffd37a", options.projectileType || "basic", { smoke: Boolean(options.manual && !options.skill), manualShot: Boolean(options.manual), duration: options.projectileDuration });
       setTimeout(() => { markHit(); scene.burst(true, options.color || "#f4a34c"); scene.floatDamage(damage, true, options.color || "#fff0bc"); }, 340);
     }
     if (enemy.hp <= 0) defeatEnemy();
@@ -10152,8 +11014,7 @@
     const stats = getStats();
     const hitChance = stats.precision * (1 - (enemy.evasion || 0));
     if (Math.random() > hitChance) {
-      if (options.manual) scene.manualAttackFeedback("#9ff4e9");
-      scene.fire(true, options.manual ? "#9ff4e9" : "#cbd6d0");
+      scene.fire(true, options.manual ? "#9ff4e9" : "#cbd6d0", "basic", { smoke: Boolean(options.manual), manualShot: Boolean(options.manual) });
       addLog(enemy.evasion > .08 ? `${enemy.name} escapou com uma manobra veloz.` : "O disparo passou longe do alvo.");
       return;
     }
@@ -10218,10 +11079,10 @@
     const meta = SKILL_META[key];
     const level = state.skills[key].level;
     const base = getStats().damage * (meta.factor + (level - 1) * .24);
-    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a", skill: true }); enemy.burnTime = meta.burnDuration + (level - 1) * .25; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04) * (1 - (enemy.skillResist || 0)); }
-    if (key === "ice") { dealToEnemy(base, { color: "#81e8ff", skill: true }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
-    if (key === "ghost") dealToEnemy(base, { color: "#c58cff", ignoreArmor: true, skill: true });
-    if (key === "chain") { dealToEnemy(base, { color: "#d9e4df", skill: true }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
+    if (key === "fire") { dealToEnemy(base, { color: "#ff6d3a", skill: true, projectileType: "fire" }); enemy.burnTime = meta.burnDuration + (level - 1) * .25; enemy.burnDps = getStats().damage * (meta.burnFactor + (level - 1) * .04) * (1 - (enemy.skillResist || 0)); }
+    if (key === "ice") { dealToEnemy(base, { color: "#81e8ff", skill: true, projectileType: "ice" }); enemy.slowed = meta.slowDuration + (level - 1) * .2; }
+    if (key === "ghost") dealToEnemy(base, { color: "#8affc8", ignoreArmor: true, skill: true, projectileType: "ghost" });
+    if (key === "chain") { dealToEnemy(base, { color: "#d9e4df", skill: true, projectileType: "chain" }); state.combat.enemyAttackTimer = Math.max(0, state.combat.enemyAttackTimer - meta.attackDelay); }
     trackAction("skill", { key });
     addLog(`${meta.name} disparado automaticamente.`, "loot");
   }
@@ -10431,10 +11292,11 @@
     const damage = Math.max(0, Math.floor(Number(enemy.guildBossDamageDealt || 0)));
     const defeated = Boolean(options.defeated || enemy.hp <= 0);
     const voluntary = Boolean(options.voluntary);
+    const timedOut = Boolean(options.timeout);
     restoreAfterGuildBossCombat();
     if (!guild) {
-      addLog(voluntary ? `Tentativa contra ${bossName} encerrada sem dano.` : `Tentativa contra ${bossName} encerrada.`, "danger-text");
-      toast(damage > 0 ? "Tentativa da Irmandade encerrada." : "Nenhum dano valido aplicado ao Boss da Irmandade.", damage > 0 ? "gold-toast" : "danger-toast");
+      addLog(timedOut ? `Tempo contra ${bossName} encerrado.` : voluntary ? `Tentativa contra ${bossName} encerrada sem dano.` : `Tentativa contra ${bossName} encerrada.`, "danger-text");
+      toast(timedOut ? "Tempo do Boss da Irmandade esgotado." : damage > 0 ? "Tentativa da Irmandade encerrada." : "Nenhum dano valido aplicado ao Boss da Irmandade.", damage > 0 ? "gold-toast" : "danger-toast");
       renderAll(false);
       saveGame();
       return true;
@@ -10457,8 +11319,14 @@
       }
       if (bossDefeated) trackAction("boss");
       if (bossDefeated && !defeated) showBossDefeatedBanner();
-      addLog(damage > 0 ? `${bossName}: ${formatNumber(damage)} de dano pela Irmandade${bossDefeated ? " e boss derrotado" : ""}.` : `Tentativa contra ${bossName} encerrada sem dano.`, bossDefeated ? "loot" : "danger-text");
-      toast(rewardGranted ? `Participacao valida: +${formatNumber(GUILD_BOSS_REWARD_GOLD)} Ouro.` : damage > 0 ? "Dano sincronizado com a Irmandade." : "Tentativa da Irmandade encerrada.", rewardGranted ? "gold-toast" : "");
+      addLog(damage > 0
+        ? `${timedOut ? "Tempo esgotado" : bossName}: ${formatNumber(damage)} de dano pela Irmandade${bossDefeated ? " e boss derrotado" : ""}.`
+        : timedOut ? `Tempo contra ${bossName} esgotado sem dano.` : `Tentativa contra ${bossName} encerrada sem dano.`,
+        bossDefeated ? "loot" : "danger-text");
+      toast(rewardGranted
+        ? `${timedOut ? "Tempo esgotado" : "Participacao valida"}: +${formatNumber(GUILD_BOSS_REWARD_GOLD)} Ouro.`
+        : damage > 0 ? "Dano sincronizado com a Irmandade." : timedOut ? "Tempo esgotado sem dano valido." : "Tentativa da Irmandade encerrada.",
+        rewardGranted ? "gold-toast" : "");
       await refreshGuild({ force: true });
       renderAll(false);
       saveGame();
@@ -10816,6 +11684,7 @@
     const enemy = state.combat.enemy;
     if (enemy.defeated) return;
     if (isBossIntroActive(enemy)) return;
+    if (checkGuildBossBattleTimer(enemy)) return;
     const onlinePvpActive = isOnlinePvpBattleActive();
     const arenaEnemyActive = Boolean(enemy.isArena && arenaBattleActive && !onlinePvpActive);
     if (isArenaBattleWaiting()) {
@@ -11267,6 +12136,82 @@
     container.innerHTML = recommendations.map(combatQuickRecommendationButtonHtml).join("");
   }
 
+  function getDesktopMiniFleetRecommendation() {
+    return buildProgressRecommendationCandidates().find(candidate => candidate && !candidate.blocked) || null;
+  }
+
+  function getDesktopMiniCaptainRecommendation() {
+    return buildCaptainRecommendationCandidates().find(candidate => candidate?.kind === "captainEquipment" && !candidate.blocked) || null;
+  }
+
+  function executeRecommendationCandidateAction(candidate) {
+    if (!candidate || candidate.disabled || !candidate.canBuy) return false;
+    const attrs = candidate.actionAttrs || "";
+    const smartKind = getMarkupAttributeValue(attrs, "data-smart-upgrade");
+    const smartId = getMarkupAttributeValue(attrs, "data-smart-upgrade-id");
+    const upgradeKey = getMarkupAttributeValue(attrs, "data-upgrade");
+    const buyShipId = getMarkupAttributeValue(attrs, "data-buy-ship");
+    const craftKey = getMarkupAttributeValue(attrs, "data-craft-equipment");
+    const skillKey = getMarkupAttributeValue(attrs, "data-upgrade-skill");
+    const captainEquipmentKey = getMarkupAttributeValue(attrs, "data-upgrade-captain-equipment");
+    const captainManualSkillKey = getMarkupAttributeValue(attrs, "data-upgrade-captain-manual-skill");
+    if (smartKind) return executeSmartUpgrade(smartKind, smartId);
+    if (upgradeKey) return upgrade(upgradeKey);
+    if (buyShipId) return buyShip(Number(buyShipId));
+    if (craftKey) return craftEquipment(craftKey);
+    if (skillKey) return upgradeSkill(skillKey);
+    if (captainEquipmentKey) return upgradeCaptainEquipment(captainEquipmentKey);
+    if (captainManualSkillKey) return upgradeCaptainManualSkill(captainManualSkillKey);
+    return false;
+  }
+
+  function executeDesktopMiniRecommendation(type, button = null) {
+    const candidate = type === "captain" ? getDesktopMiniCaptainRecommendation() : getDesktopMiniFleetRecommendation();
+    if (!candidate) return toast(type === "captain" ? "Nenhum equipamento do Capitao recomendado agora." : "Nenhuma melhoria recomendada agora.", "gold-toast");
+    if (candidate.disabled || !candidate.canBuy) return toast(candidate.actionLabel || "Melhoria ainda indisponivel.", "danger-toast");
+    lastCombatQuickActionButton = button;
+    executeRecommendationCandidateAction(candidate);
+  }
+
+  function syncDesktopMiniButton(button, enabled, title, helpText = title) {
+    if (!button) return;
+    button.disabled = !enabled;
+    button.classList.toggle("ready", Boolean(enabled));
+    button.classList.toggle("locked", !enabled);
+    button.title = title || "";
+    setHelpTooltipText(button, helpText || title || "");
+  }
+
+  function syncDesktopMiniActions() {
+    const nextMapButton = $("#desktop-mini-next-map");
+    if (nextMapButton) {
+      const nextIndex = state.regionIndex + 1;
+      const inSpecialCombat = Boolean(state.combat.enemy?.isBoss || (state.combat.enemy?.isArena && (isArenaBattleWaiting() || isArenaBattleActive())));
+      const canAdvance = nextIndex < state.unlockedRegions && !inSpecialCombat && !isArenaSceneActive() && !combatMapTransitionTimer && !combatMapTransitionSwapTimer;
+      syncDesktopMiniButton(nextMapButton, canAdvance, canAdvance ? `Avancar para ${REGIONS[nextIndex]?.name || "proximo mapa"}` : nextIndex >= REGIONS.length ? "Ultimo mapa" : "Proximo mapa ainda bloqueado");
+    }
+
+    const fleetButton = $("#desktop-mini-fleet-upgrade");
+    const fleetRecommendation = getDesktopMiniFleetRecommendation();
+    const fleetReady = Boolean(fleetRecommendation && fleetRecommendation.canBuy && !fleetRecommendation.disabled);
+    syncDesktopMiniButton(
+      fleetButton,
+      fleetReady,
+      fleetRecommendation ? `${fleetRecommendation.title}: ${fleetRecommendation.actionLabel}` : "Nenhuma melhoria recomendada",
+      fleetRecommendation ? `${fleetRecommendation.title}. ${fleetRecommendation.note || "Melhoria recomendada."}` : "Nenhuma melhoria recomendada."
+    );
+
+    const captainButton = $("#desktop-mini-captain-upgrade");
+    const captainRecommendation = getDesktopMiniCaptainRecommendation();
+    const captainReady = Boolean(captainRecommendation && captainRecommendation.canBuy && !captainRecommendation.disabled);
+    syncDesktopMiniButton(
+      captainButton,
+      captainReady,
+      captainRecommendation ? `${captainRecommendation.title}: ${captainRecommendation.actionLabel}` : "Nenhum equipamento recomendado",
+      captainRecommendation ? `${captainRecommendation.title}. ${captainRecommendation.note || "Equipamento recomendado do Capitao."}` : "Nenhum equipamento recomendado."
+    );
+  }
+
   function getBossProgressState() {
     const required = SHIP_UNLOCK_KILL_REQUIREMENT;
     const kills = clamp(Math.floor(Number(state.regionKills[state.regionIndex]) || 0), 0, required);
@@ -11329,6 +12274,7 @@
     }
 
     renderCombatQuickRecommendations();
+    syncDesktopMiniActions();
   }
 
   function updateCombatBossProgressBar() {
@@ -11391,7 +12337,8 @@
     if (enemy) {
       $("#enemy-name").textContent = enemy.name;
       $("#enemy-health-fill").style.width = `${Math.max(0, enemy.hp / Math.max(1, enemy.maxHp) * 100)}%`;
-      $("#enemy-health-text").textContent = `${formatNumber(enemy.hp)} / ${formatNumber(enemy.maxHp)}`;
+      const timerText = enemy.isGuildBoss ? ` • ${formatArenaDuration(getGuildBossBattleRemainingSeconds(enemy))}` : "";
+      $("#enemy-health-text").textContent = `${formatNumber(enemy.hp)} / ${formatNumber(enemy.maxHp)}${timerText}`;
     } else {
       $("#enemy-name").textContent = "Sem inimigo";
       $("#enemy-health-fill").style.width = "0%";
@@ -12136,6 +13083,9 @@
     const activePirateName = sanitizeArenaDisplayName(bossState.active_pirate_name || "Pirata", "Pirata");
     const activeBlocked = Boolean(activeUntilTime && activeUntilTime > Date.now() && activePlayerId && activePlayerId !== state.playerId);
     const activeLabel = `${activePirateName} está desafiando`;
+    const canStart = Boolean(guildState.current?.guild && !allBossesCleared && !cooldownText && !activeBlocked && !guildState.actionPending);
+    const ticketCount = getGuildBossTickets();
+    const missingTicket = canStart && ticketCount <= 0;
     return {
       currentBossIndex,
       allBossesCleared,
@@ -12144,8 +13094,10 @@
       activeBlocked,
       activePirateName,
       activeLabel,
-      canStart: Boolean(guildState.current?.guild && !allBossesCleared && !cooldownText && !activeBlocked && !guildState.actionPending),
-      label: allBossesCleared ? "Bosses Concluidos" : activeBlocked ? activeLabel : cooldownText ? `Cooldown ${cooldownText}` : "Desafiar Boss"
+      canStart,
+      ticketCount,
+      missingTicket,
+      label: allBossesCleared ? "Bosses Concluidos" : activeBlocked ? activeLabel : cooldownText ? `Cooldown ${cooldownText}` : missingTicket ? "Sem ticket" : "Desafiar Boss"
     };
   }
 
@@ -12153,6 +13105,7 @@
     if (action.allBossesCleared) return "Todos os Bosses da Irmandade ja foram derrotados hoje.";
     if (action.activeBlocked) return `${action.activePirateName} está desafiando o Boss da Irmandade agora.`;
     if (action.cooldownText) return `Disponivel em ${action.cooldownText}.`;
+    if (action.missingTicket) return "Talvez aqueles baús sirvam pra alguma coisa...";
     return "Desafiar o Boss atual da Irmandade.";
   }
 
@@ -12172,7 +13125,7 @@
     button.textContent = action.label;
     button.disabled = !action.canStart;
     button.title = guildBossActionTitle(action);
-    button.classList.toggle("primary", action.canStart);
+    button.classList.toggle("primary", action.canStart && !action.missingTicket);
     button.classList.toggle("cooldown", Boolean(action.cooldownText || action.activeBlocked));
   }
 
@@ -12189,7 +13142,7 @@
       button.textContent = action.label;
       button.disabled = !action.canStart;
       button.title = guildBossActionTitle(action);
-      button.classList.toggle("primary", action.canStart);
+      button.classList.toggle("primary", action.canStart && !action.missingTicket);
       button.classList.toggle("cooldown", Boolean(action.cooldownText || action.activeBlocked));
     });
     const actionButton = $("[data-guild-boss-action]");
@@ -12197,10 +13150,10 @@
     const selectedIndex = clamp(Math.floor(Number(actionButton.dataset.startGuildBoss || guildBossSelectedIndex) || 0), 0, REGIONS.length - 1);
     const selectedIsCurrent = !action.allBossesCleared && selectedIndex === action.currentBossIndex;
     const canStart = selectedIsCurrent && action.canStart;
-    actionButton.textContent = action.allBossesCleared ? "Concluido" : action.activeBlocked ? action.activeLabel : action.cooldownText ? `Cooldown ${action.cooldownText}` : "Enfrentar";
+    actionButton.textContent = action.allBossesCleared ? "Concluido" : action.activeBlocked ? action.activeLabel : action.cooldownText ? `Cooldown ${action.cooldownText}` : action.missingTicket ? "Sem ticket" : "Enfrentar";
     actionButton.disabled = !canStart;
     actionButton.title = guildBossActionTitle(action);
-    actionButton.classList.toggle("primary", canStart);
+    actionButton.classList.toggle("primary", canStart && !action.missingTicket);
     actionButton.classList.toggle("cooldown", Boolean(action.cooldownText || action.activeBlocked));
   }
 
@@ -12220,6 +13173,7 @@
       stats.innerHTML = [
         ["Membros", `${formatNumber(guild.member_count)}/${GUILD_MAX_MEMBERS}`],
         ["Nivel", `${formatNumber(guild.level)}`],
+        ["Tickets", `${getGuildBossTickets()}/${GUILD_BOSS_TICKET_MAX}`],
         ["Poder", formatNumber(guild.total_power)]
       ].map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
       renderHomeGuildPreview(guild);
@@ -12393,6 +13347,22 @@
     return `<div class="guild-tabs" role="tablist" aria-label="Abas da Irmandade">${tabs.map(key => `<button class="${guildActiveTab === key ? "active" : ""}" type="button" data-guild-tab="${key}" aria-selected="${guildActiveTab === key ? "true" : "false"}">${GUILD_TAB_LABELS[key]}</button>`).join("")}</div>`;
   }
 
+  function guildBossDamageRankingHtml(members = []) {
+    const ranking = [...members]
+      .filter(member => Number(member.boss_damage || 0) > 0)
+      .sort((a, b) => Number(b.boss_damage || 0) - Number(a.boss_damage || 0) || Number(b.boss_participation_count || 0) - Number(a.boss_participation_count || 0) || String(a.pirate_name || "").localeCompare(String(b.pirate_name || "")))
+      .slice(0, 10);
+    const rows = ranking.length ? ranking.map((member, index) => `<article class="guild-boss-ranking-row ${member.player_id === state.playerId ? "available" : ""}">
+      <div class="guild-boss-ranking-place">${index + 1}</div>
+      <div class="guild-member-main"><strong>${escapeHtml(member.pirate_name)}</strong><small>${guildRoleLabel(member.role)} &bull; ${formatNumber(member.boss_participation_count || 0)} tentativas hoje</small></div>
+      <div class="guild-member-stat"><span>Dano diario</span><strong>${formatNumber(member.boss_damage)}</strong></div>
+    </article>`).join("") : guildEmptyStateHtml("Nenhum dano registrado no ciclo diario atual.");
+    return `<section class="guild-boss-ranking">
+      <div class="section-heading compact"><div><span class="eyebrow">RANKING DIARIO</span><h2>Dano em Bosses</h2></div></div>
+      <div class="guild-boss-ranking-list">${rows}</div>
+    </section>`;
+  }
+
   function guildSummaryTabHtml() {
     const guild = getCurrentGuild();
     const members = guildState.current.members || [];
@@ -12400,12 +13370,13 @@
     const actionState = getGuildBossActionState(guildState.current.boss_state || {});
     const bossButtonTitle = guildBossActionTitle(actionState);
     return `<div class="guild-panel">
-      <div class="section-heading compact"><div><span class="eyebrow">RESUMO</span><h2>${escapeHtml(guild.name)}</h2>${description}</div><div class="guild-summary-actions"><button class="button" type="button" data-refresh-guild>Atualizar</button><button class="button guild-boss-action-button ${actionState.canStart ? "primary" : ""} ${actionState.cooldownText || actionState.activeBlocked ? "cooldown" : ""}" type="button" data-guild-summary-boss-action data-start-guild-boss="${actionState.bossIndex}" title="${escapeHtml(bossButtonTitle)}" ${actionState.canStart ? "" : "disabled"}>${escapeHtml(actionState.label)}</button></div></div>
+      <div class="section-heading compact"><div><span class="eyebrow">RESUMO</span><h2>${escapeHtml(guild.name)}</h2>${description}</div><div class="guild-summary-actions"><button class="button" type="button" data-refresh-guild>Atualizar</button><button class="button guild-boss-action-button ${actionState.canStart && !actionState.missingTicket ? "primary" : ""} ${actionState.cooldownText || actionState.activeBlocked ? "cooldown" : ""}" type="button" data-guild-summary-boss-action data-start-guild-boss="${actionState.bossIndex}" title="${escapeHtml(bossButtonTitle)}" ${actionState.canStart ? "" : "disabled"}>${escapeHtml(actionState.label)}</button></div></div>
       <div class="guild-summary-grid">
         ${[
           ["Nivel", guild.level],
           ["Experiencia", guild.experience],
           ["Membros", `${formatNumber(guild.member_count || members.length)}/${GUILD_MAX_MEMBERS}`],
+          ["Tickets", `${getGuildBossTickets()}/${GUILD_BOSS_TICKET_MAX}`],
           ["Poder naval", guild.total_power],
           ["Prestigios", guild.total_prestiges],
           ["Contribuicao", guild.total_contribution],
@@ -12413,6 +13384,7 @@
           ["Cargo", guildRoleLabel(guildState.current.role)]
         ].map(([label, value]) => `<div><span>${label}</span><strong>${typeof value === "number" ? formatNumber(value) : escapeHtml(value)}</strong></div>`).join("")}
       </div>
+      ${guildBossDamageRankingHtml(members)}
     </div>`;
   }
 
@@ -12469,7 +13441,7 @@
     const selectedSubtitle = allBossesCleared
       ? "Todos os bosses foram derrotados hoje. Reset ao meio-dia."
       : `${escapeHtml(selectedRegion.name)} &bull; HP ${formatNumber(selectedHp)} / ${formatNumber(selectedMaxHp)}`;
-    const actionLabel = allBossesCleared ? "Concluido" : actionState.activeBlocked ? actionState.activeLabel : cooldownText ? `Cooldown ${cooldownText}` : "Enfrentar";
+    const actionLabel = allBossesCleared ? "Concluido" : actionState.activeBlocked ? actionState.activeLabel : cooldownText ? `Cooldown ${cooldownText}` : actionState.missingTicket ? "Sem ticket" : "Enfrentar";
     const actionTitle = guildBossActionTitle(actionState);
     const rows = REGIONS.map((region, index) => {
       const defeated = allBossesCleared || index < currentBossIndex;
@@ -12480,7 +13452,7 @@
       const ratio = clamp(hp / Math.max(1, maxHp), 0, 1) * 100;
       const status = defeated ? "Derrotado hoje" : current ? "Disponivel" : "Bloqueado";
       return `<article class="guild-boss-row ${defeated ? "defeated" : current ? "current" : "locked"}">
-        <div class="guild-boss-main"><strong>${index + 1}. ${escapeHtml(region.boss)}</strong><small>${escapeHtml(region.name)} &bull; ${status} &bull; HP x${GUILD_BOSS_HP_MULTIPLIER}</small></div>
+        <div class="guild-boss-main"><strong>${index + 1}. ${escapeHtml(region.boss)}</strong><small>${escapeHtml(region.name)} &bull; ${status} &bull; HP x${getGuildBossHpMultiplier(index)}</small></div>
         <div class="guild-boss-hp"><div class="guild-boss-hp-bar"><i style="width:${ratio}%"></i></div><small>${formatNumber(hp)} / ${formatNumber(maxHp)}</small></div>
       </article>`;
     }).join("");
@@ -12488,10 +13460,11 @@
       <div class="guild-boss-summary">
         <div><span>Boss atual</span><strong>${bossProgress}</strong></div>
         <div><span>Selecionado</span><strong>${guildBossSelectedIndex + 1}</strong></div>
+        <div><span>Tickets</span><strong>${getGuildBossTickets()}/${GUILD_BOSS_TICKET_MAX}</strong></div>
         <div><span>HP atual</span><strong>${formatNumber(selectedHp)}</strong></div>
         <div><span>Cooldown</span><strong data-guild-boss-cooldown>${cooldownText || "Livre"}</strong></div>
       </div>
-      <div class="section-heading compact"><div><span class="eyebrow">BOSS DA IRMANDADE</span><h2>${escapeHtml(selectedTitle)}</h2><p>${selectedSubtitle}</p></div><button class="button guild-boss-action-button ${canStart ? "primary" : ""} ${cooldownText || actionState.activeBlocked ? "cooldown" : ""}" type="button" data-guild-boss-action data-start-guild-boss="${guildBossSelectedIndex}" title="${escapeHtml(actionTitle)}" ${canStart ? "" : "disabled"}>${escapeHtml(actionLabel)}</button></div>
+      <div class="section-heading compact"><div><span class="eyebrow">BOSS DA IRMANDADE</span><h2>${escapeHtml(selectedTitle)}</h2><p>${selectedSubtitle}</p></div><button class="button guild-boss-action-button ${canStart && !actionState.missingTicket ? "primary" : ""} ${cooldownText || actionState.activeBlocked ? "cooldown" : ""}" type="button" data-guild-boss-action data-start-guild-boss="${guildBossSelectedIndex}" title="${escapeHtml(actionTitle)}" ${canStart ? "" : "disabled"}>${escapeHtml(actionLabel)}</button></div>
       <div class="guild-boss-list">${rows}</div>
     </div>`;
   }
@@ -13837,8 +14810,9 @@
     const guild = getCurrentGuild();
     if (!guildState.current || !guild) return toast("Entre em uma Irmandade antes de enfrentar Boss da Irmandade.", "danger-toast");
     if (!isValidPirateName()) return toast("Defina seu Nome de Pirata na tela de Capitao antes de usar a Irmandade.", "danger-toast");
-    const activeEnemy = state.combat.enemy;
-    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || pendingBossChallengeTimer || activeEnemy?.isBoss || activeEnemy?.isArena || isArenaSceneActive()) return toast("Finalize o boss ou duelo especial atual antes de enfrentar Boss da Irmandade.", "danger-toast");
+    if (guildBossChallengeStarting) return toast("Boss da Irmandade ja esta iniciando. Aguarde.", "danger-toast");
+    const blockMessage = getSpecialCombatStartBlockMessage("guildBoss");
+    if (blockMessage) return toast(blockMessage, "danger-toast");
     const bossIndex = clamp(Math.floor(Number(rawIndex) || 0), 0, REGIONS.length - 1);
     const bossState = guildState.current.boss_state || {};
     const currentBossIndex = clamp(Math.floor(Number(bossState.current_boss_index || 0)), 0, REGIONS.length);
@@ -13849,8 +14823,10 @@
       toast(`Boss da Irmandade recarrega em ${guildCooldownRemainingText(bossState.cooldown_until) || formatArenaDuration((cooldownUntil - Date.now()) / 1000)}.`, "danger-toast");
       return;
     }
+    if (getGuildBossTickets() <= 0) return toast("Talvez aqueles baús sirvam pra alguma coisa...", "danger-toast");
     const config = getOnlineConfig();
     if (!isLeaderboardConfigured(config)) return toast("Irmandade online indisponivel no momento.", "danger-toast");
+    guildBossChallengeStarting = true;
     guildState.actionPending = true;
     updateGuildCooldownLabels();
     renderGuildIfVisible();
@@ -13867,7 +14843,7 @@
           map_index: bossIndex + 1,
           map_name: region.name,
           base_hp: getBossOriginalStats(bossIndex).hp,
-          guild_hp_multiplier: GUILD_BOSS_HP_MULTIPLIER
+          guild_hp_multiplier: getGuildBossHpMultiplier(bossIndex)
         },
         p_player_snapshot: buildGuildPlayerSnapshot()
       });
@@ -13879,6 +14855,7 @@
         await refreshGuild({ force: true });
         return;
       }
+      if (!spendGuildBossTicket()) return toast("Talvez aqueles baús sirvam pra alguma coisa...", "danger-toast");
       queueRegionPreload(bossIndex);
       guildBossCombatPrevious = {
         screen: currentScreen,
@@ -13907,6 +14884,7 @@
       toast("Nao foi possivel iniciar o Boss da Irmandade. Atualizando dados online.", "danger-toast");
       await refreshGuild({ force: true });
     } finally {
+      guildBossChallengeStarting = false;
       guildState.actionPending = false;
       updateGuildCooldownLabels();
       renderGuildIfVisible();
@@ -14250,8 +15228,12 @@
   }
 
   async function startArenaChallenge(playerId) {
-    if (pendingBossMapAdvanceTimer || pendingSurpriseBossTimer || pendingBossChallengeTimer) return toast("Aguarde o evento atual terminar antes de entrar na Arena.", "danger-toast");
+    if (arenaChallengeStarting) return toast("Arena ja esta preparando um duelo. Aguarde.", "danger-toast");
+    const blockMessage = getSpecialCombatStartBlockMessage("arena");
+    if (blockMessage) return toast(blockMessage, "danger-toast");
     if (isArenaSceneActive()) return toast("Um duelo da Arena já está em andamento.", "danger-toast");
+    arenaChallengeStarting = true;
+    try {
     let opponent = getArenaOpponentById(playerId);
     if (!opponent) return toast("Esse inimigo da Arena não está mais disponível.", "danger-toast");
     if (!opponent.is_bot) {
@@ -14294,6 +15276,10 @@
     addLog(`Arena preparada contra ${opponent.pirate_name}. Combate começa em ${formatSeconds(ARENA_START_DELAY_MS / 1000)}.`, "danger-text");
     toast(`Arena começa em ${formatSeconds(ARENA_START_DELAY_MS / 1000)}: ${opponent.pirate_name}.`, "gold-toast");
     renderAll(false);
+    toast("Aguarde a Arena comecar antes de iniciar outro combate.", "gold-toast");
+    } finally {
+      arenaChallengeStarting = false;
+    }
   }
 
   function renderArenaResultModal() {
@@ -15238,6 +16224,10 @@
   function handleScreenTargetNavigation(target) {
     if (!target?.dataset?.screenTarget) return false;
     const screen = normalizeScreen(target.dataset.screenTarget);
+    if (screen === "home") {
+      focusCombatView();
+      return true;
+    }
     if (screen === "ranking") return true;
     if (mobileCombatPanelOpen && screen === currentScreen) {
       closeMobileCombatPanel();
@@ -15371,12 +16361,20 @@
       exitDesktopMiniOverlay();
       return;
     }
+    if (target.dataset.desktopMiniRecommend) {
+      executeDesktopMiniRecommendation(target.dataset.desktopMiniRecommend, target);
+      return;
+    }
     if (target.dataset.toggleFleetSelector !== undefined) {
       toggleFleetSelector();
       return;
     }
     if (target.dataset.desktopCheckUpdate !== undefined) {
       checkAppUpdate();
+      return;
+    }
+    if (target.dataset.desktopWelcomeClose !== undefined) {
+      closeDesktopWelcomeScreen();
       return;
     }
     if (target.dataset.mobilePanelClose !== undefined) {
@@ -15769,8 +16767,9 @@
       if (!automatic) toast(CAPTAIN_REQUIRED_MESSAGE, "danger-toast");
       return false;
     }
-    if (isArenaSceneActive()) {
-      if (!automatic) toast("Finalize a Arena antes de desafiar bosses do mapa.", "danger-toast");
+    const blockMessage = getSpecialCombatStartBlockMessage("mapBoss");
+    if (blockMessage) {
+      if (!automatic) toast(blockMessage, "danger-toast");
       return false;
     }
     if (state.regionKills[state.regionIndex] < 100 || state.bossesDefeated[state.regionIndex]) return false;
@@ -15862,6 +16861,7 @@
   ["pointerup", "pointercancel"].forEach(type => document.addEventListener(type, stopTradeHold));
 
   $("#battle-stage")?.addEventListener("pointerdown", handleCombatStagePointerDown);
+  $("#battle-stage")?.addEventListener("contextmenu", handleDesktopMiniContextMenu);
   $("#start-button").addEventListener("click", toggleAutoCombat);
   $("#auto-boss-button")?.addEventListener("click", toggleAutoChallengeBoss);
   $("#boss-button").addEventListener("click", challengeBoss);
@@ -15900,6 +16900,7 @@
   syncAppVersionLabels();
   installDesktopUpdateStatusListener();
   syncDesktopExecutableUi();
+  showDesktopWelcomeScreen();
   if (!isGameAuthenticated()) return;
   setupNativeTooltipSuppression();
   setCombatMinimized(combatMinimized, false);

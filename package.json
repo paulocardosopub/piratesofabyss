@@ -1,6 +1,6 @@
 {
   "name": "pirates-of-the-abyss",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Idle RPG naval em portugues para web e desktop.",
   "author": "paulocardosopub",
   "private": true,
@@ -75,7 +75,8 @@
   "devDependencies": {
     "electron": "^43.0.0",
     "electron-builder": "^26.15.3",
-    "sharp": "^0.35.2"
+    "sharp": "^0.35.2",
+    "supabase": "^2.109.0"
   },
   "dependencies": {
     "electron-updater": "^6.8.9"

@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=149">
+  <link rel="stylesheet" href="styles.css?v=150">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -27,12 +27,25 @@
     </div>
   </div>
 
+  <section class="desktop-welcome-screen hidden" id="desktop-welcome-screen" aria-labelledby="desktop-welcome-title">
+    <article class="desktop-welcome-card">
+      <span class="eyebrow">EXECUTAVEL</span>
+      <h1 id="desktop-welcome-title">Bem vindo de volta!</h1>
+      <small class="app-version" id="desktop-welcome-version">Versao 1.0.10</small>
+      <div class="desktop-welcome-status" id="desktop-welcome-status" aria-live="polite">Pronto para jogar.</div>
+      <div class="desktop-welcome-actions">
+        <button class="button primary" id="desktop-welcome-update-button" type="button" data-desktop-check-update>Verificar atualiza&ccedil;&otilde;es</button>
+        <button class="button" type="button" data-desktop-welcome-close>Entrar no jogo</button>
+      </div>
+    </article>
+  </section>
+
   <section class="auth-screen" id="auth-screen" data-auth-mode="login" aria-labelledby="auth-title">
     <form class="auth-card" data-auth-form autocomplete="on">
       <div class="auth-heading">
         <span>Pirates of the Abyss</span>
         <h1 id="auth-title">Entrar</h1>
-        <small class="app-version" data-app-version>Versao 1.0.8</small>
+        <small class="app-version" data-app-version>Versao 1.0.10</small>
       </div>
       <label class="auth-field">
         <span>Usuario</span>
@@ -88,7 +101,12 @@
           <button class="combat-guild-toggle" id="combat-guild-toggle" type="button" data-screen-target="guild" aria-label="Abrir Irmandade Pirata" data-help-tooltip="Abre a pagina da Irmandade Pirata."><span aria-hidden="true">&#x2620;</span></button>
           <button class="combat-arena-toggle" id="combat-arena-toggle" type="button" data-combat-arena-open aria-label="Abrir Ranking e Arena" data-help-tooltip="Abre a pagina de Ranking dos Piratas e Arena PvP."><span aria-hidden="true">&#9876;</span></button>
           <div class="desktop-mini-drag-strip" data-combat-ui aria-hidden="true"></div>
-          <button class="desktop-mini-maximize-button" type="button" data-combat-ui data-desktop-mini-exit aria-label="Maximizar janela" title="Maximizar">&#x25A1;</button>
+          <div class="desktop-mini-action-row" data-combat-ui aria-label="Acoes da miniatura desktop">
+            <button class="desktop-mini-action-button" id="desktop-mini-next-map" type="button" data-combat-ui data-map-step="1" aria-label="Avancar mapa" title="Avancar mapa">&#x2192;</button>
+            <button class="desktop-mini-action-button" id="desktop-mini-fleet-upgrade" type="button" data-combat-ui data-desktop-mini-recommend="fleet" aria-label="Upgrade recomendado do barco" title="Upgrade recomendado do barco">&#x2191;</button>
+            <button class="desktop-mini-action-button" id="desktop-mini-captain-upgrade" type="button" data-combat-ui data-desktop-mini-recommend="captain" aria-label="Upgrade recomendado de equipamento do capitao" title="Upgrade recomendado de equipamento do capitao">+</button>
+            <button class="desktop-mini-maximize-button" type="button" data-combat-ui data-desktop-mini-exit aria-label="Maximizar janela" title="Maximizar">&#x25A1;</button>
+          </div>
           <button class="combat-quest-alert hidden" id="combat-quest-alert" type="button" aria-label="Recompensas de missões disponíveis" title="Coletar recompensas de missões" data-mission-reward-shortcut><span aria-hidden="true">!</span></button>
 
           <div class="combat-map-title" id="scene-region" aria-live="polite">1 - Lagoa dos Primeiros Remadores</div>
@@ -460,7 +478,7 @@
             <div class="stats-panel-body" data-stats-panel-body="desktopUpdate">
               <div class="desktop-update-zone">
                 <div><strong id="app-update-heading">Buscar atualizacao no browser</strong><span id="app-update-description">Verifica se existe uma versao nova publicada e recarrega o jogo.</span><small id="desktop-update-status" aria-live="polite"></small></div>
-                <button class="button primary" type="button" data-desktop-check-update>Buscar atualizacao</button>
+                <button class="button primary" type="button" data-desktop-check-update>Verificar atualiza&ccedil;&otilde;es</button>
               </div>
             </div>
           </section>
@@ -547,7 +565,7 @@
 
   <script src="version.js?v=5"></script>
   <script src="online-config.js?v=1"></script>
-  <script src="auth.js?v=8"></script>
-  <script src="game.js?v=265"></script>
+  <script src="auth.js?v=9"></script>
+  <script src="game.js?v=274"></script>
 </body>
 </html>

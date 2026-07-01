@@ -27,7 +27,12 @@ const buildOnlyExcludes = [
   "assets/ui/icon_upgrade_melhoria_recomendada.png"
 ];
 
-fs.rmSync(output, { recursive: true, force: true });
+try {
+  fs.rmSync(output, { recursive: true, force: true });
+} catch (error) {
+  if (error?.code !== "EPERM" && error?.code !== "EBUSY") throw error;
+  console.warn(`Nao foi possivel recriar ${path.relative(root, output)}; os arquivos existentes serao sobrescritos.`);
+}
 fs.mkdirSync(output, { recursive: true });
 
 for (const file of runtimeFiles) {

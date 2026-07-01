@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { app, BrowserWindow, Menu, dialog, ipcMain, net, protocol, screen, shell } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, net, protocol, screen, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 
 const APP_SCHEME = "pirates";
@@ -11,10 +11,14 @@ const PRODUCT_NAME = "Pirates of the Abyss";
 const UPDATE_CHECK_DELAY_MS = 12000;
 
 let mainWindow = null;
-let updateReadyPromptOpen = false;
 let autoUpdateSetupDone = false;
 let manualUpdateCheckPromise = null;
+let desktopUpdateReady = false;
+let desktopUpdateInfo = null;
 let normalWindowState = null;
+let miniOverlayWindowBounds = null;
+let miniOverlayAlwaysOnTop = true;
+let miniOverlayTopPulseTimer = null;
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -30,6 +34,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 function getAppRoot() {
+  if (!app.isPackaged) return app.getAppPath();
   const packagedRoot = path.join(app.getAppPath(), "dist-web");
   if (fs.existsSync(path.join(packagedRoot, "index.html"))) return packagedRoot;
   return app.getAppPath();
@@ -66,6 +71,12 @@ function registerAppProtocol() {
 
 function isAppUrl(url) {
   return url.startsWith(`${APP_SCHEME}://${APP_HOST}/`);
+}
+
+function getInitialAppUrl() {
+  const query = !app.isPackaged ? String(process.env.PIRATES_DESKTOP_START_QUERY || "").trim() : "";
+  if (!query) return APP_URL;
+  return `${APP_URL}${query.startsWith("?") ? query : `?${query}`}`;
 }
 
 function openExternalUrl(url) {
@@ -109,18 +120,24 @@ function setupAutoUpdates(win) {
 
   autoUpdater.logger = getUpdateLogger();
   autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.disableDifferentialDownload = false;
 
   autoUpdater.on("checking-for-update", () => {
+    desktopUpdateReady = false;
+    desktopUpdateInfo = null;
     writeUpdateLog("info", "Verificando atualizacoes.");
     sendDesktopUpdateStatus(win, "checking", "Verificando atualizacoes...");
   });
   autoUpdater.on("update-available", info => {
+    desktopUpdateReady = false;
+    desktopUpdateInfo = info || null;
     writeUpdateLog("info", `Atualizacao encontrada: ${info.version}.`);
     sendDesktopUpdateStatus(win, "available", `Atualizacao ${info.version || ""} encontrada. Baixando...`.trim(), { version: info.version || "" });
   });
   autoUpdater.on("update-not-available", info => {
+    desktopUpdateReady = false;
+    desktopUpdateInfo = null;
     writeUpdateLog("info", `App atualizado: ${info.version}.`);
     sendDesktopUpdateStatus(win, "current", "Seu jogo ja esta atualizado.", { version: info.version || "" });
   });
@@ -130,30 +147,15 @@ function setupAutoUpdates(win) {
     sendDesktopUpdateStatus(win, "downloading", `Baixando atualizacao: ${percent}%.`, { percent: Number(progress.percent || 0) });
   });
   autoUpdater.on("error", error => {
+    desktopUpdateReady = false;
     writeUpdateLog("error", error?.stack || error?.message || error);
     sendDesktopUpdateStatus(win, "error", "Nao foi possivel verificar atualizacoes agora.");
   });
   autoUpdater.on("update-downloaded", info => {
+    desktopUpdateReady = true;
+    desktopUpdateInfo = info || null;
     writeUpdateLog("info", `Atualizacao pronta para instalar: ${info.version}.`);
-    sendDesktopUpdateStatus(win, "ready", `Atualizacao ${info.version || ""} pronta para instalar.`.trim(), { version: info.version || "" });
-    if (updateReadyPromptOpen) return;
-    updateReadyPromptOpen = true;
-    dialog.showMessageBox(win, {
-      type: "info",
-      title: "Atualizacao pronta",
-      message: "Uma nova versao de Pirates of the Abyss foi baixada.",
-      detail: "Reinicie o jogo para instalar a atualizacao. Seu save online e sua conta serao mantidos.",
-      buttons: ["Reiniciar e atualizar", "Depois"],
-      defaultId: 0,
-      cancelId: 1,
-      noLink: true
-    }).then(result => {
-      updateReadyPromptOpen = false;
-      if (result.response === 0) autoUpdater.quitAndInstall(false, true);
-    }).catch(error => {
-      updateReadyPromptOpen = false;
-      writeUpdateLog("error", error?.stack || error?.message || error);
-    });
+    sendDesktopUpdateStatus(win, "ready", `Atualizacao ${info.version || ""} pronta. Reinicie pelo jogo.`.trim(), { version: info.version || "", canInstall: true });
   });
 
   setTimeout(() => {
@@ -179,13 +181,44 @@ function clampToDisplay(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function clampMiniOverlayBounds(bounds) {
+  const display = screen.getDisplayMatching(bounds);
+  const area = miniOverlayAlwaysOnTop
+    ? (display?.bounds || screen.getPrimaryDisplay().bounds)
+    : (display?.workArea || screen.getPrimaryDisplay().workArea);
+  const width = Math.max(1, Math.round(Number(bounds?.width) || 1));
+  const height = Math.max(1, Math.round(Number(bounds?.height) || 1));
+  const maxX = area.x + Math.max(0, area.width - width);
+  const maxY = area.y + Math.max(0, area.height - height);
+  return {
+    width,
+    height,
+    x: clampToDisplay(Math.round(Number(bounds?.x) || area.x), area.x, maxX),
+    y: clampToDisplay(Math.round(Number(bounds?.y) || area.y), area.y, maxY)
+  };
+}
+
+function getMiniOverlayEnterBounds(win) {
+  const fallback = getMiniOverlayBounds(win);
+  if (!miniOverlayWindowBounds) return fallback;
+  return clampMiniOverlayBounds({
+    ...fallback,
+    width: miniOverlayWindowBounds.width || fallback.width,
+    height: miniOverlayWindowBounds.height || fallback.height,
+    x: miniOverlayWindowBounds.x ?? fallback.x,
+    y: miniOverlayWindowBounds.y ?? fallback.y
+  });
+}
+
 function clampMiniOverlayPosition(win, x, y) {
   const bounds = win.getBounds();
   const display = screen.getDisplayNearestPoint({
     x: Math.round(x + bounds.width / 2),
     y: Math.round(y + bounds.height / 2)
   });
-  const displayBounds = display?.bounds || screen.getPrimaryDisplay().bounds;
+  const displayBounds = miniOverlayAlwaysOnTop
+    ? (display?.bounds || screen.getPrimaryDisplay().bounds)
+    : (display?.workArea || screen.getPrimaryDisplay().workArea);
   const maxX = displayBounds.x + Math.max(0, displayBounds.width - bounds.width);
   const maxY = displayBounds.y + Math.max(0, displayBounds.height - bounds.height);
   return {
@@ -194,11 +227,70 @@ function clampMiniOverlayPosition(win, x, y) {
   };
 }
 
-function keepMiniOverlayOnTop(win) {
+function keepMiniOverlayAboveTaskbar(win) {
+  if (!win || win.isDestroyed()) return;
+  const bounds = win.getBounds();
+  const next = clampMiniOverlayPosition(win, bounds.x, bounds.y);
+  if (next.x !== bounds.x || next.y !== bounds.y) {
+    win.setBounds({ ...bounds, ...next }, true);
+  }
+}
+
+function isMiniOverlayActive(win) {
+  return Boolean(normalWindowState && win && !win.isDestroyed());
+}
+
+function pulseMiniOverlayTopPriority(win) {
+  if (!isMiniOverlayActive(win) || !miniOverlayAlwaysOnTop) return;
   win.setAlwaysOnTop(true, "screen-saver");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.setSkipTaskbar(true);
+  win.setSkipTaskbar(false);
   if (typeof win.moveTop === "function") win.moveTop();
+}
+
+function stopMiniOverlayTopPulse() {
+  if (!miniOverlayTopPulseTimer) return;
+  clearInterval(miniOverlayTopPulseTimer);
+  miniOverlayTopPulseTimer = null;
+}
+
+function startMiniOverlayTopPulse(win) {
+  stopMiniOverlayTopPulse();
+  if (!isMiniOverlayActive(win) || !miniOverlayAlwaysOnTop) return;
+  miniOverlayTopPulseTimer = setInterval(() => pulseMiniOverlayTopPriority(win), 350);
+  if (typeof miniOverlayTopPulseTimer.unref === "function") miniOverlayTopPulseTimer.unref();
+}
+
+function applyMiniOverlayTopState(win) {
+  if (!win || win.isDestroyed()) return;
+  win.setAlwaysOnTop(Boolean(miniOverlayAlwaysOnTop), "screen-saver");
+  win.setVisibleOnAllWorkspaces(Boolean(miniOverlayAlwaysOnTop), { visibleOnFullScreen: true });
+  win.setSkipTaskbar(false);
+  keepMiniOverlayAboveTaskbar(win);
+  if (miniOverlayAlwaysOnTop && typeof win.moveTop === "function") win.moveTop();
+  if (miniOverlayAlwaysOnTop && isMiniOverlayActive(win)) startMiniOverlayTopPulse(win);
+  else stopMiniOverlayTopPulse();
+}
+
+function keepMiniOverlayOnTop(win) {
+  applyMiniOverlayTopState(win);
+}
+
+function showMiniOverlayContextMenu(win) {
+  if (!win || win.isDestroyed()) return { ok: false, message: "Janela indisponivel." };
+  const menu = Menu.buildFromTemplate([
+    {
+      label: "Fixar On Top",
+      type: "checkbox",
+      checked: Boolean(miniOverlayAlwaysOnTop),
+      click: item => {
+        miniOverlayAlwaysOnTop = Boolean(item.checked);
+        applyMiniOverlayTopState(win);
+      }
+    }
+  ]);
+  menu.popup({ window: win });
+  return { ok: true };
 }
 
 function captureNormalWindowState(win) {
@@ -218,10 +310,11 @@ async function enterMiniOverlay(win) {
   win.setMovable(true);
   win.setResizable(false);
   win.setMinimumSize(280, 70);
+  win.setSkipTaskbar(false);
   keepMiniOverlayOnTop(win);
   win.setHasShadow(false);
   win.setBackgroundColor("#00000000");
-  win.setBounds(getMiniOverlayBounds(win), true);
+  win.setBounds(getMiniOverlayEnterBounds(win), true);
   win.show();
   keepMiniOverlayOnTop(win);
   win.focus();
@@ -231,7 +324,9 @@ async function enterMiniOverlay(win) {
 async function exitMiniOverlay(win) {
   if (!win || win.isDestroyed()) return { ok: false, message: "Janela indisponivel." };
   const restore = normalWindowState;
+  miniOverlayWindowBounds = win.getBounds();
   normalWindowState = null;
+  stopMiniOverlayTopPulse();
   win.setAlwaysOnTop(false);
   win.setVisibleOnAllWorkspaces(false);
   win.setSkipTaskbar(false);
@@ -255,6 +350,7 @@ function moveMiniOverlay(win, delta = {}) {
   const next = clampMiniOverlayPosition(win, x + dx, y + dy);
   keepMiniOverlayOnTop(win);
   win.setPosition(next.x, next.y, false);
+  miniOverlayWindowBounds = win.getBounds();
   keepMiniOverlayOnTop(win);
   return { ok: true };
 }
@@ -272,6 +368,12 @@ async function checkForUpdatesFromRenderer(win) {
     return { ok: false, status: "unavailable", message };
   }
   setupAutoUpdates(win);
+  if (desktopUpdateReady) {
+    const version = desktopUpdateInfo?.version || "";
+    const message = `Atualizacao ${version} pronta. Reinicie pelo jogo.`.trim();
+    sendDesktopUpdateStatus(win, "ready", message, { version, canInstall: true });
+    return { ok: true, status: "ready", message, version, canInstall: true };
+  }
   if (manualUpdateCheckPromise) {
     return { ok: true, status: "checking", message: "Verificacao de atualizacao ja em andamento." };
   }
@@ -290,11 +392,44 @@ async function checkForUpdatesFromRenderer(win) {
   return manualUpdateCheckPromise;
 }
 
+function installDownloadedUpdateFromRenderer(win) {
+  if (!win || win.isDestroyed()) return { ok: false, status: "error", message: "Janela indisponivel." };
+  if (!app.isPackaged || process.env.PIRATES_DISABLE_AUTO_UPDATE === "1") {
+    const message = "Atualizacao automatica disponivel somente no app instalado.";
+    sendDesktopUpdateStatus(win, "unavailable", message);
+    return { ok: false, status: "unavailable", message };
+  }
+  if (process.env.PORTABLE_EXECUTABLE_FILE || process.env.PORTABLE_EXECUTABLE_DIR) {
+    const message = "A versao portatil nao instala atualizacoes automaticas.";
+    sendDesktopUpdateStatus(win, "unavailable", message);
+    return { ok: false, status: "unavailable", message };
+  }
+  if (!desktopUpdateReady) {
+    const message = "Nenhuma atualizacao baixada ainda.";
+    sendDesktopUpdateStatus(win, "idle", message);
+    return { ok: false, status: "idle", message };
+  }
+  const message = "Reiniciando para aplicar atualizacao...";
+  sendDesktopUpdateStatus(win, "installing", message);
+  writeUpdateLog("info", "Instalando atualizacao silenciosa solicitada pelo jogo.");
+  setTimeout(() => {
+    try {
+      autoUpdater.quitAndInstall(true, true);
+    } catch (error) {
+      writeUpdateLog("error", error?.stack || error?.message || error);
+      sendDesktopUpdateStatus(win, "error", "Nao foi possivel reiniciar para atualizar.");
+    }
+  }, 250);
+  return { ok: true, status: "installing", message };
+}
+
 function registerDesktopIpcHandlers() {
   ipcMain.handle("desktop-enter-mini-overlay", event => enterMiniOverlay(BrowserWindow.fromWebContents(event.sender)));
   ipcMain.handle("desktop-exit-mini-overlay", event => exitMiniOverlay(BrowserWindow.fromWebContents(event.sender)));
   ipcMain.handle("desktop-move-mini-overlay", (event, delta) => moveMiniOverlay(BrowserWindow.fromWebContents(event.sender), delta));
+  ipcMain.handle("desktop-show-mini-overlay-menu", event => showMiniOverlayContextMenu(BrowserWindow.fromWebContents(event.sender)));
   ipcMain.handle("desktop-check-for-updates", event => checkForUpdatesFromRenderer(BrowserWindow.fromWebContents(event.sender)));
+  ipcMain.handle("desktop-install-update", event => installDownloadedUpdateFromRenderer(BrowserWindow.fromWebContents(event.sender)));
   ipcMain.handle("desktop-window-action", (event, action) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win || win.isDestroyed()) return { ok: false };
@@ -348,8 +483,15 @@ function createWindow() {
       event.preventDefault();
     }
   });
+  win.on("blur", () => {
+    if (!isMiniOverlayActive(win) || !miniOverlayAlwaysOnTop) return;
+    setTimeout(() => pulseMiniOverlayTopPriority(win), 20);
+  });
+  win.on("focus", () => pulseMiniOverlayTopPriority(win));
+  win.on("show", () => pulseMiniOverlayTopPriority(win));
+  win.on("closed", stopMiniOverlayTopPulse);
 
-  win.loadURL(APP_URL);
+  win.loadURL(getInitialAppUrl());
   setupAutoUpdates(win);
   return win;
 }

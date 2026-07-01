@@ -357,6 +357,10 @@ begin
     raise exception 'Senha incorreta.';
   end if;
 
+  if coalesce(v_account.session_token, '') <> '' and v_account.session_expires_at > now() then
+    perform public.pirate_account_log_security_event(v_account.id, v_key, 'login_replaced_session', 'account_opened_elsewhere', '{}'::jsonb, 'session_revoked');
+  end if;
+
   update public.pirate_accounts
   set session_token = v_token,
       session_expires_at = now() + interval '90 days',

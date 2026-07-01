@@ -8,6 +8,14 @@ as $$
   select 'Esta Irmandade ja atingiu o limite maximo de 20 membros.';
 $$;
 
+create or replace function public.pirate_guild_day_key(p_now timestamptz default now())
+returns text
+language sql
+stable
+as $$
+  select ((timezone('America/Sao_Paulo', p_now) - interval '12 hours')::date)::text;
+$$;
+
 create table if not exists public.pirate_guilds (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(trim(name)) between 3 and 32),
@@ -32,12 +40,20 @@ create table if not exists public.pirate_guild_members (
   contribution numeric not null default 0 check (contribution >= 0),
   boss_damage numeric not null default 0 check (boss_damage >= 0),
   boss_participation_count integer not null default 0 check (boss_participation_count >= 0),
+  boss_damage_day_key text not null default public.pirate_guild_day_key(),
   player_snapshot jsonb not null default '{}'::jsonb,
   joined_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (guild_id, player_id),
   unique (player_id)
 );
+
+alter table public.pirate_guild_members
+  add column if not exists boss_damage_day_key text not null default public.pirate_guild_day_key();
+
+update public.pirate_guild_members
+set boss_damage_day_key = public.pirate_guild_day_key()
+where boss_damage_day_key is null or boss_damage_day_key = '';
 
 create index if not exists pirate_guild_members_guild_idx
   on public.pirate_guild_members (guild_id, role, updated_at desc);
@@ -111,14 +127,6 @@ revoke all on public.pirate_guild_applications from anon, authenticated;
 revoke all on public.pirate_guild_boss_state from anon, authenticated;
 revoke all on public.pirate_guild_boss_cooldowns from anon, authenticated;
 revoke all on public.pirate_guild_security_events from anon, authenticated;
-
-create or replace function public.pirate_guild_day_key(p_now timestamptz default now())
-returns text
-language sql
-stable
-as $$
-  select ((timezone('America/Sao_Paulo', p_now) - interval '12 hours')::date)::text;
-$$;
 
 create or replace function public.pirate_guild_number_from_snapshot(p_snapshot jsonb, p_key text)
 returns numeric
@@ -212,6 +220,28 @@ begin
 end;
 $$;
 
+create or replace function public.pirate_guild_reset_daily_boss_damage(
+  p_guild_id uuid,
+  p_day_key text default public.pirate_guild_day_key()
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_day_key text := coalesce(nullif(trim(coalesce(p_day_key, '')), ''), public.pirate_guild_day_key());
+begin
+  update public.pirate_guild_members
+  set boss_damage = 0,
+      boss_participation_count = 0,
+      boss_damage_day_key = v_day_key,
+      updated_at = now()
+  where guild_id = p_guild_id
+    and boss_damage_day_key <> v_day_key;
+end;
+$$;
+
 create or replace function public.get_pirate_guild_home(p_player_id text)
 returns jsonb
 language plpgsql
@@ -231,7 +261,9 @@ begin
   limit 1;
 
   if v_membership.guild_id is not null then
-    select last_attempt_at + interval '10 minutes'
+    perform public.pirate_guild_reset_daily_boss_damage(v_membership.guild_id, v_day_key);
+
+    select last_attempt_at + interval '3 minutes'
       into v_cooldown_until
     from public.pirate_guild_boss_cooldowns
     where guild_id = v_membership.guild_id
@@ -305,6 +337,7 @@ begin
               'contribution', m.contribution,
               'boss_damage', m.boss_damage,
               'boss_participation_count', m.boss_participation_count,
+              'boss_damage_day_key', m.boss_damage_day_key,
               'player_snapshot', m.player_snapshot,
               'joined_at', m.joined_at,
               'updated_at', m.updated_at
@@ -701,7 +734,9 @@ begin
   where guild_id = p_guild_id and player_id = v_player_id;
   if v_member.player_id is null then raise exception 'jogador fora da irmandade'; end if;
 
-  select last_attempt_at + interval '10 minutes'
+  perform public.pirate_guild_reset_daily_boss_damage(p_guild_id, v_day_key);
+
+  select last_attempt_at + interval '3 minutes'
     into v_cooldown
   from public.pirate_guild_boss_cooldowns
   where guild_id = p_guild_id and player_id = v_player_id;
@@ -764,7 +799,7 @@ begin
   update public.pirate_guild_boss_state
   set active_player_id = v_player_id,
       active_pirate_name = left(coalesce(nullif(v_snapshot ->> 'pirate_name', ''), v_member.pirate_name, 'Pirata'), 32),
-      active_until = now() + interval '15 minutes',
+      active_until = now() + interval '30 seconds',
       updated_at = now()
   where guild_id = p_guild_id
   returning * into v_state;
@@ -780,7 +815,7 @@ begin
       'active_player_id', v_state.active_player_id,
       'active_pirate_name', v_state.active_pirate_name,
       'active_until', v_state.active_until,
-      'cooldown_until', now() + interval '10 minutes'
+      'cooldown_until', now() + interval '3 minutes'
     )
   );
 end;
@@ -826,6 +861,8 @@ begin
   from public.pirate_guild_members
   where guild_id = p_guild_id and player_id = v_player_id;
   if v_member.player_id is null then raise exception 'jogador fora da irmandade'; end if;
+
+  perform public.pirate_guild_reset_daily_boss_damage(p_guild_id, v_day_key);
 
   select * into v_state
   from public.pirate_guild_boss_state
@@ -890,6 +927,7 @@ begin
   set contribution = contribution + floor(v_damage),
       boss_damage = boss_damage + floor(v_damage),
       boss_participation_count = boss_participation_count + 1,
+      boss_damage_day_key = v_day_key,
       player_snapshot = v_snapshot,
       updated_at = now()
   where guild_id = p_guild_id and player_id = v_player_id;
@@ -948,6 +986,7 @@ revoke all on function public.pirate_guild_number_from_snapshot(jsonb, text) fro
 revoke all on function public.pirate_guild_log_security_event(uuid, text, text, text, jsonb, text) from public;
 revoke all on function public.pirate_guild_validate_player_id(text) from public;
 revoke all on function public.pirate_guild_normalize_snapshot(jsonb) from public;
+revoke all on function public.pirate_guild_reset_daily_boss_damage(uuid, text) from public;
 revoke all on function public.upsert_pirate_guild_profile(text, text, jsonb) from public;
 revoke all on function public.create_pirate_guild(text, text, jsonb, text, text, text) from public;
 revoke all on function public.join_pirate_guild(text, text, jsonb, uuid) from public;
@@ -960,6 +999,7 @@ revoke all on function public.finish_pirate_guild_boss_attempt(text, uuid, integ
 
 grant execute on function public.get_pirate_guild_home(text) to anon, authenticated;
 grant execute on function public.pirate_guild_full_message() to anon, authenticated;
+grant execute on function public.pirate_guild_reset_daily_boss_damage(uuid, text) to anon, authenticated;
 grant execute on function public.upsert_pirate_guild_profile(text, text, jsonb) to anon, authenticated;
 grant execute on function public.create_pirate_guild(text, text, jsonb, text, text, text) to anon, authenticated;
 grant execute on function public.join_pirate_guild(text, text, jsonb, uuid) to anon, authenticated;

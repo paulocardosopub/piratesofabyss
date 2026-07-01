@@ -11,16 +11,21 @@
   const BROWSER_SESSION_MS = 12 * 60 * 60 * 1000;
   const SERVER_SAVE_THROTTLE_MS = 8000;
   const SERVER_REQUEST_TIMEOUT_MS = 12000;
+  const SERVER_SESSION_CHECK_INTERVAL_MS = 15000;
   const MIN_USERNAME_LENGTH = 3;
   const MAX_USERNAME_LENGTH = 24;
   const MIN_PASSWORD_LENGTH = 4;
   const SAVE_VOLATILE_KEYS = ["_saveUpdatedAt", "_backedUpAt", "_backupReason"];
+  const SESSION_REVOKED_NOTICE_KEY = "pirates-of-the-abyss-auth-session-revoked-v1";
 
   let currentUser = null;
   let currentSession = null;
   let serverSaveTimer = 0;
   let serverSavePromise = null;
   let pendingServerSave = null;
+  let serverSessionCheckTimer = 0;
+  let serverSessionCheckPromise = null;
+  let sessionRevokedHandled = false;
 
   const textEncoder = typeof TextEncoder !== "undefined" ? new TextEncoder() : null;
 
@@ -92,6 +97,34 @@
     if (error?.serverUnavailable) return true;
     const message = String(error?.message || error || "");
     return /Servidor de contas indisponivel|demorou para responder|Failed to fetch|NetworkError|Load failed|fetch failed|AbortError|TypeError: Failed/i.test(message);
+  }
+
+  function isServerSessionExpiredError(error) {
+    const message = String(error?.message || error || "");
+    return /Sessao expirada|Sessão expirada|Entre novamente/i.test(message);
+  }
+
+  function setSessionRevokedNotice(message) {
+    const local = getLocalStorage();
+    if (!local) return;
+    writeJsonToStorage(local, SESSION_REVOKED_NOTICE_KEY, {
+      message,
+      createdAt: Date.now()
+    });
+  }
+
+  function consumeSessionRevokedNotice() {
+    const local = getLocalStorage();
+    if (!local) return "";
+    const notice = readJsonFromStorage(local, SESSION_REVOKED_NOTICE_KEY, null);
+    storageRemove(local, SESSION_REVOKED_NOTICE_KEY);
+    return notice?.message || "";
+  }
+
+  function scheduleSessionRevokedReload() {
+    window.setTimeout(() => {
+      try { window.location.reload(); } catch (_) {}
+    }, 2200);
   }
 
   async function callAccountRpc(rpcName, payload = {}) {
@@ -397,6 +430,65 @@
     return auth ? { accountId: auth.accountId, sessionToken: auth.token } : null;
   }
 
+  function stopServerSessionMonitor() {
+    if (serverSessionCheckTimer) {
+      window.clearInterval(serverSessionCheckTimer);
+      serverSessionCheckTimer = 0;
+    }
+  }
+
+  function notifyServerSessionReplaced(error = null) {
+    if (sessionRevokedHandled) return true;
+    if (error && !isServerSessionExpiredError(error)) return false;
+    sessionRevokedHandled = true;
+    stopServerSessionMonitor();
+    if (serverSaveTimer) {
+      window.clearTimeout(serverSaveTimer);
+      serverSaveTimer = 0;
+    }
+    pendingServerSave = null;
+    serverSavePromise = null;
+    const message = "Esta conta foi aberta em outro local. Este jogo foi desconectado para evitar saves paralelos.";
+    setSessionRevokedNotice(message);
+    clearActiveGameSave({ backup: true, reason: "session-replaced" });
+    clearSession();
+    setGuestMode(false);
+    currentUser = null;
+    setAuthLocked(true);
+    try {
+      window.dispatchEvent(new CustomEvent("pirates-auth-session-revoked", { detail: { message } }));
+    } catch (_) {}
+    scheduleSessionRevokedReload();
+    return true;
+  }
+
+  async function validateCurrentServerSession() {
+    const auth = getServerAuth();
+    if (!auth || !isAccountServerConfigured() || sessionRevokedHandled) return false;
+    try {
+      await callAccountRpc("get_pirate_account_session", {
+        p_account_id: auth.accountId,
+        p_session_token: auth.token
+      });
+      return true;
+    } catch (error) {
+      if (notifyServerSessionReplaced(error)) return false;
+      console.warn("Nao foi possivel validar a sessao da conta.", error);
+      return false;
+    }
+  }
+
+  function startServerSessionMonitor() {
+    stopServerSessionMonitor();
+    if (!getServerAuth() || !isAccountServerConfigured()) return;
+    serverSessionCheckTimer = window.setInterval(() => {
+      if (serverSessionCheckPromise) return;
+      serverSessionCheckPromise = validateCurrentServerSession().finally(() => {
+        serverSessionCheckPromise = null;
+      });
+    }, SERVER_SESSION_CHECK_INTERVAL_MS);
+  }
+
   function logoutServerSession(user = currentUser) {
     const auth = getServerAuth(user);
     if (!auth || !isAccountServerConfigured()) return;
@@ -414,11 +506,17 @@
       return false;
     }
     const serverSaveState = decorateSave(saveState, currentUser);
-    const result = await callAccountRpc("save_pirate_account_game", {
-      p_account_id: auth.accountId,
-      p_session_token: auth.token,
-      p_save_data: serverSaveState
-    });
+    let result = null;
+    try {
+      result = await callAccountRpc("save_pirate_account_game", {
+        p_account_id: auth.accountId,
+        p_session_token: auth.token,
+        p_save_data: serverSaveState
+      });
+    } catch (error) {
+      if (notifyServerSessionReplaced(error)) return false;
+      throw error;
+    }
     const serverSave = result?.save_data || result?.saveData || null;
     if (serverSave) {
       writeLocalSave(getUserSaveKey(currentUser), decorateSave(serverSave, currentUser));
@@ -443,7 +541,9 @@
       serverSaveTimer = 0;
       const next = pendingServerSave;
       pendingServerSave = null;
-      serverSavePromise = saveGameToServer(next).catch(error => console.warn("Nao foi possivel salvar progresso no servidor.", error)).finally(() => {
+      serverSavePromise = saveGameToServer(next).catch(error => {
+        if (!notifyServerSessionReplaced(error)) console.warn("Nao foi possivel salvar progresso no servidor.", error);
+      }).finally(() => {
         serverSavePromise = null;
         if (pendingServerSave) scheduleServerSave(pendingServerSave);
       });
@@ -462,7 +562,7 @@
     try {
       return await saveGameToServer(save, { force: true });
     } catch (error) {
-      console.warn("Nao foi possivel sincronizar progresso no servidor.", error);
+      if (!notifyServerSessionReplaced(error)) console.warn("Nao foi possivel sincronizar progresso no servidor.", error);
       return false;
     }
   }
@@ -471,10 +571,16 @@
     const auth = getServerAuth(user);
     if (!auth || !isAccountServerConfigured()) return { ok: false, skipped: true };
     const before = readLocalSave(SAVE_KEY);
-    const payload = await callAccountRpc("get_pirate_account_session", {
-      p_account_id: auth.accountId,
-      p_session_token: auth.token
-    });
+    let payload = null;
+    try {
+      payload = await callAccountRpc("get_pirate_account_session", {
+        p_account_id: auth.accountId,
+        p_session_token: auth.token
+      });
+    } catch (error) {
+      if (notifyServerSessionReplaced(error)) return { ok: false, sessionReplaced: true, changed: true };
+      throw error;
+    }
     const serverUser = normalizeServerUser(payload);
     const users = loadUsers();
     const stored = users.users[user.id] || user;
@@ -547,7 +653,9 @@
       await callAccountRpc("clear_pirate_account_save", {
         p_account_id: auth.accountId,
         p_session_token: auth.token
-      }).catch(error => console.warn("Nao foi possivel limpar progresso no servidor.", error));
+      }).catch(error => {
+        if (!notifyServerSessionReplaced(error)) console.warn("Nao foi possivel limpar progresso no servidor.", error);
+      });
     }
   }
 
@@ -627,6 +735,7 @@
   }
 
   function clearSession() {
+    stopServerSessionMonitor();
     const local = getLocalStorage();
     const session = getSessionStorage();
     if (local) storageRemove(local, SESSION_KEY);
@@ -687,6 +796,8 @@
       currentUser = user;
     }
     currentSession = sessionData;
+    sessionRevokedHandled = false;
+    startServerSessionMonitor();
     return sessionData;
   }
 
@@ -704,6 +815,8 @@
     }
     currentUser = user;
     currentSession = sessionData;
+    sessionRevokedHandled = false;
+    startServerSessionMonitor();
     return user;
   }
 
@@ -735,9 +848,9 @@
       result.serverSync = refreshCurrentServerSave(user).catch(error => {
         console.warn("Nao foi possivel carregar o save real do servidor.", error);
         const message = error?.message || String(error || "");
-        if (/Sessao expirada|Entre novamente/i.test(message)) {
-          logout({ clearActiveSave: true });
-          return { ok: false, sessionExpired: true, changed: true, error: message };
+        if (isServerSessionExpiredError(message)) {
+          notifyServerSessionReplaced(error);
+          return { ok: false, sessionReplaced: true, changed: true, error: message };
         }
         return { ok: false, error: message };
       });
@@ -949,7 +1062,9 @@
         p_account_id: auth.accountId,
         p_session_token: auth.token,
         p_email: cleanEmail
-      }).catch(error => console.warn("Nao foi possivel salvar email no servidor.", error));
+      }).catch(error => {
+        if (!notifyServerSessionReplaced(error)) console.warn("Nao foi possivel salvar email no servidor.", error);
+      });
     }
     return { id: stored.id, username: stored.username, email: stored.email };
   }
@@ -1090,9 +1205,11 @@
       screen.classList.add("hidden");
       setAuthLocked(false);
     } else {
+      const revokedNotice = consumeSessionRevokedNotice();
       screen.classList.remove("hidden");
       setAuthLocked(true);
       setMode("login");
+      if (revokedNotice) setStatus(revokedNotice, true);
     }
   }
 

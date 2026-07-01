@@ -93,6 +93,72 @@ body.auth-ready .auth-screen {
   display: none;
 }
 
+.desktop-welcome-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background:
+    linear-gradient(rgba(3, 12, 19, .28), rgba(3, 12, 19, .72)),
+    url("assets/newbackgrounds/login.png") center / cover no-repeat;
+}
+
+.desktop-welcome-card {
+  width: min(100%, 390px);
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid rgba(229, 205, 151, .24);
+  border-radius: 8px;
+  background: rgba(5, 18, 29, .86);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+  backdrop-filter: blur(10px);
+  text-align: center;
+}
+
+.desktop-welcome-card h1 {
+  margin: 0;
+  font: 700 30px Georgia, serif;
+  letter-spacing: 0;
+}
+
+.desktop-welcome-status {
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(110, 239, 226, .14);
+  border-radius: 7px;
+  color: #d6e5e1;
+  background: rgba(0, 0, 0, .22);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.desktop-welcome-status.danger {
+  border-color: rgba(255, 128, 104, .34);
+  color: #ffb2a4;
+}
+
+.desktop-welcome-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.desktop-welcome-actions .button {
+  min-height: 42px;
+  white-space: normal;
+}
+
+@media (max-width: 430px) {
+  .desktop-welcome-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .auth-card {
   width: min(100%, 360px);
   display: grid;
@@ -365,6 +431,8 @@ canvas,
 #sea-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
 body.captain-editor-active #sea-canvas { cursor: grab; }
 body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
+body.cannon-smoke-editor-active #sea-canvas { cursor: grab; }
+body.cannon-smoke-editor-active #sea-canvas:active { cursor: grabbing; }
 .captain-editor-panel {
   position: fixed;
   z-index: 120;
@@ -1527,6 +1595,41 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   font-size: 9px;
   text-align: right;
 }
+.guild-boss-ranking {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.guild-boss-ranking-list {
+  display: grid;
+  gap: 7px;
+}
+.guild-boss-ranking-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) minmax(112px, auto);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid rgba(157,211,209,.13);
+  border-radius: 8px;
+  background: rgba(1,9,15,.2);
+}
+.guild-boss-ranking-row.available {
+  border-color: rgba(247,189,74,.34);
+  background: rgba(247,189,74,.055);
+}
+.guild-boss-ranking-place {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(247,189,74,.25);
+  border-radius: 7px;
+  color: var(--gold);
+  background: rgba(247,189,74,.08);
+  font-size: 13px;
+  font-weight: 950;
+}
 .guild-upgrade-row {
   grid-template-columns: 42px minmax(0, 1fr) minmax(120px, auto) auto;
 }
@@ -1551,6 +1654,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .guild-create-grid,
   .guild-config-grid,
   .guild-member-row,
+  .guild-boss-ranking-row,
   .guild-upgrade-row {
     grid-template-columns: 1fr;
   }
@@ -8056,6 +8160,8 @@ body.desktop-executable.auth-locked .auth-screen {
 
 .desktop-mini-drag-strip,
 .desktop-mini-controls,
+.desktop-mini-action-row,
+.desktop-mini-action-button,
 .desktop-mini-maximize-button {
   display: none;
 }
@@ -8107,6 +8213,7 @@ body.desktop-mini-overlay {
 }
 
 body.desktop-mini-overlay .desktop-window-bar,
+body.desktop-mini-overlay .desktop-welcome-screen,
 body.desktop-mini-overlay .auth-screen,
 body.desktop-mini-overlay .topbar,
 body.desktop-mini-overlay .bottom-nav.main-tabs,
@@ -8243,11 +8350,19 @@ body.desktop-mini-overlay .desktop-mini-controls button:focus-visible {
   background: rgba(8, 36, 51, .84);
 }
 
-body.desktop-mini-overlay .desktop-mini-maximize-button {
+body.desktop-mini-overlay .desktop-mini-action-row {
   position: absolute;
   right: 6px;
   bottom: 6px;
   z-index: 27;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+body.desktop-mini-overlay .desktop-mini-action-row button {
   width: 22px;
   height: 22px;
   display: grid;
@@ -8267,8 +8382,22 @@ body.desktop-mini-overlay .desktop-mini-maximize-button {
   -webkit-app-region: no-drag;
 }
 
-body.desktop-mini-overlay .desktop-mini-maximize-button:hover,
-body.desktop-mini-overlay .desktop-mini-maximize-button:focus-visible {
+body.desktop-mini-overlay .desktop-mini-action-row button.ready {
+  border-color: rgba(255, 216, 113, .72);
+  color: #fff4c8;
+  background: rgba(58, 38, 10, .74);
+  opacity: .92;
+}
+
+body.desktop-mini-overlay .desktop-mini-action-row button.locked,
+body.desktop-mini-overlay .desktop-mini-action-row button:disabled {
+  opacity: .42;
+  filter: grayscale(.44);
+  cursor: not-allowed;
+}
+
+body.desktop-mini-overlay .desktop-mini-action-row button:hover,
+body.desktop-mini-overlay .desktop-mini-action-row button:focus-visible {
   border-color: rgba(110, 239, 226, .76);
   background: rgba(8, 36, 51, .86);
   opacity: 1;

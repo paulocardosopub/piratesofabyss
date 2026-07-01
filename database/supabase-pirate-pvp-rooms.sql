@@ -152,7 +152,7 @@ returns jsonb
 language sql
 stable
 as $$
-  select to_jsonb(p_room);
+  select to_jsonb(p_room) || jsonb_build_object('server_now', now());
 $$;
 
 create or replace function public.pirate_pvp_cleanup()
@@ -351,7 +351,7 @@ begin
   if v_room.host_ready and v_room.guest_ready then
     update public.pirate_pvp_rooms
     set status = 'fighting',
-        starts_at = now() + interval '3 seconds',
+        starts_at = now() + interval '10 seconds',
         battle_state = public.pirate_pvp_build_battle_state(host_snapshot, guest_snapshot),
         updated_at = now()
     where id = p_room_id
