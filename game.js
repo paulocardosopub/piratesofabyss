@@ -6,7 +6,7 @@
   const DESKTOP_DOWNLOAD_DISMISS_KEY = "pirates-of-the-abyss-desktop-download-hidden-until";
   const DESKTOP_DOWNLOAD_DISMISS_MS = 24 * 60 * 60 * 1000;
   const DESKTOP_DOWNLOAD_URL = "https://github.com/paulocardosopub/piratesofabyss/releases/latest/download/Pirates-of-the-Abyss-Setup-latest-x64.exe";
-  const DEFAULT_APP_VERSION = "1.0.6";
+  const DEFAULT_APP_VERSION = "1.0.7";
   const APP_VERSION = String(window.PIRATES_APP_VERSION || window.PiratesDesktop?.version || DEFAULT_APP_VERSION).trim() || DEFAULT_APP_VERSION;
   const APP_VERSION_LABEL = `Versao ${APP_VERSION}`;
   const LEADERBOARD_LIMIT = 50;
@@ -2528,6 +2528,7 @@
   let mobileCombatPanelOpen = false;
   let mobileCombatPreviousMinimized = false;
   let desktopMiniOverlayMode = false;
+  let desktopMiniDragState = null;
   let desktopUpdateState = { status: "idle", message: "Buscar nova versao do jogo" };
   let removeDesktopUpdateStatusListener = null;
   let lastCombatQuickActionButton = null;
@@ -2561,6 +2562,7 @@
   let guildBossCombatPrevious = null;
   let guildBossFinishPromise = null;
   let lastGuildProfileSyncAt = 0;
+  let lastArenaSnapshotSyncAt = 0;
   let guildProfileSyncPromise = null;
   let tradeHoldTimeout = 0;
   let tradeHoldInterval = 0;
@@ -3379,6 +3381,7 @@
       ["[data-open-guild]", "Abre a Irmandade para entrar, gerenciar e ver bonus."],
       ["#home-guild-boss-button", "Inicia o boss diario da Irmandade quando estiver disponivel."],
       ["[data-refresh-guild]", "Atualiza os dados online da sua Irmandade."],
+      ["#combat-arena-toggle", "Abre a pagina Ranking / Arena diretamente na aba PvP."],
       ['[data-toggle-home-panel="leaderboard"]', "Mostra ou recolhe Ranking e Arena."],
       ["#leaderboard-refresh", "Atualiza o ranking online dos piratas."],
       ['[data-leaderboard-tab="ranking"]', "Mostra a classificacao por Poder Naval registrado."],
@@ -3881,6 +3884,12 @@
     renderLeaderboardTabs();
     renderLeaderboard();
     renderArenaPanel();
+    if (leaderboardActiveTab === "arena") {
+      arenaState.expanded = true;
+      refreshArenaOpponents({ force: arenaState.status === "idle" || Date.now() - arenaState.lastLoadedAt > 30000 });
+    } else {
+      refreshLeaderboard({ force: leaderboardState.status === "idle" || Date.now() - leaderboardState.lastLoadedAt > 30000 });
+    }
   }
 
   function renderLeaderboard() {
@@ -3976,8 +3985,8 @@
       const params = new URLSearchParams({
         select: getArenaSelectColumns(),
         best_prestige_level: "gte.1",
-        order: "best_prestige_power.desc,best_prestige_level.desc,prestige_count.desc,last_prestige_at.desc",
-        limit: String(ARENA_OPPONENT_LIMIT * 2)
+        order: "updated_at.desc,best_prestige_power.desc,best_prestige_level.desc,prestige_count.desc,last_prestige_at.desc",
+        limit: String(Math.max(ARENA_OPPONENT_LIMIT * 4, 30))
       });
       const response = await fetch(`${config.supabaseUrl}/rest/v1/${config.arenaRelationName}?${params}`, {
         headers: leaderboardHeaders(config)
@@ -3985,7 +3994,7 @@
       if (!response.ok) throw new Error(`Arena indisponível (${response.status})`);
       return response.json();
     }
-    const response = await fetch(`${config.apiBaseUrl}/arena/opponents?limit=${ARENA_OPPONENT_LIMIT * 2}`);
+    const response = await fetch(`${config.apiBaseUrl}/arena/opponents?limit=${Math.max(ARENA_OPPONENT_LIMIT * 4, 30)}`);
     if (!response.ok) throw new Error(`Arena indisponível (${response.status})`);
     return response.json();
   }
@@ -4124,6 +4133,9 @@
     const bonuses = snapshot.bonuses || {};
     const prestige = snapshot.prestige || {};
     const pirateName = sanitizeArenaDisplayName(snapshot.pirate_name || row.pirate_name || "Pirata da Arena");
+    const captain = snapshot.captain || {};
+    const captainName = sanitizeArenaDisplayName(captain.selected_pirate_name || row.selected_pirate_name || pirateName, "");
+    const captainLevel = Math.max(1, Math.floor(Number(captain.pirate_level ?? captain.level ?? snapshot.pirate_level ?? 1) || 1));
     const shipName = String(ship.ship_name || snapshot.ship_name || row.ship_name || "Navio Pirata").trim() || "Navio Pirata";
     const shipId = ship.ship_id || snapshot.ship_id || row.ship_id || null;
     const parsedShipId = parseShipId(shipId, shipName);
@@ -4150,17 +4162,31 @@
     const hasPowerStats = rawMaxHp > 0 || rawDamage > 0 || dps > 1;
     const combatPower = Math.max(1, hasPowerStats ? recalculatedPower : fallbackPower || recalculatedPower);
     const arenaRange = arenaBandForPower(combatPower);
-    const baseArenaMaxHp = arenaNormalizedStat(rawMaxHp, arenaRange.hp, arenaRange.preferredHp);
-    const maxHp = getArenaHp(baseArenaMaxHp);
-    const damage = arenaNormalizedStat(rawDamage, arenaRange.damage, arenaRange.preferredDamage);
-    const arenaDps = Math.max(1, Math.round(damage * 1000 / ARENA_BALANCED_ATTACK_INTERVAL_MS));
+    const playerStats = getStats();
+    const playerArenaHp = getArenaPlayerMaxHp(playerStats);
+    const sourceMaxHp = rawMaxHp > 0 ? rawMaxHp : arenaRange.preferredHp;
+    const sourceDamage = rawDamage > 0 ? rawDamage : arenaRange.preferredDamage;
+    const minArenaHp = Math.max(getArenaHp(arenaRange.minHp), Math.round(playerArenaHp * .35));
+    const maxArenaHp = Math.max(minArenaHp + 1, Math.max(getArenaHp(arenaRange.maxHp), Math.round(playerArenaHp * 2.8)));
+    const maxHp = clamp(getArenaHp(sourceMaxHp), minArenaHp, maxArenaHp);
+    const playerDamage = Math.max(1, Math.round(Number(playerStats.damage) || 1));
+    const minDamage = Math.max(1, Math.min(arenaRange.preferredDamage, Math.round(playerDamage * .18)));
+    const maxDamage = Math.max(minDamage + 1, Math.max(arenaRange.maxDamage, Math.round(playerDamage * 1.8)));
+    const damage = clamp(sourceDamage, minDamage, maxDamage);
+    const arenaDps = Math.max(1, Math.round(damage * 1000 / attackIntervalMs));
+    const armor = Math.max(0, Math.round(Number(combat.defense ?? combat.armor ?? ship.armor ?? 0) || 0));
+    const evasion = clamp(Number(combat.dodge_chance ?? combat.dodgeChance ?? combat.evasion ?? ship.evasion ?? 0) || 0, 0, .35);
+    const skillResist = clamp(Number(combat.skill_resist ?? combat.skillResist ?? ship.skill_resist ?? 0) || 0, 0, .65);
     const prestigeCount = Math.max(1, Math.floor(Number(prestige.prestige_count ?? row.prestige_count ?? row.best_prestige_level ?? 1) || 1));
+    const updatedAt = snapshot.updated_at || row.updated_at || row.last_prestige_at || "";
     return {
       id: String(snapshot.player_id || row.player_id || `arena_${index}`),
       player_id: String(snapshot.player_id || row.player_id || `arena_${index}`),
       pirate_name: pirateName,
       selected_pirate_id: snapshot.captain?.selected_pirate_id || row.selected_pirate_id || null,
       selected_pirate_name: snapshot.captain?.selected_pirate_name || row.selected_pirate_name || null,
+      captain_name: captainName,
+      captain_level: captainLevel,
       ship_id: shipId || (matchedShip ? `ship_${matchedShip.id}` : null),
       ship_name: shipName,
       ship_level: Math.max(1, Math.floor(Number(ship.ship_level ?? snapshot.ship_level ?? 1) || 1)),
@@ -4168,17 +4194,23 @@
       max_hp: maxHp,
       damage,
       dps: arenaDps,
+      source_max_hp: rawMaxHp,
+      source_damage: rawDamage,
       source_dps: dps,
       naval_power: combatPower,
       combat_power: combatPower,
-      attack_speed: ARENA_BALANCED_ATTACK_INTERVAL_MS / 1000,
-      attack_interval_ms: ARENA_BALANCED_ATTACK_INTERVAL_MS,
+      armor,
+      evasion,
+      skill_resist: skillResist,
+      attack_speed: attackIntervalMs / 1000,
+      attack_interval_ms: attackIntervalMs,
       source_attack_interval_ms: attackIntervalMs,
       prestige_count: prestigeCount,
       best_prestige_level: Math.max(prestigeCount, Math.floor(Number(prestige.best_prestige_level ?? row.best_prestige_level ?? prestigeCount) || prestigeCount)),
       best_prestige_power: combatPower,
       snapshot_version: Number(snapshot.snapshot_version || PVP_SNAPSHOT_VERSION),
       is_bot: Boolean(snapshot.is_bot || row.is_bot),
+      updated_at: updatedAt,
       source_snapshot: snapshot,
       sort_jitter: randomBetween(-.015, .015)
     };
@@ -4225,9 +4257,8 @@
       })
       .sort((a, b) => (b.combat_power * (1 + b.sort_jitter)) - (a.combat_power * (1 + a.sort_jitter)))
       .slice(0, ARENA_OPPONENT_LIMIT);
-    const bots = pickArenaBotOpponents(Math.max(0, ARENA_OPPONENT_LIMIT - real.length)).filter(bot => !seen.has(bot.player_id));
-    const combined = [...sortArenaOpponentsByPower(real), ...sortArenaOpponentsByPower(bots)];
-    return combined.slice(0, Math.max(ARENA_MIN_OPPONENTS, ARENA_OPPONENT_LIMIT));
+    if (real.length) return sortArenaOpponentsByPower(real).slice(0, ARENA_OPPONENT_LIMIT);
+    return sortArenaOpponentsByPower(pickArenaBotOpponents(ARENA_OPPONENT_LIMIT)).slice(0, Math.max(ARENA_MIN_OPPONENTS, ARENA_OPPONENT_LIMIT));
   }
 
   async function refreshArenaOpponents(options = {}) {
@@ -4242,6 +4273,7 @@
     renderArenaPanel();
     arenaState.loadingPromise = (async () => {
       try {
+        if (isLeaderboardConfigured(config)) await syncCurrentArenaSnapshot(config);
         const rows = isLeaderboardConfigured(config) ? await requestArenaRows(config) : [];
         arenaState.opponents = buildArenaOpponentList(rows);
         arenaState.status = "ready";
@@ -4250,7 +4282,7 @@
         console.warn("Arena online indisponível. Usando bots.", error);
         arenaState.opponents = buildArenaOpponentList([]);
         arenaState.status = "ready";
-        arenaState.error = "Ranking online indisponível. Exibindo inimigos da Arena.";
+        arenaState.error = "Ranking online indisponivel. Exibindo inimigos de treino.";
         arenaState.lastLoadedAt = Date.now();
       } finally {
         arenaState.loadingPromise = null;
@@ -4383,6 +4415,28 @@
       last_prestige_at: nowIso,
       pvp_snapshot: buildPvpSnapshot({ nowIso, nextPrestigeCount, prestigePower })
     };
+  }
+
+  function buildCurrentArenaLeaderboardRecord(nowIso = new Date().toISOString()) {
+    const currentEntry = leaderboardState.entries.find(entry => entry.player_id === state.playerId) || {};
+    const prestigeCount = Math.max(1, Math.floor(Number(state.prestiges || 0)), Math.floor(Number(currentEntry.prestige_count || 0)));
+    const prestigePower = Math.max(1, Math.round(Number(getStats().power) || 0), Math.round(Number(currentEntry.best_prestige_power || 0)));
+    const record = buildLeaderboardPrestigeRecord({ nowIso, nextPrestigeCount: prestigeCount, prestigePower });
+    record.last_prestige_at = currentEntry.last_prestige_at || nowIso;
+    return record;
+  }
+
+  async function syncCurrentArenaSnapshot(config = getOnlineConfig(), options = {}) {
+    if (!isLeaderboardConfigured(config) || !isValidPirateName() || state.prestiges < 1) return false;
+    if (!options.force && Date.now() - lastArenaSnapshotSyncAt < 45000) return false;
+    lastArenaSnapshotSyncAt = Date.now();
+    try {
+      await sendLeaderboardRow(config, buildCurrentArenaLeaderboardRecord());
+      return true;
+    } catch (error) {
+      console.warn("Nao foi possivel sincronizar snapshot da Arena.", error);
+      return false;
+    }
   }
 
   async function submitPrestigeLeaderboard(record) {
@@ -4582,6 +4636,7 @@
 
   async function exitDesktopMiniOverlay() {
     if (!desktopMiniOverlayMode) return;
+    clearDesktopMiniDragState();
     desktopMiniOverlayMode = false;
     syncDesktopExecutableUi();
     resizeCombatViewport();
@@ -4668,6 +4723,84 @@
   function handleDesktopWindowAction(action) {
     if (!isDesktopExecutable() || !window.PiratesDesktop?.windowAction) return;
     window.PiratesDesktop.windowAction(action).catch(error => console.warn("Acao da janela desktop falhou.", error));
+  }
+
+  function syncDesktopMiniDraggingClass(active) {
+    const app = $("#app");
+    [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("desktop-mini-dragging", Boolean(active)));
+  }
+
+  function clearDesktopMiniDragState() {
+    if (!desktopMiniDragState) return null;
+    const drag = desktopMiniDragState;
+    window.removeEventListener("pointermove", handleDesktopMiniPointerMove, true);
+    window.removeEventListener("pointerup", handleDesktopMiniPointerUp, true);
+    window.removeEventListener("pointercancel", handleDesktopMiniPointerCancel, true);
+    if (drag.stage?.releasePointerCapture) {
+      try { drag.stage.releasePointerCapture(drag.pointerId); } catch (error) {}
+    }
+    desktopMiniDragState = null;
+    syncDesktopMiniDraggingClass(false);
+    return drag;
+  }
+
+  function handleDesktopMiniPointerMove(event) {
+    const drag = desktopMiniDragState;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const dx = Math.round(event.clientX - drag.lastX);
+    const dy = Math.round(event.clientY - drag.lastY);
+    if (!drag.dragged && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >= 4) {
+      drag.dragged = true;
+      syncDesktopMiniDraggingClass(true);
+    }
+    drag.lastX = event.clientX;
+    drag.lastY = event.clientY;
+    if (drag.dragged && (dx || dy)) {
+      window.PiratesDesktop?.moveMiniOverlay?.({ dx, dy }).catch(error => console.warn("Nao foi possivel mover a miniatura desktop.", error));
+    }
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function finishDesktopMiniPointer(event, cancelled = false) {
+    const drag = desktopMiniDragState;
+    if (!drag || event.pointerId !== drag.pointerId) return false;
+    const wasDragged = Boolean(drag.dragged);
+    clearDesktopMiniDragState();
+    if (!cancelled && !wasDragged) manualShipAttack();
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+    return true;
+  }
+
+  function handleDesktopMiniPointerUp(event) {
+    finishDesktopMiniPointer(event, false);
+  }
+
+  function handleDesktopMiniPointerCancel(event) {
+    finishDesktopMiniPointer(event, true);
+  }
+
+  function startDesktopMiniPointerInteraction(event, stage) {
+    if (!isDesktopMiniOverlayMode()) return false;
+    desktopMiniDragState = {
+      pointerId: event.pointerId,
+      stage,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      dragged: false
+    };
+    if (stage?.setPointerCapture) {
+      try { stage.setPointerCapture(event.pointerId); } catch (error) {}
+    }
+    window.addEventListener("pointermove", handleDesktopMiniPointerMove, true);
+    window.addEventListener("pointerup", handleDesktopMiniPointerUp, true);
+    window.addEventListener("pointercancel", handleDesktopMiniPointerCancel, true);
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+    return true;
   }
 
   function getDesktopDownloadHiddenUntil() {
@@ -9869,7 +10002,7 @@
   }
 
   function getEnemyAttackInterval(enemy) {
-    if (enemy?.isArena) return ARENA_BALANCED_ATTACK_INTERVAL_MS;
+    if (enemy?.isArena) return clamp(Math.round(Number(enemy.attackIntervalMs) || ARENA_ATTACK_INTERVAL_DEFAULT_MS), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS) * (enemy?.slowed > 0 ? 1.65 : 1);
     return (enemy?.isBoss ? 1450 : 1900) * (enemy?.attackSpeed || 1) * (enemy?.slowed > 0 ? 1.65 : 1);
   }
 
@@ -9947,7 +10080,7 @@
     }
     if (enemy.slowed > 0) enemy.slowed -= dt;
     const stats = getStats();
-    const playerAttackInterval = arenaEnemyActive ? ARENA_BALANCED_ATTACK_INTERVAL_MS : stats.attackInterval;
+    const playerAttackInterval = arenaEnemyActive ? clamp(Math.round(Number(stats.attackInterval) || ARENA_ATTACK_INTERVAL_DEFAULT_MS), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS) : stats.attackInterval;
     if (arenaEnemyActive || isAutoAttackUnlocked()) {
       state.combat.attackTimer += dt * 1000;
       let shots = 0;
@@ -11331,9 +11464,10 @@
   function syncHomePanelExpansion(root = document) {
     Object.entries(homePanelsExpanded).forEach(([key, expanded]) => {
       const panel = $(`[data-home-panel="${key}"]`, root);
+      if (!panel) return;
       const toggle = $(`[data-toggle-home-panel="${key}"]`, panel || root);
       const body = $(`[data-home-panel-body="${key}"]`, panel || root);
-      const icon = $(".home-panel-toggle-icon", toggle);
+      const icon = toggle ? $(".home-panel-toggle-icon", toggle) : null;
       panel?.classList.toggle("expanded", expanded);
       panel?.classList.toggle("minimized", !expanded);
       body?.classList.toggle("hidden", !expanded);
@@ -11482,12 +11616,25 @@
   function guildMembersTabHtml() {
     const members = guildState.current.members || [];
     const totalContribution = members.reduce((sum, member) => sum + member.contribution, 0);
-    const rows = members.length ? members.map(member => `<article class="guild-member-row ${member.player_id === state.playerId ? "available" : ""}">
+    const canManageRoles = hasGuildManagerAccess();
+    const actorIsKing = guildState.current?.role === "king";
+    const roleActionsHtml = member => {
+      if (!canManageRoles) return "";
+      const targetId = escapeHtml(member.player_id);
+      const canSetKing = actorIsKing && member.role !== "king" && !guildState.actionPending;
+      const canSetQuartermaster = member.role !== "king" && member.role !== "quartermaster" && !guildState.actionPending;
+      return `<div class="guild-member-actions">
+        <button class="button" type="button" data-set-guild-role="quartermaster" data-set-guild-role-target="${targetId}" ${canSetQuartermaster ? "" : "disabled"}>Definir vice</button>
+        <button class="button" type="button" data-set-guild-role="king" data-set-guild-role-target="${targetId}" ${canSetKing ? "" : "disabled"}>Transferir lider</button>
+      </div>`;
+    };
+    const rows = members.length ? members.map(member => `<article class="guild-member-row ${canManageRoles ? "has-actions" : ""} ${member.player_id === state.playerId ? "available" : ""}">
       <div class="guild-member-main"><strong>${escapeHtml(member.pirate_name)}</strong><small>${guildRoleLabel(member.role)} • ${escapeHtml(member.snapshot.ship_name)} ${member.snapshot.ship_level ? `Nv. ${formatNumber(member.snapshot.ship_level)}` : ""}</small></div>
       <div class="guild-member-stat"><span>Nivel</span><strong>${formatNumber(member.snapshot.level)}</strong></div>
       <div class="guild-member-stat"><span>Prestigio</span><strong>${formatNumber(member.snapshot.prestige_count)}</strong></div>
       <div class="guild-member-stat"><span>Poder</span><strong>${formatNumber(member.snapshot.naval_power)}</strong></div>
       <div class="guild-member-stat"><span>Contrib.</span><strong>${formatNumber(member.contribution)}</strong></div>
+      ${roleActionsHtml(member)}
     </article>`).join("") : guildEmptyStateHtml("Nenhum membro sincronizado ainda.");
     return `<div class="guild-panel">
       <div class="guild-member-summary">
@@ -11577,7 +11724,9 @@
     const guild = getCurrentGuild();
     const draft = ensureGuildConfigDraft(guild);
     const members = guildState.current.members || [];
-    const memberOptions = members.map(member => `<option value="${escapeHtml(member.player_id)}">${escapeHtml(member.pirate_name)} - ${guildRoleLabel(member.role)}</option>`).join("");
+    const actorIsKing = guildState.current?.role === "king";
+    const kingOptions = members.filter(member => member.role !== "king").map(member => `<option value="${escapeHtml(member.player_id)}">${escapeHtml(member.pirate_name)} - ${guildRoleLabel(member.role)}</option>`).join("");
+    const quartermasterOptions = members.filter(member => member.role !== "king").map(member => `<option value="${escapeHtml(member.player_id)}">${escapeHtml(member.pirate_name)} - ${guildRoleLabel(member.role)}</option>`).join("");
     const full = isGuildFull(guild);
     const applications = guildState.current.applications.length ? guildState.current.applications.map(app => `<article class="guild-application-row">
       <div class="guild-application-main"><strong>${escapeHtml(app.pirate_name)}</strong><small>Poder ${formatNumber(app.snapshot.naval_power)} • Prestigio ${formatNumber(app.snapshot.prestige_count)}</small></div>
@@ -11591,10 +11740,10 @@
       </div>
       <div class="guild-config-actions"><button class="button primary" type="button" data-save-guild-config ${guildState.actionPending ? "disabled" : ""}>Salvar Config</button></div>
       <div class="guild-config-grid">
-        <label class="guild-field"><span>Novo Rei Pirata</span><select id="guild-king-select">${memberOptions}</select></label>
-        <label class="guild-field"><span>Novo Intendente</span><select id="guild-quartermaster-select">${memberOptions}</select></label>
+        <label class="guild-field"><span>Novo Rei Pirata</span><select id="guild-king-select" ${actorIsKing ? "" : "disabled"}>${kingOptions}</select></label>
+        <label class="guild-field"><span>Novo Intendente</span><select id="guild-quartermaster-select">${quartermasterOptions}</select></label>
       </div>
-      <div class="guild-config-actions"><button class="button" type="button" data-set-guild-role="king" ${guildState.actionPending ? "disabled" : ""}>Definir Rei Pirata</button><button class="button" type="button" data-set-guild-role="quartermaster" ${guildState.actionPending ? "disabled" : ""}>Definir Intendente</button></div>
+      <div class="guild-config-actions"><button class="button" type="button" data-set-guild-role="king" ${guildState.actionPending || !actorIsKing || !kingOptions ? "disabled" : ""}>Definir Rei Pirata</button><button class="button" type="button" data-set-guild-role="quartermaster" ${guildState.actionPending || !quartermasterOptions ? "disabled" : ""}>Definir Intendente</button></div>
       <div class="section-heading compact"><div><span class="eyebrow">SOLICITACOES</span><h2>Aplicacoes pendentes</h2></div></div>
       ${full ? guildEmptyStateHtml(guildFullMessage(), true) : ""}
       <div class="guild-application-list">${applications}</div>
@@ -12962,14 +13111,22 @@
     }
   }
 
+  function formatArenaUpdatedAt(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "sem data recente";
+    return `atualizado ${date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  }
+
   function arenaOpponentCardHtml(opponent) {
     const attackSpeed = (opponent.attack_interval_ms / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
     const badge = opponent.is_bot ? `<span class="arena-bot-badge">Bot</span>` : `<span class="arena-real-badge">Real</span>`;
+    const captainLine = opponent.captain_name ? `Capitao ${escapeHtml(opponent.captain_name)} Nv. ${formatNumber(opponent.captain_level)}` : "Capitao nao informado";
+    const updatedLine = opponent.is_bot ? "inimigo de treino" : formatArenaUpdatedAt(opponent.updated_at);
     return `<article class="arena-opponent-card arena-opponent-row ${opponent.is_bot ? "is-bot" : "is-real"}">
       <div class="arena-opponent-icon" aria-hidden="true">${opponent.is_bot ? "☠" : "★"}</div>
       <div class="arena-opponent-main">
         <div class="arena-opponent-title"><h3>${escapeHtml(opponent.pirate_name)}</h3>${badge}</div>
-        <p>Prestígio ${formatNumber(opponent.prestige_count)} • ${escapeHtml(opponent.ship_name)} • Nv. ${formatNumber(opponent.ship_level)}</p>
+        <p>${captainLine} • ${escapeHtml(opponent.ship_name)} Nv. ${formatNumber(opponent.ship_level)} • Prestigio ${formatNumber(opponent.prestige_count)} • ${updatedLine}</p>
         <div class="arena-opponent-stats">
           <div><span>HP</span><strong>${formatNumber(opponent.max_hp)}</strong></div>
           <div><span>Dano/ataque</span><strong>${formatNumber(opponent.damage)}</strong></div>
@@ -13003,13 +13160,36 @@
       return;
     }
     if (arenaState.status === "loading") {
-      status.textContent = "Buscando jogadores e preparando bots da Arena...";
+      status.textContent = "Buscando jogadores reais e status atualizados da Arena...";
       list.innerHTML = "";
       return;
     }
     const opponents = arenaState.opponents.length ? arenaState.opponents : getArenaBotOpponents();
-    status.textContent = arenaState.error || `${opponents.length} inimigos disponíveis para duelo assíncrono.`;
+    const realCount = opponents.filter(opponent => !opponent.is_bot).length;
+    status.textContent = arenaState.error || (realCount ? `${realCount} jogadores reais atualizados para duelo assíncrono.` : `${opponents.length} inimigos de treino disponiveis enquanto o ranking online nao retorna jogadores.`);
     list.innerHTML = opponents.map(arenaOpponentCardHtml).join("");
+  }
+
+  function renderRankingArena() {
+    renderLeaderboard();
+    renderArenaPanel();
+    syncHomeHelpTooltips($("#screen-ranking") || document);
+    if (currentScreen !== "ranking") return;
+    if (leaderboardState.status === "idle" || Date.now() - leaderboardState.lastLoadedAt > 30000) {
+      refreshLeaderboard({ force: leaderboardState.status === "idle" });
+    }
+    if (leaderboardActiveTab === "arena") {
+      arenaState.expanded = true;
+      if (arenaState.status === "idle" || Date.now() - arenaState.lastLoadedAt > 30000) refreshArenaOpponents({ force: arenaState.status === "idle" });
+    }
+  }
+
+  function openRankingArenaScreen(tab = "arena") {
+    leaderboardActiveTab = tab === "ranking" ? "ranking" : "arena";
+    if (leaderboardActiveTab === "arena") arenaState.expanded = true;
+    navigate("ranking");
+    if (leaderboardActiveTab === "arena") refreshArenaOpponents({ force: true });
+    else refreshLeaderboard({ force: leaderboardState.status === "idle" || Date.now() - leaderboardState.lastLoadedAt > 30000 });
   }
 
   function toggleArenaPanel() {
@@ -13090,11 +13270,11 @@
       hp: opponent.max_hp,
       maxHp: opponent.max_hp,
       damage: opponent.damage,
-      armor: 0,
-      evasion: 0,
-      skillResist: 0,
+      armor: Math.max(0, Number(opponent.armor) || 0),
+      evasion: clamp(Number(opponent.evasion) || 0, 0, .35),
+      skillResist: clamp(Number(opponent.skill_resist) || 0, 0, .65),
       attackSpeed: 1,
-      attackIntervalMs: ARENA_BALANCED_ATTACK_INTERVAL_MS,
+      attackIntervalMs: clamp(Math.round(Number(opponent.attack_interval_ms) || ARENA_ATTACK_INTERVAL_DEFAULT_MS), ARENA_ATTACK_INTERVAL_MIN_MS, ARENA_ATTACK_INTERVAL_MAX_MS),
       visualTier: opponent.ship_tier || ship?.tier || 3,
       visualKind: ship?.type || "Pirata",
       ship_id: opponent.ship_id,
@@ -13441,12 +13621,37 @@
     }, "Nao foi possivel salvar a Config da Irmandade.");
   }
 
-  function setGuildRole(role) {
+  function applyGuildRoleChange(targetPlayerId, role) {
+    const current = guildState.current;
+    if (!current?.members?.length) return;
+    current.members = current.members.map(member => {
+      if (role === "king") {
+        if (member.player_id === targetPlayerId) return { ...member, role: "king" };
+        if (member.role === "king") return { ...member, role: "member" };
+        return member;
+      }
+      if (role === "quartermaster") {
+        if (member.player_id === targetPlayerId) return { ...member, role: "quartermaster" };
+        if (member.role === "quartermaster") return { ...member, role: "member" };
+      }
+      return member;
+    });
+    const self = current.members.find(member => member.player_id === state.playerId);
+    if (self) current.role = self.role;
+  }
+
+  function setGuildRole(role, explicitTargetPlayerId = "") {
     const guild = getCurrentGuild();
     if (!guild || !hasGuildManagerAccess()) return toast("Apenas Rei Pirata e Intendente podem gerir cargos.", "danger-toast");
+    if (!["king", "quartermaster"].includes(role)) return toast("Cargo invalido.", "danger-toast");
+    if (role === "king" && guildState.current?.role !== "king") return toast("Apenas o Rei Pirata pode transferir lideranca.", "danger-toast");
     const selectId = role === "king" ? "#guild-king-select" : "#guild-quartermaster-select";
-    const targetPlayerId = $(selectId)?.value || "";
+    const targetPlayerId = explicitTargetPlayerId || $(selectId)?.value || "";
     if (!targetPlayerId) return toast("Selecione um membro da Irmandade.", "danger-toast");
+    const targetMember = guildState.current?.members?.find(member => member.player_id === targetPlayerId);
+    if (!targetMember) return toast("Membro da Irmandade nao encontrado.", "danger-toast");
+    if (role === "quartermaster" && targetMember.role === "king") return toast("O Rei Pirata nao pode ser vice lider ao mesmo tempo.", "danger-toast");
+    if (targetMember.role === role) return toast(`${targetMember.pirate_name} ja possui esse cargo.`, "gold-toast");
     runGuildAction(async config => {
       await callOnlineRpc(config, config.guildRoleRpcName, {
         p_player_id: state.playerId,
@@ -13454,6 +13659,8 @@
         p_target_player_id: targetPlayerId,
         p_role: role
       });
+      applyGuildRoleChange(targetPlayerId, role);
+      renderGuildIfVisible();
       toast(`${guildRoleLabel(role)} definido.`, "gold-toast");
     }, "Nao foi possivel alterar o cargo.");
   }
@@ -13668,6 +13875,7 @@
     maps: renderMaps,
     captain: renderCaptain,
     guild: renderGuild,
+    ranking: renderRankingArena,
     prestige: renderPrestige,
     stats: renderStats
   };
@@ -14132,6 +14340,7 @@
     if (!stage || !stage.contains(event.target)) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (event.defaultPrevented || isCombatUiPointerTarget(event.target)) return;
+    if (startDesktopMiniPointerInteraction(event, stage)) return;
     const handled = manualShipAttack();
     if (!handled) return;
     if (event.cancelable) event.preventDefault();
@@ -14192,6 +14401,10 @@
       challengeBoss();
       return;
     }
+    if (target.dataset.combatArenaOpen !== undefined) {
+      openRankingArenaScreen("arena");
+      return;
+    }
     if (target.dataset.showAccountPassword !== undefined) {
       showAccountPasswordNotice(target);
       return;
@@ -14242,7 +14455,7 @@
       return;
     }
     if (target.dataset.setGuildRole) {
-      setGuildRole(target.dataset.setGuildRole);
+      setGuildRole(target.dataset.setGuildRole, target.dataset.setGuildRoleTarget || "");
       return;
     }
     if (target.dataset.guildApplication && target.dataset.guildApplicationPlayer) {

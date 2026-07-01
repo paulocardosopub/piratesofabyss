@@ -143,11 +143,7 @@ begin
     best_prestige_level = greatest(public.pirate_leaderboard.best_prestige_level, excluded.best_prestige_level),
     best_prestige_power = greatest(public.pirate_leaderboard.best_prestige_power, excluded.best_prestige_power),
     last_prestige_at = greatest(public.pirate_leaderboard.last_prestige_at, excluded.last_prestige_at),
-    pvp_snapshot = case
-      when excluded.best_prestige_power >= public.pirate_leaderboard.best_prestige_power
-        then coalesce(excluded.pvp_snapshot, public.pirate_leaderboard.pvp_snapshot)
-      else public.pirate_leaderboard.pvp_snapshot
-    end,
+    pvp_snapshot = coalesce(excluded.pvp_snapshot, public.pirate_leaderboard.pvp_snapshot),
     updated_at = now();
 end;
 $$;

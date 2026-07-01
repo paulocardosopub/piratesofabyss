@@ -14,7 +14,7 @@
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_prestigio_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/ui/tabs/mobile/icon_status_square.png">
   <link rel="preload" as="image" media="(max-width: 768px), (orientation: landscape) and (max-height: 560px) and (max-width: 980px)" href="assets/maps/mapa_idle_mobile.jpg">
-  <link rel="stylesheet" href="styles.css?v=141">
+  <link rel="stylesheet" href="styles.css?v=142">
   <title>Pirates of the Abyss</title>
 </head>
 <body class="auth-locked">
@@ -32,7 +32,7 @@
       <div class="auth-heading">
         <span>Pirates of the Abyss</span>
         <h1 id="auth-title">Entrar</h1>
-        <small class="app-version" data-app-version>Versao 1.0.6</small>
+        <small class="app-version" data-app-version>Versao 1.0.7</small>
       </div>
       <label class="auth-field">
         <span>Usuario</span>
@@ -85,6 +85,7 @@
           <div class="scene-vignette"></div>
           <button class="combat-desktop-mini-toggle hidden" id="desktop-mini-toggle" type="button" data-desktop-mini-enter aria-label="Abrir miniatura desktop" data-help-tooltip="Mostra somente o combate em uma faixa pequena por cima do desktop."><span aria-hidden="true">&#x25AD;</span></button>
           <button class="combat-guild-toggle" id="combat-guild-toggle" type="button" data-screen-target="guild" aria-label="Abrir Irmandade Pirata" data-help-tooltip="Abre a pagina da Irmandade Pirata."><span aria-hidden="true">&#x2620;</span></button>
+          <button class="combat-arena-toggle" id="combat-arena-toggle" type="button" data-combat-arena-open aria-label="Abrir Ranking e Arena" data-help-tooltip="Abre a pagina de Ranking dos Piratas e Arena PvP."><span aria-hidden="true">&#9876;</span></button>
           <div class="desktop-mini-drag-strip" data-combat-ui aria-hidden="true"></div>
           <button class="desktop-mini-maximize-button" type="button" data-combat-ui data-desktop-mini-exit aria-label="Maximizar janela" title="Maximizar">&#x25A1;</button>
           <button class="combat-quest-alert hidden" id="combat-quest-alert" type="button" aria-label="Recompensas de missões disponíveis" title="Coletar recompensas de missões" data-mission-reward-shortcut><span aria-hidden="true">!</span></button>
@@ -252,35 +253,11 @@
             </div>
           </article>
 
-          <article class="card leaderboard-card home-leaderboard-card" data-home-panel="leaderboard">
+          <article class="card leaderboard-card home-leaderboard-card">
             <div class="home-section-divider">Ranking</div>
             <div class="leaderboard-heading">
-              <div><span class="eyebrow">RANKING ONLINE</span><h2>Ranking dos Piratas</h2><p>Ordenado pelo Poder Naval registrado no Prestígio</p></div>
-              <button class="home-panel-toggle" type="button" data-toggle-home-panel="leaderboard" aria-expanded="false" aria-label="Expandir Ranking dos Piratas"><span class="home-panel-toggle-icon" aria-hidden="true">+</span></button>
-            </div>
-            <div class="home-panel-body hidden" data-home-panel-body="leaderboard">
-              <div class="home-panel-actions leaderboard-actions">
-                <button class="button" id="leaderboard-refresh" type="button">Atualizar</button>
-              </div>
-            <div class="leaderboard-tabs" role="tablist" aria-label="Ranking e Arena">
-              <button class="active" type="button" data-leaderboard-tab="ranking">Ranking</button>
-              <button type="button" data-leaderboard-tab="arena">Arena</button>
-            </div>
-            <div class="leaderboard-panel active" id="leaderboard-ranking-panel">
-              <div class="leaderboard-status" id="leaderboard-status">Carregando ranking...</div>
-              <div class="leaderboard-list" id="leaderboard-list"></div>
-            </div>
-            <div class="leaderboard-panel hidden" id="leaderboard-arena-panel">
-              <div class="arena-heading compact">
-                <div><span class="eyebrow">ARENA PVP ASSÍNCRONA</span><h3>Arena dos Piratas</h3><p>Desafie navios salvos no ranking.</p></div>
-                <div class="arena-actions">
-                  <button class="button primary" id="arena-toggle" type="button">Desafiar Jogador</button>
-                  <button class="button" id="arena-refresh" type="button">Atualizar</button>
-                </div>
-              </div>
-              <div class="arena-status" id="arena-status">Clique para buscar inimigos da Arena.</div>
-              <div class="arena-list hidden" id="arena-list"></div>
-            </div>
+              <div><span class="eyebrow">RANKING ONLINE</span><h2>Ranking dos Piratas</h2><p>Acesse o ranking completo e a Arena PvP.</p></div>
+              <button class="button primary" type="button" data-screen-target="ranking">Abrir Ranking/Arena</button>
             </div>
           </article>
 
@@ -306,6 +283,40 @@
 
       <section class="screen" id="screen-guild" aria-labelledby="guild-title">
         <div class="guild-page" id="guild-content"></div>
+      </section>
+
+      <section class="screen" id="screen-ranking" aria-labelledby="ranking-title">
+        <div class="page-heading">
+          <div><span class="eyebrow">ARENA ONLINE</span><h1 id="ranking-title">Ranking / Arena</h1><p>Veja os piratas mais fortes e desafie jogadores reais salvos no ranking.</p></div>
+          <div class="rank-medallion"><span>PVP</span><strong>Arena</strong></div>
+        </div>
+        <article class="card leaderboard-card leaderboard-page-card">
+          <div class="leaderboard-heading">
+            <div><span class="eyebrow">RANKING DOS PIRATAS</span><h2>Competicao Online</h2><p>Dados atualizados pelo ranking e usados na Arena.</p></div>
+            <div class="home-panel-actions leaderboard-actions">
+              <button class="button" id="leaderboard-refresh" type="button">Atualizar ranking</button>
+            </div>
+          </div>
+          <div class="leaderboard-tabs" role="tablist" aria-label="Ranking e Arena">
+            <button class="active" type="button" data-leaderboard-tab="ranking">Ranking</button>
+            <button type="button" data-leaderboard-tab="arena">Arena</button>
+          </div>
+          <div class="leaderboard-panel active" id="leaderboard-ranking-panel">
+            <div class="leaderboard-status" id="leaderboard-status">Carregando ranking...</div>
+            <div class="leaderboard-list" id="leaderboard-list"></div>
+          </div>
+          <div class="leaderboard-panel hidden" id="leaderboard-arena-panel">
+            <div class="arena-heading compact">
+              <div><span class="eyebrow">ARENA PVP ASSINCRONA</span><h3>Arena dos Piratas</h3><p>Desafie navios salvos no ranking com capitao, barco e status atuais.</p></div>
+              <div class="arena-actions">
+                <button class="button primary" id="arena-toggle" type="button">Desafiar Jogador</button>
+                <button class="button" id="arena-refresh" type="button">Atualizar</button>
+              </div>
+            </div>
+            <div class="arena-status" id="arena-status">Clique para buscar inimigos da Arena.</div>
+            <div class="arena-list hidden" id="arena-list"></div>
+          </div>
+        </article>
       </section>
 
       <section class="screen" id="screen-prestige" aria-labelledby="prestige-title">
@@ -529,9 +540,9 @@
     </div>
   </div>
 
-  <script src="version.js?v=3"></script>
+  <script src="version.js?v=4"></script>
   <script src="online-config.js?v=1"></script>
   <script src="auth.js?v=7"></script>
-  <script src="game.js?v=248"></script>
+  <script src="game.js?v=249"></script>
 </body>
 </html>

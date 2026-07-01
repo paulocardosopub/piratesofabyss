@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("PiratesDesktop", {
   version,
   enterMiniOverlay: () => ipcRenderer.invoke("desktop-enter-mini-overlay"),
   exitMiniOverlay: () => ipcRenderer.invoke("desktop-exit-mini-overlay"),
+  moveMiniOverlay: delta => ipcRenderer.invoke("desktop-move-mini-overlay", delta),
   checkForUpdates: () => ipcRenderer.invoke("desktop-check-for-updates"),
   windowAction: action => ipcRenderer.invoke("desktop-window-action", action),
   onUpdateStatus: callback => {

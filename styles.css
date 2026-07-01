@@ -1478,6 +1478,21 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .guild-member-row {
   grid-template-columns: minmax(0, 1.2fr) repeat(4, minmax(70px, .4fr));
 }
+.guild-member-row.has-actions {
+  grid-template-columns: minmax(0, 1.2fr) repeat(4, minmax(70px, .4fr)) minmax(120px, auto);
+}
+.guild-member-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+}
+.guild-member-actions .button {
+  min-height: 28px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 9px;
+  white-space: nowrap;
+}
 .guild-member-stat span,
 .guild-member-stat strong {
   display: block;
@@ -1546,6 +1561,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
   .guild-row .button,
   .guild-boss-row .button,
   .guild-upgrade-row .button,
+  .guild-member-actions .button,
   .guild-application-row .button {
     width: 100%;
   }
@@ -2791,6 +2807,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .career-grid span { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; }
 .career-grid strong { display: block; margin-top: 5px; color: var(--gold); font-size: 22px; }
 .leaderboard-card { padding: 21px; overflow: hidden; }
+.leaderboard-page-card { display: grid; gap: 10px; }
 .home-leaderboard-card { min-height: 0; }
 .home-leaderboard-card.minimized { padding-bottom: 16px; }
 .leaderboard-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
@@ -2805,6 +2822,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .leaderboard-panel { min-height: 0; }
 .leaderboard-status { min-height: 18px; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
 .leaderboard-list { display: grid; gap: 7px; }
+.leaderboard-page-card .leaderboard-list { max-height: min(560px, 56vh); overflow: auto; padding-right: 2px; scrollbar-width: thin; }
 .leaderboard-row { display: grid; grid-template-columns: 48px minmax(0, 1.25fr) minmax(104px, .7fr) minmax(90px, .55fr); gap: 9px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: rgba(0,0,0,.13); }
 .leaderboard-row.current-player { border-color: rgba(247,189,74,.32); background: rgba(247,189,74,.07); }
 .leaderboard-row strong { color: var(--gold); font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -2823,6 +2841,7 @@ body.captain-editor-active #sea-canvas:active { cursor: grabbing; }
 .arena-actions .button { min-height: 30px; padding: 5px 9px; border-radius: 5px; font-size: 10px; white-space: nowrap; }
 .arena-status { min-height: 16px; margin-top: 8px; color: var(--muted); font-size: 10px; }
 .arena-list { display: grid; gap: 6px; max-height: min(420px, 48vh); margin-top: 8px; padding-right: 2px; overflow: auto; scrollbar-width: thin; }
+.leaderboard-page-card .arena-list { max-height: min(620px, 58vh); }
 .arena-opponent-card { display: grid; grid-template-columns: 38px minmax(0, 1fr) 88px; align-items: center; gap: 7px; min-height: 62px; padding: 6px; overflow: hidden; border: 1px solid rgba(160,203,202,.18); border-radius: 7px; background: rgba(0,0,0,.14); }
 .arena-opponent-card.is-real { border-color: rgba(110,239,226,.32); background: rgba(53,212,207,.07); }
 .arena-opponent-icon { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(247,189,74,.25); border-radius: 7px; color: var(--gold); background: rgba(247,189,74,.08); font-size: 16px; }
@@ -6152,6 +6171,7 @@ body {
 }
 
 .combat-fullscreen-toggle,
+.combat-arena-toggle,
 .combat-quest-alert,
 .combat-fullscreen-exit {
   position: absolute;
@@ -6182,6 +6202,23 @@ body {
   border-color: rgba(255, 221, 92, .78);
   background: rgba(40, 29, 8, .82);
   box-shadow: 0 0 0 2px rgba(247,189,74,.18), 0 10px 20px rgba(0,0,0,.28), 0 0 18px rgba(247,189,74,.2);
+}
+
+.combat-arena-toggle {
+  top: 50px;
+  right: 10px;
+  color: #e7fffb;
+  border-color: rgba(110, 239, 226, .52);
+  background: rgba(8, 36, 51, .82);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, .24), 0 0 14px rgba(110, 239, 226, .12);
+}
+
+.combat-arena-toggle span {
+  display: block;
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 .combat-quest-alert span {
@@ -6230,6 +6267,15 @@ body {
   border-color: rgba(255, 241, 148, .98);
   color: #fff2a6;
   background: rgba(63, 43, 8, .9);
+}
+
+.combat-arena-toggle:hover,
+.combat-arena-toggle:focus-visible,
+.combat-arena-toggle.active {
+  border-color: rgba(110, 239, 226, .86);
+  color: #ffffff;
+  background: rgba(12, 56, 72, .9);
+  box-shadow: 0 0 0 2px rgba(110, 239, 226, .14), 0 10px 20px rgba(0, 0, 0, .28), 0 0 18px rgba(110, 239, 226, .18);
 }
 
 .combat-fullscreen-exit:hover,
@@ -6566,6 +6612,7 @@ body.mobile-combat-fullscreen .persistent-combat .combat-status-strip {
 
 body.mobile-combat-fullscreen .combat-collapse-toggle,
 body.mobile-combat-fullscreen .combat-fullscreen-toggle,
+body.mobile-combat-fullscreen .combat-arena-toggle,
 body.mobile-combat-fullscreen .combat-quest-alert,
 body.mobile-combat-fullscreen .combat-fullscreen-exit {
   display: none !important;
@@ -7019,6 +7066,11 @@ body.mobile-combat-fullscreen.mobile-panel-open .screen.active {
   -webkit-overflow-scrolling: touch;
 }
 
+body.mobile-combat-fullscreen.mobile-panel-open .persistent-combat .bottom-nav.main-tabs {
+  top: calc(54px + env(safe-area-inset-top));
+  z-index: 160;
+}
+
 .mobile-panel-close {
   position: fixed;
   z-index: 126;
@@ -7334,6 +7386,24 @@ body.combat-panel-open .screen.active {
   -webkit-overflow-scrolling: touch;
 }
 
+body.combat-panel-open .persistent-combat .bottom-nav.main-tabs {
+  position: fixed;
+  top: var(--game-topbar-height);
+  right: 0;
+  left: 0;
+  z-index: 260;
+  width: 100%;
+}
+
+body.desktop-executable:not(.desktop-mini-overlay).combat-panel-open .persistent-combat .bottom-nav.main-tabs {
+  top: calc(30px + var(--game-topbar-height));
+  z-index: 1190;
+}
+
+body.desktop-executable:not(.desktop-mini-overlay).combat-panel-open .screen.active {
+  inset: calc(30px + var(--game-topbar-height) + var(--bottom-nav-height)) 0 0 0;
+}
+
 body.combat-panel-open .mobile-panel-close {
   top: calc(var(--game-topbar-height) + var(--bottom-nav-height) + env(safe-area-inset-top) + 10px);
   display: block;
@@ -7405,7 +7475,7 @@ body.mobile-combat-fullscreen .combat-quest-alert:not(.hidden) {
 .battle-stage .combat-quest-alert,
 body.is-combat-fullscreen .battle-stage .combat-quest-alert,
 body.mobile-combat-fullscreen .battle-stage .combat-quest-alert {
-  top: 50px !important;
+  top: 90px !important;
   right: 10px !important;
 }
 
@@ -7510,10 +7580,15 @@ body.mobile-combat-fullscreen .battle-stage .combat-quest-alert {
     right: max(8px, env(safe-area-inset-right));
   }
 
+  .combat-arena-toggle {
+    top: max(48px, calc(env(safe-area-inset-top) + 48px));
+    right: max(8px, env(safe-area-inset-right));
+  }
+
   .battle-stage .combat-quest-alert,
   body.is-combat-fullscreen .battle-stage .combat-quest-alert,
   body.mobile-combat-fullscreen .battle-stage .combat-quest-alert {
-    top: max(48px, calc(env(safe-area-inset-top) + 48px)) !important;
+    top: max(88px, calc(env(safe-area-inset-top) + 88px)) !important;
     right: max(8px, env(safe-area-inset-right)) !important;
   }
 
@@ -7917,6 +7992,7 @@ body.desktop-mini-overlay .skill-dock,
 body.desktop-mini-overlay .combat-auto-actions,
 body.desktop-mini-overlay .combat-quick-actions,
 body.desktop-mini-overlay .combat-guild-toggle,
+body.desktop-mini-overlay .combat-arena-toggle,
 body.desktop-mini-overlay .combat-desktop-mini-toggle,
 body.desktop-mini-overlay .combat-quest-alert,
 body.desktop-mini-overlay .combat-exit-button,
@@ -7962,15 +8038,21 @@ body.desktop-mini-overlay .persistent-combat .battle-stage {
   border-radius: 0;
   background: transparent !important;
   box-shadow: none;
-  -webkit-app-region: drag;
+  cursor: grab;
+  -webkit-app-region: no-drag;
 }
 
 body.desktop-mini-overlay #sea-canvas {
   width: 100%;
   height: 100%;
   display: block !important;
-  cursor: move;
-  -webkit-app-region: drag;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+body.desktop-mini-overlay.desktop-mini-dragging .persistent-combat .battle-stage,
+body.desktop-mini-overlay.desktop-mini-dragging #sea-canvas {
+  cursor: grabbing;
 }
 
 body.desktop-mini-overlay .desktop-mini-drag-strip {
@@ -7980,8 +8062,9 @@ body.desktop-mini-overlay .desktop-mini-drag-strip {
   left: 0;
   z-index: 24;
   height: 22px;
-  display: block;
-  -webkit-app-region: drag;
+  display: none;
+  pointer-events: none;
+  -webkit-app-region: no-drag;
 }
 
 body.desktop-mini-overlay .desktop-mini-controls {

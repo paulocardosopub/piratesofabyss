@@ -175,6 +175,25 @@ function getMiniOverlayBounds(win) {
   };
 }
 
+function clampToWorkArea(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function clampMiniOverlayPosition(win, x, y) {
+  const bounds = win.getBounds();
+  const display = screen.getDisplayNearestPoint({
+    x: Math.round(x + bounds.width / 2),
+    y: Math.round(y + bounds.height / 2)
+  });
+  const workArea = display?.workArea || screen.getPrimaryDisplay().workArea;
+  const maxX = workArea.x + Math.max(0, workArea.width - bounds.width);
+  const maxY = workArea.y + Math.max(0, workArea.height - bounds.height);
+  return {
+    x: clampToWorkArea(Math.round(x), workArea.x, maxX),
+    y: clampToWorkArea(Math.round(y), workArea.y, maxY)
+  };
+}
+
 function captureNormalWindowState(win) {
   return {
     bounds: win.getBounds(),
@@ -222,6 +241,20 @@ async function exitMiniOverlay(win) {
   return { ok: true };
 }
 
+function moveMiniOverlay(win, delta = {}) {
+  if (!win || win.isDestroyed()) return { ok: false, message: "Janela indisponivel." };
+  const dx = Math.round(Number(delta?.dx) || 0);
+  const dy = Math.round(Number(delta?.dy) || 0);
+  if (!dx && !dy) return { ok: true };
+  const [x, y] = win.getPosition();
+  const next = clampMiniOverlayPosition(win, x + dx, y + dy);
+  win.setAlwaysOnTop(true, "screen-saver");
+  win.setSkipTaskbar(false);
+  win.setPosition(next.x, next.y, false);
+  if (typeof win.moveTop === "function") win.moveTop();
+  return { ok: true };
+}
+
 async function checkForUpdatesFromRenderer(win) {
   if (!win || win.isDestroyed()) return { ok: false, status: "error", message: "Janela indisponivel." };
   if (!app.isPackaged || process.env.PIRATES_DISABLE_AUTO_UPDATE === "1") {
@@ -256,6 +289,7 @@ async function checkForUpdatesFromRenderer(win) {
 function registerDesktopIpcHandlers() {
   ipcMain.handle("desktop-enter-mini-overlay", event => enterMiniOverlay(BrowserWindow.fromWebContents(event.sender)));
   ipcMain.handle("desktop-exit-mini-overlay", event => exitMiniOverlay(BrowserWindow.fromWebContents(event.sender)));
+  ipcMain.handle("desktop-move-mini-overlay", (event, delta) => moveMiniOverlay(BrowserWindow.fromWebContents(event.sender), delta));
   ipcMain.handle("desktop-check-for-updates", event => checkForUpdatesFromRenderer(BrowserWindow.fromWebContents(event.sender)));
   ipcMain.handle("desktop-window-action", (event, action) => {
     const win = BrowserWindow.fromWebContents(event.sender);

@@ -1,1 +1,1 @@
-window.PIRATES_APP_VERSION = "1.0.6";
+window.PIRATES_APP_VERSION = "1.0.7";
