@@ -2568,6 +2568,7 @@
   let lastCaptainManualSkillUpgrade = null;
   let activeCaptainEquipmentKey = "sword";
   let activeShipUpgradeCategory = "improvements";
+  let fleetSelectorExpanded = false;
   let activeMapInfoIndex = null;
   let pendingBossMapAdvanceTimer = 0;
   let pendingSurpriseBossTimer = 0;
@@ -4553,6 +4554,7 @@
     }
     if (combatMinimized) setCombatMinimized(false, false);
     desktopMiniOverlayMode = true;
+    if (mobileCombatFullscreen || combatFullscreenSource === "mobile") setMobileCombatFullscreen(false);
     syncDesktopExecutableUi();
     resizeCombatViewport();
     try {
@@ -4655,6 +4657,7 @@
   }
 
   function shouldUseMobileCombatFullscreen() {
+    if (desktopMiniOverlayMode) return false;
     const { width, height } = getCombatViewportSize();
     const minSide = Math.min(width, height);
     const maxSide = Math.max(width, height);
@@ -6689,23 +6692,142 @@
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     }
 
+    fitAnchor(preferred, min, max) {
+      return min <= max ? clamp(preferred, min, max) : (min + max) * .5;
+    }
+
+    getSpriteFrameSize(sprite, fallbackAspect = 1) {
+      const source = sprite?.canvas || sprite?.image;
+      const columns = Math.max(1, sprite?.columns || 1);
+      const rows = Math.max(1, sprite?.rows || 1);
+      const naturalWidth = source?.width || source?.naturalWidth || Math.max(1, sprite?.width || 240) * columns;
+      const naturalHeight = source?.height || source?.naturalHeight || Math.max(1, sprite?.width || 240) * fallbackAspect * rows;
+      return {
+        frameWidth: Math.max(1, sprite?.frameWidth || Math.floor(naturalWidth / columns)),
+        frameHeight: Math.max(1, sprite?.frameHeight || Math.floor(naturalHeight / rows))
+      };
+    }
+
+    getSpriteVisibleBounds(sprite, frameWidth, frameHeight, role = "enemy") {
+      const fallback = role === "playerShip"
+        ? { width: frameWidth * .86, height: frameHeight * .82, centerX: frameWidth * .48, top: frameHeight * .08, bottomY: frameHeight * .9 }
+        : { width: frameWidth * .78, height: frameHeight * .74, centerX: frameWidth * .5, top: frameHeight * .13, bottomY: frameHeight * .9 };
+      const bounds = sprite?.referenceBounds || fallback;
+      const width = Math.max(1, Number(bounds.width ?? fallback.width) || fallback.width);
+      const height = Math.max(1, Number(bounds.height ?? fallback.height) || fallback.height);
+      const centerX = Number(bounds.centerX ?? fallback.centerX) || fallback.centerX;
+      const bottomY = Number(bounds.bottomY ?? bounds.bottom ?? fallback.bottomY) || fallback.bottomY;
+      const top = Number(bounds.top ?? bottomY - height) || bottomY - height;
+      const left = Number(bounds.left ?? centerX - width * .5) || centerX - width * .5;
+      const right = Number(bounds.right ?? left + width) || left + width;
+      return { left, right, top, bottomY, width: right - left, height: bottomY - top };
+    }
+
+    getSpritesheetSceneExtents(sprite, scale, options = {}) {
+      const role = options.role || sprite?.role || "enemy";
+      const { frameWidth, frameHeight } = this.getSpriteFrameSize(sprite, options.fallbackAspect || 1);
+      const targetWidth = Math.max(1, (sprite?.width || 260) * scale);
+      const targetHeight = targetWidth * (frameHeight / Math.max(1, frameWidth));
+      const frameScale = targetWidth / Math.max(1, frameWidth);
+      const bounds = this.getSpriteVisibleBounds(sprite, frameWidth, frameHeight, role);
+      const anchorX = sprite?.anchorX ?? .5;
+      const anchorY = sprite?.anchorY ?? .64;
+      const offsetX = (sprite?.offsetX || 0) * scale;
+      const offsetY = (sprite?.offsetY || 0) * scale;
+      const left = offsetX - targetWidth * anchorX + bounds.left * frameScale;
+      const right = offsetX - targetWidth * anchorX + bounds.right * frameScale;
+      const top = offsetY - targetHeight * anchorY + bounds.top * frameScale;
+      const bottom = offsetY - targetHeight * anchorY + bounds.bottomY * frameScale;
+      return { left, right, top, bottom, width: right - left, height: bottom - top, targetWidth, targetHeight };
+    }
+
+    getPlayerMiniOverlayExtents(ship, sprite, scale) {
+      const extents = this.getSpritesheetSceneExtents(sprite, scale, { role: "playerShip", fallbackAspect: 1 });
+      if (!sprite || !isCaptainSelected()) return extents;
+      const placement = this.getCaptainCharacterDeckPlacement(ship, sprite, extents.targetWidth, extents.targetHeight, scale);
+      const visualHeight = Math.min(extents.targetWidth * placement.config.scale, (placement.config.maxHeight || 98) * scale);
+      const visualWidth = visualHeight * .46;
+      const top = placement.footY - visualHeight * 1.02;
+      const bottom = placement.footY + visualHeight * .06;
+      const left = placement.footX - visualWidth * .58;
+      const right = placement.footX + visualWidth * .58;
+      return {
+        ...extents,
+        left: Math.min(extents.left, left),
+        right: Math.max(extents.right, right),
+        top: Math.min(extents.top, top),
+        bottom: Math.max(extents.bottom, bottom),
+        width: Math.max(extents.right, right) - Math.min(extents.left, left),
+        height: Math.max(extents.bottom, bottom) - Math.min(extents.top, top)
+      };
+    }
+
+    fitMiniScale(scale, getExtents, maxWidth, maxHeight, minScale = .24) {
+      let fitted = Math.max(minScale, scale);
+      for (let pass = 0; pass < 3; pass += 1) {
+        const extents = getExtents(fitted);
+        const ratio = Math.min(
+          maxWidth / Math.max(1, extents.width),
+          maxHeight / Math.max(1, extents.height),
+          1
+        );
+        if (ratio >= .995) break;
+        fitted = Math.max(minScale, fitted * ratio * .98);
+      }
+      return fitted;
+    }
+
+    getMiniOverlayCombatSceneLayout(w, h) {
+      const ship = SHIPS[state.shipId] || SHIPS[0];
+      const playerSprite = getPlayerShipSpritesheet(ship?.name);
+      if (playerSprite) requestPlayerShipSpritesheet(playerSprite);
+      const margin = Math.max(4, Math.min(7, h * .06));
+      const usableHeight = Math.max(58, h - margin * 1.35);
+      const maxPlayerScale = clamp(h / 156, .44, .78);
+      const initialPlayerScale = Math.min(maxPlayerScale, Math.max(.38, h / 180));
+      const playerExtentsAt = scale => playerSprite
+        ? this.getPlayerMiniOverlayExtents(ship, playerSprite, scale)
+        : { left: -118 * scale, right: 118 * scale, top: -112 * scale, bottom: 34 * scale, width: 236 * scale, height: 146 * scale };
+      const playerScale = this.fitMiniScale(initialPlayerScale, playerExtentsAt, w * .50, usableHeight * 1.08, .34);
+      const playerExtents = playerExtentsAt(playerScale);
+
+      const enemy = state.combat.enemy;
+      const arenaShip = enemy?.isArena ? getArenaEnemyShip(enemy) : null;
+      const enemySprite = enemy ? (enemy.isArena ? getPlayerShipSpritesheet(arenaShip?.name || enemy.ship_name) : getEnemyAnimatedSpritesheet(enemy)) : null;
+      if (enemySprite) {
+        if (enemy?.isArena) requestPlayerShipSpritesheet(enemySprite);
+        else requestEnemySpritesheet(enemySprite);
+      }
+      const enemyMaxScale = clamp(h / 154, .46, .82);
+      const initialEnemyScale = clamp(playerScale * 1.2, .42, enemyMaxScale);
+      const enemyExtentsAt = scale => enemySprite
+        ? this.getSpritesheetSceneExtents(enemySprite, scale, { role: enemy?.isArena ? "playerShip" : "enemy", fallbackAspect: 1 })
+        : { left: -94 * scale, right: 94 * scale, top: -96 * scale, bottom: 28 * scale, width: 188 * scale, height: 124 * scale };
+      const enemyScale = this.fitMiniScale(initialEnemyScale, enemyExtentsAt, w * .38, usableHeight * .98, .34);
+      const enemyExtents = enemyExtentsAt(enemyScale);
+
+      const playerX = this.fitAnchor(w * .20, margin - playerExtents.left, w * .48 - playerExtents.right);
+      const enemyX = this.fitAnchor(w * .81, w * .60 - enemyExtents.left, w - margin - enemyExtents.right);
+      const playerY = this.fitAnchor(h * .86, margin - playerExtents.top, h - margin - playerExtents.bottom);
+      const enemyY = this.fitAnchor(h * .78, margin - enemyExtents.top, h - margin - enemyExtents.bottom);
+
+      return {
+        mini: true,
+        compactStage: true,
+        horizon: h * .62,
+        playerX,
+        enemyX,
+        playerY,
+        enemyY,
+        playerScale,
+        enemyScale,
+        petX: playerX + Math.max(52, w * .19)
+      };
+    }
+
     getCombatSceneLayout(w = this.width, h = this.height) {
       const mini = isDesktopMiniOverlayMode();
-      if (mini) {
-        const scaleBase = clamp(Math.min(w / 620, h / 122) * 1.22, .45, .86);
-        return {
-          mini,
-          compactStage: true,
-          horizon: h * .34,
-          playerX: w * .27,
-          enemyX: w * .77,
-          playerY: h * .86,
-          enemyY: h * .77,
-          playerScale: scaleBase,
-          enemyScale: clamp(scaleBase * .95, .42, .78),
-          petX: w * .43
-        };
-      }
+      if (mini) return this.getMiniOverlayCombatSceneLayout(w, h);
       const compactStage = w < 620 || h < 240;
       return {
         mini,
@@ -6924,9 +7046,9 @@
       const baseX = w * (dropType === "boss" ? .56 : .50);
       const directProgress = clamp((baseX - playerX) / Math.max(1, enemyX - playerX), 0, 1);
       const directY = playerY + (enemyY - playerY) * directProgress;
-      const naturalOffset = (dropType === "boss" ? -1 : 1) * (18 + state.regionIndex % 3 * 4);
-      const waterTop = horizon + Math.max(58, chestWidth * .72);
-      const waterBottom = h - Math.max(14, chestWidth * .22);
+      const naturalOffset = layout.mini ? (dropType === "boss" ? -1 : 1) * (4 + state.regionIndex % 3 * 2) : (dropType === "boss" ? -1 : 1) * (18 + state.regionIndex % 3 * 4);
+      const waterTop = layout.mini ? horizon + Math.max(8, chestWidth * .18) : horizon + Math.max(58, chestWidth * .72);
+      const waterBottom = layout.mini ? h - Math.max(8, chestWidth * .14) : h - Math.max(14, chestWidth * .22);
       const offsets = dropType === "boss"
         ? [[0, 0], [w * .035, h * .035], [-w * .045, h * .06], [w * .075, h * .07], [-w * .02, -h * .035], [w * .105, -h * .015]]
         : [[0, 0], [-w * .04, h * .04], [w * .035, h * .065], [-w * .075, h * .08], [w * .06, -h * .025], [-w * .02, -h * .045]];
@@ -7283,55 +7405,58 @@
       if (isCaptainEditorEnabled()) this.captainEditorInfo = null;
       ctx.clearRect(0, 0, w, h);
 
-      ctx.save();
-      if (miniOverlay) ctx.globalAlpha = .62;
-      if (this.drawFixedBackground(ctx, w, h, region)) {
-        this.drawEnvironmentEvents(ctx, horizon, w, h);
+      if (miniOverlay) {
+        this.drawMiniOverlayBackground(ctx, w, h, region, day, horizon);
       } else {
-        const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-        sky.addColorStop(0, this.mix(region.sky, day.darkness > .4 ? "#08162d" : "#d9ecf1", .28 + day.darkness * .35));
-        sky.addColorStop(.58, day.sky);
-        sky.addColorStop(1, this.mix(region.sky, day.darkness > .4 ? "#263352" : "#f5d9ad", .38));
-        ctx.fillStyle = sky;
-        ctx.fillRect(0, 0, w, horizon + 2);
+        ctx.save();
+        if (this.drawFixedBackground(ctx, w, h, region)) {
+          this.drawEnvironmentEvents(ctx, horizon, w, h);
+        } else {
+          const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+          sky.addColorStop(0, this.mix(region.sky, day.darkness > .4 ? "#08162d" : "#d9ecf1", .28 + day.darkness * .35));
+          sky.addColorStop(.58, day.sky);
+          sky.addColorStop(1, this.mix(region.sky, day.darkness > .4 ? "#263352" : "#f5d9ad", .38));
+          ctx.fillStyle = sky;
+          ctx.fillRect(0, 0, w, horizon + 2);
 
-        if (day.darkness > .3) this.drawStars(ctx, w, horizon, day.darkness);
-        const celestialNight = day.cycle >= .5 && day.cycle < .92;
-        const celestialProgress = celestialNight ? (day.cycle - .5) / .42 : day.cycle < .5 ? day.cycle / .5 : (day.cycle - .92) / .08;
-        const sunX = w * (.08 + clamp(celestialProgress, 0, 1) * .84);
-        const celestialY = horizon * (.7 - Math.sin(clamp(celestialProgress, 0, 1) * Math.PI) * .5);
-        const sunRadius = Math.min(w, h) * (celestialNight ? .035 : .055);
-        const sunGlow = ctx.createRadialGradient(sunX, celestialY, 2, sunX, celestialY, sunRadius * 2.4);
-        sunGlow.addColorStop(0, celestialNight ? "rgba(225,240,244,.88)" : "rgba(255,245,190,.9)");
-        sunGlow.addColorStop(.28, celestialNight ? "rgba(192,218,230,.15)" : "rgba(255,211,114,.18)");
-        sunGlow.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.fillStyle = sunGlow; ctx.fillRect(sunX - sunRadius * 2.5, celestialY - sunRadius * 2.5, sunRadius * 5, sunRadius * 5);
-        if (celestialNight) { ctx.fillStyle = "rgba(230,242,242,.8)"; ctx.beginPath(); ctx.arc(sunX, celestialY, sunRadius * .55, 0, Math.PI * 2); ctx.fill(); }
+          if (day.darkness > .3) this.drawStars(ctx, w, horizon, day.darkness);
+          const celestialNight = day.cycle >= .5 && day.cycle < .92;
+          const celestialProgress = celestialNight ? (day.cycle - .5) / .42 : day.cycle < .5 ? day.cycle / .5 : (day.cycle - .92) / .08;
+          const sunX = w * (.08 + clamp(celestialProgress, 0, 1) * .84);
+          const celestialY = horizon * (.7 - Math.sin(clamp(celestialProgress, 0, 1) * Math.PI) * .5);
+          const sunRadius = Math.min(w, h) * (celestialNight ? .035 : .055);
+          const sunGlow = ctx.createRadialGradient(sunX, celestialY, 2, sunX, celestialY, sunRadius * 2.4);
+          sunGlow.addColorStop(0, celestialNight ? "rgba(225,240,244,.88)" : "rgba(255,245,190,.9)");
+          sunGlow.addColorStop(.28, celestialNight ? "rgba(192,218,230,.15)" : "rgba(255,211,114,.18)");
+          sunGlow.addColorStop(1, "rgba(255,255,255,0)");
+          ctx.fillStyle = sunGlow; ctx.fillRect(sunX - sunRadius * 2.5, celestialY - sunRadius * 2.5, sunRadius * 5, sunRadius * 5);
+          if (celestialNight) { ctx.fillStyle = "rgba(230,242,242,.8)"; ctx.beginPath(); ctx.arc(sunX, celestialY, sunRadius * .55, 0, Math.PI * 2); ctx.fill(); }
 
-        this.drawCloud(ctx, ((w * .06 + this.time * 2.4) % (w + 180)) - 90, h * .16, 1.18, day.darkness);
-        this.drawCloud(ctx, ((w * .51 + this.time * 1.5) % (w + 160)) - 80, h * .095, .78, day.darkness);
-        this.drawCloud(ctx, ((w * .82 + this.time * 1.1) % (w + 140)) - 70, h * .22, .56, day.darkness);
+          this.drawCloud(ctx, ((w * .06 + this.time * 2.4) % (w + 180)) - 90, h * .16, 1.18, day.darkness);
+          this.drawCloud(ctx, ((w * .51 + this.time * 1.5) % (w + 160)) - 80, h * .095, .78, day.darkness);
+          this.drawCloud(ctx, ((w * .82 + this.time * 1.1) % (w + 140)) - 70, h * .22, .56, day.darkness);
 
-        const sea = ctx.createLinearGradient(0, horizon, 0, h);
-        sea.addColorStop(0, day.water);
-        sea.addColorStop(.3, this.mix(region.sea, day.darkness > .4 ? "#102c46" : "#6fbac1", .22));
-        sea.addColorStop(1, this.mix(region.sea, "#02101c", .52 + day.darkness * .18));
-        ctx.fillStyle = sea;
-        ctx.fillRect(0, horizon, w, h - horizon);
-        this.drawOceanTexture(ctx, horizon, w, h, day.darkness);
-        if (!celestialNight && day.cycle < .58) this.drawSunPath(ctx, sunX, horizon, h);
-        this.drawWaves(ctx, horizon, w, h);
-        this.drawEnvironmentEvents(ctx, horizon, w, h);
+          const sea = ctx.createLinearGradient(0, horizon, 0, h);
+          sea.addColorStop(0, day.water);
+          sea.addColorStop(.3, this.mix(region.sea, day.darkness > .4 ? "#102c46" : "#6fbac1", .22));
+          sea.addColorStop(1, this.mix(region.sea, "#02101c", .52 + day.darkness * .18));
+          ctx.fillStyle = sea;
+          ctx.fillRect(0, horizon, w, h - horizon);
+          this.drawOceanTexture(ctx, horizon, w, h, day.darkness);
+          if (!celestialNight && day.cycle < .58) this.drawSunPath(ctx, sunX, horizon, h);
+          this.drawWaves(ctx, horizon, w, h);
+          this.drawEnvironmentEvents(ctx, horizon, w, h);
 
-        if (!this.drawRegionIslandSprite(ctx, w, h, horizon, state.regionIndex)) {
-          this.drawIsland(ctx, w * .27, horizon + 16, w * .46, region.land, 1.12, 0);
+          if (!this.drawRegionIslandSprite(ctx, w, h, horizon, state.regionIndex)) {
+            this.drawIsland(ctx, w * .27, horizon + 16, w * .46, region.land, 1.12, 0);
+          }
+
+          if (state.regionIndex === 2) this.drawRain(ctx, w, h);
+          if (state.regionIndex === 8) this.drawSnow(ctx, w, h);
+          if (state.regionIndex === 5) this.drawFog(ctx, w, h);
         }
-
-        if (state.regionIndex === 2) this.drawRain(ctx, w, h);
-        if (state.regionIndex === 8) this.drawSnow(ctx, w, h);
-        if (state.regionIndex === 5) this.drawFog(ctx, w, h);
+        ctx.restore();
       }
-      ctx.restore();
 
       const bobPlayer = Math.sin(this.time * 1.55) * 3;
       const { compactStage, playerY, enemyY, playerScale, enemyScale } = layout;
@@ -7541,6 +7666,42 @@
       ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, w, h);
       ctx.restore();
       return true;
+    }
+
+    drawMiniOverlayBackground(ctx, w, h, region, day, horizon) {
+      const waterTop = clamp(horizon, h * .5, h * .68);
+      const waveY = x => waterTop + Math.sin(x * .018 + this.time * 1.15) * 1.6 + Math.sin(x * .041 + this.time * .7) * .9;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(0, h + 2);
+      ctx.lineTo(0, waveY(0));
+      for (let x = 0; x <= w + 8; x += 8) ctx.lineTo(x, waveY(x));
+      ctx.lineTo(w + 2, h + 2);
+      ctx.closePath();
+      ctx.clip();
+
+      const sea = ctx.createLinearGradient(0, waterTop, 0, h);
+      sea.addColorStop(0, this.mix(day.water || region.sea, "#2f95bb", .16));
+      sea.addColorStop(.46, this.mix(region.sea, "#0f5b87", .28));
+      sea.addColorStop(1, this.mix(region.sea, "#03101c", .5));
+      ctx.globalAlpha = .68;
+      ctx.fillStyle = sea;
+      ctx.fillRect(0, waterTop - 6, w, h - waterTop + 10);
+
+      ctx.globalAlpha = .34;
+      this.drawWaves(ctx, waterTop, w, h);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = .5;
+      ctx.strokeStyle = "rgba(152, 226, 255, .42)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(0, waveY(0));
+      for (let x = 0; x <= w + 8; x += 8) ctx.lineTo(x, waveY(x));
+      ctx.stroke();
+      ctx.restore();
     }
 
     drawOceanTexture(ctx, horizon, w, h, darkness = 0) {
@@ -12034,13 +12195,15 @@
 
   function fleetSelectionLineHtml() {
     const ownedIds = [...new Set(state.ownedShips)].filter(id => SHIPS[id]).sort((a, b) => a - b);
+    const expanded = Boolean(fleetSelectorExpanded);
     const buttons = ownedIds.map(id => {
       const ship = SHIPS[id];
       const current = id === state.shipId;
       const stats = getStats(id);
       return `<button class="fleet-ship-option ${current ? "current" : ""}" data-equip-ship="${id}" aria-label="${current ? `${ship.name} equipado` : `Selecionar ${ship.name}`}" ${current ? "disabled" : ""}><span>${ship.name}</span><small>Tier ${ship.tier} • Poder ${formatNumber(stats.power)}</small><strong>${current ? "Atual" : "Selecionar"}</strong></button>`;
     }).join("");
-    return `<article class="upgrade-row fleet-select-row completed"><div class="upgrade-row-icon">⛵</div><div class="upgrade-row-main"><span class="level-label">NAVIOS CONSTRUÍDOS</span><h3>Selecionar barco da frota</h3><p>Troque para qualquer barco já comprado sem custo.</p><div class="fleet-ship-selector">${buttons}</div></div><div class="upgrade-row-action"><span class="upgrade-row-status">Atual: ${SHIPS[state.shipId].name}</span><small>${ownedIds.length}/${SHIPS.length} construídos</small></div></article>`;
+    const selector = expanded ? `<p>Troque para qualquer barco já comprado sem custo.</p><div class="fleet-ship-selector">${buttons}</div>` : "";
+    return `<article class="upgrade-row fleet-select-row completed ${expanded ? "expanded" : "collapsed"}"><div class="upgrade-row-icon">⛵</div><div class="upgrade-row-main"><button class="fleet-selector-toggle" type="button" data-toggle-fleet-selector aria-expanded="${expanded}"><span class="level-label">NAVIOS CONSTRUÍDOS</span><strong>Selecionar barco da frota</strong><small>${expanded ? "Clique para recolher a lista" : "Clique para escolher entre seus navios"}</small></button>${selector}</div><div class="upgrade-row-action"><span class="upgrade-row-status">Atual: ${SHIPS[state.shipId].name}</span><small>${ownedIds.length}/${SHIPS.length} construídos</small></div></article>`;
   }
 
   function fleetLineHtml() {
@@ -13705,6 +13868,11 @@
     if (currentScreen === "upgrades") renderUpgrades();
   }
 
+  function toggleFleetSelector() {
+    fleetSelectorExpanded = !fleetSelectorExpanded;
+    if (currentScreen === "upgrades") renderUpgrades();
+  }
+
   function upgradeCaptainEquipment(key) {
     const meta = CAPTAIN_EQUIPMENT_META[key];
     const next = getNextCaptainEquipmentTierData(key);
@@ -13926,6 +14094,10 @@
     }
     if (target.dataset.desktopMiniExit !== undefined) {
       exitDesktopMiniOverlay();
+      return;
+    }
+    if (target.dataset.toggleFleetSelector !== undefined) {
+      toggleFleetSelector();
       return;
     }
     if (target.dataset.desktopCheckUpdate !== undefined) {

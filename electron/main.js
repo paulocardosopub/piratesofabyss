@@ -189,15 +189,17 @@ async function enterMiniOverlay(win) {
   if (!normalWindowState) normalWindowState = captureNormalWindowState(win);
   if (win.isFullScreen()) win.setFullScreen(false);
   if (win.isMaximized()) win.unmaximize();
+  win.setMovable(true);
   win.setResizable(false);
   win.setMinimumSize(280, 70);
-  win.setAlwaysOnTop(true, "floating");
+  win.setAlwaysOnTop(true, "screen-saver");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.setSkipTaskbar(true);
+  win.setSkipTaskbar(false);
   win.setHasShadow(false);
   win.setBackgroundColor("#00000000");
   win.setBounds(getMiniOverlayBounds(win), true);
   win.show();
+  if (typeof win.moveTop === "function") win.moveTop();
   win.focus();
   return { ok: true };
 }
