@@ -56,14 +56,15 @@ jobs:
             }
           }
 
-          gh release delete $tag --repo $repo --yes
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Nenhuma release anterior para remover."
+          gh release view $tag --repo $repo
+          if ($LASTEXITCODE -eq 0) {
+            Invoke-Gh @("release", "edit", $tag, "--repo", $repo, "--title", $tag, "--latest")
+          } else {
+            Invoke-Gh @("release", "create", $tag, "--repo", $repo, "--title", $tag, "--notes", "Release $tag", "--latest", "--verify-tag")
           }
 
-          Invoke-Gh @("release", "create", $tag, "--repo", $repo, "--title", $tag, "--notes", "Release $tag", "--latest", "--verify-tag")
           foreach ($file in $files) {
             Write-Host "Enviando $file"
-            Invoke-Gh @("release", "upload", $tag, $file, "--repo", $repo)
+            Invoke-Gh @("release", "upload", $tag, $file, "--repo", $repo, "--clobber")
           }
           Invoke-Gh @("release", "edit", $tag, "--repo", $repo, "--title", $tag, "--latest")
