@@ -20,11 +20,19 @@
   const ARENA_BALANCED_ATTACK_INTERVAL_MS = ARENA_ATTACK_INTERVAL_DEFAULT_MS;
   const ARENA_HP_MULTIPLIER = 10;
   const ARENA_START_DELAY_MS = 3000;
+  const ARENA_END_DELAY_MS = 1000;
   const ARENA_SNAPSHOT_SYNC_INTERVAL_MS = 10000;
   const PVP_ROOM_POLL_INTERVAL_MS = 2400;
   const PVP_ROOM_LIST_CACHE_MS = 12000;
   const PVP_ROOM_START_DELAY_MS = 10000;
   const PVP_ROOM_START_DRIFT_GRACE_MS = 5000;
+  const BROWSER_POPUP_PARAM = "popup";
+  const BROWSER_POPUP_MINI_PARAM = "mini";
+  const BROWSER_POPUP_WINDOW_NAME = "piratesOfAbyssPopup";
+  const BROWSER_POPUP_WIDTH = 430;
+  const BROWSER_POPUP_HEIGHT = 760;
+  const BROWSER_POPUP_MINI_WIDTH = 360;
+  const BROWSER_POPUP_MINI_HEIGHT = 118;
   const GUILD_CREATE_GOLD_COST = 10000;
   const GUILD_MAX_MEMBERS = 20;
   const GUILD_BOSS_REWARD_GOLD = 10000;
@@ -157,6 +165,21 @@
     if (!pendingTextEditRender || getActiveTextEditingElement()) return;
     pendingTextEditRender = false;
     renderAll(false);
+  }
+
+  function getBrowserPopupSearchParams() {
+    try { return new URLSearchParams(window.location.search || ""); } catch (error) {}
+    return new URLSearchParams();
+  }
+
+  function isBrowserPopupMode() {
+    const value = String(getBrowserPopupSearchParams().get(BROWSER_POPUP_PARAM) || "").toLowerCase();
+    return value === "1" || value === "true" || value === "yes";
+  }
+
+  function isBrowserPopupMiniRequested() {
+    const value = String(getBrowserPopupSearchParams().get(BROWSER_POPUP_MINI_PARAM) || "").toLowerCase();
+    return value === "1" || value === "true" || value === "yes";
   }
 
   function preventCancelableDefault(event) {
@@ -2364,6 +2387,8 @@
       guildBossTickets: 0,
       levels: { ship: 1, cannons: 1, sails: 1, hull: 1, shields: 1 },
       equipment: { compass: false, spyglass: false, anchor: false, amulet: false },
+      recommendationPriority: null,
+      recommendationPriorities: { progress: null, captain: null },
       skills: {
         fire: { level: 1, auto: true, remaining: 1.5 },
         ice: { level: 1, auto: true, remaining: 4 },
@@ -2471,6 +2496,27 @@
     return target;
   }
 
+  function normalizeRecommendationPriority(value) {
+    if (!value || typeof value !== "object") return null;
+    const group = String(value.group || "").trim();
+    const kind = String(value.kind || "").trim();
+    const id = String(value.id ?? "").trim();
+    if (!["progress", "captain"].includes(group) || !kind || !id) return null;
+    return { group, kind, id };
+  }
+
+  function normalizeRecommendationPriorities(value, legacyValue = null) {
+    const result = { progress: null, captain: null };
+    const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    ["progress", "captain"].forEach(group => {
+      const priority = normalizeRecommendationPriority(source[group]);
+      if (priority?.group === group) result[group] = priority;
+    });
+    const legacy = normalizeRecommendationPriority(legacyValue);
+    if (legacy && !result[legacy.group]) result[legacy.group] = legacy;
+    return result;
+  }
+
   function loadState() {
     const defaults = createDefaultState();
     try {
@@ -2485,6 +2531,8 @@
         merged.levels[key] = clamp(Math.floor(Number(merged.levels[key] || 1)), 1, SHIP_UPGRADE_MAX_LEVEL);
       });
       merged.equipment = { ...defaults.equipment, ...(saved.equipment || {}) };
+      merged.recommendationPriority = null;
+      merged.recommendationPriorities = normalizeRecommendationPriorities(saved.recommendationPriorities, saved.recommendationPriority);
       merged.captainEquipment = { ...defaults.captainEquipment, ...(saved.captainEquipment || {}) };
       merged.captainManualSkills = { ...defaults.captainManualSkills, ...(saved.captainManualSkills || {}) };
       merged.skills = Object.fromEntries(Object.keys(SKILL_META).map(key => [key, { ...defaults.skills[key], ...((saved.skills || {})[key] || {}) }]));
@@ -2686,6 +2734,9 @@
   let mobileCombatPreviousMinimized = false;
   let desktopMiniOverlayMode = false;
   let desktopMiniDragState = null;
+  let browserPopupWindow = null;
+  let browserPopupMiniMode = isBrowserPopupMode() && isBrowserPopupMiniRequested();
+  let browserPopupNormalBounds = null;
   let desktopUpdateState = { status: "idle", message: "Buscar nova versao do jogo", version: "", canInstall: false };
   let desktopWelcomeShownThisSession = false;
   let removeDesktopUpdateStatusListener = null;
@@ -3376,6 +3427,35 @@
       : state;
   }
 
+  function formatSaveTimestamp(timestamp = state.lastSeen) {
+    const value = Number(timestamp || 0);
+    if (!Number.isFinite(value) || value <= 0) return "ainda nao registrado";
+    try {
+      return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    } catch (error) {
+      return new Date(value).toLocaleString();
+    }
+  }
+
+  function getSaveSyncModeText() {
+    const account = AUTH_MANAGER?.getCurrentUser?.();
+    if (AUTH_MANAGER?.getServerAuthContext?.()) return "nuvem ativa";
+    if (account?.guest) return "modo convidado/local";
+    if (account) return "conta local";
+    return "conta carregando";
+  }
+
+  function manualSaveTooltipText() {
+    return `Salva o progresso atual. Estado: ${getSaveSyncModeText()}. Ultimo save: ${formatSaveTimestamp()}. Para trocar de dispositivo, use uma conta online com nuvem ativa.`;
+  }
+
+  function syncManualSaveButtonTooltip(button = $("#manual-save-button")) {
+    if (!button) return;
+    const text = manualSaveTooltipText();
+    button.title = text;
+    setHelpTooltipText(button, text);
+  }
+
   function saveGame() {
     if (VISUAL_AUDIT_CONFIG) return null;
     if (!isGameAuthenticated()) return;
@@ -3411,7 +3491,7 @@
   async function forceManualCloudSave(button = $("#manual-save-button")) {
     if (manualCloudSavePending) return;
     manualCloudSavePending = true;
-    const originalTitle = button?.getAttribute("title") || "";
+    const originalTitle = manualSaveTooltipText();
     if (button) {
       button.disabled = true;
       button.classList.remove("saved");
@@ -3434,7 +3514,7 @@
         return;
       }
       if (button) button.classList.add("saved");
-      toast("Jogo Salvo", "gold-toast", { mobileAllowed: true });
+      toast(hasCloudSession ? "Jogo salvo na nuvem." : "Jogo salvo neste dispositivo. Para trocar de dispositivo, use conta online.", hasCloudSession ? "gold-toast" : "", { mobileAllowed: true });
     } catch (error) {
       console.warn("Nao foi possivel forcar o salvamento.", error);
       toast("Nao foi possivel salvar na nuvem.", "danger-toast", { mobileAllowed: true });
@@ -3445,6 +3525,7 @@
         button.classList.remove("saving");
         button.removeAttribute("aria-busy");
         button.title = originalTitle || "Forçar salvamento na nuvem";
+        syncManualSaveButtonTooltip(button);
         window.setTimeout(() => button.classList.remove("saved"), 1400);
       }
     }
@@ -3719,6 +3800,7 @@
       guildJoinRpcName: String(raw.guildJoinRpcName || "join_pirate_guild").trim() || "join_pirate_guild",
       guildConfigRpcName: String(raw.guildConfigRpcName || "update_pirate_guild_config").trim() || "update_pirate_guild_config",
       guildRoleRpcName: String(raw.guildRoleRpcName || "set_pirate_guild_role").trim() || "set_pirate_guild_role",
+      guildKickRpcName: String(raw.guildKickRpcName || "kick_pirate_guild_member").trim() || "kick_pirate_guild_member",
       guildApplicationRpcName: String(raw.guildApplicationRpcName || "decide_pirate_guild_application").trim() || "decide_pirate_guild_application",
       guildUpgradeRpcName: String(raw.guildUpgradeRpcName || "upgrade_pirate_guild_bonus").trim() || "upgrade_pirate_guild_bonus",
       guildBossStartRpcName: String(raw.guildBossStartRpcName || "start_pirate_guild_boss_attempt").trim() || "start_pirate_guild_boss_attempt",
@@ -3998,6 +4080,15 @@
 
   function hasGuildManagerAccess() {
     return ["king", "quartermaster"].includes(guildState.current?.role);
+  }
+
+  function canKickGuildMember(member) {
+    if (!member || !hasGuildManagerAccess()) return false;
+    const actorRole = guildState.current?.role;
+    if (member.player_id === state.playerId) return false;
+    if (member.role === "king") return false;
+    if (actorRole === "quartermaster" && member.role !== "member") return false;
+    return true;
   }
 
   function getGuildUpgradeLevel(key) {
@@ -4832,10 +4923,19 @@
     const attackColor = enemy.pet?.color || "#ff8c68";
     scene.markEnemyAttack(enemy);
     scene.fire(false, attackColor);
-    if (state.combat.playerHp > 0 && damage > 0) scene.markPlayerShipHit();
+    if (damage > 0) scene.markPlayerShipHit();
     setTimeout(() => {
       if (damage > 0) scene.floatDamage(Math.round(damage), false, attackColor, { effectType: "basic" });
     }, 340);
+  }
+
+  function playOnlinePvpLocalAttackImpact(damage = 0) {
+    const enemy = state.combat.enemy;
+    if (!enemy?.isArena) return;
+    const amount = Math.max(0, Math.round(Number(damage) || 0));
+    if (amount <= 0) return;
+    scene.markEnemyHit(enemy, enemy.hp <= 0 || enemy.defeated);
+    scene.floatDamage(amount, true, "#fff0bc", { effectType: "basic" });
   }
 
   function syncOnlinePvpBattle(room) {
@@ -4847,6 +4947,9 @@
     const playerMaxHp = getPvpRoomMaxHp(room, side, battle.playerMaxHp);
     const enemyMaxHp = getPvpRoomMaxHp(room, opponentSide, state.combat.enemy?.maxHp || 1);
     const previousPlayerHp = clamp(Number(state.combat.playerHp || 0), 0, playerMaxHp);
+    const previousEnemyHp = clamp(Number(state.combat.enemy?.hp || enemyMaxHp), 0, enemyMaxHp);
+    const previousDamageDealt = Math.max(0, Number(battle.damageDealt || 0));
+    const previousOwnSyncedSeq = Math.max(0, Number(battle.lastSyncedOwnActionSeq || 0));
     const previousDamageReceived = Math.max(0, Number(battle.damageReceived || 0));
     const previousRemoteSeq = Math.max(0, Number(battle.lastRemoteActionSeq || 0));
     const ownSeq = getPvpRoomBattleNumber(room, `${side}_action_seq`, battle.actionSeq || 0);
@@ -4871,6 +4974,11 @@
       const damageDelta = Math.max(0, battle.damageReceived - previousDamageReceived, previousPlayerHp - state.combat.playerHp);
       playOnlinePvpRemoteAttack(damageDelta);
     }
+    if (ownSeq > previousOwnSyncedSeq && !isArenaBattleWaiting()) {
+      const damageDelta = Math.max(0, battle.damageDealt - previousDamageDealt, previousEnemyHp - (state.combat.enemy?.hp || 0));
+      playOnlinePvpLocalAttackImpact(damageDelta);
+    }
+    battle.lastSyncedOwnActionSeq = Math.max(previousOwnSyncedSeq, ownSeq);
     battle.lastRemoteActionSeq = Math.max(previousRemoteSeq, remoteSeq);
     const finished = room.status === "finished" || playerHp <= 0 || enemyHp <= 0;
     if (!finished || battle.finished) return;
@@ -4917,6 +5025,7 @@
       damageDealt: 0,
       damageReceived: 0,
       actionSeq: ownActionSeq,
+      lastSyncedOwnActionSeq: ownActionSeq,
       lastRemoteActionSeq: remoteActionSeq,
       nextManualAttackAt: 0,
       onlineActionPending: false,
@@ -5455,6 +5564,10 @@
     return Boolean(desktopMiniOverlayMode);
   }
 
+  function isCombatMiniOverlayVisualMode() {
+    return Boolean(desktopMiniOverlayMode || browserPopupMiniMode);
+  }
+
   function canUseDesktopMiniOverlay() {
     return Boolean(
       isDesktopExecutable()
@@ -5464,6 +5577,126 @@
       && window.PiratesDesktop?.enterMiniOverlay
       && window.PiratesDesktop?.exitMiniOverlay
     );
+  }
+
+  function canShowBrowserPopupControl() {
+    if (isDesktopExecutable()) return false;
+    return Boolean(isBrowserPopupMode() || !isMobileCombatDevice());
+  }
+
+  function buildBrowserPopupUrl(options = {}) {
+    let url = null;
+    try { url = new URL(window.location.href); } catch (error) {}
+    if (!url) return window.location.href;
+    url.searchParams.set(BROWSER_POPUP_PARAM, "1");
+    if (options.mini) url.searchParams.set(BROWSER_POPUP_MINI_PARAM, "1");
+    else url.searchParams.delete(BROWSER_POPUP_MINI_PARAM);
+    return url.href;
+  }
+
+  function captureBrowserPopupBounds() {
+    return {
+      width: Math.max(BROWSER_POPUP_WIDTH, Math.round(window.outerWidth || window.innerWidth || BROWSER_POPUP_WIDTH)),
+      height: Math.max(BROWSER_POPUP_HEIGHT, Math.round(window.outerHeight || window.innerHeight || BROWSER_POPUP_HEIGHT)),
+      x: Math.round(window.screenX ?? window.screenLeft ?? 0),
+      y: Math.round(window.screenY ?? window.screenTop ?? 0)
+    };
+  }
+
+  function updateBrowserPopupMiniUrl(mini) {
+    if (!isBrowserPopupMode() || !window.history?.replaceState) return;
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set(BROWSER_POPUP_PARAM, "1");
+      if (mini) url.searchParams.set(BROWSER_POPUP_MINI_PARAM, "1");
+      else url.searchParams.delete(BROWSER_POPUP_MINI_PARAM);
+      window.history.replaceState(window.history.state, "", url.href);
+    } catch (error) {}
+  }
+
+  function resizeBrowserPopupWindow(mini) {
+    if (!isBrowserPopupMode()) return;
+    try {
+      if (mini) {
+        const width = BROWSER_POPUP_MINI_WIDTH;
+        const height = BROWSER_POPUP_MINI_HEIGHT;
+        const screenWidth = window.screen?.availWidth || window.screen?.width || 0;
+        const screenHeight = window.screen?.availHeight || window.screen?.height || 0;
+        window.resizeTo?.(width, height);
+        if (screenWidth && screenHeight) window.moveTo?.(Math.max(0, screenWidth - width - 18), Math.max(0, screenHeight - height - 64));
+        return;
+      }
+      const bounds = browserPopupNormalBounds || { width: BROWSER_POPUP_WIDTH, height: BROWSER_POPUP_HEIGHT, x: null, y: null };
+      window.resizeTo?.(bounds.width, bounds.height);
+      if (Number.isFinite(bounds.x) && Number.isFinite(bounds.y)) window.moveTo?.(bounds.x, bounds.y);
+    } catch (error) {}
+  }
+
+  function syncBrowserPopupButton() {
+    const button = $("#combat-popup-toggle");
+    if (!button) return;
+    const visible = canShowBrowserPopupControl();
+    button.classList.toggle("hidden", !visible);
+    button.disabled = !visible;
+    if (!visible) return;
+    const popup = isBrowserPopupMode();
+    const label = popup
+      ? browserPopupMiniMode ? "Restaurar popup" : "Minimizar popup"
+      : "Abrir em popup";
+    const help = popup
+      ? browserPopupMiniMode ? "Restaura o popup para a janela normal." : "Minimiza este popup para o modo miniatura."
+      : "Abre o jogo em uma janela popup do navegador.";
+    button.title = label;
+    button.setAttribute("aria-pressed", popup ? String(browserPopupMiniMode) : "false");
+    button.classList.toggle("active", popup);
+    button.classList.toggle("mini", browserPopupMiniMode);
+    const icon = button.querySelector("span");
+    if (icon) icon.textContent = popup ? browserPopupMiniMode ? "\u25A1" : "\u2212" : "\u25A3";
+    setHelpTooltipText(button, help);
+  }
+
+  function setBrowserPopupMiniMode(active) {
+    if (!isBrowserPopupMode()) return;
+    const next = Boolean(active);
+    if (next && !browserPopupMiniMode) browserPopupNormalBounds = captureBrowserPopupBounds();
+    browserPopupMiniMode = next;
+    if (next) {
+      if (combatMinimized) setCombatMinimized(false, false);
+      if (mobileCombatFullscreen || combatFullscreenSource === "mobile") setMobileCombatFullscreen(false);
+    }
+    hideHelpTooltip();
+    updateBrowserPopupMiniUrl(next);
+    syncDesktopExecutableUi();
+    resizeBrowserPopupWindow(next);
+    resizeCombatViewport();
+    window.setTimeout(() => resizeCombatViewport(), 180);
+  }
+
+  function openBrowserPopupWindow() {
+    if (isDesktopExecutable()) return;
+    if (isBrowserPopupMode()) {
+      setBrowserPopupMiniMode(!browserPopupMiniMode);
+      return;
+    }
+    const features = [
+      "popup=yes",
+      `width=${BROWSER_POPUP_WIDTH}`,
+      `height=${BROWSER_POPUP_HEIGHT}`,
+      "resizable=yes",
+      "scrollbars=no",
+      "menubar=no",
+      "toolbar=no",
+      "location=no",
+      "status=no"
+    ].join(",");
+    const popup = window.open(buildBrowserPopupUrl(), BROWSER_POPUP_WINDOW_NAME, features);
+    if (!popup) {
+      toast("Permita pop-ups do navegador para abrir o jogo em janela.", "danger-toast", { mobileAllowed: true });
+      return;
+    }
+    browserPopupWindow = popup;
+    try { popup.focus?.(); } catch (error) {}
+    toast("Popup do jogo aberto.", "gold-toast", { mobileAllowed: true });
   }
 
   function setDesktopUpdateStatus(status = "idle", message = "", extra = {}) {
@@ -5555,10 +5788,13 @@
   function syncDesktopExecutableUi() {
     const desktop = isDesktopExecutable();
     const app = $("#app");
+    const miniOverlayVisualMode = isCombatMiniOverlayVisualMode();
     [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("desktop-executable", desktop));
-    [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("desktop-mini-overlay", desktopMiniOverlayMode));
-    $("#desktop-window-bar")?.classList.toggle("hidden", !desktop || desktopMiniOverlayMode);
+    [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("desktop-mini-overlay", miniOverlayVisualMode));
+    [document.documentElement, document.body, app].forEach(node => node?.classList.toggle("browser-popup-window", isBrowserPopupMode()));
+    $("#desktop-window-bar")?.classList.toggle("hidden", !desktop || miniOverlayVisualMode);
     $("#desktop-mini-controls")?.classList.toggle("hidden", !desktopMiniOverlayMode);
+    syncBrowserPopupButton();
     syncDesktopUpdatePanel();
   }
 
@@ -8101,7 +8337,7 @@
     resize() {
       const rect = this.canvas.getBoundingClientRect();
       this.dpr = Math.min(2, window.devicePixelRatio || 1);
-      const mini = isDesktopMiniOverlayMode();
+      const mini = isCombatMiniOverlayVisualMode();
       this.width = Math.max(mini ? 260 : 320, rect.width);
       this.height = Math.max(mini ? 70 : 120, rect.height);
       this.canvas.width = this.width * this.dpr;
@@ -8243,7 +8479,7 @@
     }
 
     getCombatSceneLayout(w = this.width, h = this.height) {
-      const mini = isDesktopMiniOverlayMode();
+      const mini = isCombatMiniOverlayVisualMode();
       if (mini) return this.getMiniOverlayCombatSceneLayout(w, h);
       const compactStage = w < 620 || h < 240;
       const mobileVerticalStage = mobileCombatFullscreen && w < h && w <= 620;
@@ -8379,7 +8615,7 @@
       const frameIndex = clamp(Math.floor(DAMAGE_EFFECT_FRAME_INDEX[item.effectType] ?? DAMAGE_EFFECT_FRAME_INDEX.default), 0, frameCount - 1);
       const source = DAMAGE_EFFECT_FRAME_BOUNDS[frameIndex] || { x: frameIndex * frameWidth, y: 0, w: frameWidth, h: frameHeight };
       const textLength = String(text || "").length;
-      const mini = isDesktopMiniOverlayMode();
+      const mini = isCombatMiniOverlayVisualMode();
       const effectScale = clamp(Number(item.effectScale || 1) || 1, .5, 2.4);
       const baseWidth = clamp(88 + textLength * 7, 94, 166) * effectScale * (mini ? .66 : 1);
       const pulse = Math.sin(clamp(item.age / 1.05, 0, 1) * Math.PI);
@@ -8460,9 +8696,9 @@
       });
     }
 
-    markEnemyHit(enemy) {
+    markEnemyHit(enemy, force = false) {
       const animation = ensureEnemySpriteAnimation(enemy);
-      if (!animation || enemy.defeated) return;
+      if (!animation || (enemy.defeated && !force)) return;
       animation.hitStartedAt = this.time;
       animation.hitUntil = this.time + ENEMY_HIT_ANIMATION_SECONDS;
     }
@@ -9043,7 +9279,7 @@
         return;
       }
       if (!image?.complete || !image.naturalWidth || !frame) return;
-      const mini = isDesktopMiniOverlayMode();
+      const mini = isCombatMiniOverlayVisualMode();
       const fade = Math.min(1, t / .12, (1 - t) / .08);
       const angle = Math.atan2(item.end.y - item.start.y, item.end.x - item.start.x);
       const drawWidth = Math.max(8, frame.drawWidth * (sprite.scale || 1) * (mini ? .62 : 1));
@@ -9061,7 +9297,7 @@
       const image = requestCannonSmokeSprite();
       const frame = item.frame || this.getCannonSmokeFrameForShip(state.shipId);
       const t = clamp(item.age / Math.max(.001, item.duration), 0, 1);
-      const mini = isDesktopMiniOverlayMode();
+      const mini = isCombatMiniOverlayVisualMode();
       const puff = 1 + t * .24;
       const baseWidth = frame.drawWidth * (mini ? .62 : 1) * (item.config?.scale || 1);
       const drawWidth = Math.max(16, baseWidth * puff);
@@ -9100,7 +9336,7 @@
       const anchor = this.getPlayerCannonAnchor();
       const frame = this.getCannonSmokeFrameForShip(state.shipId);
       const image = requestCannonSmokeSprite();
-      const mini = isDesktopMiniOverlayMode();
+      const mini = isCombatMiniOverlayVisualMode();
       const drawWidth = Math.max(18, frame.drawWidth * (mini ? .62 : 1) * anchor.config.scale);
       const drawHeight = drawWidth * (frame.h / Math.max(1, frame.w));
       const drawX = anchor.x - drawWidth * .18;
@@ -11186,7 +11422,7 @@
     state.lifetime.highestDamage = Math.max(state.lifetime.highestDamage, damage);
     const hitTarget = enemy;
     const markHit = () => {
-      if (state.combat.enemy === hitTarget && hitTarget.hp > 0 && !hitTarget.defeated) scene.markEnemyHit(hitTarget);
+      if (state.combat.enemy === hitTarget) scene.markEnemyHit(hitTarget, hitTarget.hp <= 0 || hitTarget.defeated);
     };
     const damageEffectType = options.sabotage ? "sabotage"
       : options.critical ? "critical"
@@ -11380,7 +11616,7 @@
       addLog(`${enemy.name} aplica ${enemy.special}.`, "danger-text");
     }
     if (enemy.isArena && arenaState.battle) arenaState.battle.damageReceived += totalDamage;
-    if (state.combat.playerHp > 0) scene.markPlayerShipHit();
+    if (totalDamage > 0) scene.markPlayerShipHit();
     const attackColor = enemy.visual?.attack === "ghost" ? "#9ff4e9" : enemy.visual?.attack === "ice" ? "#8ee8ff" : enemy.visual?.attack === "fire" ? "#ff7048" : enemy.visual?.attack === "abyss" ? "#b18cff" : enemy.visual?.attack === "wave" || enemy.visual?.attack === "splash" ? "#7bdfff" : enemy.visual?.attack === "arrow" || enemy.visual?.attack === "harpoon" ? "#e3c06f" : "#ff8c68";
     const enemyDamageEffectType = enemy.visual?.attack === "fire" || enemy.special?.includes("chamas") ? "fire"
       : enemy.visual?.attack === "ice" || enemy.special?.includes("glacial") ? "ice"
@@ -12330,13 +12566,15 @@
     const fleetRecommendation = buildProgressRecommendationCandidates().find(candidate => candidate && !candidate.blocked);
     const captainEquipmentRecommendation = buildCaptainRecommendationCandidates().find(candidate => candidate?.kind === "captainEquipment" && !candidate.blocked);
     const recommendations = [fleetRecommendation, captainEquipmentRecommendation].filter(Boolean);
-    container.classList.toggle("hidden", recommendations.length === 0);
+    const priorityCancelHtml = combatRecommendationPriorityCancelHtml();
+    container.classList.toggle("hidden", recommendations.length === 0 && !priorityCancelHtml);
+    container.classList.toggle("has-priority-cancel", Boolean(priorityCancelHtml));
     const signature = recommendations
-      .map(candidate => [candidate.kind, candidate.key, candidate.title, candidate.actionAttrs, candidate.disabled, candidate.canBuy, candidate.actionLabel, combatQuickRecommendationCostBadge(candidate)?.text].join("|"))
-      .join("||");
+      .map(candidate => [candidate.kind, candidate.key, candidate.priorityKey, candidate.prioritized, candidate.title, candidate.actionAttrs, candidate.disabled, candidate.canBuy, candidate.actionLabel, combatQuickRecommendationCostBadge(candidate)?.text].join("|"))
+      .join("||") + `::${getRecommendationPriorityKey("progress")}::${getRecommendationPriorityKey("captain")}::${priorityCancelHtml}`;
     if (container.dataset.combatQuickSignature === signature) return;
     container.dataset.combatQuickSignature = signature;
-    container.innerHTML = recommendations.map(combatQuickRecommendationButtonHtml).join("");
+    container.innerHTML = recommendations.map(combatQuickRecommendationButtonHtml).join("") + priorityCancelHtml;
   }
 
   function getDesktopMiniFleetRecommendation() {
@@ -12573,6 +12811,7 @@
     syncCombatQuickActions();
     syncDesktopDownloadNotice();
     syncDesktopExecutableUi();
+    syncManualSaveButtonTooltip();
     updateFloatingCombatHudPositions();
   }
 
@@ -12599,6 +12838,13 @@
     const title = isValidPirateName(pirateName) ? pirateName : captain?.name || "Capitão aguardando";
     const titleHint = captain && isValidPirateName(pirateName) ? `${pirateName} - ${captain.name}` : title;
     if (topCaptain) topCaptain.title = captain ? `${titleHint} - Nv. ${state.captainRuntimeLevel}` : "Escolher Capitão";
+    const captainTooltip = captain
+      ? `${titleHint}. Capitao Nv. ${state.captainRuntimeLevel}. Pirata Nv. ${state.pirateLevel}. Poder naval ${formatNumber(getStats().power)}. Save: ${formatSaveTimestamp()}. Estado do save: ${getSaveSyncModeText()}.`
+      : `Escolher Capitao. Pirata Nv. ${state.pirateLevel}. Save: ${formatSaveTimestamp()}. Estado do save: ${getSaveSyncModeText()}.`;
+    if (topCaptain) {
+      topCaptain.title = captainTooltip;
+      setHelpTooltipText(topCaptain, captainTooltip);
+    }
     if (avatar) {
       if (captain) {
         avatar.innerHTML = captainSpriteCanvasHtml(captain.level, captain.gender, "topbar");
@@ -12669,12 +12915,97 @@
   function progressRecommendationPriority(candidate) {
     if (candidate?.kind === "fleetShip") return 0;
     if (candidate?.kind === "fleetUpgrade") return 1;
-    if (candidate?.kind === "fleetSkill") return 2;
-    return 3;
+    if (candidate?.kind === "fleetEquipment") return 2;
+    if (candidate?.kind === "fleetSkill") return 3;
+    return 4;
   }
 
   function recommendationActionMatches(candidate, attr) {
     return Boolean(candidate?.actionAttrs && candidate.actionAttrs.includes(attr));
+  }
+
+  function recommendationPriorityKey(group, kind, id) {
+    const priority = normalizeRecommendationPriority({ group, kind, id });
+    return priority ? `${priority.group}:${priority.kind}:${priority.id}` : "";
+  }
+
+  function getRecommendationPriority(group) {
+    const normalizedGroup = group === "captain" ? "captain" : "progress";
+    const priority = normalizeRecommendationPriority(state.recommendationPriorities?.[normalizedGroup]);
+    if (priority?.group === normalizedGroup) return priority;
+    const legacy = normalizeRecommendationPriority(state.recommendationPriority);
+    return legacy?.group === normalizedGroup ? legacy : null;
+  }
+
+  function getRecommendationPriorityKey(value = "") {
+    const priority = typeof value === "string" ? getRecommendationPriority(value) : normalizeRecommendationPriority(value);
+    return priority ? recommendationPriorityKey(priority.group, priority.kind, priority.id) : "";
+  }
+
+  function recommendationPriorityButtonHtml(group, kind, id, disabled = false) {
+    const key = recommendationPriorityKey(group, kind, id);
+    if (!key) return "";
+    const active = getRecommendationPriorityKey(group) === key;
+    const label = active ? "Prioridade" : "Priorizar";
+    const title = active ? "Esta melhoria esta priorizada nas recomendacoes." : "Priorizar esta melhoria nas recomendacoes da tela de combate.";
+    return `<button class="button priority-update-button ${active ? "active" : ""}" type="button" data-set-recommendation-priority="${escapeHtml(group)}" data-recommendation-priority-kind="${escapeHtml(kind)}" data-recommendation-priority-id="${escapeHtml(String(id))}" title="${escapeHtml(title)}" data-help-tooltip="${escapeHtml(title)}" ${disabled ? "disabled" : ""}>${label}</button>`;
+  }
+
+  function attachRecommendationPriority(candidate, group, kind, id) {
+    const priorityKey = recommendationPriorityKey(group, kind, id);
+    return { ...candidate, group, kind, key: String(id), priorityKey };
+  }
+
+  function applyRecommendationPriority(candidates, group) {
+    const priority = getRecommendationPriority(group);
+    const priorityKey = getRecommendationPriorityKey(priority);
+    const list = candidates.map(candidate => ({ ...candidate, prioritized: Boolean(priorityKey && candidate.priorityKey === priorityKey) }));
+    if (!priority || priority.group !== group || !priorityKey) return list;
+    const index = list.findIndex(candidate => candidate.priorityKey === priorityKey && !candidate.blocked);
+    if (index <= 0) return list;
+    const [selected] = list.splice(index, 1);
+    return [selected, ...list];
+  }
+
+  function combatRecommendationPriorityCancelHtml() {
+    const buttons = ["progress", "captain"].map(group => {
+      const priority = getRecommendationPriority(group);
+      if (!priority) return "";
+      const label = group === "captain" ? "Cancelar prioridade do capitao" : "Cancelar prioridade do navio";
+      return `<button class="combat-priority-cancel-button" type="button" data-clear-recommendation-priority="${group}" title="${escapeHtml(label)}" data-help-tooltip="${escapeHtml(label)}">${escapeHtml(label)}</button>`;
+    }).filter(Boolean);
+    return buttons.map((button, index) => buttons.length > 1
+      ? button.replace("combat-priority-cancel-button", `combat-priority-cancel-button split${index === 0 ? " first" : ""}`)
+      : button).join("");
+  }
+
+  function setRecommendationPriority(group, kind, id) {
+    const priority = normalizeRecommendationPriority({ group, kind, id });
+    if (!priority) return;
+    state.recommendationPriorities = normalizeRecommendationPriorities(state.recommendationPriorities);
+    state.recommendationPriorities[priority.group] = priority;
+    state.recommendationPriority = null;
+    toast("Prioridade definida nas recomendacoes.", "gold-toast", { mobileAllowed: true });
+    renderAll(false);
+    saveGame();
+  }
+
+  function clearRecommendationPriority(group = "") {
+    const normalizedGroup = group === "captain" ? "captain" : group === "progress" ? "progress" : "";
+    state.recommendationPriorities = normalizeRecommendationPriorities(state.recommendationPriorities, state.recommendationPriority);
+    if (!normalizedGroup) {
+      if (!state.recommendationPriorities.progress && !state.recommendationPriorities.captain && !state.recommendationPriority) return;
+      state.recommendationPriorities.progress = null;
+      state.recommendationPriorities.captain = null;
+    } else if (!state.recommendationPriorities[normalizedGroup]) {
+      return;
+    } else {
+      state.recommendationPriorities[normalizedGroup] = null;
+    }
+    state.recommendationPriority = null;
+    toast("Prioridade removida.", "gold-toast", { mobileAllowed: true });
+    renderAll(false);
+    saveGame();
   }
 
   function canRecommendFleetShip(ship) {
@@ -12697,7 +13028,7 @@
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const action = upgradeTableActionState("upgrade", key, cost);
       const canBuy = canAfford(cost);
-      candidates.push({ kind: "fleetUpgrade", category, title: `${title} Nv. ${getShipUpgradeLevel(key) + 1}`, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactText(getImprovementRows(key), `${formatNumber(currentStats.power)} -> ${formatNumber(nextStats.power)} poder`), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
+      candidates.push(attachRecommendationPriority({ kind: "fleetUpgrade", category, title: `${title} Nv. ${getShipUpgradeLevel(key) + 1}`, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactText(getImprovementRows(key), `${formatNumber(currentStats.power)} -> ${formatNumber(nextStats.power)} poder`), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) }, "progress", "fleetUpgrade", key));
     });
     Object.entries(EQUIPMENT_META).forEach(([key, item]) => {
       if (state.equipment[key]) return;
@@ -12706,7 +13037,7 @@
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const action = upgradeTableActionState("equipment", key, cost);
       const canBuy = canAfford(cost);
-      candidates.push({ kind: "fleetEquipment", category: "Equipamento do Navio", title: item.name, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, item.effect), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) });
+      candidates.push(attachRecommendationPriority({ kind: "fleetEquipment", category: "Equipamento do Navio", title: item.name, cost, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, item.effect), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy) }, "progress", "fleetEquipment", key));
     });
     Object.entries(SKILL_META).forEach(([key, meta]) => {
       const unlocked = isSkillUnlocked(key);
@@ -12715,7 +13046,7 @@
       const powerGain = Math.max(1, unlocked ? nextStats.power - currentStats.power : 1);
       const action = upgradeTableActionState("skill", key, cost, { blocked: !unlocked });
       const canBuy = unlocked && canAfford(cost);
-      candidates.push({ kind: "fleetSkill", category: "Skill do Navio", title: `${meta.name} Nv. ${state.skills[key].level + 1}`, cost, powerGain, canBuy, blocked: !unlocked, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: shipSkillRecommendationImpactText(key, state.skills[key].level), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy, !unlocked) });
+      candidates.push(attachRecommendationPriority({ kind: "fleetSkill", category: "Skill do Navio", title: `${meta.name} Nv. ${state.skills[key].level + 1}`, cost, powerGain, canBuy, blocked: !unlocked, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: shipSkillRecommendationImpactText(key, state.skills[key].level), score: recommendationScore(powerGain, estimateCostValue(cost), canBuy, !unlocked) }, "progress", "fleetSkill", key));
     });
     const nextShip = getNextFleetShip();
     if (canRecommendFleetShip(nextShip)) {
@@ -12723,13 +13054,14 @@
       const powerGain = Math.max(1, nextStats.power - currentStats.power);
       const action = upgradeTableActionState("ship", nextShip.id, nextShip.costs);
       const canBuy = canAfford(nextShip.costs);
-      candidates.push({ kind: "fleetShip", category: "Frota", title: nextShip.name, cost: nextShip.costs, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, `Novo navio: +${formatNumber(powerGain)} poder`, ["damage", "maxHp", "dps", "speed", "armor"]), score: Number.MAX_SAFE_INTEGER });
+      candidates.push(attachRecommendationPriority({ kind: "fleetShip", category: "Frota", title: nextShip.name, cost: nextShip.costs, powerGain, canBuy, blocked: false, actionLabel: action.label, actionAttrs: action.actionAttrs, disabled: action.disabled, note: recommendationImpactFromStats(currentStats, nextStats, `Novo navio: +${formatNumber(powerGain)} poder`, ["damage", "maxHp", "dps", "speed", "armor"]), score: Number.MAX_SAFE_INTEGER }, "progress", "fleetShip", nextShip.id));
     }
-    return candidates.sort((a, b) =>
+    const sorted = candidates.sort((a, b) =>
       progressRecommendationPriority(a) - progressRecommendationPriority(b)
       || Number(b.canBuy) - Number(a.canBuy)
       || b.score - a.score
     );
+    return applyRecommendationPriority(sorted, "progress");
   }
 
   function buildCaptainRecommendationCandidates() {
@@ -12760,11 +13092,13 @@
       const canBuy = available >= cost;
       candidates.push({ kind: "captainManualSkill", key, category: "Skill do Capitão", title: `${meta.name} Nv. ${level + 1}`, powerGain: Math.max(1, powerGain), canBuy, blocked: false, actionLabel: canBuy ? "Promover" : "Faltam pts", actionAttrs: `data-upgrade-captain-manual-skill="${key}"`, disabled: !canBuy, note: captainManualSkillRecommendationImpactText(key, level, currentStats), costText: `${cost} Ponto${cost === 1 ? "" : "s"}`, score: recommendationScore(powerGain, cost, canBuy) });
     });
-    return candidates.sort((a, b) =>
+    const prioritizedCandidates = candidates.map(candidate => attachRecommendationPriority(candidate, "captain", candidate.kind, candidate.key));
+    const sorted = prioritizedCandidates.sort((a, b) =>
       Number(b.canBuy) - Number(a.canBuy)
       || captainRecommendationPriority(a) - captainRecommendationPriority(b)
       || b.score - a.score
     );
+    return applyRecommendationPriority(sorted, "captain");
   }
 
   function resourceCostText(cost = {}) {
@@ -13014,7 +13348,7 @@
     const available = getAvailableLevelPoints();
     const cost = next.pointCost;
     const canUpgrade = available >= cost;
-    return upgradeTableButtonHtml(canUpgrade ? "Evoluir" : "Faltam pts", `data-upgrade-captain-equipment="${key}"`, !canUpgrade);
+    return `${recommendationPriorityButtonHtml("captain", "captainEquipment", key)}${upgradeTableButtonHtml(canUpgrade ? "Evoluir" : "Faltam pts", `data-upgrade-captain-equipment="${key}"`, !canUpgrade)}`;
   }
 
   function captainEquipmentTabHtml([key, meta]) {
@@ -13134,7 +13468,7 @@
         summaryRows,
         summaryFallback: meta.description,
         costHtml: cost === null ? `<span class="cost-chip">Completo</span>` : `<span class="cost-chip">${cost} Ponto${cost === 1 ? "" : "s"}</span><span class="cost-chip">Saldo ${available}</span>`,
-        actionHtml: upgradeTableButtonHtml(cost === null ? "Máximo" : canUpgrade ? "Promover" : "Faltam pts", `data-upgrade-captain-manual-skill="${key}"`, !canUpgrade)
+        actionHtml: `${cost === null ? "" : recommendationPriorityButtonHtml("captain", "captainManualSkill", key)}${upgradeTableButtonHtml(cost === null ? "Máximo" : canUpgrade ? "Promover" : "Faltam pts", `data-upgrade-captain-manual-skill="${key}"`, !canUpgrade)}`
       });
     }).join("");
     return `<section class="captain-equipment-section captain-manual-skill-section captain-collapsible-section ${captainManualSkillsExpanded ? "expanded" : ""}">
@@ -13623,9 +13957,11 @@
       const targetId = escapeHtml(member.player_id);
       const canSetKing = actorIsKing && member.role !== "king" && !guildState.actionPending;
       const canSetQuartermaster = member.role !== "king" && member.role !== "quartermaster" && !guildState.actionPending;
+      const canKick = canKickGuildMember(member) && !guildState.actionPending;
       return `<div class="guild-member-actions">
         <button class="button" type="button" data-set-guild-role="quartermaster" data-set-guild-role-target="${targetId}" ${canSetQuartermaster ? "" : "disabled"}>Definir vice</button>
         <button class="button" type="button" data-set-guild-role="king" data-set-guild-role-target="${targetId}" ${canSetKing ? "" : "disabled"}>Transferir lider</button>
+        <button class="button danger guild-kick-button" type="button" data-kick-guild-member="${targetId}" ${canKick ? "" : "disabled"}>Expulsar</button>
       </div>`;
     };
     const rows = members.length ? members.map(member => `<article class="guild-member-row ${canManageRoles ? "has-actions" : ""} ${member.player_id === state.playerId ? "available" : ""}">
@@ -14120,8 +14456,8 @@
       : `<button class="button fleet-nav-button" data-equip-ship="${previousOwnedId}">Anterior</button>`;
   }
 
-  function fleetActionHtml({ mainLabel, mainAttrs = "", disabled = false, balance = "", hint = "", previousOwnedId = getAdjacentOwnedShipId(-1), primary = true }) {
-    return `<div class="upgrade-row-action fleet-action-row">${fleetPreviousButtonHtml(previousOwnedId)}<button class="button ${primary ? "primary" : ""}" ${mainAttrs} ${disabled ? "disabled" : ""}>${mainLabel}</button>${balance}${hint ? `<small>${hint}</small>` : ""}</div>`;
+  function fleetActionHtml({ mainLabel, mainAttrs = "", disabled = false, balance = "", hint = "", previousOwnedId = getAdjacentOwnedShipId(-1), primary = true, extraHtml = "" }) {
+    return `<div class="upgrade-row-action fleet-action-row">${fleetPreviousButtonHtml(previousOwnedId)}<button class="button ${primary ? "primary" : ""}" ${mainAttrs} ${disabled ? "disabled" : ""}>${mainLabel}</button>${extraHtml}${balance}${hint ? `<small>${hint}</small>` : ""}</div>`;
   }
 
   function fleetPurchaseActionHtml(nextShip, blocked = false, hint = "") {
@@ -14141,7 +14477,7 @@
     const balanceClass = disabled && !blocked ? " danger" : "";
     const afterText = disabled && !blocked ? unavailableLabel : `${formatNumber(afterGold)} Ouro`;
     const balance = `<div class="upgrade-balance${balanceClass}"><span>Saldo atual: <strong>${formatNumber(state.resources.ouro)} Ouro</strong></span><span>Após compra: <strong>${afterText}</strong></span></div>`;
-    return fleetActionHtml({ mainLabel: label, mainAttrs: attrs, disabled, balance, hint, previousOwnedId });
+    return fleetActionHtml({ mainLabel: label, mainAttrs: attrs, disabled, balance, hint, previousOwnedId, extraHtml: blocked ? "" : recommendationPriorityButtonHtml("progress", "fleetShip", nextShip.id) });
   }
 
   function statRowsHtml(rows) {
@@ -14408,7 +14744,7 @@
       summaryRows: visibleRows,
       summaryFallback: item.desc,
       costHtml: resourceCostHtml(cost),
-      actionHtml: upgradeTableButtonHtml(action.label, action.actionAttrs, action.disabled)
+      actionHtml: `${recommendationPriorityButtonHtml("progress", "fleetUpgrade", item.key)}${upgradeTableButtonHtml(action.label, action.actionAttrs, action.disabled)}`
     });
   }
 
@@ -14514,7 +14850,7 @@
       summaryRows: statRows.slice(0, 4),
       summaryFallback: item.effect,
       costHtml: equipped ? `<span class="cost-chip">Ativo permanente</span>` : resourceCostHtml(item.costs),
-      actionHtml: upgradeTableButtonHtml(action.label, action.actionAttrs, action.disabled)
+      actionHtml: `${equipped ? "" : recommendationPriorityButtonHtml("progress", "fleetEquipment", key)}${upgradeTableButtonHtml(action.label, action.actionAttrs, action.disabled)}`
     });
   }
 
@@ -14554,7 +14890,7 @@
       summaryRows: rows,
       summaryFallback: meta.effect,
       costHtml: unlocked ? resourceCostHtml(cost) : `<span class="cost-chip">Libera no Nv. ${meta.unlock}</span>`,
-      actionHtml: `${toggle}${upgradeTableButtonHtml(action.label, action.actionAttrs, action.disabled)}`
+      actionHtml: `${toggle}${unlocked ? recommendationPriorityButtonHtml("progress", "fleetSkill", key) : ""}${upgradeTableButtonHtml(action.label, action.actionAttrs, action.disabled)}`
     });
   }
 
@@ -15522,11 +15858,27 @@
     $("#arena-result-modal").classList.remove("hidden");
   }
 
+  function clearArenaFinishTimer(battle = arenaState.battle) {
+    if (!battle?.finishTimer) return;
+    window.clearTimeout(battle.finishTimer);
+    battle.finishTimer = 0;
+  }
+
+  function showArenaBattleResult() {
+    const battle = arenaState.battle;
+    if (!battle || !battle.finished || !arenaState.result) return;
+    clearArenaFinishTimer(battle);
+    battle.finishPending = false;
+    renderArenaResultModal();
+    renderAll(false);
+  }
+
   function finishArenaBattle(victory) {
     const battle = arenaState.battle;
     if (!battle || battle.finished) return;
     battle.active = false;
     battle.finished = true;
+    battle.finishPending = true;
     const enemyName = battle.opponent?.pirate_name || state.combat.enemy?.name || "Inimigo da Arena";
     const durationSeconds = Math.max(1, Math.round((Date.now() - battle.startedAt) / 1000));
     arenaState.result = {
@@ -15538,17 +15890,20 @@
       durationSeconds
     };
     state.combat.running = false;
+    state.combat.attackTimer = 0;
+    state.combat.petAttackTimer = 0;
     state.combat.enemyAttackTimer = 0;
     if (!victory) scene.markPlayerShipDeath();
     addLog(`${victory ? "Vitória" : "Derrota"} na Arena contra ${enemyName}.`, victory ? "loot" : "danger-text");
     toast(victory ? "Vitória na Arena!" : "Derrota na Arena!", victory ? "gold-toast" : "danger-toast");
-    renderArenaResultModal();
     renderAll(false);
+    battle.finishTimer = window.setTimeout(showArenaBattleResult, ARENA_END_DELAY_MS);
   }
 
   function cancelArenaBattleFromExit() {
     const battle = arenaState.battle;
     if (!battle) return false;
+    clearArenaFinishTimer(battle);
     const enemyName = battle.opponent?.pirate_name || state.combat.enemy?.name || "Inimigo da Arena";
     if (battle.mode === "online") leavePvpRoom({ surrender: true });
     addLog(`Voce saiu da Arena contra ${enemyName}.`, "danger-text");
@@ -15576,7 +15931,7 @@
 
   function exitSpecialCombat() {
     const enemy = state.combat.enemy;
-    if (enemy?.isArena || isArenaBattleActive() || isArenaBattleWaiting()) return cancelArenaBattleFromExit();
+    if ((enemy?.isArena && !arenaState.battle?.finished) || isArenaBattleActive() || isArenaBattleWaiting()) return cancelArenaBattleFromExit();
     if (enemy?.isBoss) {
       cancelBossBattle({ voluntary: true });
       return true;
@@ -15586,6 +15941,7 @@
 
   function closeArenaResultModal() {
     $("#arena-result-modal")?.classList.add("hidden");
+    clearArenaFinishTimer();
     if (arenaState.previousCombat?.combat) {
       state.combat = JSON.parse(JSON.stringify(arenaState.previousCombat.combat));
       state.combat.playerHp = clamp(Number(state.combat.playerHp) || getStats().maxHp, 0, getStats().maxHp);
@@ -15846,6 +16202,33 @@
       renderGuildIfVisible();
       toast(`${guildRoleLabel(role)} definido.`, "gold-toast");
     }, "Nao foi possivel alterar o cargo.");
+  }
+
+  function removeGuildMemberLocally(targetPlayerId) {
+    const current = guildState.current;
+    if (!current?.members?.length) return;
+    current.members = current.members.filter(member => member.player_id !== targetPlayerId);
+    if (current.guild) current.guild.member_count = Math.max(0, Number(current.guild.member_count || 0) - 1);
+  }
+
+  function kickGuildMember(targetPlayerId) {
+    const guild = getCurrentGuild();
+    if (!guild || !hasGuildManagerAccess()) return toast("Apenas Rei Pirata e Intendente podem expulsar membros.", "danger-toast");
+    const targetMember = guildState.current?.members?.find(member => member.player_id === targetPlayerId);
+    if (!targetMember) return toast("Membro da Irmandade nao encontrado.", "danger-toast");
+    if (!canKickGuildMember(targetMember)) return toast("Voce nao pode expulsar esse membro.", "danger-toast");
+    const name = targetMember.pirate_name || "Membro";
+    if (!window.confirm(`Expulsar ${name} da Irmandade?`)) return;
+    runGuildAction(async config => {
+      await callOnlineRpc(config, config.guildKickRpcName, {
+        p_player_id: state.playerId,
+        p_guild_id: guild.id,
+        p_target_player_id: targetPlayerId
+      });
+      removeGuildMemberLocally(targetPlayerId);
+      renderGuildIfVisible();
+      toast(`${name} foi expulso da Irmandade.`, "gold-toast");
+    }, "Nao foi possivel expulsar o membro.");
   }
 
   function decideGuildApplication(playerId, approve) {
@@ -16574,8 +16957,20 @@
       forceManualCloudSave(target);
       return;
     }
+    if (target.dataset.setRecommendationPriority) {
+      setRecommendationPriority(target.dataset.setRecommendationPriority, target.dataset.recommendationPriorityKind, target.dataset.recommendationPriorityId);
+      return;
+    }
+    if (target.dataset.clearRecommendationPriority !== undefined) {
+      clearRecommendationPriority(target.dataset.clearRecommendationPriority || "");
+      return;
+    }
     if (target.dataset.desktopWindowAction) {
       handleDesktopWindowAction(target.dataset.desktopWindowAction);
+      return;
+    }
+    if (target.dataset.browserPopupAction !== undefined) {
+      openBrowserPopupWindow();
       return;
     }
     if (target.dataset.desktopMiniEnter !== undefined) {
@@ -16583,6 +16978,10 @@
       return;
     }
     if (target.dataset.desktopMiniExit !== undefined) {
+      if (browserPopupMiniMode) {
+        setBrowserPopupMiniMode(false);
+        return;
+      }
       exitDesktopMiniOverlay();
       return;
     }
@@ -16677,6 +17076,10 @@
     }
     if (target.dataset.setGuildRole) {
       setGuildRole(target.dataset.setGuildRole, target.dataset.setGuildRoleTarget || "");
+      return;
+    }
+    if (target.dataset.kickGuildMember) {
+      kickGuildMember(target.dataset.kickGuildMember);
       return;
     }
     if (target.dataset.guildApplication && target.dataset.guildApplicationPlayer) {
@@ -17118,7 +17521,7 @@
     renderPetPreviewCanvases();
     updateMobileCombatFullscreen();
     syncDesktopExecutableUi();
-    if (combatFullscreen || desktopMiniOverlayMode) resizeCombatViewport();
+    if (combatFullscreen || isCombatMiniOverlayVisualMode()) resizeCombatViewport();
   });
   window.addEventListener("orientationchange", updateMobileCombatFullscreen);
   window.addEventListener("blur", hideHelpTooltip);
@@ -17133,6 +17536,10 @@
   installDesktopMiniOverlayStateListener();
   installDesktopUpdateStatusListener();
   syncDesktopExecutableUi();
+  if (browserPopupMiniMode) {
+    resizeBrowserPopupWindow(true);
+    resizeCombatViewport();
+  }
   showDesktopWelcomeScreen();
   if (!isGameAuthenticated()) return;
   setupNativeTooltipSuppression();

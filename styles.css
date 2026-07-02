@@ -4569,6 +4569,24 @@ body {
   font: 900 12px/1 Georgia, serif;
 }
 
+.upgrade-table-action .priority-update-button,
+.fleet-action-row .priority-update-button {
+  min-height: 27px;
+  border-color: rgba(247, 189, 74, .38);
+  color: #ffe8ad;
+  background: rgba(86, 57, 12, .58);
+  font-size: 9px;
+  letter-spacing: 0;
+}
+
+.upgrade-table-action .priority-update-button.active,
+.fleet-action-row .priority-update-button.active {
+  border-color: rgba(247, 189, 74, .88);
+  color: #1a1203;
+  background: linear-gradient(180deg, #ffe08a, #f0a93a);
+  box-shadow: 0 0 0 1px rgba(247, 189, 74, .2), 0 0 16px rgba(247, 189, 74, .22);
+}
+
 .upgrade-table-action {
   display: grid;
   gap: 5px;
@@ -6990,9 +7008,45 @@ body.mobile-combat-fullscreen .combat-next-map-button {
 }
 
 .combat-quick-upgrades {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, var(--combat-action-size));
   align-items: center;
-  gap: var(--combat-action-gap);
+  gap: 5px var(--combat-action-gap);
+}
+
+.combat-priority-cancel-button {
+  grid-column: 1 / -1;
+  min-height: 22px;
+  padding: 3px 6px;
+  overflow: hidden;
+  border: 1px solid rgba(247, 189, 74, .42);
+  border-radius: 6px;
+  color: #ffe8ad;
+  background: rgba(31, 22, 8, .72);
+  box-shadow: 0 6px 13px rgba(0, 0, 0, .2);
+  font: 900 8.5px/1.05 Georgia, serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.combat-priority-cancel-button.split {
+  grid-column: auto;
+  min-width: 0;
+  padding-inline: 4px;
+  font-size: 7.8px;
+}
+
+.combat-priority-cancel-button.split.first {
+  grid-column: 1;
+}
+
+.combat-priority-cancel-button:hover,
+.combat-priority-cancel-button:focus-visible {
+  border-color: rgba(247, 189, 74, .82);
+  color: #ffffff;
+  background: rgba(69, 46, 12, .86);
 }
 
 .combat-quick-button {
@@ -7687,6 +7741,42 @@ body.mobile-combat-fullscreen .combat-quest-alert:not(.hidden) {
   touch-action: manipulation;
 }
 
+.combat-popup-toggle {
+  position: absolute;
+  top: 10px;
+  right: 50px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(110, 239, 226, .38);
+  border-radius: 9px;
+  color: #dffff9;
+  background: rgba(5, 29, 41, .78);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, .24), 0 0 14px rgba(110, 239, 226, .12);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  touch-action: manipulation;
+}
+
+.combat-popup-toggle span {
+  display: block;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.combat-popup-toggle:hover,
+.combat-popup-toggle:focus-visible,
+.combat-popup-toggle.active {
+  border-color: rgba(110, 239, 226, .86);
+  color: #ffffff;
+  background: rgba(12, 56, 72, .9);
+  box-shadow: 0 0 0 2px rgba(110, 239, 226, .14), 0 10px 20px rgba(0, 0, 0, .28), 0 0 18px rgba(110, 239, 226, .18);
+}
+
 .combat-save-toggle span {
   display: block;
   font-size: 17px;
@@ -7872,6 +7962,11 @@ body.mobile-combat-fullscreen .battle-stage .combat-quest-alert {
   .combat-save-toggle {
     top: max(8px, env(safe-area-inset-top));
     right: max(8px, env(safe-area-inset-right));
+  }
+
+  .combat-popup-toggle {
+    top: max(8px, env(safe-area-inset-top));
+    right: max(48px, calc(env(safe-area-inset-right) + 48px));
   }
 
   .combat-guild-toggle {
@@ -8295,6 +8390,7 @@ body.desktop-mini-overlay .combat-auto-actions,
 body.desktop-mini-overlay .combat-quick-actions,
 body.desktop-mini-overlay .combat-guild-toggle,
 body.desktop-mini-overlay .combat-arena-toggle,
+body.desktop-mini-overlay .combat-popup-toggle,
 body.desktop-mini-overlay .combat-save-toggle,
 body.desktop-mini-overlay .combat-desktop-mini-toggle,
 body.desktop-mini-overlay .combat-quest-alert,
